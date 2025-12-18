@@ -153,12 +153,6 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadSettings(); 
   }
 
-  // ... [KEEP YOUR EXISTING STORAGE LOGIC FUNCTIONS HERE] ...
-  // (Paste _loadSessions, _loadSettings, _saveSettings, _autoSaveCurrentSession, _createNewSession here)
-  // To save space in this response, I am assuming you kept them! 
-  // If you need them re-pasted, let me know, but they are unchanged except 
-  // that we call _autoSaveCurrentSession in the new Edit/Delete functions below.
-
   Future<void> _loadSessions() async {
     final prefs = await SharedPreferences.getInstance();
     final String? data = prefs.getString('airp_sessions');
@@ -227,9 +221,6 @@ class _ChatScreenState extends State<ChatScreen> {
     _initializeModel();
   }
 
-  // ... [KEEP YOUR EXISTING AI LOGIC FUNCTIONS HERE] ...
-  // (_initializeModel, _sendMessage, _performGroundedGeneration, _updateTokenCount, _scrollToBottom)
-
 void _initializeModel() {
     final activeKey = _userApiKey.isNotEmpty ? _userApiKey : _defaultApiKey;
     final List<SafetySetting> safetySettings = _disableSafety 
@@ -251,8 +242,6 @@ void _initializeModel() {
       safetySettings: safetySettings,
     );
 
-    // --- PATCH: SMART HISTORY MERGER ---
-    // Fixes "User > User" API errors and ensures Edits are seen by the AI
     List<Content> history = [];
     
     for (var msg in _messages) {
@@ -481,7 +470,7 @@ void _deleteMessage(int index) {
     _autoSaveCurrentSession();
     
     // --- PATCH: SYNC MEMORY ---
-    _initializeModel(); // Force AI to realize text is gone
+    _initializeModel(); 
     
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Message deleted")));
   }
