@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:math';
 
 void main() {
   runApp(
@@ -489,6 +490,21 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
   }
+
+  void _rollDice() {
+  final random = Random.secure(); 
+  final result = random.nextInt(20) + 1;
+  
+  setState(() {
+    _messages.add(ChatMessage(
+      text: "(D20) 🎲 **Dice Roll**: You rolled a **$result**!", 
+      isUser: true, // Show on right side (or false for AI side)
+    ));
+    _sendMessage();
+  });
+  _scrollToBottom();
+  _autoSaveCurrentSession();
+  }
   
   void _showMessageOptions(BuildContext context, int index) {
     showModalBottomSheet(
@@ -768,14 +784,15 @@ void _deleteMessage(int index) {
                 controller: _titleController,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 decoration: const InputDecoration(
-                  hintText: "Auto-generated...",
+                  hintText: "Type a title...",
                   hintStyle: TextStyle(color: Colors.white24),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                   suffixIcon: Icon(Icons.edit, size: 16, color: Colors.cyanAccent),
                 ),
                 onChanged: (val) {
-                  _autoSaveCurrentSession(); 
+                  if (val.trim().isNotEmpty) {
+                    _autoSaveCurrentSession();}
                 },
               ),
             ),
