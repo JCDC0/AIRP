@@ -413,34 +413,57 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Widget _buildColorCircle(String label, Color color, Function(Color) onColorChanged) {
-  return Column(
-    children: [
-      GestureDetector(
-        onTap: () {
-          // Open Color Picker Dialog
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF2C2C2C),
-              title: const Text("Pick a Color", style: TextStyle(color: Colors.white)),
-              content: SingleChildScrollView(
-                child: ColorPicker(
-                  pickerColor: color,
-                  onColorChanged: onColorChanged,
-                  labelTypes: const [],
-                  pickerAreaHeightPercent: 0.7,
-                ),
+  Widget _buildColorCircle(String label, Color color, Function(Color) onSave) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            // Initialize a temporary color variable for the dialog
+            Color tempColor = color; 
+
+            showDialog(
+              context: context,
+              builder: (context) => StatefulBuilder(
+                // ✨ THIS IS THE MAGIC FIX: setState for the Dialog!
+                builder: (context, setDialogState) {
+                  return AlertDialog(
+                    backgroundColor: const Color(0xFF2C2C2C),
+                    title: const Text("Pick a Color", style: TextStyle(color: Colors.white)),
+                    content: SingleChildScrollView(
+                      child: ColorPicker(
+                        pickerColor: tempColor,
+                        // Update the LOCAL dialog state instantly so sliders move
+                        onColorChanged: (c) {
+                          setDialogState(() {
+                            tempColor = c;
+                          });
+                        },
+                        labelTypes: const [], // Hides the ugly text labels
+                        pickerAreaHeightPercent: 0.7,
+                        enableAlpha: false, // We handle opacity with sliders outside!
+                        displayThumbColor: true,
+                        paletteType: PaletteType.hsvWithHue,
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      TextButton(
+                        child: const Text("Done", style: TextStyle(color: Colors.cyanAccent)),
+                        onPressed: () {
+                          // ✨ SAVE TO APP ONLY WHEN DONE
+                          onSave(tempColor); 
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
+                  );
+                },
               ),
-              actions: [
-                TextButton(
-                  child: const Text("Done"),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-          );
-        },
+            );
+          },
           child: Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
@@ -824,25 +847,59 @@ void _deleteMessage(int index) {
                 return Column(
                   children: [
                     const SizedBox(height: 15),
+                    // 1. THE COLOR CIRCLES
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildColorCircle("User BG", provider.userBubbleColor, (c) => provider.updateColor('userBubble', c)),
+                        _buildColorCircle("User BG", provider.userBubbleColor, (c) => provider.updateColor('userBubble', c.withOpacity(provider.userBubbleColor.opacity))),
                         _buildColorCircle("User Text", provider.userTextColor, (c) => provider.updateColor('userText', c)),
-                        _buildColorCircle("AI BG", provider.aiBubbleColor, (c) => provider.updateColor('aiBubble', c)),
+                        _buildColorCircle("AI BG", provider.aiBubbleColor, (c) => provider.updateColor('aiBubble', c.withOpacity(provider.aiBubbleColor.opacity))),
                         _buildColorCircle("AI Text", provider.aiTextColor, (c) => provider.updateColor('aiText', c)),
                       ],
                     ),
-                    const SizedBox(height: 15),
-                    // Opacity Slider for User Bubble (Quick shortcut)
-                    Text("User Bubble Opacity: ${(provider.userBubbleColor.opacity * 100).toInt()}%", 
-                        style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 20),
+                    
+                    // 2. USER BUBBLE OPACITY
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        children: [
+                          const Text("User Opacity:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const Spacer(),
+                          Text("${(provider.userBubbleColor.opacity * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+                        ],
+                      ),
+                    ),
                     Slider(
                       value: provider.userBubbleColor.opacity,
                       min: 0.0, max: 1.0,
-                      activeColor: provider.userBubbleColor.withOpacity(1),
+                      activeColor: provider.userBubbleColor.withOpacity(1.0), // Show the actual color!
+                      inactiveColor: Colors.grey[800],
                       onChanged: (val) {
+                        // Keep the RGB, just change Alpha
                         provider.updateColor('userBubble', provider.userBubbleColor.withOpacity(val));
+                      },
+                    ),
+
+                    // 3. ✨ NEW: AI BUBBLE OPACITY
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        children: [
+                          const Text("AI Opacity:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const Spacer(),
+                          Text("${(provider.aiBubbleColor.opacity * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                    Slider(
+                      value: provider.aiBubbleColor.opacity,
+                      min: 0.0, max: 1.0,
+                      activeColor: provider.aiBubbleColor.withOpacity(1.0),
+                      inactiveColor: Colors.grey[800],
+                      onChanged: (val) {
+                        // Keep the RGB, just change Alpha
+                        provider.updateColor('aiBubble', provider.aiBubbleColor.withOpacity(val));
                       },
                     ),
                   ],
