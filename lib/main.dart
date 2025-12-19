@@ -105,7 +105,7 @@ class _ChatScreenState extends State<ChatScreen> {
   // ----------------------------------------------------------------------
   // CONFIGURATION
   // ----------------------------------------------------------------------
-  static const _defaultApiKey = ''; // Remember to set this if you want a fallback!
+  static const _defaultApiKey = ''; // Fallback
   
   final List<String> _models = [
     'models/gemini-3-pro-preview',
@@ -143,6 +143,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _systemInstructionController = TextEditingController();
   final TextEditingController _apiKeyController = TextEditingController(); 
+  final TextEditingController _titleController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
   final List<String> _pendingImages = [];
@@ -194,12 +195,18 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _autoSaveCurrentSession() async {
-    if (_messages.isEmpty) return;
+    if (_messages.isEmpty  && _titleController.text.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
 
-    String title = _messages.first.text;
-    if (title.length > 20) title = "${title.substring(0, 20)}...";
+    String title = _titleController.text;
+    if (title.isEmpty && _messages.isNotEmpty) {
+      title = _messages.first.text;
+      if (title.length > 25) title = "${title.substring(0, 25)}..."; 
+      _titleController.text = title; 
+    } 
+    if (title.isEmpty) title = "New Conversation";
+
     _currentSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
 
     final sessionData = ChatSessionData(
@@ -227,6 +234,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _tokenCount = 0;
       _currentSessionId = null; 
       _systemInstructionController.clear();
+      _titleController.clear();
     });
     _initializeModel();
   }
@@ -258,7 +266,6 @@ class _ChatScreenState extends State<ChatScreen> {
       final String role = msg.isUser ? 'user' : 'model';
       
       if (history.isNotEmpty && history.last.role == role) {
-        // Merge consecutive same-role messages
         final List<Part> existingParts = history.last.parts.toList();
         existingParts.add(TextPart("\n\n${msg.text}")); 
         history[history.length - 1] = Content(role, existingParts);
@@ -291,7 +298,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   try {
     String? responseText;
-    // ✨ HANDLE IMAGES FOR GEMINI
     if (imagesToSend.isNotEmpty) {
       final List<Part> parts = [];
 
@@ -418,13 +424,11 @@ class _ChatScreenState extends State<ChatScreen> {
       children: [
         GestureDetector(
           onTap: () {
-            // Initialize a temporary color variable for the dialog
             Color tempColor = color; 
 
             showDialog(
               context: context,
               builder: (context) => StatefulBuilder(
-                // ✨ THIS IS THE MAGIC FIX: setState for the Dialog!
                 builder: (context, setDialogState) {
                   return AlertDialog(
                     backgroundColor: const Color(0xFF2C2C2C),
@@ -432,15 +436,14 @@ class _ChatScreenState extends State<ChatScreen> {
                     content: SingleChildScrollView(
                       child: ColorPicker(
                         pickerColor: tempColor,
-                        // Update the LOCAL dialog state instantly so sliders move
                         onColorChanged: (c) {
                           setDialogState(() {
                             tempColor = c;
                           });
                         },
-                        labelTypes: const [], // Hides the ugly text labels
+                        labelTypes: const [], 
                         pickerAreaHeightPercent: 0.7,
-                        enableAlpha: false, // We handle opacity with sliders outside!
+                        enableAlpha: false, 
                         displayThumbColor: true,
                         paletteType: PaletteType.hsvWithHue,
                       ),
@@ -453,7 +456,6 @@ class _ChatScreenState extends State<ChatScreen> {
                       TextButton(
                         child: const Text("Done", style: TextStyle(color: Colors.cyanAccent)),
                         onPressed: () {
-                          // ✨ SAVE TO APP ONLY WHEN DONE
                           onSave(tempColor); 
                           Navigator.of(context).pop();
                         },
@@ -556,9 +558,7 @@ void _showEditDialog(int index) {
                 _messages[index] = ChatMessage(text: editController.text, isUser: _messages[index].isUser);
               });
               _autoSaveCurrentSession(); 
-              
-              // --- PATCH: SYNC MEMORY ---
-              _initializeModel(); // Force AI to read the new text
+              _initializeModel();
               
               Navigator.pop(context);
             },
@@ -574,8 +574,6 @@ void _deleteMessage(int index) {
       _messages.removeAt(index);
     });
     _autoSaveCurrentSession();
-    
-    // --- PATCH: SYNC MEMORY ---
     _initializeModel(); 
     
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Message deleted")));
@@ -629,7 +627,7 @@ void _deleteMessage(int index) {
           // CONVERSATION LIST
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), // Add padding for the borders
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), 
               itemCount: _savedSessions.length,
               itemBuilder: (context, index) {
                 final session = _savedSessions[index];
@@ -680,6 +678,7 @@ void _deleteMessage(int index) {
                         _tokenCount = session.tokenCount;
                         _currentSessionId = session.id;
                         _systemInstructionController.text = session.systemInstruction;
+                        _titleController.text = session.title;
 
                         if (session.backgroundImage != null) {
                           themeProvider.setBackgroundImage(session.backgroundImage!);
@@ -719,12 +718,11 @@ void _deleteMessage(int index) {
                               onPressed: () {
                                 setState(() {
                                   _savedSessions.removeAt(index);
-                                  // If we deleted the active chat, reset to new
                                   if (session.id == _currentSessionId) {
                                     _createNewSession();
                                   }
                                 });
-                                _autoSaveCurrentSession(); // Sync to disk
+                                _autoSaveCurrentSession();
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text("Operation Terminated."), backgroundColor: Colors.redAccent)
@@ -757,6 +755,31 @@ void _deleteMessage(int index) {
             const SizedBox(height: 40),
             const Text("Main Settings", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
             const Divider(),
+
+            const Text("Conversation Title", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            const SizedBox(height: 5),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: TextField(
+                controller: _titleController,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                decoration: const InputDecoration(
+                  hintText: "Auto-generated...",
+                  hintStyle: TextStyle(color: Colors.white24),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  suffixIcon: Icon(Icons.edit, size: 16, color: Colors.cyanAccent),
+                ),
+                onChanged: (val) {
+                  _autoSaveCurrentSession(); 
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
             
             const Text("API Key (BYOK)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
             const SizedBox(height: 5),
@@ -847,7 +870,6 @@ void _deleteMessage(int index) {
                 return Column(
                   children: [
                     const SizedBox(height: 15),
-                    // 1. THE COLOR CIRCLES
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -859,7 +881,6 @@ void _deleteMessage(int index) {
                     ),
                     const SizedBox(height: 20),
                     
-                    // 2. USER BUBBLE OPACITY
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Row(
@@ -873,7 +894,7 @@ void _deleteMessage(int index) {
                     Slider(
                       value: provider.userBubbleColor.opacity,
                       min: 0.0, max: 1.0,
-                      activeColor: provider.userBubbleColor.withOpacity(1.0), // Show the actual color!
+                      activeColor: provider.userBubbleColor.withOpacity(1.0), 
                       inactiveColor: Colors.grey[800],
                       onChanged: (val) {
                         // Keep the RGB, just change Alpha
@@ -881,7 +902,6 @@ void _deleteMessage(int index) {
                       },
                     ),
 
-                    // 3. ✨ NEW: AI BUBBLE OPACITY
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Row(
@@ -898,7 +918,6 @@ void _deleteMessage(int index) {
                       activeColor: provider.aiBubbleColor.withOpacity(1.0),
                       inactiveColor: Colors.grey[800],
                       onChanged: (val) {
-                        // Keep the RGB, just change Alpha
                         provider.updateColor('aiBubble', provider.aiBubbleColor.withOpacity(val));
                       },
                     ),
@@ -931,7 +950,6 @@ void _deleteMessage(int index) {
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8,),
                         itemCount: 1 + provider.customImagePaths.length + kAssetBackgrounds.length,
                        itemBuilder: (context, index) {
-                          // TILE 0: ADD BUTTON
                           if (index == 0) {
                             return GestureDetector(
                               onTap: () async {
@@ -968,7 +986,6 @@ void _deleteMessage(int index) {
 
                           final bool isSelected = provider.backgroundImagePath == path;
 
-                          // --- PATCH: RED BLUR DELETION ---
                           return InkWell(
                             onTap: () => provider.setBackgroundImage(path),
                             // Long Press triggers the "Red Delete"
@@ -1250,7 +1267,6 @@ class ThemeProvider extends ChangeNotifier {
   String? _backgroundImagePath; 
   double _backgroundOpacity = 0.7;
   
-  // ✨ NEW: Color Customization State
   Color _userBubbleColor = Colors.cyanAccent.withOpacity(0.2);
   Color _userTextColor = Colors.white;
   Color _aiBubbleColor = const Color(0xFF2C2C2C).withOpacity(0.8);
@@ -1258,13 +1274,11 @@ class ThemeProvider extends ChangeNotifier {
 
   List<String> _customImagePaths = []; 
 
-  // Getters
   String get fontStyle => _fontStyle;
   String? get backgroundImagePath => _backgroundImagePath;
   double get backgroundOpacity => _backgroundOpacity;
   List<String> get customImagePaths => _customImagePaths;
   
-  // ✨ NEW: Color Getters
   Color get userBubbleColor => _userBubbleColor;
   Color get userTextColor => _userTextColor;
   Color get aiBubbleColor => _aiBubbleColor;
@@ -1284,8 +1298,6 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   TextTheme get currentTextTheme {
-    // We update this to use the dynamic colors if needed, 
-    // but usually Markdown handles the specifics.
     const baseColor = Colors.white;
     final baseTheme = ThemeData.dark().textTheme.apply(bodyColor: baseColor, displayColor: baseColor);
     switch (_fontStyle) {
@@ -1298,7 +1310,7 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   // --- Background Logic ---
-  Future<void> setBackgroundImage(String? path) async { // Changed to String? to allow null
+  Future<void> setBackgroundImage(String? path) async { 
     _backgroundImagePath = path;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
@@ -1316,7 +1328,6 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setDouble('app_bg_opacity', value);
   }
 
-  // --- ✨ NEW: Color Logic ---
   Future<void> updateColor(String type, Color color) async {
     switch (type) {
       case 'userBubble': _userBubbleColor = color; break;
@@ -1336,7 +1347,6 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setInt('color_ai_text', _aiTextColor.value);
   }
 
-  // --- Custom Gallery Logic ---
   Future<void> addCustomImage(String path) async {
     if (!_customImagePaths.contains(path)) {
       _customImagePaths.add(path);
@@ -1367,7 +1377,6 @@ class ThemeProvider extends ChangeNotifier {
     _backgroundOpacity = prefs.getDouble('app_bg_opacity') ?? 0.7;
     _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
     
-    // ✨ Load Colors
     _userBubbleColor = Color(prefs.getInt('color_user_bubble') ?? Colors.cyanAccent.withOpacity(0.2).value);
     _userTextColor = Color(prefs.getInt('color_user_text') ?? Colors.white.value);
     _aiBubbleColor = Color(prefs.getInt('color_ai_bubble') ?? const Color(0xFF2C2C2C).withOpacity(0.8).value);
