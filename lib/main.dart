@@ -3,12 +3,13 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 
 void main() {
   runApp(
@@ -56,6 +57,7 @@ class ChatSessionData {
   final String modelName;
   final int tokenCount;
   final String systemInstruction;
+  final String? backgroundImage;
 
   ChatSessionData({
     required this.id,
@@ -64,6 +66,7 @@ class ChatSessionData {
     required this.modelName,
     required this.tokenCount,
     required this.systemInstruction,
+    this.backgroundImage,
   });
 
   Map<String, dynamic> toJson() => {
@@ -73,6 +76,7 @@ class ChatSessionData {
     'modelName': modelName,
     'tokenCount': tokenCount,
     'systemInstruction': systemInstruction,
+    'backgroundImage': backgroundImage,
   };
 
   factory ChatSessionData.fromJson(Map<String, dynamic> json) {
@@ -85,6 +89,7 @@ class ChatSessionData {
       modelName: json['modelName'] ?? 'models/gemini-2.0-flash',
       tokenCount: json['tokenCount'] ?? 0,
       systemInstruction: json['systemInstruction'] ?? "",
+      backgroundImage: json['backgroundImage'],
     );
   }
 }
@@ -140,7 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _apiKeyController = TextEditingController(); 
   final ImagePicker _picker = ImagePicker();
 
-  List<String> _pendingImages = [];
+  final List<String> _pendingImages = [];
   List<ChatMessage> _messages = []; 
   List<ChatSessionData> _savedSessions = []; 
   String? _currentSessionId;
@@ -191,6 +196,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _autoSaveCurrentSession() async {
     if (_messages.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+
     String title = _messages.first.text;
     if (title.length > 20) title = "${title.substring(0, 20)}...";
     _currentSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
@@ -202,6 +209,7 @@ class _ChatScreenState extends State<ChatScreen> {
       modelName: _selectedModel,
       tokenCount: _tokenCount,
       systemInstruction: _systemInstructionController.text,
+      backgroundImage: themeProvider.backgroundImagePath,
     );
 
     setState(() {
@@ -223,16 +231,16 @@ class _ChatScreenState extends State<ChatScreen> {
     _initializeModel();
   }
 
-void _initializeModel() {
-    final activeKey = _userApiKey.isNotEmpty ? _userApiKey : _defaultApiKey;
-    final List<SafetySetting> safetySettings = _disableSafety 
-      ? [
-          SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
-          SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
-          SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
-          SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
-        ] 
-      : []; 
+  void _initializeModel() {
+      final activeKey = _userApiKey.isNotEmpty ? _userApiKey : _defaultApiKey;
+      final List<SafetySetting> safetySettings = _disableSafety 
+        ? [
+            SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
+            SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
+            SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
+            SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
+          ] 
+        : []; 
 
     _model = GenerativeModel(
       model: _selectedModel,
@@ -285,23 +293,18 @@ void _initializeModel() {
     String? responseText;
     // ✨ HANDLE IMAGES FOR GEMINI
     if (imagesToSend.isNotEmpty) {
-      // 1. Prepare the parts (Text + Images)
       final List<Part> parts = [];
 
       if (messageText.isNotEmpty) {
         parts.add(TextPart(messageText));
       }
-      // 2. Convert images to Bytes for the API
       for (String path in imagesToSend) {
         final bytes = await File(path).readAsBytes();
-        // Assuming JPEG for simplicity, but Gemini is smart enough usually
         parts.add(DataPart('image/jpeg', bytes)); 
       }
-      // 3. Send using Content.multi
       final response = await _chat.sendMessage(Content.multi(parts));
       responseText = response.text;
     } else {
-      // STANDARD TEXT ONLY (Your old logic)
       if (_enableGrounding) {
         responseText = await _performGroundedGeneration(messageText);
       } else {
@@ -408,6 +411,50 @@ void _initializeModel() {
     } catch (e) {
       print("Error picking image: $e");
     }
+  }
+
+  Widget _buildColorCircle(String label, Color color, Function(Color) onColorChanged) {
+  return Column(
+    children: [
+      GestureDetector(
+        onTap: () {
+          // Open Color Picker Dialog
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF2C2C2C),
+              title: const Text("Pick a Color", style: TextStyle(color: Colors.white)),
+              content: SingleChildScrollView(
+                child: ColorPicker(
+                  pickerColor: color,
+                  onColorChanged: onColorChanged,
+                  labelTypes: const [],
+                  pickerAreaHeightPercent: 0.7,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text("Done"),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          );
+        },
+          child: Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 8)]
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+      ],
+    );
   }
 
   void _scrollToBottom() {
@@ -603,20 +650,24 @@ void _deleteMessage(int index) {
                     
                     // LOAD CHAT
                     onTap: () {
+                        final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
                       setState(() {
                         _messages = List.from(session.messages);
                         _selectedModel = session.modelName;
                         _tokenCount = session.tokenCount;
                         _currentSessionId = session.id;
                         _systemInstructionController.text = session.systemInstruction;
-                        _initializeModel(); // Re-sync AI memory
+
+                        if (session.backgroundImage != null) {
+                          themeProvider.setBackgroundImage(session.backgroundImage!);
+                        }
+
+                        _initializeModel();
                       });
                       Navigator.pop(context);
                     },
                     
-                    // DELETE PROMPT (TRASH CAN BUTTON)
                     onLongPress: () {
-                      // Haptic feedback for "Red Alert" feel
                       HapticFeedback.heavyImpact();
                       
                       showDialog(
@@ -628,10 +679,10 @@ void _deleteMessage(int index) {
                             children: [
                               Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
                               SizedBox(width: 10),
-                              Text("Terminate Log?", style: TextStyle(color: Colors.redAccent)),
+                              Text("Delete Conversation?", style: TextStyle(color: Colors.redAccent)),
                             ],
                           ),
-                          content: Text("Permanently delete '${session.title}'?", style: const TextStyle(color: Colors.white70)),
+                          content: Text("Permanently deletes '${session.title}'", style: const TextStyle(color: Colors.white70)),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context),
@@ -735,8 +786,8 @@ void _deleteMessage(int index) {
               child: const Text("APPLY & SAVE"),
             ),
             const SizedBox(height: 20),
-            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Temperature"), subtitle: Text(_temperature.toStringAsFixed(1)), value: true, onChanged: (val) {},),
-            Slider(value: _temperature, min: 0.0, max: 2.0, divisions: 20, activeColor: Colors.cyanAccent, onChanged: (val) => setState(() => _temperature = val),),
+            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Temperature\nHigher is Creative"), subtitle: Text(_temperature.toStringAsFixed(1)), value: true, onChanged: (val) {},),
+            Slider(value: _temperature, min: 0.0, max: 2.0, divisions: 20, activeColor: Colors.redAccent, onChanged: (val) => setState(() => _temperature = val),),
             SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Grounding (Google Search)"), value: _enableGrounding, activeThumbColor: Colors.greenAccent, onChanged: (val) { setState(() => _enableGrounding = val); },),
             SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Disable Safety Filters"), value: _disableSafety, activeThumbColor: Colors.redAccent, onChanged: (val) { setState(() => _disableSafety = val); },),
             
@@ -765,6 +816,40 @@ void _deleteMessage(int index) {
                 );
               },
             ),
+
+            const Divider(),
+            const Text("Chat Customization", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            Consumer<ThemeProvider>(
+              builder: (context, provider, child) {
+                return Column(
+                  children: [
+                    const SizedBox(height: 15),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildColorCircle("User BG", provider.userBubbleColor, (c) => provider.updateColor('userBubble', c)),
+                        _buildColorCircle("User Text", provider.userTextColor, (c) => provider.updateColor('userText', c)),
+                        _buildColorCircle("AI BG", provider.aiBubbleColor, (c) => provider.updateColor('aiBubble', c)),
+                        _buildColorCircle("AI Text", provider.aiTextColor, (c) => provider.updateColor('aiText', c)),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    // Opacity Slider for User Bubble (Quick shortcut)
+                    Text("User Bubble Opacity: ${(provider.userBubbleColor.opacity * 100).toInt()}%", 
+                        style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Slider(
+                      value: provider.userBubbleColor.opacity,
+                      min: 0.0, max: 1.0,
+                      activeColor: provider.userBubbleColor.withOpacity(1),
+                      onChanged: (val) {
+                        provider.updateColor('userBubble', provider.userBubbleColor.withOpacity(val));
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 10),
 
             const SizedBox(height: 20),
             const Divider(),
@@ -881,6 +966,7 @@ void _deleteMessage(int index) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
+      resizeToAvoidBottomInset: true, 
       drawer: _buildLeftDrawer(),
       endDrawer: _buildSettingsDrawer(),
       appBar: AppBar(
@@ -914,19 +1000,31 @@ void _deleteMessage(int index) {
                   color: Colors.black
                       .withOpacity(themeProvider.backgroundOpacity)),
             ),
-          Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
+          SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
                   controller: _scrollController,
                   itemCount: _messages.length,
                   itemBuilder: (context, index) {
                     final msg = _messages[index];
+                    final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
+                    final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
+                    final borderColor = msg.isUser ? themeProvider.userBubbleColor.withOpacity(0.5) : Colors.white10;
                     return Align(
                        alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
                         child: GestureDetector(
                           onLongPress: () => _showMessageOptions(context, index),
                           child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                            color: bubbleColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: borderColor),
+                          ),
+                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
                             child: Column( 
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -949,10 +1047,15 @@ void _deleteMessage(int index) {
                                       }).toList(),
                                     ),
                                   ),
-                                if (msg.text.isNotEmpty)
-                                  MarkdownBody(
-                                    data: msg.text,
+                            if (msg.text.isNotEmpty)
+                              MarkdownBody(
+                                data: msg.text,
+                                styleSheet: MarkdownStyleSheet(
+                                  p: TextStyle(color: textColor),
+                                  a: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline),
+                                  code: TextStyle(color: textColor, backgroundColor: Colors.black26),            
                                   ),
+                                ),
                               ],
                             ),
                           ),
@@ -1053,6 +1156,7 @@ void _deleteMessage(int index) {
                 ),
               ),
             ],
+            ),
           ),
         ],
       ),
@@ -1089,23 +1193,32 @@ class ThemeProvider extends ChangeNotifier {
   String? _backgroundImagePath; 
   double _backgroundOpacity = 0.7;
   
-  // List to store paths of user-added custom images
+  // ✨ NEW: Color Customization State
+  Color _userBubbleColor = Colors.cyanAccent.withOpacity(0.2);
+  Color _userTextColor = Colors.white;
+  Color _aiBubbleColor = const Color(0xFF2C2C2C).withOpacity(0.8);
+  Color _aiTextColor = Colors.white;
+
   List<String> _customImagePaths = []; 
 
+  // Getters
   String get fontStyle => _fontStyle;
   String? get backgroundImagePath => _backgroundImagePath;
   double get backgroundOpacity => _backgroundOpacity;
   List<String> get customImagePaths => _customImagePaths;
+  
+  // ✨ NEW: Color Getters
+  Color get userBubbleColor => _userBubbleColor;
+  Color get userTextColor => _userTextColor;
+  Color get aiBubbleColor => _aiBubbleColor;
+  Color get aiTextColor => _aiTextColor;
 
   ThemeProvider() {
     _loadPreferences();
   }
 
-  // --- Image Provider Helper ---
-  // This determines if we load from Assets or File System
   ImageProvider get currentImageProvider {
     if (_backgroundImagePath == null) return const AssetImage(kDefaultBackground);
-    
     if (_backgroundImagePath!.startsWith('assets/')) {
       return AssetImage(_backgroundImagePath!);
     } else {
@@ -1113,8 +1226,9 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  // --- Font Logic (Same as before) ---
   TextTheme get currentTextTheme {
+    // We update this to use the dynamic colors if needed, 
+    // but usually Markdown handles the specifics.
     const baseColor = Colors.white;
     final baseTheme = ThemeData.dark().textTheme.apply(bodyColor: baseColor, displayColor: baseColor);
     switch (_fontStyle) {
@@ -1127,11 +1241,15 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   // --- Background Logic ---
-  Future<void> setBackgroundImage(String path) async {
+  Future<void> setBackgroundImage(String? path) async { // Changed to String? to allow null
     _backgroundImagePath = path;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('app_bg_path', path);
+    if (path != null) {
+      await prefs.setString('app_bg_path', path);
+    } else {
+      await prefs.remove('app_bg_path');
+    }
   }
 
   Future<void> setBackgroundOpacity(double value) async {
@@ -1141,6 +1259,26 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setDouble('app_bg_opacity', value);
   }
 
+  // --- ✨ NEW: Color Logic ---
+  Future<void> updateColor(String type, Color color) async {
+    switch (type) {
+      case 'userBubble': _userBubbleColor = color; break;
+      case 'userText': _userTextColor = color; break;
+      case 'aiBubble': _aiBubbleColor = color; break;
+      case 'aiText': _aiTextColor = color; break;
+    }
+    notifyListeners();
+    _saveColors();
+  }
+
+  Future<void> _saveColors() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('color_user_bubble', _userBubbleColor.value);
+    await prefs.setInt('color_user_text', _userTextColor.value);
+    await prefs.setInt('color_ai_bubble', _aiBubbleColor.value);
+    await prefs.setInt('color_ai_text', _aiTextColor.value);
+  }
+
   // --- Custom Gallery Logic ---
   Future<void> addCustomImage(String path) async {
     if (!_customImagePaths.contains(path)) {
@@ -1148,18 +1286,13 @@ class ThemeProvider extends ChangeNotifier {
       notifyListeners();
       _saveCustomPaths();
     }
-    // Automatically select the new image
     setBackgroundImage(path);
   }
 
-  // --- PATCH: REMOVE IMAGE LOGIC ---
   Future<void> removeCustomImage(String path) async {
     if (_customImagePaths.contains(path)) {
       _customImagePaths.remove(path);
-      // If the deleted image was selected, revert to default
-      if (_backgroundImagePath == path) {
-        _backgroundImagePath = null;
-      }
+      if (_backgroundImagePath == path) _backgroundImagePath = null;
       notifyListeners();
       _saveCustomPaths();
     }
@@ -1176,6 +1309,13 @@ class ThemeProvider extends ChangeNotifier {
     _backgroundImagePath = prefs.getString('app_bg_path');
     _backgroundOpacity = prefs.getDouble('app_bg_opacity') ?? 0.7;
     _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
+    
+    // ✨ Load Colors
+    _userBubbleColor = Color(prefs.getInt('color_user_bubble') ?? Colors.cyanAccent.withOpacity(0.2).value);
+    _userTextColor = Color(prefs.getInt('color_user_text') ?? Colors.white.value);
+    _aiBubbleColor = Color(prefs.getInt('color_ai_bubble') ?? const Color(0xFF2C2C2C).withOpacity(0.8).value);
+    _aiTextColor = Color(prefs.getInt('color_ai_text') ?? Colors.white.value);
+    
     notifyListeners();
   }
 
