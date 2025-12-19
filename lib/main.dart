@@ -138,7 +138,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _systemInstructionController = TextEditingController();
   final TextEditingController _apiKeyController = TextEditingController(); 
+  final ImagePicker _picker = ImagePicker();
 
+  List<String> _pendingImages = [];
   List<ChatMessage> _messages = []; 
   List<ChatSessionData> _savedSessions = []; 
   String? _currentSessionId;
@@ -264,34 +266,59 @@ void _initializeModel() {
   }
 
   Future<void> _sendMessage() async {
-    final message = _textController.text;
-    if (message.isEmpty) return;
+    final messageText = _textController.text;
+      if (messageText.isEmpty && _pendingImages.isEmpty) return;
+
+    final List<String> imagesToSend = List.from(_pendingImages);
 
     setState(() {
-      _messages.add(ChatMessage(text: message, isUser: true));
+      _messages.add(ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend,));
       _isLoading = true;
+      _pendingImages.clear();
+      _textController.clear();
+
     });
-    _textController.clear();
     _scrollToBottom();
     _autoSaveCurrentSession();
 
-    try {
-      String? responseText;
+  try {
+    String? responseText;
+    // ✨ HANDLE IMAGES FOR GEMINI
+    if (imagesToSend.isNotEmpty) {
+      // 1. Prepare the parts (Text + Images)
+      final List<Part> parts = [];
+
+      if (messageText.isNotEmpty) {
+        parts.add(TextPart(messageText));
+      }
+      // 2. Convert images to Bytes for the API
+      for (String path in imagesToSend) {
+        final bytes = await File(path).readAsBytes();
+        // Assuming JPEG for simplicity, but Gemini is smart enough usually
+        parts.add(DataPart('image/jpeg', bytes)); 
+      }
+      // 3. Send using Content.multi
+      final response = await _chat.sendMessage(Content.multi(parts));
+      responseText = response.text;
+    } else {
+      // STANDARD TEXT ONLY (Your old logic)
       if (_enableGrounding) {
-        responseText = await _performGroundedGeneration(message);
+        responseText = await _performGroundedGeneration(messageText);
       } else {
-        final response = await _chat.sendMessage(Content.text(message));
+        final response = await _chat.sendMessage(Content.text(messageText));
         responseText = response.text;
       }
+    }
 
-      setState(() {
+    setState(() {
         if (responseText != null) {
           _messages.add(ChatMessage(text: responseText, isUser: false));
         } else {
           _messages.add(ChatMessage(text: "(No response)", isUser: false));
         }
         _isLoading = false;
-      });
+    });
+
       _scrollToBottom();
       if (!_enableGrounding) _updateTokenCount(); 
       _autoSaveCurrentSession();
@@ -370,6 +397,19 @@ void _initializeModel() {
     } catch (e) { }
   }
 
+  Future<void> _pickImage() async { 
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        setState(() {
+          _pendingImages.add(image.path);
+        });
+      }
+    } catch (e) {
+      print("Error picking image: $e");
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -377,10 +417,6 @@ void _initializeModel() {
       }
     });
   }
-
-  // ----------------------------------------------------------------------
-  // NEW: MESSAGE OPTION LOGIC (Edit, Delete, Copy)
-  // ----------------------------------------------------------------------
   
   void _showMessageOptions(BuildContext context, int index) {
     showModalBottomSheet(
@@ -840,7 +876,7 @@ void _deleteMessage(int index) {
     );
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return Scaffold(
@@ -848,15 +884,36 @@ void _deleteMessage(int index) {
       drawer: _buildLeftDrawer(),
       endDrawer: _buildSettingsDrawer(),
       appBar: AppBar(
-        backgroundColor: themeProvider.backgroundImagePath != null ? const Color(0xFF2C2C2C).withOpacity(0.8) : const Color(0xFF2C2C2C),
-        leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
-        title: const Text('AIRP - Gemini', style: TextStyle(fontSize: 24)), 
-        actions: [ Builder(builder: (c) => IconButton(icon: const Icon(Icons.settings), onPressed: () => Scaffold.of(c).openEndDrawer())), ],
+        backgroundColor: themeProvider.backgroundImagePath != null
+            ? const Color(0xFF2C2C2C).withOpacity(0.8)
+            : const Color(0xFF2C2C2C),
+        leading: Builder(
+            builder: (c) => IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(c).openDrawer())),
+        title: const Text('AIRP - Gemini', style: TextStyle(fontSize: 24)),
+        actions: [
+          Builder(
+              builder: (c) => IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () => Scaffold.of(c).openEndDrawer())),
+        ],
       ),
       body: Stack(
         children: [
-          if (themeProvider.backgroundImagePath != null) Positioned.fill(child: Image(image: themeProvider.currentImageProvider, fit: BoxFit.cover,),),
-          if (themeProvider.backgroundImagePath != null) Positioned.fill(child: Container(color: Colors.black.withOpacity(themeProvider.backgroundOpacity)),),
+          if (themeProvider.backgroundImagePath != null)
+            Positioned.fill(
+              child: Image(
+                image: themeProvider.currentImageProvider,
+                fit: BoxFit.cover,
+              ),
+            ),
+          if (themeProvider.backgroundImagePath != null)
+            Positioned.fill(
+              child: Container(
+                  color: Colors.black
+                      .withOpacity(themeProvider.backgroundOpacity)),
+            ),
           Column(
             children: [
               Expanded(
@@ -866,61 +923,131 @@ void _deleteMessage(int index) {
                   itemBuilder: (context, index) {
                     final msg = _messages[index];
                     return Align(
-                      alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
-                      // --- CHANGED: WRAPPED IN GESTURE DETECTOR ---
-                      child: GestureDetector(
-                        onLongPress: () {
-                          // Trigger the new options menu
-                          _showMessageOptions(context, index);
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: msg.isUser ? Colors.cyanAccent.withOpacity(0.2) : const Color(0xFF2C2C2C).withOpacity(0.8),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: msg.isUser ? Colors.cyanAccent.withOpacity(0.3) : Colors.white10,),
-                          ),
-                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-                          child: MarkdownBody(
-                            data: msg.text,
-                            styleSheet: MarkdownStyleSheet(
-                              p: const TextStyle(color: Colors.white),
-                              a: const TextStyle(color: Colors.cyanAccent, decoration: TextDecoration.underline),
+                       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+                        child: GestureDetector(
+                          onLongPress: () => _showMessageOptions(context, index),
+                          child: Container(
+                            child: Column( 
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (msg.imagePaths.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: msg.imagePaths.map((path) {
+                                        return ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.file(
+                                            File(path), 
+                                            width: 150,
+                                            height: 150, 
+                                            fit: BoxFit.cover
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                if (msg.text.isNotEmpty)
+                                  MarkdownBody(
+                                    data: msg.text,
+                                  ),
+                              ],
                             ),
                           ),
                         ),
-                      ),
-                    );
+                      );
                   },
                 ),
               ),
-              if (_isLoading) const LinearProgressIndicator(color: Colors.cyanAccent, minHeight: 2),
+              if (_isLoading)
+                const LinearProgressIndicator(color: Colors.cyanAccent, minHeight: 2),
+              
               Container(
                 padding: const EdgeInsets.all(8.0),
-                color: const Color(0xFF1E1E1E).withOpacity(0.9), 
-                child: Row(
+                color: const Color(0xFF1E1E1E).withOpacity(0.9),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        minLines: 1, maxLines: 4,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: _enableGrounding ? 'Search & Chat...' : 'Ready to chat...',
-                          hintStyle: TextStyle(color: Colors.grey[600]),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                          filled: true, fillColor: const Color(0xFF2C2C2C),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    if (_pendingImages.isNotEmpty)
+                      SizedBox(
+                        height: 70,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _pendingImages.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+                              child: Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.file(File(_pendingImages[index]),
+                                        width: 60, height: 60, fit: BoxFit.cover),
+                                  ),
+                                  // Delete button (X)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: InkWell(
+                                      onTap: () => setState(
+                                          () => _pendingImages.removeAt(index)),
+                                      child: const CircleAvatar(
+                                          radius: 10,
+                                          backgroundColor: Colors.red,
+                                          child: Icon(Icons.close,
+                                              size: 12, color: Colors.white)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                        onSubmitted: (_) => _sendMessage(),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filled(
-                      style: IconButton.styleFrom(backgroundColor: _enableGrounding ? Colors.green : Colors.cyanAccent),
-                      onPressed: _isLoading ? null : _sendMessage,
-                      icon: const Icon(Icons.send, color: Colors.black),
+
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.image, color: Colors.cyanAccent),
+                          onPressed: _pickImage,
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: _textController,
+                            minLines: 1,
+                            maxLines: 4,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: _pendingImages.isNotEmpty
+                                  ? 'Add a caption...'
+                                  : (_enableGrounding
+                                      ? 'Search & Chat...'
+                                      : 'Ready to chat...'),
+                              hintStyle: TextStyle(color: Colors.grey[600]),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: BorderSide.none),
+                              filled: true,
+                              fillColor: const Color(0xFF2C2C2C),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                            ),
+                            onSubmitted: (_) => _sendMessage(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          style: IconButton.styleFrom(
+                              backgroundColor: _enableGrounding
+                                  ? Colors.green
+                                  : Colors.cyanAccent),
+                          onPressed: _isLoading ? null : _sendMessage,
+                          icon: const Icon(Icons.send, color: Colors.black),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -936,11 +1063,23 @@ void _deleteMessage(int index) {
 class ChatMessage {
   final String text;
   final bool isUser;
-  ChatMessage({required this.text, required this.isUser});
+  final List<String> imagePaths; 
+  ChatMessage({
+    required this.text, 
+    required this.isUser,
+    this.imagePaths = const [],});
 
-  Map<String, dynamic> toJson() => {'text': text, 'isUser': isUser};
-  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(text: json['text'], isUser: json['isUser']);
-}
+  Map<String, dynamic> toJson() => {
+    'text': text, 
+    'isUser': isUser,
+    'imagePaths': imagePaths, 
+  };
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
+    text: json['text'], 
+    isUser: json['isUser'],
+    imagePaths: List<String>.from(json['imagePaths'] ?? []), 
+  );}
 
 // ----------------------------------------------------------------------
 // THEME PROVIDER
