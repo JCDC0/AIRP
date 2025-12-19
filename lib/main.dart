@@ -118,18 +118,33 @@ class _ChatScreenState extends State<ChatScreen> {
     'models/gemini-2.5-flash-image',
     'models/gemini-2.0-flash',
     'models/gemini-2.0-flash-lite',
+    'models/gemma-3-27b-it',
+    'models/gemma-3-12b-it',
+    'models/gemma-3-4b-it',
+    'models/gemma-3-2b-it',
+    'models/gemma-3-1b-it',
   ];
 
   final Map<String, String> _modelDisplayNames = {
+    // Gemini 3 Series
     'models/gemini-3-pro-preview': 'Gemini 3 Pro Preview (Expensive)',
     'models/gemini-3-flash-preview': 'Gemini 3 Flash Preview (Fast)',
+    // Gemini 2.5 Series
     'models/gemini-2.5-pro': 'Gemini 2.5 Pro (Middle ground)',
     'models/gemini-flash-latest': 'Gemini 2.5 Flash Latest (Cheap)',
     'models/gemini-flash-lite-latest': 'Gemini 2.5 Flash Latest Lite (Cheaper)',
+    // Image Generation Models
     'models/gemini-3-pro-image-preview': 'Nano Banana Pro (Image Gen)',
     'models/gemini-2.5-flash-image': 'Nano Banana Flash (Cheap Image Gen)',
+    // Gemini 2.0 Series
     'models/gemini-2.0-flash': 'Gemini 2.0 Flash',
     'models/gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
+    // Gemma 3 Series
+    'models/gemma-3-27b-it': 'Gemma 3 27B (Desktop Class)',
+    'models/gemma-3-12b-it': 'Gemma 3 12B (Efficient)',
+    'models/gemma-3-4b-it': 'Gemma 3 4B (Lightweight)',
+    'models/gemma-3-2b-it': 'Gemma 3 2B (Small)',
+    'models/gemma-3-1b-it': 'Gemma 3 1B (Tiny)',
   };
 
   String _userApiKey = ''; 
@@ -491,20 +506,20 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _rollDice() {
-  final random = Random.secure(); 
-  final result = random.nextInt(20) + 1;
+  // void _rollDice() {
+  // final random = Random.secure(); 
+  // final result = random.nextInt(20) + 1;
   
-  setState(() {
-    _messages.add(ChatMessage(
-      text: "(D20) 🎲 **Dice Roll**: You rolled a **$result**!", 
-      isUser: true, // Show on right side (or false for AI side)
-    ));
-    _sendMessage();
-  });
-  _scrollToBottom();
-  _autoSaveCurrentSession();
-  }
+  // setState(() {
+  //   _messages.add(ChatMessage(
+  //     text: "(D20) 🎲 **Dice Roll**: You rolled a **$result**!", 
+  //     isUser: true, // Show on right side (or false for AI side)
+  //   ));
+  //   _sendMessage();
+  // });
+  // _scrollToBottom();
+  // _autoSaveCurrentSession();
+  // }
   
   void _showMessageOptions(BuildContext context, int index) {
     showModalBottomSheet(
