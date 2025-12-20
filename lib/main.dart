@@ -112,6 +112,7 @@ class _ChatScreenState extends State<ChatScreen> {
   // CONFIGURATION
   // ----------------------------------------------------------------------
   static const _defaultApiKey = ''; // Fallback
+
   
   final List<String> _models = [
     'models/gemini-3-pro-preview',
@@ -179,6 +180,8 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _currentSessionId;
   int _tokenCount = 0;
   static const int _tokenLimitWarning = 190000;
+  List<String> _openRouterModelsList = [];
+  bool _isLoadingModels = false;
   bool _isLoading = false;
 
   @override
@@ -570,6 +573,57 @@ Future<void> _sendMessage() async {
     } else {
       debugPrint("OpenRouter Error Body: ${response.body}");
       throw Exception("OpenRouter Error: ${response.statusCode} - ${response.body}");
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // FETCH OPENROUTER MODELS
+  // ----------------------------------------------------------------------
+  Future<void> _fetchOpenRouterModels() async {
+    setState(() => _isLoadingModels = true);
+
+    try {
+      // 1. We don't strictly need a key for this public endpoint, 
+      // but it's good practice to send it if we have it.
+      final response = await http.get(
+        Uri.parse("https://openrouter.ai/api/v1/models"),
+        headers: {
+          "HTTP-Referer": "https://airp-chat.com",
+          "X-Title": "AIRP Chat",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> dataList = data['data'];
+
+        // 2. Extract IDs and Sort Alphabetically
+        final List<String> fetchedIds = dataList
+            .map<String>((e) => e['id'].toString())
+            .toList();
+        
+        fetchedIds.sort(); // A-Z sort
+
+        setState(() {
+          _openRouterModelsList = fetchedIds;
+          _isLoadingModels = false;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Fetched ${_openRouterModelsList.length} models! OwO"))
+          );
+        }
+      } else {
+        throw Exception("Status ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() => _isLoadingModels = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to fetch models: $e"), backgroundColor: Colors.redAccent)
+        );
+      }
     }
   }
 
@@ -1119,27 +1173,98 @@ void _deleteMessage(int index) {
                 }).toList(),
               )
             else if (_currentProvider == AiProvider.openRouter)
-              // OPENROUTER: TEXT FIELD
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 5),
-                  TextField(
-                    controller: _openRouterModelController,
-                    decoration: const InputDecoration(
-                      hintText: "vendor/model-name (e.g. anthropic/claude-3-haiku)",
-                      hintStyle: TextStyle(fontSize: 12),
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      isDense: true,
+                  
+                  // ✨ THE SWITCHER: Dropdown OR TextField
+                  if (_openRouterModelsList.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _openRouterModelsList.contains(_openRouterModel) 
+                              ? _openRouterModel 
+                              : null, // Handle case where current text isn't in list
+                          hint: Text(_openRouterModel, style: const TextStyle(color: Colors.white70)),
+                          dropdownColor: const Color(0xFF2C2C2C),
+                          items: _openRouterModelsList.map((String id) {
+                            return DropdownMenuItem<String>(
+                              value: id,
+                              child: Text(
+                                id, 
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                _openRouterModel = newValue;
+                                _openRouterModelController.text = newValue; // Sync controller
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    )
+                  else
+                    // Fallback to Manual Entry if list isn't loaded
+                    TextField(
+                      controller: _openRouterModelController,
+                      decoration: const InputDecoration(
+                        hintText: "vendor/model-name",
+                        hintStyle: TextStyle(fontSize: 12),
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        isDense: true,
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                      onChanged: (val) { _openRouterModel = val.trim(); },
                     ),
-                    style: const TextStyle(fontSize: 13),
-                    // Auto-trim while typing for better UX
-                    onChanged: (val) { _openRouterModel = val.trim(); },
-                  ),
+
+                  const SizedBox(height: 8),
+
+                  // ✨ THE FETCH BUTTON
+                  if (_openRouterModelsList.isEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: _isLoadingModels 
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                          : const Icon(Icons.cloud_download, size: 16),
+                        label: Text(_isLoadingModels ? "Loading..." : "Load Model List"),
+                        onPressed: _isLoadingModels ? null : _fetchOpenRouterModels,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.purpleAccent,
+                          side: const BorderSide(color: Colors.purpleAccent),
+                        ),
+                      ),
+                    ),
+                    
+                  if (_openRouterModelsList.isNotEmpty)
+                     Align(
+                       alignment: Alignment.centerRight,
+                       child: TextButton(
+                         onPressed: () {
+                           // Option to switch back to manual entry if they want
+                           setState(() => _openRouterModelsList = []);
+                         },
+                         child: const Text("Switch to Manual Input", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                       ),
+                     ),
+
                   const Padding(
                     padding: EdgeInsets.only(top: 4.0),
-                    child: Text("Check openrouter.ai/models for IDs", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                    child: Text("Check openrouter.ai/models for details", style: TextStyle(fontSize: 10, color: Colors.grey)),
                   )
                 ],
               ),
