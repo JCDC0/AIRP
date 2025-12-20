@@ -10,7 +10,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:math';
 
 void main() {
   runApp(
@@ -114,8 +113,6 @@ class _ChatScreenState extends State<ChatScreen> {
     'models/gemini-2.5-pro',
     'models/gemini-flash-latest',
     'models/gemini-flash-lite-latest', 
-    'models/gemini-3-pro-image-preview',
-    'models/gemini-2.5-flash-image',
     'models/gemini-2.0-flash',
     'models/gemini-2.0-flash-lite',
     'models/gemma-3-27b-it',
@@ -133,9 +130,6 @@ class _ChatScreenState extends State<ChatScreen> {
     'models/gemini-2.5-pro': 'Gemini 2.5 Pro (Middle ground)',
     'models/gemini-flash-latest': 'Gemini 2.5 Flash Latest (Cheap)',
     'models/gemini-flash-lite-latest': 'Gemini 2.5 Flash Latest Lite (Cheaper)',
-    // Image Generation Models
-    'models/gemini-3-pro-image-preview': 'Nano Banana Pro (Image Gen)',
-    'models/gemini-2.5-flash-image': 'Nano Banana Flash (Cheap Image Gen)',
     // Gemini 2.0 Series
     'models/gemini-2.0-flash': 'Gemini 2.0 Flash',
     'models/gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
@@ -161,6 +155,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _apiKeyController = TextEditingController(); 
   final TextEditingController _titleController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  final TextEditingController _promptTitleController = TextEditingController(); 
+  List<SystemPromptData> _savedSystemPrompts = [];
 
   final List<String> _pendingImages = [];
   List<ChatMessage> _messages = []; 
@@ -175,6 +171,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _loadSessions();
     _loadSettings(); 
+    _loadSystemPrompts();
   }
 
   Future<void> _loadSessions() async {
@@ -298,55 +295,85 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _sendMessage() async {
     final messageText = _textController.text;
-      if (messageText.isEmpty && _pendingImages.isEmpty) return;
+    if (messageText.isEmpty && _pendingImages.isEmpty) return;
 
     final List<String> imagesToSend = List.from(_pendingImages);
 
     setState(() {
-      _messages.add(ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend,));
+      _messages.add(ChatMessage(
+        text: messageText, 
+        isUser: true, 
+        imagePaths: imagesToSend
+      ));
       _isLoading = true;
       _pendingImages.clear();
       _textController.clear();
-
     });
+
     _scrollToBottom();
     _autoSaveCurrentSession();
 
-  try {
-    String? responseText;
-    if (imagesToSend.isNotEmpty) {
-      final List<Part> parts = [];
-
-      if (messageText.isNotEmpty) {
-        parts.add(TextPart(messageText));
-      }
-      for (String path in imagesToSend) {
-        final bytes = await File(path).readAsBytes();
-        parts.add(DataPart('image/jpeg', bytes)); 
-      }
-      final response = await _chat.sendMessage(Content.multi(parts));
-      responseText = response.text;
-    } else {
-      if (_enableGrounding) {
-        responseText = await _performGroundedGeneration(messageText);
-      } else {
-        final response = await _chat.sendMessage(Content.text(messageText));
-        responseText = response.text;
-      }
-    }
-
-    setState(() {
-        if (responseText != null) {
-          _messages.add(ChatMessage(text: responseText, isUser: false));
-        } else {
-          _messages.add(ChatMessage(text: "(No response)", isUser: false));
+    try {
+      GenerateContentResponse? response;
+    
+      Content userContent;
+      if (imagesToSend.isNotEmpty) {
+        final List<Part> parts = [];
+        if (messageText.isNotEmpty) parts.add(TextPart(messageText));
+        for (String path in imagesToSend) {
+          final bytes = await File(path).readAsBytes();
+          parts.add(DataPart('image/jpeg', bytes)); 
         }
+        userContent = Content.multi(parts);
+      } else {
+        userContent = Content.text(messageText);
+      
+
+        if (_enableGrounding && imagesToSend.isEmpty) {
+          final groundedText = await _performGroundedGeneration(messageText);
+          setState(() {
+            _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false));
+            _isLoading = false;
+          });
+          _scrollToBottom();
+          _autoSaveCurrentSession();
+          return; 
+        } else {
+            final history = _chat.history.toList();
+            history.add(userContent);
+            response = await _model.generateContent(history);
+        }
+      }
+
+      String fullText = "";
+      String? aiImageBase64;
+
+      if (response != null && response.candidates.isNotEmpty) {
+        final parts = response.candidates.first.content.parts;
+        
+        for (var part in parts) {
+          if (part is TextPart) {
+            fullText += part.text;
+          } else if (part is DataPart) {
+            aiImageBase64 = base64Encode(part.bytes);
+          }
+        }
+      }
+
+      setState(() {
+        _messages.add(ChatMessage(
+          text: fullText, 
+          isUser: false,
+          aiImage: aiImageBase64,
+        ));
         _isLoading = false;
-    });
+      });
+      _initializeModel(); 
 
       _scrollToBottom();
       if (!_enableGrounding) _updateTokenCount(); 
       _autoSaveCurrentSession();
+
     } catch (e) {
       setState(() {
         _messages.add(ChatMessage(text: "Error: $e", isUser: false));
@@ -435,6 +462,69 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // ✨ LOAD LIBRARY
+  Future<void> _loadSystemPrompts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? data = prefs.getString('airp_system_prompts');
+    if (data != null) {
+      try {
+        final List<dynamic> jsonList = jsonDecode(data);
+        setState(() {
+          _savedSystemPrompts = jsonList.map((j) => SystemPromptData.fromJson(j)).toList();
+        });
+      } catch (e) {
+        print("Error loading prompts: $e");
+      }
+    }
+  }
+
+  // ✨ SAVE TO LIBRARY
+  Future<void> _savePromptToLibrary() async {
+    if (_promptTitleController.text.isEmpty || _systemInstructionController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Title and Content cannot be empty")));
+      return;
+    }
+
+    final newPrompt = SystemPromptData(
+      title: _promptTitleController.text, 
+      content: _systemInstructionController.text
+    );
+
+    setState(() {
+      // Check if title exists, if so, update it. If not, add new.
+      final index = _savedSystemPrompts.indexWhere((p) => p.title == newPrompt.title);
+      if (index != -1) {
+        _savedSystemPrompts[index] = newPrompt; // Update existing
+      } else {
+        _savedSystemPrompts.add(newPrompt); // Add new
+      }
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final String data = jsonEncode(_savedSystemPrompts.map((s) => s.toJson()).toList());
+    await prefs.setString('airp_system_prompts', data);
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Saved '${newPrompt.title}' to Library!")));
+  }
+  
+  // DELETE FROM LIBRARY
+  Future<void> _deletePromptFromLibrary() async {
+    final title = _promptTitleController.text;
+    if (title.isEmpty) return;
+
+    setState(() {
+      _savedSystemPrompts.removeWhere((p) => p.title == title);
+      _promptTitleController.clear();
+      // Don't clear system instruction, user might want to keep the text
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final String data = jsonEncode(_savedSystemPrompts.map((s) => s.toJson()).toList());
+    await prefs.setString('airp_system_prompts', data);
+    
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Deleted '$title'")));
+  }
+
   Widget _buildColorCircle(String label, Color color, Function(Color) onSave) {
     return Column(
       children: [
@@ -505,21 +595,6 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
   }
-
-  // void _rollDice() {
-  // final random = Random.secure(); 
-  // final result = random.nextInt(20) + 1;
-  
-  // setState(() {
-  //   _messages.add(ChatMessage(
-  //     text: "(D20) 🎲 **Dice Roll**: You rolled a **$result**!", 
-  //     isUser: true, // Show on right side (or false for AI side)
-  //   ));
-  //   _sendMessage();
-  // });
-  // _scrollToBottom();
-  // _autoSaveCurrentSession();
-  // }
   
   void _showMessageOptions(BuildContext context, int index) {
     showModalBottomSheet(
@@ -732,10 +807,10 @@ void _deleteMessage(int index) {
                             children: [
                               Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
                               SizedBox(width: 10),
-                              Text("Delete Conversation?", style: TextStyle(color: Colors.redAccent)),
+                              Text("Delete?", style: TextStyle(color: Colors.redAccent)),
                             ],
                           ),
-                          content: Text("Permanently deletes '${session.title}'", style: const TextStyle(color: Colors.white70)),
+                          content: Text("Permanently deletes ${session.title}", style: const TextStyle(color: Colors.white70)),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context),
@@ -847,16 +922,116 @@ void _deleteMessage(int index) {
             const SizedBox(height: 30),
 
             const Text("System Prompt", style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 5),
+            
+            // 1. THE DROPDOWN & ACTIONS ROW
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  hint: const Text("Select from Library...", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  dropdownColor: const Color(0xFF2C2C2C),
+                  icon: const Icon(Icons.arrow_drop_down, color: Colors.cyanAccent),
+                  value: null, 
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: "CREATE_NEW",
+                      child: Row(children: [
+                        Icon(Icons.add, color: Colors.greenAccent, size: 16),
+                        SizedBox(width: 8),
+                        Text("Create New", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                      ]),
+                    ),
+                    ..._savedSystemPrompts.map((prompt) {
+                      return DropdownMenuItem<String>(
+                        value: prompt.title,
+                        child: Text(prompt.title, overflow: TextOverflow.ellipsis),
+                      );
+                    }),
+                  ],
+                  onChanged: (String? newValue) {
+                    if (newValue == "CREATE_NEW") {
+                      setState(() {
+                        _promptTitleController.clear();
+                        _systemInstructionController.clear();
+                      });
+                    } else if (newValue != null) {
+                      // Find the prompt object
+                      final prompt = _savedSystemPrompts.firstWhere((p) => p.title == newValue);
+                      setState(() {
+                        _promptTitleController.text = prompt.title;
+                        _systemInstructionController.text = prompt.content;
+                      });
+                    }
+                  },
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 10),
+
+            // 2. PROMPT TITLE FIELD
+            TextField(
+              controller: _promptTitleController,
+              decoration: const InputDecoration(
+                labelText: "Prompt Title (e.g., 'Tsundere')",
+                labelStyle: TextStyle(color: Colors.cyanAccent, fontSize: 12),
+                border: OutlineInputBorder(),
+                filled: true, fillColor: Colors.black12,
+                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                isDense: true,
+              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 5),
+
+            // 3. PROMPT CONTENT FIELD
             TextField(
               controller: _systemInstructionController,
-              maxLines: 4,
+              maxLines: 5,
               decoration: const InputDecoration(
-                hintText: "This is where you add your roleplay rules...",
+                hintText: "Enter the roleplay rules here...",
                 border: OutlineInputBorder(),
                 filled: true, fillColor: Colors.black26,
               ),
               style: const TextStyle(fontSize: 13),
             ),
+            
+            const SizedBox(height: 8),
+
+            // (Save / Delete)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.cyanAccent, 
+                      side: const BorderSide(color: Colors.cyanAccent),
+                      padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+                    ),
+                    onPressed: _savePromptToLibrary,
+                    icon: const Icon(Icons.save, size: 16),
+                    label: const Text("Save Preset"),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton.filled(
+                  style: IconButton.styleFrom(backgroundColor: Colors.redAccent.withOpacity(0.2)),
+                  icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                  tooltip: "Delete Preset",
+                  onPressed: _deletePromptFromLibrary,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
             const SizedBox(height: 10),
             ElevatedButton(
               style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 40), backgroundColor: Colors.deepPurpleAccent, foregroundColor: Colors.white),
@@ -1153,6 +1328,18 @@ void _deleteMessage(int index) {
                                       }).toList(),
                                     ),
                                   ),
+                            if (msg.aiImage != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.memory(
+                                    base64Decode(msg.aiImage!), 
+                                    width: 250, 
+                                    fit: BoxFit.contain
+                                  ),
+                                ),
+                              ),
                             if (msg.text.isNotEmpty)
                               MarkdownBody(
                                 data: msg.text,
@@ -1274,22 +1461,48 @@ class ChatMessage {
   final String text;
   final bool isUser;
   final List<String> imagePaths; 
+  final String? aiImage;
   ChatMessage({
     required this.text, 
     required this.isUser,
-    this.imagePaths = const [],});
+    this.imagePaths = const [],
+    this.aiImage,
+    });
 
   Map<String, dynamic> toJson() => {
     'text': text, 
     'isUser': isUser,
     'imagePaths': imagePaths, 
+    'aiImage': aiImage,
   };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
     text: json['text'], 
     isUser: json['isUser'],
     imagePaths: List<String>.from(json['imagePaths'] ?? []), 
+    aiImage: json['aiImage'],
   );}
+
+
+// ----------------------------------------------------------------------
+// SYSTEM PROMPT DATA CLASS
+// ----------------------------------------------------------------------
+class SystemPromptData {
+  final String title;
+  final String content;
+
+  SystemPromptData({required this.title, required this.content});
+
+  Map<String, dynamic> toJson() => {'title': title, 'content': content};
+
+  factory SystemPromptData.fromJson(Map<String, dynamic> json) {
+    return SystemPromptData(
+      title: json['title'] ?? "Untitled",
+      content: json['content'] ?? "",
+    );
+  }
+}
+
 
 // ----------------------------------------------------------------------
 // THEME PROVIDER
