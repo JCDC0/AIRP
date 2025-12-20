@@ -92,7 +92,7 @@ When entering API keys or changing settings in the Drawer:
 
 ## Disclaimer
 
-This project was "Vibe Coded"*.
+This project was made with AI.
 
 What does that mean?
 *   It was built rapidly to satisfy specific personal needs and aesthetic preferences.
