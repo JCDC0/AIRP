@@ -94,7 +94,6 @@ When entering API keys or changing settings in the Drawer:
 
 This project was made with AI.
 
-What does that mean?
 *   It was built rapidly to satisfy specific personal needs and aesthetic preferences.
 *   It utilizes AI assistance (LLMs) heavily in its development process for boilerplate and logic generation.
 *   While functional and tested, it is intended as a personal project/portfolio piece rather than enterprise-grade software.
