@@ -199,7 +199,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _savedSessions = jsonList.map((j) => ChatSessionData.fromJson(j)).toList();
         });
       } catch (e) {
-        print("Error loading sessions: $e");
+        debugPrint("Error loading sessions: $e");
       }
     }
   }
@@ -217,8 +217,11 @@ class _ChatScreenState extends State<ChatScreen> {
       final providerString = prefs.getString('airp_provider') ?? 'gemini';
       if (providerString == 'openRouter') {
         _currentProvider = AiProvider.openRouter;
-      } else if (providerString == 'openAi') _currentProvider = AiProvider.openAi;
-      else _currentProvider = AiProvider.gemini;
+      } else if (providerString == 'openAi') {
+        _currentProvider = AiProvider.openAi;
+      } else {
+        _currentProvider = AiProvider.gemini;
+      }
 
       // Load Models
       _openRouterModel = prefs.getString('airp_model_openrouter') ?? 'google/gemini-2.0-flash-lite-preview-02-05:free';
@@ -243,46 +246,57 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // ✨ UPDATED SAVE SETTINGS
+  // ----------------------------------------------------------------------
+  // OPTIMIZED _saveSettings
+  // ----------------------------------------------------------------------
   Future<void> _saveSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // ✨ TRIM EVERYTHING! Remove invisible spaces that can cause auth errors
+    // Trim inputs to remove ghost spaces
     final cleanKey = _apiKeyController.text.trim();
     final cleanModel = _openRouterModelController.text.trim();
 
+    // Optimistic UI update (Update state immediately)
     setState(() {
       switch (_currentProvider) {
         case AiProvider.gemini: _geminiKey = cleanKey; break;
         case AiProvider.openRouter: _openRouterKey = cleanKey; break;
         case AiProvider.openAi: _openAiKey = cleanKey; break;
       }
-      // Save OpenRouter Model (trimmed) and update UI
       _openRouterModel = cleanModel;
       _openRouterModelController.text = cleanModel;
     });
 
-    // Save to Disk
+    // Async work (Saving to disk)
+    final prefs = await SharedPreferences.getInstance();
     await prefs.setString('airp_key_gemini', _geminiKey);
     await prefs.setString('airp_key_openrouter', _openRouterKey);
     await prefs.setString('airp_key_openai', _openAiKey);
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString('airp_model_openrouter', _openRouterModel);
 
-    // Re-init model only if Gemini is active (OpenRouter is per-request)
+    // LOGIC CHECK: Only re-init Google Model if we are actually using it
     if (_currentProvider == AiProvider.gemini) {
       await _initializeModel();
     }
 
+    // SAFETY CHECK: Check if the user is still looking at the screen
+    if (!mounted) return;
+
+    // Single SnackBar (Floating so it doesn't block the bottom)
+    ScaffoldMessenger.of(context).clearSnackBars(); // Clear any existing ones
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Settings Saved!"))
+      SnackBar(
+        content: const Text("Settings Saved & Ready!"),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.lightBlue,
+        duration: const Duration(milliseconds: 1500),
+      )
     );
   }
 
   Future<void> _autoSaveCurrentSession() async {
     if (_messages.isEmpty  && _titleController.text.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final prefs = await SharedPreferences.getInstance();
 
     String title = _titleController.text;
     if (title.isEmpty && _messages.isNotEmpty) {
@@ -328,9 +342,8 @@ class _ChatScreenState extends State<ChatScreen> {
   // FIXED _initializeModel
   // ----------------------------------------------------------------------
   Future<void> _initializeModel() async {
-    // FIX: logic to grab the correct key based on the provider
     String activeKey = '';
-    
+    // Select Key
     if (_currentProvider == AiProvider.gemini) {
       activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
     } else if (_currentProvider == AiProvider.openRouter) {
@@ -339,60 +352,62 @@ class _ChatScreenState extends State<ChatScreen> {
       activeKey = _openAiKey;
     }
 
-    // If key is still empty, the model will crash or throw that "Unregistered caller" error.
+    // OPTIMIZATION: If no key, don't crash. Just don't start the chat yet.
     if (activeKey.isEmpty) {
-      print("Warning: No API Key found for ${_currentProvider.name}");
+      debugPrint("Warning: No API Key found for ${_currentProvider.name}");
       return; 
     }
 
-    final List<SafetySetting> safetySettings = _disableSafety
-        ? [
-            SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
-            SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
-            SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
-            SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
-          ]
-        : [];
+    try {
+      final List<SafetySetting> safetySettings = _disableSafety
+          ? [
+              SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
+              SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
+              SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
+              SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
+            ]
+          : [];
 
-    _model = GenerativeModel(
-      model: _selectedModel,
-      apiKey: activeKey, // <--- Now uses the correct key!
-      systemInstruction: _systemInstructionController.text.isNotEmpty
-          ? Content.system(_systemInstructionController.text)
-          : null,
-      generationConfig: GenerationConfig(temperature: _temperature),
-      safetySettings: safetySettings,
-    );
-    
-    // Build multimodal history (preserve previous logic)
-    List<Content> history = [];
-    for (var msg in _messages) {
-      final String role = msg.isUser ? 'user' : 'model';
-
-      if (msg.isUser && msg.imagePaths.isNotEmpty) {
-        List<Part> parts = [];
-        if (msg.text.isNotEmpty) parts.add(TextPart(msg.text));
-        for (String path in msg.imagePaths) {
-          if (await File(path).exists()) {
-            final bytes = await File(path).readAsBytes();
-            final mimeType = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-            parts.add(DataPart(mimeType, bytes));
+      _model = GenerativeModel(
+        model: _selectedModel,
+        apiKey: activeKey,
+        systemInstruction: _systemInstructionController.text.isNotEmpty
+            ? Content.system(_systemInstructionController.text)
+            : null,
+        generationConfig: GenerationConfig(temperature: _temperature),
+        safetySettings: safetySettings,
+      );
+      
+      // ... (Keep your History Loop Logic here exactly as it was) ...
+      // Copy the exact history loop from your previous code
+      List<Content> history = [];
+      for (var msg in _messages) {
+          final String role = msg.isUser ? 'user' : 'model';
+          if (msg.isUser && msg.imagePaths.isNotEmpty) {
+              List<Part> parts = [];
+              if (msg.text.isNotEmpty) parts.add(TextPart(msg.text));
+              for (String path in msg.imagePaths) {
+                  if (await File(path).exists()) {
+                      final bytes = await File(path).readAsBytes();
+                      final mimeType = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+                      parts.add(DataPart(mimeType, bytes));
+                  }
+              }
+              history.add(Content(role, parts));
+          } else if (history.isNotEmpty && history.last.role == role) {
+              final List<Part> existingParts = history.last.parts.toList();
+              existingParts.add(TextPart("\n\n${msg.text}"));
+              history[history.length - 1] = Content(role, existingParts);
+          } else {
+              history.add(msg.isUser ? Content.text(msg.text) : Content.model([TextPart(msg.text)]));
           }
-        }
-        history.add(Content(role, parts));
-      } 
-      else if (history.isNotEmpty && history.last.role == role) {
-        final List<Part> existingParts = history.last.parts.toList();
-        existingParts.add(TextPart("\n\n${msg.text}"));
-        history[history.length - 1] = Content(role, existingParts);
-      } else {
-        history.add(msg.isUser
-            ? Content.text(msg.text)
-            : Content.model([TextPart(msg.text)]));
       }
-    }
 
-    _chat = _model.startChat(history: history);
+      _chat = _model.startChat(history: history);
+    } catch (e) {
+      debugPrint("Model Init Error: $e");
+      // Handle initialization error nicely (optional)
+    }
   }
 
 Future<void> _sendMessage() async {
@@ -553,7 +568,7 @@ Future<void> _sendMessage() async {
         _autoSaveCurrentSession();
       }
     } else {
-      print("OpenRouter Error Body: ${response.body}");
+      debugPrint("OpenRouter Error Body: ${response.body}");
       throw Exception("OpenRouter Error: ${response.statusCode} - ${response.body}");
     }
   }
@@ -621,7 +636,9 @@ Future<void> _sendMessage() async {
     try {
       final response = await _model.countTokens(contents);
       if (mounted) setState(() => _tokenCount = response.totalTokens);
-    } catch (e) { }
+    } catch (e) {
+      debugPrint('Token count error: $e');
+    }
   }
 
   Future<void> _pickImage() async { 
@@ -633,7 +650,7 @@ Future<void> _sendMessage() async {
         });
       }
     } catch (e) {
-      print("Error picking image: $e");
+      debugPrint("Error picking image: $e");
     }
   }
 
@@ -648,7 +665,7 @@ Future<void> _sendMessage() async {
           _savedSystemPrompts = jsonList.map((j) => SystemPromptData.fromJson(j)).toList();
         });
       } catch (e) {
-        print("Error loading prompts: $e");
+        debugPrint("Error loading prompts: $e");
       }
     }
   }
@@ -679,6 +696,7 @@ Future<void> _sendMessage() async {
     final String data = jsonEncode(_savedSystemPrompts.map((s) => s.toJson()).toList());
     await prefs.setString('airp_system_prompts', data);
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Saved '${newPrompt.title}' to Library!")));
   }
   
@@ -697,6 +715,7 @@ Future<void> _sendMessage() async {
     final String data = jsonEncode(_savedSystemPrompts.map((s) => s.toJson()).toList());
     await prefs.setString('airp_system_prompts', data);
     
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Deleted '$title'")));
   }
 
@@ -753,7 +772,7 @@ Future<void> _sendMessage() async {
               color: color,
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
-              boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 8)]
+              boxShadow: [BoxShadow(color: color.withAlpha((0.5 * 255).round()), blurRadius: 8)]
             ),
           ),
         ),
@@ -917,7 +936,7 @@ void _deleteMessage(int index) {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8), // Spacing between items
                   decoration: BoxDecoration(
-                    color: isActive ? Colors.cyanAccent.withOpacity(0.05) : Colors.transparent,
+                    color: isActive ? Colors.cyanAccent.withAlpha((0.05 * 255).round()) : Colors.transparent,
                     // THE BLUE OUTLINE FOR ACTIVE CHAT
                     border: isActive ? Border.all(color: Colors.cyanAccent, width: 1.5) : null, 
                     borderRadius: BorderRadius.circular(12),
@@ -927,7 +946,7 @@ void _deleteMessage(int index) {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     
                     // THE RED BLUR EFFECT ON HOLD
-                    splashColor: Colors.redAccent.withOpacity(0.5), 
+                    splashColor: Colors.red.withAlpha((0.95 * 255).round()), 
                     
                     // THE CHECKMARK INDICATOR
                     leading: Icon(
@@ -968,6 +987,7 @@ void _deleteMessage(int index) {
                         _initializeModel();
                       });
                       Navigator.pop(context);
+                      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
                     },
                     
                     onLongPress: () {
@@ -1227,7 +1247,7 @@ void _deleteMessage(int index) {
                 ),
                 const SizedBox(width: 10),
                 IconButton.filled(
-                  style: IconButton.styleFrom(backgroundColor: Colors.redAccent.withOpacity(0.2)),
+                  style: IconButton.styleFrom(backgroundColor: Colors.redAccent.withAlpha((0.2 * 255).round())),
                   icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
                   tooltip: "Delete Preset",
                   onPressed: _deletePromptFromLibrary,
@@ -1238,8 +1258,15 @@ void _deleteMessage(int index) {
             const SizedBox(height: 20),
             const SizedBox(height: 10),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 40), backgroundColor: Colors.cyan, foregroundColor: Colors.white),
-              onPressed: () { _saveSettings(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Settings Applied & Saved"))); Navigator.pop(context); },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 40), 
+                backgroundColor: Colors.lightBlueAccent, 
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                _saveSettings();
+              },
               child: const Text("APPLY & SAVE"),
             ),
             const SizedBox(height: 20),
@@ -1284,9 +1311,9 @@ void _deleteMessage(int index) {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildColorCircle("User BG", provider.userBubbleColor, (c) => provider.updateColor('userBubble', c.withOpacity(provider.userBubbleColor.opacity))),
+                        _buildColorCircle("User BG", provider.userBubbleColor, (c) => provider.updateColor('userBubble', c.withAlpha(((provider.userBubbleColor.a * 255.0).round() & 0xff)))),
                         _buildColorCircle("User Text", provider.userTextColor, (c) => provider.updateColor('userText', c)),
-                        _buildColorCircle("AI BG", provider.aiBubbleColor, (c) => provider.updateColor('aiBubble', c.withOpacity(provider.aiBubbleColor.opacity))),
+                        _buildColorCircle("AI BG", provider.aiBubbleColor, (c) => provider.updateColor('aiBubble', c.withAlpha(((provider.aiBubbleColor.a * 255.0).round() & 0xff)))),
                         _buildColorCircle("AI Text", provider.aiTextColor, (c) => provider.updateColor('aiText', c)),
                       ],
                     ),
@@ -1298,18 +1325,18 @@ void _deleteMessage(int index) {
                         children: [
                           const Text("User Opacity:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                           const Spacer(),
-                          Text("${(provider.userBubbleColor.opacity * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+                          Text("${(provider.userBubbleColor.a * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
                         ],
                       ),
                     ),
                     Slider(
-                      value: provider.userBubbleColor.opacity,
+                      value: provider.userBubbleColor.a,
                       min: 0.0, max: 1.0,
-                      activeColor: provider.userBubbleColor.withOpacity(1.0), 
+                      activeColor: provider.userBubbleColor.withAlpha(255), 
                       inactiveColor: Colors.grey[800],
                       onChanged: (val) {
                         // Keep the RGB, just change Alpha
-                        provider.updateColor('userBubble', provider.userBubbleColor.withOpacity(val));
+                        provider.updateColor('userBubble', provider.userBubbleColor.withAlpha((val * 255).round()));
                       },
                     ),
 
@@ -1319,17 +1346,17 @@ void _deleteMessage(int index) {
                         children: [
                           const Text("AI Opacity:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                           const Spacer(),
-                          Text("${(provider.aiBubbleColor.opacity * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                          Text("${(provider.aiBubbleColor.a * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                         ],
                       ),
                     ),
                     Slider(
-                      value: provider.aiBubbleColor.opacity,
+                      value: provider.aiBubbleColor.a,
                       min: 0.0, max: 1.0,
-                      activeColor: provider.aiBubbleColor.withOpacity(1.0),
+                      activeColor: provider.aiBubbleColor.withAlpha(255),
                       inactiveColor: Colors.grey[800],
                       onChanged: (val) {
-                        provider.updateColor('aiBubble', provider.aiBubbleColor.withOpacity(val));
+                        provider.updateColor('aiBubble', provider.aiBubbleColor.withAlpha((val * 255).round()));
                       },
                     ),
                   ],
@@ -1370,9 +1397,9 @@ void _deleteMessage(int index) {
                               },
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.cyanAccent.withOpacity(0.1),
+                                  color: Colors.cyanAccent.withAlpha((0.1 * 255).round()),
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.cyanAccent.withOpacity(0.5)),
+                                  border: Border.all(color: Colors.cyanAccent.withAlpha((0.5 * 255).round())),
                                 ),
                                 child: const Column(
                                   mainAxisAlignment: MainAxisAlignment.center, 
@@ -1408,8 +1435,8 @@ void _deleteMessage(int index) {
                                 const SnackBar(content: Text("Image Deleted"), backgroundColor: Colors.redAccent, duration: Duration(milliseconds: 500)),
                               );
                             } : null,
-                            splashColor: Colors.redAccent.withOpacity(0.8), // The Red Blur Effect on hold
-                            highlightColor: Colors.redAccent.withOpacity(0.4),
+                            splashColor: Colors.redAccent.withAlpha((0.8 * 255).round()), // The Red Blur Effect on hold
+                            highlightColor: Colors.redAccent.withAlpha((0.4 * 255).round()),
                             borderRadius: BorderRadius.circular(8),
                             child: Stack(
                               fit: StackFit.expand,
@@ -1456,8 +1483,8 @@ void _deleteMessage(int index) {
       endDrawer: _buildSettingsDrawer(),
       appBar: AppBar(
         backgroundColor: themeProvider.backgroundImagePath != null
-            ? const Color(0xFF2C2C2C).withOpacity(0.8)
-            : const Color(0xFF2C2C2C),
+          ? const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round())
+          : const Color(0xFF2C2C2C),
         leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
         
         // ✨ NEW HEADER DROPDOWN
@@ -1489,7 +1516,15 @@ void _deleteMessage(int index) {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" : _currentProvider == AiProvider.openRouter ? "OpenRouter" : "OpenAI"}'),
+              Flexible(
+                child: Text(
+                  'AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" : _currentProvider == AiProvider.openRouter ? "OpenRouter" : "OpenAI"}',
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  softWrap: false,
+                ),
+              ),
+              const SizedBox(width: 4),
               const Icon(Icons.arrow_drop_down),
             ],
           ),
@@ -1511,7 +1546,7 @@ void _deleteMessage(int index) {
             Positioned.fill(
               child: Container(
                   color: Colors.black
-                      .withOpacity(themeProvider.backgroundOpacity)),
+                      .withAlpha((themeProvider.backgroundOpacity * 255).round())),
             ),
           SafeArea(
             child: Column(
@@ -1524,7 +1559,7 @@ void _deleteMessage(int index) {
                     final msg = _messages[index];
                     final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
                     final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
-                    final borderColor = msg.isUser ? themeProvider.userBubbleColor.withOpacity(0.5) : Colors.white10;
+                    final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha((0.5 * 255).round()) : Colors.white10;
                     return Align(
                        alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
                         child: GestureDetector(
@@ -1594,7 +1629,7 @@ void _deleteMessage(int index) {
               
               Container(
                 padding: const EdgeInsets.all(8.0),
-                color: const Color(0xFF1E1E1E).withOpacity(0.9),
+                color: const Color(0xFF1E1E1E).withAlpha((0.9 * 255).round()),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1744,9 +1779,9 @@ class ThemeProvider extends ChangeNotifier {
   String? _backgroundImagePath; 
   double _backgroundOpacity = 0.7;
   
-  Color _userBubbleColor = Colors.cyanAccent.withOpacity(0.2);
+  Color _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
   Color _userTextColor = Colors.white;
-  Color _aiBubbleColor = const Color(0xFF2C2C2C).withOpacity(0.8);
+  Color _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
   Color _aiTextColor = Colors.white;
 
   List<String> _customImagePaths = []; 
@@ -1818,10 +1853,29 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> _saveColors() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('color_user_bubble', _userBubbleColor.value);
-    await prefs.setInt('color_user_text', _userTextColor.value);
-    await prefs.setInt('color_ai_bubble', _aiBubbleColor.value);
-    await prefs.setInt('color_ai_text', _aiTextColor.value);
+    final int ub = (((_userBubbleColor.a * 255.0).round() & 0xff) << 24) |
+      (((_userBubbleColor.r * 255.0).round() & 0xff) << 16) |
+      (((_userBubbleColor.g * 255.0).round() & 0xff) << 8) |
+      ((_userBubbleColor.b * 255.0).round() & 0xff);
+    await prefs.setInt('color_user_bubble', ub);
+
+    final int ut = (((_userTextColor.a * 255.0).round() & 0xff) << 24) |
+      (((_userTextColor.r * 255.0).round() & 0xff) << 16) |
+      (((_userTextColor.g * 255.0).round() & 0xff) << 8) |
+      ((_userTextColor.b * 255.0).round() & 0xff);
+    await prefs.setInt('color_user_text', ut);
+
+    final int ab = (((_aiBubbleColor.a * 255.0).round() & 0xff) << 24) |
+      (((_aiBubbleColor.r * 255.0).round() & 0xff) << 16) |
+      (((_aiBubbleColor.g * 255.0).round() & 0xff) << 8) |
+      ((_aiBubbleColor.b * 255.0).round() & 0xff);
+    await prefs.setInt('color_ai_bubble', ab);
+
+    final int at = (((_aiTextColor.a * 255.0).round() & 0xff) << 24) |
+      (((_aiTextColor.r * 255.0).round() & 0xff) << 16) |
+      (((_aiTextColor.g * 255.0).round() & 0xff) << 8) |
+      ((_aiTextColor.b * 255.0).round() & 0xff);
+    await prefs.setInt('color_ai_text', at);
   }
 
   Future<void> addCustomImage(String path) async {
@@ -1854,10 +1908,25 @@ class ThemeProvider extends ChangeNotifier {
     _backgroundOpacity = prefs.getDouble('app_bg_opacity') ?? 0.7;
     _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
     
-    _userBubbleColor = Color(prefs.getInt('color_user_bubble') ?? Colors.cyanAccent.withOpacity(0.2).value);
-    _userTextColor = Color(prefs.getInt('color_user_text') ?? Colors.white.value);
-    _aiBubbleColor = Color(prefs.getInt('color_ai_bubble') ?? const Color(0xFF2C2C2C).withOpacity(0.8).value);
-    _aiTextColor = Color(prefs.getInt('color_ai_text') ?? Colors.white.value);
+    final int? userBubbleInt = prefs.getInt('color_user_bubble');
+    if (userBubbleInt != null) {
+      _userBubbleColor = Color(userBubbleInt);
+    } else {
+      _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
+    }
+
+    final int? userTextInt = prefs.getInt('color_user_text');
+    _userTextColor = userTextInt != null ? Color(userTextInt) : Colors.white;
+
+    final int? aiBubbleInt = prefs.getInt('color_ai_bubble');
+    if (aiBubbleInt != null) {
+      _aiBubbleColor = Color(aiBubbleInt);
+    } else {
+      _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
+    }
+
+    final int? aiTextInt = prefs.getInt('color_ai_text');
+    _aiTextColor = aiTextInt != null ? Color(aiTextInt) : Colors.white;
     
     notifyListeners();
   }
