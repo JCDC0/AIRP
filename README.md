@@ -24,9 +24,9 @@
 
 ### Installation
 
-1.  **Clone the repository**:
+1.  **Clone the repository to your desired folder**:
     ```bash
-    git clone https://github.com/JCDC0/airp-chat.git
+    git clone https://github.com/JCDC0/AIRP
     cd airp-chat
     ```
 
