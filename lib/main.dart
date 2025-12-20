@@ -195,7 +195,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _userApiKey = prefs.getString('airp_user_key') ?? '';
       _apiKeyController.text = _userApiKey;
     });
-    _initializeModel(); 
+    await _initializeModel(); 
   }
 
   Future<void> _saveSettings() async {
@@ -252,48 +252,70 @@ class _ChatScreenState extends State<ChatScreen> {
     _initializeModel();
   }
 
-  void _initializeModel() {
-      final activeKey = _userApiKey.isNotEmpty ? _userApiKey : _defaultApiKey;
-      final List<SafetySetting> safetySettings = _disableSafety 
+// Make this Future<void> because we need to read files (await)
+  Future<void> _initializeModel() async {
+    final activeKey = _userApiKey.isNotEmpty ? _userApiKey : _defaultApiKey;
+    final List<SafetySetting> safetySettings = _disableSafety
         ? [
             SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
             SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
             SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
             SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
-          ] 
-        : []; 
+          ]
+        : [];
 
     _model = GenerativeModel(
       model: _selectedModel,
       apiKey: activeKey,
-      systemInstruction: _systemInstructionController.text.isNotEmpty 
-          ? Content.system(_systemInstructionController.text) 
+      systemInstruction: _systemInstructionController.text.isNotEmpty
+          ? Content.system(_systemInstructionController.text)
           : null,
       generationConfig: GenerationConfig(temperature: _temperature),
       safetySettings: safetySettings,
     );
 
     List<Content> history = [];
-    
+
     for (var msg in _messages) {
       final String role = msg.isUser ? 'user' : 'model';
-      
-      if (history.isNotEmpty && history.last.role == role) {
+
+      // ✨ HERE IS THE FIX TWIN! ✨
+      // We check if there are images and rebuild the Multi-modal content
+      if (msg.isUser && msg.imagePaths.isNotEmpty) {
+        List<Part> parts = [];
+        
+        // Add text if it exists
+        if (msg.text.isNotEmpty) {
+          parts.add(TextPart(msg.text));
+        }
+
+        // Re-add the images to history
+        for (String path in msg.imagePaths) {
+          if (await File(path).exists()) {
+            final bytes = await File(path).readAsBytes();
+            // Simple mime-type check
+            final mimeType = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+            parts.add(DataPart(mimeType, bytes));
+          }
+        }
+        history.add(Content(role, parts));
+      } 
+      // Handle Text-Only messages (Standard logic)
+      else if (history.isNotEmpty && history.last.role == role) {
         final List<Part> existingParts = history.last.parts.toList();
-        existingParts.add(TextPart("\n\n${msg.text}")); 
+        existingParts.add(TextPart("\n\n${msg.text}"));
         history[history.length - 1] = Content(role, existingParts);
       } else {
-        history.add(msg.isUser 
-          ? Content.text(msg.text) 
-          : Content.model([TextPart(msg.text)])
-        );
+        history.add(msg.isUser
+            ? Content.text(msg.text)
+            : Content.model([TextPart(msg.text)]));
       }
     }
 
     _chat = _model.startChat(history: history);
   }
 
-  Future<void> _sendMessage() async {
+Future<void> _sendMessage() async {
     final messageText = _textController.text;
     if (messageText.isEmpty && _pendingImages.isEmpty) return;
 
@@ -301,10 +323,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     setState(() {
       _messages.add(ChatMessage(
-        text: messageText, 
-        isUser: true, 
-        imagePaths: imagesToSend
-      ));
+          text: messageText, isUser: true, imagePaths: imagesToSend));
       _isLoading = true;
       _pendingImages.clear();
       _textController.clear();
@@ -315,66 +334,69 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       GenerateContentResponse? response;
-    
+
+      // ✨ CONSTRUCTING THE PAYLOAD ✨
       Content userContent;
       if (imagesToSend.isNotEmpty) {
         final List<Part> parts = [];
         if (messageText.isNotEmpty) parts.add(TextPart(messageText));
+        
         for (String path in imagesToSend) {
           final bytes = await File(path).readAsBytes();
-          parts.add(DataPart('image/jpeg', bytes)); 
+          final mimeType = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+          parts.add(DataPart(mimeType, bytes));
         }
         userContent = Content.multi(parts);
       } else {
         userContent = Content.text(messageText);
-      
-
-        if (_enableGrounding && imagesToSend.isEmpty) {
-          final groundedText = await _performGroundedGeneration(messageText);
-          setState(() {
-            _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false));
-            _isLoading = false;
-          });
-          _scrollToBottom();
-          _autoSaveCurrentSession();
-          return; 
-        } else {
-            final history = _chat.history.toList();
-            history.add(userContent);
-            response = await _model.generateContent(history);
-        }
       }
 
-      String fullText = "";
-      String? aiImageBase64;
+      // HANDLE SEARCH VS NORMAL CHAT
+      if (_enableGrounding && imagesToSend.isEmpty) {
+        // Grounding logic remains the same...
+        final groundedText = await _performGroundedGeneration(messageText);
+        setState(() {
+          _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false));
+          _isLoading = false;
+        });
+      } else {
+        // ✨ THE FIX: Use _chat.sendMessage instead of model.generateContent(history)
+        // This ensures the library handles the session state correctly for this turn
+        response = await _chat.sendMessage(userContent);
 
-      if (response != null && response.candidates.isNotEmpty) {
-        final parts = response.candidates.first.content.parts;
-        
-        for (var part in parts) {
-          if (part is TextPart) {
-            fullText += part.text;
-          } else if (part is DataPart) {
-            aiImageBase64 = base64Encode(part.bytes);
+        String fullText = "";
+        String? aiImageBase64;
+
+        if (response.candidates.isNotEmpty) {
+          final parts = response.candidates.first.content.parts;
+          for (var part in parts) {
+            if (part is TextPart) {
+              fullText += part.text;
+            } else if (part is DataPart) {
+              aiImageBase64 = base64Encode(part.bytes);
+            }
           }
         }
+
+        setState(() {
+          _messages.add(ChatMessage(
+            text: fullText,
+            isUser: false,
+            aiImage: aiImageBase64,
+          ));
+          _isLoading = false;
+        });
       }
 
-      setState(() {
-        _messages.add(ChatMessage(
-          text: fullText, 
-          isUser: false,
-          aiImage: aiImageBase64,
-        ));
-        _isLoading = false;
-      });
-      _initializeModel(); 
+      // ✨ WAIT for the model to rebuild history with the new images
+      await _initializeModel(); 
 
       _scrollToBottom();
-      if (!_enableGrounding) _updateTokenCount(); 
+      if (!_enableGrounding) _updateTokenCount();
       _autoSaveCurrentSession();
 
     } catch (e) {
+      print("Error: $e"); // Debug print
       setState(() {
         _messages.add(ChatMessage(text: "Error: $e", isUser: false));
         _isLoading = false;
@@ -980,7 +1002,7 @@ void _deleteMessage(int index) {
             TextField(
               controller: _promptTitleController,
               decoration: const InputDecoration(
-                labelText: "Prompt Title (e.g., 'Tsundere')",
+                labelText: "Prompt Title (e.g., 'World of Japan')",
                 labelStyle: TextStyle(color: Colors.cyanAccent, fontSize: 12),
                 border: OutlineInputBorder(),
                 filled: true, fillColor: Colors.black12,
