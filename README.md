@@ -1,4 +1,4 @@
-# 🌌 AIRP - Gemini & OpenRouter Chat Client
+# AIRP - Gemini & OpenRouter Chat Client
 
 **AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models and the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), featuring deep visual customization and a robust system prompt library.
 
@@ -6,7 +6,7 @@
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white)
 
-## ✨ Features
+## Features
 
 *   **Multi-Provider Support**: Switch seamlessly between Google Gemini (native) and OpenRouter (access to 100+ models).
 *   **Visual Customization**: Change chat bubble colors, text colors, interface fonts, and set custom background wallpapers with dimming/opacity controls.
@@ -16,7 +16,7 @@
 *   **Chat History**: Auto-saves conversation history locally.
 *   **Token Counting**: Real-time token usage estimation.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 *   [Flutter SDK](https://docs.flutter.dev/get-started/install) installed.
@@ -26,7 +26,7 @@
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/your-username/airp-chat.git
+    git clone https://github.com/JCDC0/airp-chat.git
     cd airp-chat
     ```
 
@@ -42,7 +42,7 @@
 
 ---
 
-## 🔑 API Configuration
+## API Configuration
 
 This app follows a **BYOK (Bring Your Own Key)** architecture. Your keys are stored locally on your device and never sent to a third-party server other than the AI providers themselves.
 
@@ -71,7 +71,7 @@ This app follows a **BYOK (Bring Your Own Key)** architecture. Your keys are sto
 ### Saving Settings (IMPORTANT)
 When entering API keys or changing settings in the Drawer:
 1.  Paste your API Key.
-2.  **YOU MUST PRESS THE "APPLY & SAVE" BUTTON.** 🚨
+2.  **YOU MUST PRESS THE "APPLY & SAVE" BUTTON.** 
 3.  If you do not press this button, the key will not be saved to disk, and the chat engine will not update to use the new credentials.
 
 ### Switching Models
@@ -90,9 +90,9 @@ When entering API keys or changing settings in the Drawer:
 
 ---
 
-## ⚠️ Disclaimer & "Vibe Coding"
+## Disclaimer
 
-This project was **"Vibe Coded"** ⚡.
+This project was "Vibe Coded"*.
 
 What does that mean?
 *   It was built rapidly to satisfy specific personal needs and aesthetic preferences.
