@@ -50,6 +50,8 @@ class GeminiChatApp extends StatelessWidget {
 // ----------------------------------------------------------------------
 // DATA CLASS
 // ----------------------------------------------------------------------
+enum AiProvider { gemini, openRouter, openAi }
+
 class ChatSessionData {
   final String id;
   final String title;
@@ -58,6 +60,7 @@ class ChatSessionData {
   final int tokenCount;
   final String systemInstruction;
   final String? backgroundImage;
+  final String provider;
 
   ChatSessionData({
     required this.id,
@@ -67,6 +70,7 @@ class ChatSessionData {
     required this.tokenCount,
     required this.systemInstruction,
     this.backgroundImage,
+    this.provider = 'gemini', 
   });
 
   Map<String, dynamic> toJson() => {
@@ -77,6 +81,7 @@ class ChatSessionData {
     'tokenCount': tokenCount,
     'systemInstruction': systemInstruction,
     'backgroundImage': backgroundImage,
+    'provider': provider,
   };
 
   factory ChatSessionData.fromJson(Map<String, dynamic> json) {
@@ -86,10 +91,11 @@ class ChatSessionData {
       messages: (json['messages'] as List?)
           ?.map((m) => ChatMessage.fromJson(m))
           .toList() ?? [],
-      modelName: json['modelName'] ?? 'models/gemini-2.0-flash',
+      modelName: json['modelName'] ?? 'models/gemini-flash-lite-latest',
       tokenCount: json['tokenCount'] ?? 0,
       systemInstruction: json['systemInstruction'] ?? "",
       backgroundImage: json['backgroundImage'],
+      provider: json['provider'] ?? 'gemini',
     );
   }
 }
@@ -141,7 +147,15 @@ class _ChatScreenState extends State<ChatScreen> {
     'models/gemma-3-1b-it': 'Gemma 3 1B (Tiny)',
   };
 
-  String _userApiKey = ''; 
+  AiProvider _currentProvider = AiProvider.gemini;
+
+  String _geminiKey = '';
+  String _openRouterKey = '';
+  String _openAiKey = ''; // Placeholder for 0.1.5 integration
+
+  String _selectedGeminiModel = 'models/gemini-flash-lite-latest';
+  String _openRouterModel = 'google/gemini-2.0-flash-lite-preview-02-05:free'; // Default OR model
+
   String _selectedModel = 'models/gemini-flash-lite-latest';
   double _temperature = 1; 
   bool _enableGrounding = false;
@@ -149,6 +163,7 @@ class _ChatScreenState extends State<ChatScreen> {
   
   late GenerativeModel _model;
   late ChatSession _chat;
+  final TextEditingController _openRouterModelController = TextEditingController();
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _systemInstructionController = TextEditingController();
@@ -189,22 +204,79 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // ✨ UPDATED SETTINGS LOADER
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _userApiKey = prefs.getString('airp_user_key') ?? '';
-      _apiKeyController.text = _userApiKey;
+      // Load Keys
+      _geminiKey = prefs.getString('airp_key_gemini') ?? '';
+      _openRouterKey = prefs.getString('airp_key_openrouter') ?? '';
+      _openAiKey = prefs.getString('airp_key_openai') ?? '';
+
+      // Load Provider State
+      final providerString = prefs.getString('airp_provider') ?? 'gemini';
+      if (providerString == 'openRouter') {
+        _currentProvider = AiProvider.openRouter;
+      } else if (providerString == 'openAi') _currentProvider = AiProvider.openAi;
+      else _currentProvider = AiProvider.gemini;
+
+      // Load Models
+      _openRouterModel = prefs.getString('airp_model_openrouter') ?? 'google/gemini-2.0-flash-lite-preview-02-05:free';
+      _openRouterModelController.text = _openRouterModel;
+      
+      // Update the visible API key box based on current provider
+      _updateApiKeyTextField();
     });
-    await _initializeModel(); 
+
+    // Only init Google Model if we are in Gemini mode
+    if (_currentProvider == AiProvider.gemini) {
+      await _initializeModel(); 
+    }
   }
 
+  // ✨ HELPER TO SYNC UI TEXT FIELD
+  void _updateApiKeyTextField() {
+    switch (_currentProvider) {
+      case AiProvider.gemini: _apiKeyController.text = _geminiKey; break;
+      case AiProvider.openRouter: _apiKeyController.text = _openRouterKey; break;
+      case AiProvider.openAi: _apiKeyController.text = _openAiKey; break;
+    }
+  }
+
+  // ✨ UPDATED SAVE SETTINGS
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('airp_user_key', _apiKeyController.text);
+    
+    // ✨ TRIM EVERYTHING! Remove invisible spaces that can cause auth errors
+    final cleanKey = _apiKeyController.text.trim();
+    final cleanModel = _openRouterModelController.text.trim();
+
     setState(() {
-      _userApiKey = _apiKeyController.text;
+      switch (_currentProvider) {
+        case AiProvider.gemini: _geminiKey = cleanKey; break;
+        case AiProvider.openRouter: _openRouterKey = cleanKey; break;
+        case AiProvider.openAi: _openAiKey = cleanKey; break;
+      }
+      // Save OpenRouter Model (trimmed) and update UI
+      _openRouterModel = cleanModel;
+      _openRouterModelController.text = cleanModel;
     });
-    _initializeModel();
+
+    // Save to Disk
+    await prefs.setString('airp_key_gemini', _geminiKey);
+    await prefs.setString('airp_key_openrouter', _openRouterKey);
+    await prefs.setString('airp_key_openai', _openAiKey);
+    await prefs.setString('airp_provider', _currentProvider.name);
+    await prefs.setString('airp_model_openrouter', _openRouterModel);
+
+    // Re-init model only if Gemini is active (OpenRouter is per-request)
+    if (_currentProvider == AiProvider.gemini) {
+      await _initializeModel();
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Settings Saved!"))
+    );
   }
 
   Future<void> _autoSaveCurrentSession() async {
@@ -252,9 +324,27 @@ class _ChatScreenState extends State<ChatScreen> {
     _initializeModel();
   }
 
-// Make this Future<void> because we need to read files (await)
+// ----------------------------------------------------------------------
+  // FIXED _initializeModel
+  // ----------------------------------------------------------------------
   Future<void> _initializeModel() async {
-    final activeKey = _userApiKey.isNotEmpty ? _userApiKey : _defaultApiKey;
+    // FIX: logic to grab the correct key based on the provider
+    String activeKey = '';
+    
+    if (_currentProvider == AiProvider.gemini) {
+      activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
+    } else if (_currentProvider == AiProvider.openRouter) {
+      activeKey = _openRouterKey;
+    } else if (_currentProvider == AiProvider.openAi) {
+      activeKey = _openAiKey;
+    }
+
+    // If key is still empty, the model will crash or throw that "Unregistered caller" error.
+    if (activeKey.isEmpty) {
+      print("Warning: No API Key found for ${_currentProvider.name}");
+      return; 
+    }
+
     final List<SafetySetting> safetySettings = _disableSafety
         ? [
             SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
@@ -266,41 +356,31 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _model = GenerativeModel(
       model: _selectedModel,
-      apiKey: activeKey,
+      apiKey: activeKey, // <--- Now uses the correct key!
       systemInstruction: _systemInstructionController.text.isNotEmpty
           ? Content.system(_systemInstructionController.text)
           : null,
       generationConfig: GenerationConfig(temperature: _temperature),
       safetySettings: safetySettings,
     );
-
+    
+    // Build multimodal history (preserve previous logic)
     List<Content> history = [];
-
     for (var msg in _messages) {
       final String role = msg.isUser ? 'user' : 'model';
 
-      // ✨ HERE IS THE FIX TWIN! ✨
-      // We check if there are images and rebuild the Multi-modal content
       if (msg.isUser && msg.imagePaths.isNotEmpty) {
         List<Part> parts = [];
-        
-        // Add text if it exists
-        if (msg.text.isNotEmpty) {
-          parts.add(TextPart(msg.text));
-        }
-
-        // Re-add the images to history
+        if (msg.text.isNotEmpty) parts.add(TextPart(msg.text));
         for (String path in msg.imagePaths) {
           if (await File(path).exists()) {
             final bytes = await File(path).readAsBytes();
-            // Simple mime-type check
             final mimeType = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
             parts.add(DataPart(mimeType, bytes));
           }
         }
         history.add(Content(role, parts));
       } 
-      // Handle Text-Only messages (Standard logic)
       else if (history.isNotEmpty && history.last.role == role) {
         final List<Part> existingParts = history.last.parts.toList();
         existingParts.add(TextPart("\n\n${msg.text}"));
@@ -318,85 +398,31 @@ class _ChatScreenState extends State<ChatScreen> {
 Future<void> _sendMessage() async {
     final messageText = _textController.text;
     if (messageText.isEmpty && _pendingImages.isEmpty) return;
-
+    
+    // 1. UI UPDATES (Same as before)
     final List<String> imagesToSend = List.from(_pendingImages);
-
     setState(() {
-      _messages.add(ChatMessage(
-          text: messageText, isUser: true, imagePaths: imagesToSend));
+      _messages.add(ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend));
       _isLoading = true;
       _pendingImages.clear();
       _textController.clear();
     });
-
     _scrollToBottom();
     _autoSaveCurrentSession();
 
+    // 2. BRANCHING LOGIC
     try {
-      GenerateContentResponse? response;
-
-      // ✨ CONSTRUCTING THE PAYLOAD ✨
-      Content userContent;
-      if (imagesToSend.isNotEmpty) {
-        final List<Part> parts = [];
-        if (messageText.isNotEmpty) parts.add(TextPart(messageText));
-        
-        for (String path in imagesToSend) {
-          final bytes = await File(path).readAsBytes();
-          final mimeType = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-          parts.add(DataPart(mimeType, bytes));
-        }
-        userContent = Content.multi(parts);
+      if (_currentProvider == AiProvider.gemini) {
+        // --- GEMINI LOGIC ---
+        await _sendGeminiMessage(messageText, imagesToSend);
+      } else if (_currentProvider == AiProvider.openRouter) {
+        // --- OPENROUTER LOGIC ---
+        await _sendOpenRouterMessage(messageText, imagesToSend);
       } else {
-        userContent = Content.text(messageText);
+        // OpenAI Placeholder
+        setState(() => _isLoading = false);
       }
-
-      // HANDLE SEARCH VS NORMAL CHAT
-      if (_enableGrounding && imagesToSend.isEmpty) {
-        // Grounding logic remains the same...
-        final groundedText = await _performGroundedGeneration(messageText);
-        setState(() {
-          _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false));
-          _isLoading = false;
-        });
-      } else {
-        // ✨ THE FIX: Use _chat.sendMessage instead of model.generateContent(history)
-        // This ensures the library handles the session state correctly for this turn
-        response = await _chat.sendMessage(userContent);
-
-        String fullText = "";
-        String? aiImageBase64;
-
-        if (response.candidates.isNotEmpty) {
-          final parts = response.candidates.first.content.parts;
-          for (var part in parts) {
-            if (part is TextPart) {
-              fullText += part.text;
-            } else if (part is DataPart) {
-              aiImageBase64 = base64Encode(part.bytes);
-            }
-          }
-        }
-
-        setState(() {
-          _messages.add(ChatMessage(
-            text: fullText,
-            isUser: false,
-            aiImage: aiImageBase64,
-          ));
-          _isLoading = false;
-        });
-      }
-
-      // ✨ WAIT for the model to rebuild history with the new images
-      await _initializeModel(); 
-
-      _scrollToBottom();
-      if (!_enableGrounding) _updateTokenCount();
-      _autoSaveCurrentSession();
-
     } catch (e) {
-      print("Error: $e"); // Debug print
       setState(() {
         _messages.add(ChatMessage(text: "Error: $e", isUser: false));
         _isLoading = false;
@@ -405,8 +431,135 @@ Future<void> _sendMessage() async {
     }
   }
 
+  // ✨ EXTRACTED GEMINI LOGIC (Clean Code!)
+  Future<void> _sendGeminiMessage(String text, List<String> images) async {
+    Content userContent;
+    if (images.isNotEmpty) {
+      final List<Part> parts = [];
+      if (text.isNotEmpty) parts.add(TextPart(text));
+      for (String path in images) {
+        final bytes = await File(path).readAsBytes();
+        final mimeType = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+        parts.add(DataPart(mimeType, bytes));
+      }
+      userContent = Content.multi(parts);
+    } else {
+      userContent = Content.text(text);
+    }
+    
+    if (_enableGrounding && images.isEmpty) {
+      final groundedText = await _performGroundedGeneration(text);
+      setState(() {
+        _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false));
+        _isLoading = false;
+      });
+    } else {
+      final response = await _chat.sendMessage(userContent);
+      
+      String fullText = "";
+      String? aiImageBase64;
+
+      if (response.candidates.isNotEmpty) {
+        final parts = response.candidates.first.content.parts;
+        for (var part in parts) {
+          if (part is TextPart) {
+            fullText += part.text;
+          } else if (part is DataPart) {
+            aiImageBase64 = base64Encode(part.bytes);
+          }
+        }
+      }
+
+      setState(() {
+        _messages.add(ChatMessage(
+          text: fullText,
+          isUser: false,
+          aiImage: aiImageBase64,
+        ));
+        _isLoading = false;
+      });
+    }
+
+    await _initializeModel();
+    _scrollToBottom();
+    if (!_enableGrounding) _updateTokenCount();
+    _autoSaveCurrentSession();
+  }
+
+  // ✨ NEW OPENROUTER LOGIC
+  Future<void> _sendOpenRouterMessage(String text, List<String> images) async {
+    final url = Uri.parse("https://openrouter.ai/api/v1/chat/completions");
+
+    // Safety Check: Trim the key again just to be sure
+    final cleanKey = _openRouterKey.trim();
+    if (cleanKey.isEmpty) {
+      throw Exception("OpenRouter Key is empty! Check settings.");
+    }
+
+    // 1. Build Messages JSON (simpler history)
+    List<Map<String, dynamic>> messagesPayload = [];
+    if (_systemInstructionController.text.isNotEmpty) {
+      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
+    }
+
+    for (var msg in _messages) {
+      if (msg == _messages.last) continue;
+      messagesPayload.add({
+        "role": msg.isUser ? "user" : "assistant",
+        "content": msg.text
+      });
+    }
+
+    if (images.isEmpty) {
+      messagesPayload.add({"role": "user", "content": text});
+    } else {
+      List<Map<String, dynamic>> contentParts = [];
+      if (text.isNotEmpty) contentParts.add({"type": "text", "text": text});
+      for (String path in images) {
+        final bytes = await File(path).readAsBytes();
+        final base64Img = base64Encode(bytes);
+        contentParts.add({
+          "type": "image_url",
+          "image_url": {"url": "data:image/jpeg;base64,$base64Img"}
+        });
+      }
+      messagesPayload.add({"role": "user", "content": contentParts});
+    }
+
+    // 2. Send Request
+    final response = await http.post(
+      url,
+      headers: {
+        "Authorization": "Bearer $cleanKey",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://airp-chat.com",
+        "X-Title": "AIRP Chat",
+      },
+      body: jsonEncode({
+        "model": _openRouterModel.trim(),
+        "messages": messagesPayload,
+        "temperature": _temperature,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      if (data['choices'] != null && data['choices'].isNotEmpty) {
+        final String aiText = data['choices'][0]['message']['content'];
+        setState(() {
+          _messages.add(ChatMessage(text: aiText, isUser: false));
+          _isLoading = false;
+        });
+        _autoSaveCurrentSession();
+      }
+    } else {
+      print("OpenRouter Error Body: ${response.body}");
+      throw Exception("OpenRouter Error: ${response.statusCode} - ${response.body}");
+    }
+  }
+
   Future<String?> _performGroundedGeneration(String userMessage) async {
-    final activeKey = _userApiKey.isNotEmpty ? _userApiKey : _defaultApiKey;
+    final activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
     final modelId = _selectedModel.replaceAll('models/', '');
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$activeKey');
 
@@ -853,7 +1006,7 @@ void _deleteMessage(int index) {
                                 _autoSaveCurrentSession();
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Operation Terminated."), backgroundColor: Colors.redAccent)
+                                  const SnackBar(content: Text("Conversation Deleted"), backgroundColor: Colors.redAccent)
                                 );
                               },
                             ),
@@ -925,22 +1078,51 @@ void _deleteMessage(int index) {
             const SizedBox(height: 20),
 
             const Text("Model Selection", style: TextStyle(fontWeight: FontWeight.bold)),
-            DropdownButton<String>(
-              isExpanded: true,
-              dropdownColor: Colors.grey[900],
-              value: _models.contains(_selectedModel) ? _selectedModel : _models.first,
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  setState(() { _selectedModel = newValue; _initializeModel(); });
-                }
-              },
-              items: _models.map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(_modelDisplayNames[value] ?? value, style: const TextStyle(fontSize: 13, color: Colors.white)),
-                );
-              }).toList(),
-            ),
+            
+            // ✨ DYNAMIC SELECTOR
+            if (_currentProvider == AiProvider.gemini) 
+              // GEMINI: DROPDOWN
+              DropdownButton<String>(
+                isExpanded: true,
+                dropdownColor: Colors.grey[900],
+                value: _models.contains(_selectedGeminiModel) ? _selectedGeminiModel : _models.first,
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() { _selectedGeminiModel = newValue; _selectedModel = newValue; _initializeModel(); });
+                  }
+                },
+                items: _models.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(_modelDisplayNames[value] ?? value, style: const TextStyle(fontSize: 13, color: Colors.white)),
+                  );
+                }).toList(),
+              )
+            else if (_currentProvider == AiProvider.openRouter)
+              // OPENROUTER: TEXT FIELD
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 5),
+                  TextField(
+                    controller: _openRouterModelController,
+                    decoration: const InputDecoration(
+                      hintText: "vendor/model-name (e.g. anthropic/claude-3-haiku)",
+                      hintStyle: TextStyle(fontSize: 12),
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      isDense: true,
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                    // Auto-trim while typing for better UX
+                    onChanged: (val) { _openRouterModel = val.trim(); },
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4.0),
+                    child: Text("Check openrouter.ai/models for IDs", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  )
+                ],
+              ),
             const SizedBox(height: 30),
 
             const Text("System Prompt", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -1056,7 +1238,7 @@ void _deleteMessage(int index) {
             const SizedBox(height: 20),
             const SizedBox(height: 10),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 40), backgroundColor: Colors.deepPurpleAccent, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 40), backgroundColor: Colors.cyan, foregroundColor: Colors.white),
               onPressed: () { _saveSettings(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Settings Applied & Saved"))); Navigator.pop(context); },
               child: const Text("APPLY & SAVE"),
             ),
@@ -1276,16 +1458,44 @@ void _deleteMessage(int index) {
         backgroundColor: themeProvider.backgroundImagePath != null
             ? const Color(0xFF2C2C2C).withOpacity(0.8)
             : const Color(0xFF2C2C2C),
-        leading: Builder(
-            builder: (c) => IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () => Scaffold.of(c).openDrawer())),
-        title: const Text('AIRP - Gemini', style: TextStyle(fontSize: 24)),
+        leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
+        
+        // ✨ NEW HEADER DROPDOWN
+        title: PopupMenuButton<AiProvider>(
+          initialValue: _currentProvider,
+          onSelected: (AiProvider result) {
+            setState(() {
+              _currentProvider = result;
+              _updateApiKeyTextField(); // Switch the displayed key
+              if (result == AiProvider.gemini) _initializeModel();
+            });
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Switched to ${result.name.toUpperCase()}")));
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<AiProvider>>[
+            const PopupMenuItem<AiProvider>(
+              value: AiProvider.gemini,
+              child: Row(children: [Icon(Icons.auto_awesome, color: Colors.blueAccent), SizedBox(width: 8), Text('AIRP - Gemini')]),
+            ),
+            const PopupMenuItem<AiProvider>(
+              value: AiProvider.openRouter,
+              child: Row(children: [Icon(Icons.router, color: Colors.purpleAccent), SizedBox(width: 8), Text('AIRP - OpenRouter')]),
+            ),
+            const PopupMenuItem<AiProvider>(
+              value: AiProvider.openAi,
+              enabled: false, // Disabled for now
+              child: Row(children: [Icon(Icons.lock, color: Colors.grey), SizedBox(width: 8), Text('AIRP - OpenAI (Soon)')]),
+            ),
+          ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" : _currentProvider == AiProvider.openRouter ? "OpenRouter" : "OpenAI"}'),
+              const Icon(Icons.arrow_drop_down),
+            ],
+          ),
+        ),
         actions: [
-          Builder(
-              builder: (c) => IconButton(
-                  icon: const Icon(Icons.settings),
-                  onPressed: () => Scaffold.of(c).openEndDrawer())),
+          Builder(builder: (c) => IconButton(icon: const Icon(Icons.settings), onPressed: () => Scaffold.of(c).openEndDrawer())),
         ],
       ),
       body: Stack(
