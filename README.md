@@ -66,7 +66,7 @@ This app follows a **BYOK (Bring Your Own Key)** architecture. Your keys are sto
 
 ---
 
-## ⚙️ Usage Guide
+## Usage Guide
 
 ### Saving Settings (IMPORTANT)
 When entering API keys or changing settings in the Drawer:
@@ -103,6 +103,6 @@ What does that mean?
 
 ---
 
-## 📄 License
+## License
 
 This project is open-source and available under the MIT License.
