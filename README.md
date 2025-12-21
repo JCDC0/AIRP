@@ -8,7 +8,7 @@
 
 ## Key Features
 
-*   **Multi-Provider Support**: Seamlessly switch between Google Gemini (native) and OpenRouter.
+*   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, or Local.
 *   **Dynamic Model Lists**: Fetch the latest available models directly from the API providers.
 *   **Searchable History**: Quickly find past conversations using the integrated search bar.
 *   **Message Management**: Edit, copy, delete, or regenerate specific messages within a chat.
@@ -68,7 +68,7 @@ Connect to an LLM running on your own computer or home server.
 1.  **Prepare your Server**:
     *   **LM Studio**: Start the Local Server. Ensure "Cross-Origin-Resource-Sharing (CORS)" is enabled and the server is listening on your local network IP (not just localhost).
     *   **Ollama**: Run `OLLAMA_HOST=0.0.0.0 ollama serve`.
-2.  **Find your IP**: Get the IPv4 address of your computer (e.g., `192.168.1.15`).
+2.  **Find your IP**: Get the IPv4 address of your computer (e.g., `192.168.1.15` and add the port number next to it that comes with your local AI service).
 3.  **Configure AIRP**:
     *   Select **AIRP - Local** from the top dropdown.
     *   Open the **Settings Drawer**.
