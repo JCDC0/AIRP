@@ -104,8 +104,9 @@ class _ChatScreenState extends State<ChatScreen> {
   // ----------------------------------------------------------------------
   // CONFIGURATION
   // ----------------------------------------------------------------------
-  static const _defaultApiKey = ''; // Fallback
+  static const _defaultApiKey = '';
 
+  String _drawerSearchQuery = '';
   
   final List<String> _models = [
     'models/gemini-3-pro-preview',
@@ -1062,12 +1063,18 @@ void _showEditDialog(int index) {
 
   Widget _buildLeftDrawer() {
     final tokenColor = _tokenCount > _tokenLimitWarning ? Colors.redAccent : Colors.greenAccent;
+    
+    final filteredSessions = _savedSessions.where((session) {
+      final titleLower = session.title.toLowerCase();
+      final queryLower = _drawerSearchQuery.toLowerCase();
+      return titleLower.contains(queryLower);
+    }).toList();
+
     return Drawer(
       width: 280,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       child: Column(
         children: [
-          // HEADER
           Container(
             padding: const EdgeInsets.fromLTRB(16, 50, 16, 20),
             color: Colors.black26,
@@ -1088,49 +1095,69 @@ void _showEditDialog(int index) {
             ),
           ),
           
-          // NEW OPERATION
           ListTile(
             leading: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
             title: const Text("New Conversation", style: TextStyle(color: Colors.green)),
-            subtitle: const Text("Hold Chat to delete", style: TextStyle(color: Colors.orangeAccent, fontSize: 10) ),
+            subtitle: const Text("Hold Chat to delete", style: TextStyle(color: Colors.orangeAccent, fontSize: 10)),
             onTap: () {
               _createNewSession();
               Navigator.pop(context);
             },
           ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(20),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: TextField(
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: const InputDecoration(
+                  hintText: "Find conversation...",
+                  hintStyle: TextStyle(color: Colors.white38),
+                  prefixIcon: Icon(Icons.search, color: Colors.cyanAccent, size: 18),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  isDense: true,
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    _drawerSearchQuery = val;
+                  });
+                },
+              ),
+            ),
+          ),
           
           const Divider(color: Colors.grey),
           
-          // CONVERSATION LIST
           Expanded(
-            child: ListView.builder(
+            child: filteredSessions.isEmpty 
+            ? const Center(child: Text("No chats found", style: TextStyle(color: Colors.grey)))
+            : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), 
-              itemCount: _savedSessions.length,
+              itemCount: filteredSessions.length,
               itemBuilder: (context, index) {
-                final session = _savedSessions[index];
+                final session = filteredSessions[index];
                 final bool isActive = session.id == _currentSessionId;
                 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 8), // Spacing between items
+                  margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
                     color: isActive ? Colors.cyanAccent.withAlpha((0.05 * 255).round()) : Colors.transparent,
-                    // THE BLUE OUTLINE FOR ACTIVE CHAT
                     border: isActive ? Border.all(color: Colors.cyanAccent, width: 1.5) : null, 
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: ListTile(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    
-                    // THE RED BLUR EFFECT ON HOLD
-                    splashColor: Colors.red.withAlpha((0.95 * 255).round()), 
-                    
-                    // THE CHECKMARK INDICATOR
+                    splashColor: Colors.red.withAlpha((0.95 * 255).round()),
                     leading: Icon(
                       isActive ? Icons.check_circle : Icons.history, 
                       color: isActive ? Colors.cyanAccent : Colors.grey[600]
                     ),
-                    
                     title: Text(
                       session.title, 
                       maxLines: 1, 
@@ -1140,13 +1167,10 @@ void _showEditDialog(int index) {
                         fontWeight: isActive ? FontWeight.bold : FontWeight.normal
                       )
                     ),
-                    
                     subtitle: Text(
                       _modelDisplayNames[session.modelName] ?? session.modelName, 
                       style: TextStyle(fontSize: 10, color: Colors.grey[600])
                     ),
-                    
-                    // LOAD CHAT
                     onTap: () {
                       final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
                       
@@ -1196,7 +1220,6 @@ void _showEditDialog(int index) {
                     
                     onLongPress: () {
                       HapticFeedback.heavyImpact();
-                      
                       showDialog(
                         context: context,
                         builder: (context) => AlertDialog(
@@ -1220,7 +1243,7 @@ void _showEditDialog(int index) {
                               label: const Text("DELETE"),
                               onPressed: () {
                                 setState(() {
-                                  _savedSessions.removeAt(index);
+                                  _savedSessions.removeWhere((s) => s.id == session.id);
                                   if (session.id == _currentSessionId) {
                                     _createNewSession();
                                   }
@@ -1249,7 +1272,7 @@ void _showEditDialog(int index) {
   Widget _buildSettingsDrawer() {
     return Drawer(
       width: 320,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -1749,7 +1772,7 @@ void _showEditDialog(int index) {
       endDrawer: _buildSettingsDrawer(),
       appBar: AppBar(
         backgroundColor: themeProvider.backgroundImagePath != null
-          ? const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round())
+          ? const Color(0xFFFFFFFF).withAlpha((0 * 255).round())
           : const Color(0xFF2C2C2C),
         leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
         
@@ -1834,7 +1857,7 @@ void _showEditDialog(int index) {
               
               Container(
                 padding: const EdgeInsets.all(8.0),
-                color: const Color(0xFF1E1E1E).withAlpha((0.9 * 255).round()),
+                color: const Color(0xFFFFFFFF).withAlpha((0.1 * 255).round()),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1886,7 +1909,7 @@ void _showEditDialog(int index) {
                           child: TextField(
                             controller: _textController,
                             minLines: 1,
-                            maxLines: 4,
+                            maxLines: 6,
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               hintText: _pendingImages.isNotEmpty
@@ -1894,12 +1917,12 @@ void _showEditDialog(int index) {
                                   : (_enableGrounding
                                       ? 'Search & Chat...'
                                       : 'Ready to chat...'),
-                              hintStyle: TextStyle(color: Colors.grey[600]),
+                              hintStyle: TextStyle(color: Colors.white),
                               border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(24),
                                   borderSide: BorderSide.none),
                               filled: true,
-                              fillColor: const Color(0xFF2C2C2C),
+                              fillColor: const Color.fromARGB(255, 28, 57, 102),
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 10),
                             ),
