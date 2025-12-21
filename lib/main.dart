@@ -207,7 +207,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // ✨ UPDATED SETTINGS LOADER
+  // UPDATED SETTINGS LOADER
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -252,12 +252,12 @@ class _ChatScreenState extends State<ChatScreen> {
   // ----------------------------------------------------------------------
   // OPTIMIZED _saveSettings
   // ----------------------------------------------------------------------
+
   Future<void> _saveSettings() async {
-    // Trim inputs to remove ghost spaces
+    // Trim inputs
     final cleanKey = _apiKeyController.text.trim();
     final cleanModel = _openRouterModelController.text.trim();
 
-    // Optimistic UI update (Update state immediately)
     setState(() {
       switch (_currentProvider) {
         case AiProvider.gemini: _geminiKey = cleanKey; break;
@@ -266,9 +266,16 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       _openRouterModel = cleanModel;
       _openRouterModelController.text = cleanModel;
+      
+      // If using Gemini, the dropdown already updated _selectedModel via onChanged.
+      // If using OpenRouter, we need to ensure _selectedModel matches the text field.
+      if (_currentProvider == AiProvider.openRouter) {
+        _selectedModel = cleanModel;
+      } else if (_currentProvider == AiProvider.gemini) {
+         _selectedModel = _selectedGeminiModel;
+      }
     });
 
-    // Async work (Saving to disk)
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('airp_key_gemini', _geminiKey);
     await prefs.setString('airp_key_openrouter', _openRouterKey);
@@ -276,22 +283,24 @@ class _ChatScreenState extends State<ChatScreen> {
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString('airp_model_openrouter', _openRouterModel);
 
-    // LOGIC CHECK: Only re-init Google Model if we are actually using it
+    // ✨ FIX: FORCE UPDATE CURRENT SESSION MODEL
+    // If we are currently in a chat, update its model name immediately so the drawer reflects it.
+    if (_currentSessionId != null) {
+      _autoSaveCurrentSession(); 
+    }
+
     if (_currentProvider == AiProvider.gemini) {
       await _initializeModel();
     }
 
-    // SAFETY CHECK: Check if the user is still looking at the screen
     if (!mounted) return;
-
-    // Single SnackBar (Floating so it doesn't block the bottom)
-    ScaffoldMessenger.of(context).clearSnackBars(); // Clear any existing ones
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("Settings Saved & Ready!"),
+      const SnackBar(
+        content: Text("Settings Saved & Model Updated"),
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.lightBlue,
-        duration: const Duration(milliseconds: 1500),
+        duration: Duration(milliseconds: 1500),
       )
     );
   }
@@ -843,52 +852,161 @@ Future<void> _sendMessage() async {
       }
     });
   }
+
+  // ----------------------------------------------------------------------
+  // REGENERATE FUNCTION
+  // ----------------------------------------------------------------------
+  void _regenerateResponse(int index) {
+    // Logic:
+    // 1. If it's an AI message, we delete it, then find the user message before it, and re-send.
+    // 2. If it's a User message, we delete everything after it, and re-send that user message.
+    
+    // For simplicity/safety, let's only allow regenerating the LAST AI message for now.
+    // Or if the user clicks their own last message.
+    
+    final msg = _messages[index];
+    
+    // Case A: User wants to retry the AI's last response
+    if (!msg.isUser) {
+      setState(() {
+        _messages.removeAt(index); // Remove the "bad" AI response
+        _isLoading = true; // Start loading
+      });
+      
+      // We need to re-send the LAST user message now.
+      // Since we removed the AI msg, the last one in the list *should* be the user.
+      if (_messages.isNotEmpty && _messages.last.isUser) {
+        final lastUserMsg = _messages.last;
+        // We have to remove it temporarily because _sendMessage adds it back
+        _messages.removeLast(); 
+        
+        // Restore text controller just in case, or pass directly
+        _textController.text = lastUserMsg.text;
+        _pendingImages.addAll(lastUserMsg.imagePaths); // Restore images if any
+        
+        _sendMessage(); // Re-trigger send
+      }
+    }
+    // Case B: User wants to retry their OWN message (e.g. edited it or just retry)
+    else if (msg.isUser) {
+       // Only allow if it's the very last message (otherwise history gets weird)
+       if (index == _messages.length - 1) {
+         setState(() {
+           _messages.removeAt(index);
+           _isLoading = true;
+         });
+         _textController.text = msg.text;
+         _pendingImages.addAll(msg.imagePaths);
+         _sendMessage();
+       } else {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text("Can only regenerate the latest exchange"))
+         );
+       }
+    }
+  }
   
   void _showMessageOptions(BuildContext context, int index) {
+    final msg = _messages[index];
+    final bool isLastMessage = index == _messages.length - 1;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 10),
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.copy, color: Colors.cyanAccent),
-                title: const Text("Copy Text", style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Clipboard.setData(ClipboardData(text: _messages[index].text));
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Copied to clipboard!"), duration: Duration(seconds: 1)));
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit, color: Colors.orangeAccent),
-                title: const Text("Edit Message", style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showEditDialog(index);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.redAccent),
-                title: const Text("Delete Message", style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteMessage(index);
-                },
-              ),
-              const SizedBox(height: 10),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Little handle bar
+                Container(
+                  width: 40, height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)),
+                ),
+                
+                // THE ICON ROW
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // 1. COPY
+                    _buildMenuIcon(
+                      icon: Icons.copy, 
+                      label: "Copy", 
+                      color: Colors.cyanAccent, 
+                      onTap: () {
+                        Navigator.pop(context);
+                        Clipboard.setData(ClipboardData(text: msg.text));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Copied!"), duration: Duration(milliseconds: 800)));
+                      }
+                    ),
+
+                    // 2. EDIT (Only for user messages usually, but allowed for both here)
+                    _buildMenuIcon(
+                      icon: Icons.edit, 
+                      label: "Edit", 
+                      color: Colors.orangeAccent, 
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showEditDialog(index);
+                      }
+                    ),
+
+                    // 3. REGENERATE (Only if it's the last message exchange)
+                    // We disable it visually if it's not the last message to avoid logic errors
+                    Opacity(
+                      opacity: isLastMessage ? 1.0 : 0.3,
+                      child: _buildMenuIcon(
+                        icon: Icons.refresh, 
+                        label: "Retry", 
+                        color: Colors.greenAccent, 
+                        onTap: isLastMessage ? () {
+                          Navigator.pop(context);
+                          _regenerateResponse(index); // Call the new helper
+                        } : null
+                      ),
+                    ),
+
+                    // 4. DELETE (With Confirmation)
+                    _buildMenuIcon(
+                      icon: Icons.delete, 
+                      label: "Delete", 
+                      color: Colors.redAccent, 
+                      onTap: () {
+                        Navigator.pop(context); // Close sheet first
+                        _confirmDeleteMessage(index); // Show dialog
+                      }
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  // Helper widget for the icons to keep code clean
+  Widget _buildMenuIcon({required IconData icon, required String label, required Color color, VoidCallback? onTap}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton.filled(
+          style: IconButton.styleFrom(
+            backgroundColor: color.withValues(alpha: 0.1),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            padding: const EdgeInsets.all(16),
+          ),
+          icon: Icon(icon, color: color, size: 28),
+          onPressed: onTap,
+        ),
+        const SizedBox(height: 8),
+        Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+      ],
     );
   }
 
@@ -923,14 +1041,52 @@ void _showEditDialog(int index) {
     );
   }
 
-void _deleteMessage(int index) {
+  // ----------------------------------------------------------------------
+  // DELETE WITH CONFIRMATION
+  // ----------------------------------------------------------------------
+  void _confirmDeleteMessage(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Delete Message?", style: TextStyle(color: Colors.white)),
+        content: const Text("This cannot be undone.", style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _deleteMessage(index); // Actually delete
+            },
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Actual deletion logic (Keep this mostly same, just ensure it saves)
+  void _deleteMessage(int index) {
     setState(() {
       _messages.removeAt(index);
     });
     _autoSaveCurrentSession();
-    _initializeModel(); 
+    // We might need to re-init model if context changed significantly, 
+    // but usually not strictly necessary for just deleting one msg.
+    // _initializeModel(); // Optional
     
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Message deleted")));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Message deleted"),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(milliseconds: 1000),
+      )
+    );
   }
 
   // ----------------------------------------------------------------------
@@ -1025,22 +1181,51 @@ void _deleteMessage(int index) {
                     
                     // LOAD CHAT
                     onTap: () {
-                        final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+                      final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+                      
                       setState(() {
+                        // 1. Load Messages & Basic Data
                         _messages = List.from(session.messages);
-                        _selectedModel = session.modelName;
-                        _tokenCount = session.tokenCount;
                         _currentSessionId = session.id;
+                        _tokenCount = session.tokenCount;
                         _systemInstructionController.text = session.systemInstruction;
                         _titleController.text = session.title;
 
+                        // 2. Restore Visuals
                         if (session.backgroundImage != null) {
                           themeProvider.setBackgroundImage(session.backgroundImage!);
                         }
 
+                        // 3. ✨ CRITICAL FIX: Restore Provider & Model UI State ✨
+                        // This ensures the Settings Drawer shows the correct model/provider
+                        if (session.provider == 'openRouter') {
+                          _currentProvider = AiProvider.openRouter;
+                          _openRouterModel = session.modelName;
+                          _openRouterModelController.text = session.modelName; // Sync Text Field
+                          _selectedModel = session.modelName;
+                        } 
+                        else if (session.provider == 'openAi') {
+                          _currentProvider = AiProvider.openAi;
+                          // Handle OpenAI specific UI sync if added later
+                          _selectedModel = session.modelName;
+                        } 
+                        else {
+                          // Default to Gemini
+                          _currentProvider = AiProvider.gemini;
+                          // Check if the loaded model is in our list, if not, keep it anyway but dropdown might look weird
+                          // or add it to the list dynamically (advanced), but for now just set it.
+                          _selectedGeminiModel = session.modelName; 
+                          _selectedModel = session.modelName;
+                        }
+
+                        // 4. Update the API Key text box to match the restored provider
+                        _updateApiKeyTextField();
+
+                        // 5. Re-initialize the chat engine
                         _initializeModel();
                       });
-                      Navigator.pop(context);
+
+                      Navigator.pop(context); // Close Drawer
                       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
                     },
                     
