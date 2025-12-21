@@ -73,31 +73,24 @@ class ChatSessionData {
     this.provider = 'gemini', 
   });
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'messages': messages.map((m) => m.toJson()).toList(),
-    'modelName': modelName,
-    'tokenCount': tokenCount,
-    'systemInstruction': systemInstruction,
-    'backgroundImage': backgroundImage,
-    'provider': provider,
-  };
+// Compact JSON conversion
+Map<String, dynamic> toJson() => {
+  'id': id, 'title': title, 'modelName': modelName, 'tokenCount': tokenCount,
+  'systemInstruction': systemInstruction, 'backgroundImage': backgroundImage,
+  'provider': provider,
+  'messages': messages.map((m) => m.toJson()).toList(),
+};
 
-  factory ChatSessionData.fromJson(Map<String, dynamic> json) {
-    return ChatSessionData(
-      id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      title: json['title'] ?? "Untitled",
-      messages: (json['messages'] as List?)
-          ?.map((m) => ChatMessage.fromJson(m))
-          .toList() ?? [],
-      modelName: json['modelName'] ?? 'models/gemini-flash-lite-latest',
-      tokenCount: json['tokenCount'] ?? 0,
-      systemInstruction: json['systemInstruction'] ?? "",
-      backgroundImage: json['backgroundImage'],
-      provider: json['provider'] ?? 'gemini',
-    );
-  }
+factory ChatSessionData.fromJson(Map<String, dynamic> json) => ChatSessionData(
+  id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+  title: json['title'] ?? "Untitled",
+  messages: (json['messages'] as List?)?.map((m) => ChatMessage.fromJson(m)).toList() ?? [],
+  modelName: json['modelName'] ?? 'models/gemini-flash-lite-latest',
+  tokenCount: json['tokenCount'] ?? 0,
+  systemInstruction: json['systemInstruction'] ?? "",
+  backgroundImage: json['backgroundImage'],
+  provider: json['provider'] ?? 'gemini',
+);
 }
 
 class ChatScreen extends StatefulWidget {
@@ -152,10 +145,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String _geminiKey = '';
   String _openRouterKey = '';
-  String _openAiKey = ''; // Placeholder for 0.1.5 integration
+  String _openAiKey = ''; // Placeholder for possible OpenAI support
 
-  String _selectedGeminiModel = 'models/gemini-flash-lite-latest';
-  String _openRouterModel = 'google/gemini-2.0-flash-lite-preview-02-05:free'; // Default OR model
+  String _selectedGeminiModel = 'models/gemini-flash-lite-latest'; // Default Gemini model
+  String _openRouterModel = 'z-ai/glm-4.5-air:free'; // Default OR model
 
   String _selectedModel = 'models/gemini-flash-lite-latest';
   double _temperature = 1; 
@@ -240,7 +233,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // ✨ HELPER TO SYNC UI TEXT FIELD
+  // HELPER TO SYNC UI TEXT FIELD
   void _updateApiKeyTextField() {
     switch (_currentProvider) {
       case AiProvider.gemini: _apiKeyController.text = _geminiKey; break;
@@ -266,9 +259,8 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       _openRouterModel = cleanModel;
       _openRouterModelController.text = cleanModel;
-      
-      // If using Gemini, the dropdown already updated _selectedModel via onChanged.
-      // If using OpenRouter, we need to ensure _selectedModel matches the text field.
+
+      // Update selected model based on provider
       if (_currentProvider == AiProvider.openRouter) {
         _selectedModel = cleanModel;
       } else if (_currentProvider == AiProvider.gemini) {
@@ -283,8 +275,6 @@ class _ChatScreenState extends State<ChatScreen> {
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString('airp_model_openrouter', _openRouterModel);
 
-    // ✨ FIX: FORCE UPDATE CURRENT SESSION MODEL
-    // If we are currently in a chat, update its model name immediately so the drawer reflects it.
     if (_currentSessionId != null) {
       _autoSaveCurrentSession(); 
     }
@@ -350,7 +340,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _initializeModel();
   }
 
-// ----------------------------------------------------------------------
+  // ----------------------------------------------------------------------
   // FIXED _initializeModel
   // ----------------------------------------------------------------------
   Future<void> _initializeModel() async {
@@ -364,7 +354,6 @@ class _ChatScreenState extends State<ChatScreen> {
       activeKey = _openAiKey;
     }
 
-    // OPTIMIZATION: If no key, don't crash. Just don't start the chat yet.
     if (activeKey.isEmpty) {
       debugPrint("Warning: No API Key found for ${_currentProvider.name}");
       return; 
@@ -390,8 +379,6 @@ class _ChatScreenState extends State<ChatScreen> {
         safetySettings: safetySettings,
       );
       
-      // ... (Keep your History Loop Logic here exactly as it was) ...
-      // Copy the exact history loop from your previous code
       List<Content> history = [];
       for (var msg in _messages) {
           final String role = msg.isUser ? 'user' : 'model';
@@ -418,7 +405,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _chat = _model.startChat(history: history);
     } catch (e) {
       debugPrint("Model Init Error: $e");
-      // Handle initialization error nicely (optional)
     }
   }
 
@@ -458,7 +444,6 @@ Future<void> _sendMessage() async {
     }
   }
 
-  // ✨ EXTRACTED GEMINI LOGIC (Clean Code!)
   Future<void> _sendGeminiMessage(String text, List<String> images) async {
     Content userContent;
     if (images.isNotEmpty) {
@@ -513,7 +498,6 @@ Future<void> _sendMessage() async {
     _autoSaveCurrentSession();
   }
 
-  // ✨ NEW OPENROUTER LOGIC
   Future<void> _sendOpenRouterMessage(String text, List<String> images) async {
     final url = Uri.parse("https://openrouter.ai/api/v1/chat/completions");
 
@@ -717,7 +701,7 @@ Future<void> _sendMessage() async {
     }
   }
 
-  // ✨ LOAD LIBRARY
+  // LOAD LIBRARY
   Future<void> _loadSystemPrompts() async {
     final prefs = await SharedPreferences.getInstance();
     final String? data = prefs.getString('airp_system_prompts');
@@ -733,7 +717,7 @@ Future<void> _sendMessage() async {
     }
   }
 
-  // ✨ SAVE TO LIBRARY
+  // SAVE TO LIBRARY
   Future<void> _savePromptToLibrary() async {
     if (_promptTitleController.text.isEmpty || _systemInstructionController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Title and Content cannot be empty")));
@@ -786,62 +770,55 @@ Future<void> _sendMessage() async {
     return Column(
       children: [
         GestureDetector(
-          onTap: () {
-            Color tempColor = color; 
-
-            showDialog(
-              context: context,
-              builder: (context) => StatefulBuilder(
-                builder: (context, setDialogState) {
-                  return AlertDialog(
-                    backgroundColor: const Color(0xFF2C2C2C),
-                    title: const Text("Pick a Color", style: TextStyle(color: Colors.white)),
-                    content: SingleChildScrollView(
-                      child: ColorPicker(
-                        pickerColor: tempColor,
-                        onColorChanged: (c) {
-                          setDialogState(() {
-                            tempColor = c;
-                          });
-                        },
-                        labelTypes: const [], 
-                        pickerAreaHeightPercent: 0.7,
-                        enableAlpha: false, 
-                        displayThumbColor: true,
-                        paletteType: PaletteType.hsvWithHue,
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      TextButton(
-                        child: const Text("Done", style: TextStyle(color: Colors.cyanAccent)),
-                        onPressed: () {
-                          onSave(tempColor); 
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ],
-                  );
-                },
-              ),
-            );
-          },
+          onTap: () => _showColorPickerDialog(color, onSave), 
           child: Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
-              boxShadow: [BoxShadow(color: color.withAlpha((0.5 * 255).round()), blurRadius: 8)]
+              boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 8)],
             ),
           ),
         ),
         const SizedBox(height: 5),
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
+    );
+  }
+
+  void _showColorPickerDialog(Color initialColor, Function(Color) onSave) {
+    Color tempColor = initialColor;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF2C2C2C),
+            title: const Text("Pick a Color", style: TextStyle(color: Colors.white)),
+            content: SingleChildScrollView(
+              child: ColorPicker(
+                pickerColor: tempColor,
+                onColorChanged: (c) => setDialogState(() => tempColor = c),
+                pickerAreaHeightPercent: 0.7,
+                enableAlpha: false,
+                displayThumbColor: true,
+                paletteType: PaletteType.hsvWithHue,
+              ),
+            ),
+            actions: [
+              TextButton(child: const Text("Cancel"), onPressed: () => Navigator.pop(context)),
+              TextButton(
+                child: const Text("Done", style: TextStyle(color: Colors.cyanAccent)),
+                onPressed: () {
+                  onSave(tempColor);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -858,8 +835,8 @@ Future<void> _sendMessage() async {
   // ----------------------------------------------------------------------
   void _regenerateResponse(int index) {
     // Logic:
-    // 1. If it's an AI message, we delete it, then find the user message before it, and re-send.
-    // 2. If it's a User message, we delete everything after it, and re-send that user message.
+    // 1. If it's an AI message, delete it, then find the user message before it, and re-send.
+    // 2. If it's a User message, delete everything after it, and re-send that user message.
     
     // For simplicity/safety, let's only allow regenerating the LAST AI message for now.
     // Or if the user clicks their own last message.
@@ -869,27 +846,22 @@ Future<void> _sendMessage() async {
     // Case A: User wants to retry the AI's last response
     if (!msg.isUser) {
       setState(() {
-        _messages.removeAt(index); // Remove the "bad" AI response
+        _messages.removeAt(index); // Remove "bad" AI response
         _isLoading = true; // Start loading
       });
       
-      // We need to re-send the LAST user message now.
-      // Since we removed the AI msg, the last one in the list *should* be the user.
       if (_messages.isNotEmpty && _messages.last.isUser) {
         final lastUserMsg = _messages.last;
-        // We have to remove it temporarily because _sendMessage adds it back
         _messages.removeLast(); 
         
-        // Restore text controller just in case, or pass directly
         _textController.text = lastUserMsg.text;
-        _pendingImages.addAll(lastUserMsg.imagePaths); // Restore images if any
-        
-        _sendMessage(); // Re-trigger send
+        _pendingImages.addAll(lastUserMsg.imagePaths);
+        _sendMessage(); 
       }
     }
-    // Case B: User wants to retry their OWN message (e.g. edited it or just retry)
+    // Case B: User wants to retry their message
     else if (msg.isUser) {
-       // Only allow if it's the very last message (otherwise history gets weird)
+       // Only allow if it's the very last message
        if (index == _messages.length - 1) {
          setState(() {
            _messages.removeAt(index);
@@ -956,7 +928,6 @@ Future<void> _sendMessage() async {
                     ),
 
                     // 3. REGENERATE (Only if it's the last message exchange)
-                    // We disable it visually if it's not the last message to avoid logic errors
                     Opacity(
                       opacity: isLastMessage ? 1.0 : 0.3,
                       child: _buildMenuIcon(
@@ -965,7 +936,7 @@ Future<void> _sendMessage() async {
                         color: Colors.greenAccent, 
                         onTap: isLastMessage ? () {
                           Navigator.pop(context);
-                          _regenerateResponse(index); // Call the new helper
+                          _regenerateResponse(index);
                         } : null
                       ),
                     ),
@@ -976,8 +947,8 @@ Future<void> _sendMessage() async {
                       label: "Delete", 
                       color: Colors.redAccent, 
                       onTap: () {
-                        Navigator.pop(context); // Close sheet first
-                        _confirmDeleteMessage(index); // Show dialog
+                        Navigator.pop(context); 
+                        _confirmDeleteMessage(index); 
                       }
                     ),
                   ],
@@ -990,7 +961,6 @@ Future<void> _sendMessage() async {
     );
   }
 
-  // Helper widget for the icons to keep code clean
   Widget _buildMenuIcon({required IconData icon, required String label, required Color color, VoidCallback? onTap}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1060,8 +1030,8 @@ void _showEditDialog(int index) {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              _deleteMessage(index); // Actually delete
+              Navigator.pop(context);
+              _deleteMessage(index); 
             },
             child: const Text("Delete"),
           ),
@@ -1070,15 +1040,12 @@ void _showEditDialog(int index) {
     );
   }
 
-  // Actual deletion logic (Keep this mostly same, just ensure it saves)
+  // DELETE LOGIC
   void _deleteMessage(int index) {
     setState(() {
       _messages.removeAt(index);
     });
     _autoSaveCurrentSession();
-    // We might need to re-init model if context changed significantly, 
-    // but usually not strictly necessary for just deleting one msg.
-    // _initializeModel(); // Optional
     
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -1196,12 +1163,12 @@ void _showEditDialog(int index) {
                           themeProvider.setBackgroundImage(session.backgroundImage!);
                         }
 
-                        // 3. ✨ CRITICAL FIX: Restore Provider & Model UI State ✨
+                        // 3. Restore Provider & Model UI State 
                         // This ensures the Settings Drawer shows the correct model/provider
                         if (session.provider == 'openRouter') {
                           _currentProvider = AiProvider.openRouter;
                           _openRouterModel = session.modelName;
-                          _openRouterModelController.text = session.modelName; // Sync Text Field
+                          _openRouterModelController.text = session.modelName; 
                           _selectedModel = session.modelName;
                         } 
                         else if (session.provider == 'openAi') {
@@ -1212,8 +1179,6 @@ void _showEditDialog(int index) {
                         else {
                           // Default to Gemini
                           _currentProvider = AiProvider.gemini;
-                          // Check if the loaded model is in our list, if not, keep it anyway but dropdown might look weird
-                          // or add it to the list dynamically (advanced), but for now just set it.
                           _selectedGeminiModel = session.modelName; 
                           _selectedModel = session.modelName;
                         }
@@ -1236,7 +1201,6 @@ void _showEditDialog(int index) {
                         context: context,
                         builder: (context) => AlertDialog(
                           backgroundColor: const Color(0xFF2C2C2C),
-                          // Red Blur Header style
                           title: const Row(
                             children: [
                               Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
@@ -1250,7 +1214,6 @@ void _showEditDialog(int index) {
                               onPressed: () => Navigator.pop(context),
                               child: const Text("Cancel"),
                             ),
-                            // THE TRASH CAN BUTTON
                             FilledButton.icon(
                               style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
                               icon: const Icon(Icons.delete_forever, color: Colors.white),
@@ -1338,9 +1301,8 @@ void _showEditDialog(int index) {
 
             const Text("Model Selection", style: TextStyle(fontWeight: FontWeight.bold)),
             
-            // ✨ DYNAMIC SELECTOR
+            // DYNAMIC SELECTOR
             if (_currentProvider == AiProvider.gemini) 
-              // GEMINI: DROPDOWN
               DropdownButton<String>(
                 isExpanded: true,
                 dropdownColor: Colors.grey[900],
@@ -1363,7 +1325,6 @@ void _showEditDialog(int index) {
                 children: [
                   const SizedBox(height: 5),
                   
-                  // ✨ THE SWITCHER: Dropdown OR TextField
                   if (_openRouterModelsList.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1394,7 +1355,7 @@ void _showEditDialog(int index) {
                             if (newValue != null) {
                               setState(() {
                                 _openRouterModel = newValue;
-                                _openRouterModelController.text = newValue; // Sync controller
+                                _openRouterModelController.text = newValue; 
                               });
                             }
                           },
@@ -1418,7 +1379,6 @@ void _showEditDialog(int index) {
 
                   const SizedBox(height: 8),
 
-                  // ✨ THE FETCH BUTTON
                   if (_openRouterModelsList.isEmpty)
                     SizedBox(
                       width: double.infinity,
@@ -1440,7 +1400,7 @@ void _showEditDialog(int index) {
                        alignment: Alignment.centerRight,
                        child: TextButton(
                          onPressed: () {
-                           // Option to switch back to manual entry if they want
+                           // Option to switch back to manual entry
                            setState(() => _openRouterModelsList = []);
                          },
                          child: const Text("Switch to Manual Input", style: TextStyle(fontSize: 10, color: Colors.grey)),
@@ -1496,7 +1456,6 @@ void _showEditDialog(int index) {
                         _systemInstructionController.clear();
                       });
                     } else if (newValue != null) {
-                      // Find the prompt object
                       final prompt = _savedSystemPrompts.firstWhere((p) => p.title == newValue);
                       setState(() {
                         _promptTitleController.text = prompt.title;
@@ -1540,7 +1499,6 @@ void _showEditDialog(int index) {
             
             const SizedBox(height: 8),
 
-            // (Save / Delete)
             Row(
               children: [
                 Expanded(
@@ -1645,7 +1603,6 @@ void _showEditDialog(int index) {
                       activeColor: provider.userBubbleColor.withAlpha(255), 
                       inactiveColor: Colors.grey[800],
                       onChanged: (val) {
-                        // Keep the RGB, just change Alpha
                         provider.updateColor('userBubble', provider.userBubbleColor.withAlpha((val * 255).round()));
                       },
                     ),
@@ -1736,9 +1693,8 @@ void _showEditDialog(int index) {
 
                           return InkWell(
                             onTap: () => provider.setBackgroundImage(path),
-                            // Long Press triggers the "Red Delete"
+                            // Long Press triggers "Red Delete"
                             onLongPress: isCustom ? () {
-                              // Visual Feedback (Vibration if possible, or just UI update)
                               HapticFeedback.mediumImpact(); 
                               provider.removeCustomImage(path);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1797,13 +1753,12 @@ void _showEditDialog(int index) {
           : const Color(0xFF2C2C2C),
         leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
         
-        // ✨ NEW HEADER DROPDOWN
         title: PopupMenuButton<AiProvider>(
           initialValue: _currentProvider,
           onSelected: (AiProvider result) {
             setState(() {
               _currentProvider = result;
-              _updateApiKeyTextField(); // Switch the displayed key
+              _updateApiKeyTextField(); 
               if (result == AiProvider.gemini) _initializeModel();
             });
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Switched to ${result.name.toUpperCase()}")));
@@ -1819,7 +1774,7 @@ void _showEditDialog(int index) {
             ),
             const PopupMenuItem<AiProvider>(
               value: AiProvider.openAi,
-              enabled: false, // Disabled for now
+              enabled: false,
               child: Row(children: [Icon(Icons.lock, color: Colors.grey), SizedBox(width: 8), Text('AIRP - OpenAI (Soon)')]),
             ),
           ],
@@ -1863,77 +1818,17 @@ void _showEditDialog(int index) {
               children: [
                 Expanded(
                   child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = _messages[index];
-                    final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
-                    final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
-                    final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha((0.5 * 255).round()) : Colors.white10;
-                    return Align(
-                       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
-                        child: GestureDetector(
-                          onLongPress: () => _showMessageOptions(context, index),
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                            color: bubbleColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: borderColor),
-                          ),
-                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-                            child: Column( 
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (msg.imagePaths.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8.0),
-                                    child: Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: msg.imagePaths.map((path) {
-                                        return ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: Image.file(
-                                            File(path), 
-                                            width: 150,
-                                            height: 150, 
-                                            fit: BoxFit.cover
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                            if (msg.aiImage != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.memory(
-                                    base64Decode(msg.aiImage!), 
-                                    width: 250, 
-                                    fit: BoxFit.contain
-                                  ),
-                                ),
-                              ),
-                            if (msg.text.isNotEmpty)
-                              MarkdownBody(
-                                data: msg.text,
-                                styleSheet: MarkdownStyleSheet(
-                                  p: TextStyle(color: textColor),
-                                  a: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline),
-                                  code: TextStyle(color: textColor, backgroundColor: Colors.black26),            
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                    controller: _scrollController,
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      return MessageBubble(
+                        msg: _messages[index],
+                        themeProvider: themeProvider,
+                        onLongPress: () => _showMessageOptions(context, index),
                       );
-                  },
+                    },
+                  ),
                 ),
-              ),
               if (_isLoading)
                 const LinearProgressIndicator(color: Colors.cyanAccent, minHeight: 2),
               
@@ -2283,3 +2178,77 @@ const List<String> kAssetBackgrounds = [
   'assets/trainer_office.jpg',
   'assets/turf.jpeg',
 ];
+
+class MessageBubble extends StatelessWidget {
+  final ChatMessage msg;
+  final ThemeProvider themeProvider;
+  final VoidCallback? onLongPress;
+
+  const MessageBubble({
+    super.key,
+    required this.msg,
+    required this.themeProvider,
+    this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
+    final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
+    final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha(128) : Colors.white10;
+
+    return Align(
+      alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: GestureDetector(
+        onLongPress: onLongPress,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor),
+          ),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (msg.imagePaths.isNotEmpty)
+                _buildImageGrid(msg.imagePaths),
+              if (msg.aiImage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.memory(base64Decode(msg.aiImage!), width: 250, fit: BoxFit.contain),
+                  ),
+                ),
+              if (msg.text.isNotEmpty)
+                MarkdownBody(
+                  data: msg.text,
+                  styleSheet: MarkdownStyleSheet(
+                    p: TextStyle(color: textColor),
+                    a: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline),
+                    code: TextStyle(color: textColor, backgroundColor: Colors.black26),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageGrid(List<String> paths) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Wrap(
+        spacing: 8, runSpacing: 8,
+        children: paths.map((path) => ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(File(path), width: 150, height: 150, fit: BoxFit.cover),
+        )).toList(),
+      ),
+    );
+  }
+}
