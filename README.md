@@ -49,16 +49,16 @@
 This app follows a **BYOK (Bring Your Own Key)** architecture. Keys are stored locally on your device.
 
 ### 1. Google Gemini
-1.  Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
-2.  Open the **Settings Drawer** (slide from right or click the gear icon).
-3.  Select **AIRP - Gemini** from the top dropdown.
+1.  Obtain an API key from [Google AI Studio](https://aistudio.google.com/).  
+2.  Select **AIRP - Gemini** from the top dropdown.
+3.  Open the **Settings Drawer** (slide from right or click the gear icon).
 4.  Paste your key into the API Key field.
 5.  **Important:** Click **APPLY & SAVE**.
 
 ### 2. OpenRouter
 1.  Obtain an API key from [OpenRouter.ai](https://openrouter.ai/).
-2.  Open the **Settings Drawer**.
-3.  Select **AIRP - OpenRouter** from the top dropdown.
+2.  Select **AIRP - OpenRouter** from the top dropdown.
+3.  Open the **Settings Drawer**.
 4.  Paste your key.
 5.  **Important:** Click **APPLY & SAVE**.
 
