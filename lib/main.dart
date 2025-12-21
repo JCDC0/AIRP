@@ -207,14 +207,17 @@ class _ChatScreenState extends State<ChatScreen> {
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _promptTitleController = TextEditingController(); 
   List<SystemPromptData> _savedSystemPrompts = [];
-
   final List<String> _pendingImages = [];
   List<ChatMessage> _messages = []; 
   List<ChatSessionData> _savedSessions = []; 
+
   String? _currentSessionId;
   int _tokenCount = 0;
   static const int _tokenLimitWarning = 190000;
+
   bool _isLoading = false;
+  http.Client? _httpClient; 
+  bool _isCancelled = false;
 
   @override
   void initState() {
@@ -404,6 +407,32 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------------------
+  // STOP GENERATION LOGIC
+  // ----------------------------------------------------------------------
+  void _cancelGeneration() {
+    setState(() {
+      _isLoading = false;
+      _isCancelled = true; 
+    });
+
+    // 1. Kill HTTP Client (For Local & OpenRouter)
+    try {
+      _httpClient?.close();
+    } catch (e) {
+      debugPrint("Error closing client: $e");
+    }
+
+    // 2. UI Feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Generation Stopped 🛑"), 
+        duration: Duration(milliseconds: 500),
+        backgroundColor: Colors.redAccent,
+      )
+    );
+  }
+
+  // ----------------------------------------------------------------------
   // FIXED _initializeModel
   // ----------------------------------------------------------------------
   Future<void> _initializeModel() async {
@@ -474,151 +503,131 @@ class _ChatScreenState extends State<ChatScreen> {
 Future<void> _sendMessage() async {
     final messageText = _textController.text;
     if (messageText.isEmpty && _pendingImages.isEmpty) return;
-    
+
     // 1. UI UPDATES
     final List<String> imagesToSend = List.from(_pendingImages);
     setState(() {
       _messages.add(ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend));
       _isLoading = true;
+      _isCancelled = false; // Reset cancel flag
+      _httpClient = http.Client(); // ✨ Init new client
       _pendingImages.clear();
       _textController.clear();
     });
     _scrollToBottom();
     _autoSaveCurrentSession();
 
-    // 2. BRANCHING LOGIC
     try {
       if (_currentProvider == AiProvider.gemini) {
-        // --- GEMINI LOGIC ---
         await _sendGeminiMessage(messageText, imagesToSend);
       } else if (_currentProvider == AiProvider.openRouter) {
-        // --- OPENROUTER LOGIC ---
         await _sendOpenRouterMessage(messageText, imagesToSend);
       } else if (_currentProvider == AiProvider.local) {
-        // --- LOCAL LOGIC (NEW) ---
         await _sendLocalMessage(messageText, imagesToSend);
       } else {
-        // OpenAI Placeholder
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      setState(() {
-        _messages.add(ChatMessage(
-          text: "**System Error**\n\n```\n$e\n```",
-          isUser: false,
-          modelName: "System Alert",
-        ));
-        _isLoading = false;
-      });
-      _autoSaveCurrentSession();
+      // If we cancelled, don't show error
+      if (!_isCancelled) {
+        setState(() {
+          _messages.add(ChatMessage(
+            text: "**System Error**\n\n```\n$e\n```",
+            isUser: false,
+            modelName: "System Alert",
+          ));
+          _isLoading = false;
+        });
+        _autoSaveCurrentSession();
+      }
     }
   }
 
-  Future<void> _sendGeminiMessage(String text, List<String> images) async {
+    Future<void> _sendGeminiMessage(String text, List<String> images) async {
+    // ... (Keep existing Gemini Content creation logic) ...
     Content userContent;
     if (images.isNotEmpty) {
-      final List<Part> parts = [];
+       final List<Part> parts = [];
       if (text.isNotEmpty) parts.add(TextPart(text));
       for (String path in images) {
         final bytes = await File(path).readAsBytes();
-        final mimeType = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-        parts.add(DataPart(mimeType, bytes));
+        parts.add(DataPart(path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg', bytes));
       }
       userContent = Content.multi(parts);
     } else {
       userContent = Content.text(text);
     }
-    
+
+    // Grounding Logic
     if (_enableGrounding && images.isEmpty) {
       final groundedText = await _performGroundedGeneration(text);
+      if (_isCancelled) return; // Check cancel
       setState(() {
         _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false, modelName: _selectedModel));
         _isLoading = false;
       });
     } else {
+      // Normal Chat
       final response = await _chat.sendMessage(userContent);
-      
+
+      if (_isCancelled) return; // Check cancel
+
       String fullText = "";
       String? aiImageBase64;
-
       if (response.candidates.isNotEmpty) {
         final parts = response.candidates.first.content.parts;
         for (var part in parts) {
-          if (part is TextPart) {
-            fullText += part.text;
-          } else if (part is DataPart) {
-            aiImageBase64 = base64Encode(part.bytes);
-          }
+          if (part is TextPart) fullText += part.text;
+          else if (part is DataPart) aiImageBase64 = base64Encode(part.bytes);
         }
       }
-
       setState(() {
-        _messages.add(ChatMessage(
-          text: fullText,
-          isUser: false,
-          aiImage: aiImageBase64,
-          modelName: _selectedModel, // stamp model used
-        ));
+        _messages.add(ChatMessage(text: fullText, isUser: false, aiImage: aiImageBase64, modelName: _selectedModel));
         _isLoading = false;
       });
     }
-
-    await _initializeModel();
-    _scrollToBottom();
-    if (!_enableGrounding) _updateTokenCount();
-    _autoSaveCurrentSession();
+    // ...
+    if (!_isCancelled) {
+      await _initializeModel();
+      _scrollToBottom();
+      if (!_enableGrounding) _updateTokenCount();
+      _autoSaveCurrentSession();
+    }
   }
 
+    // --- UPDATED OPENROUTER (Uses _httpClient) ---
   Future<void> _sendOpenRouterMessage(String text, List<String> images) async {
-    final url = Uri.parse("https://openrouter.ai/api/v1/chat/completions");
-
-    // Safety Check: Trim the key again just to be sure
+    // ... (Your existing Key Check and Payload logic) ...
+    // Ensure you copy your Payload logic here
     final cleanKey = _openRouterKey.trim();
     if (cleanKey.isEmpty) {
       throw Exception("OpenRouter Key is empty! Check settings.");
     }
-
-    // 1. Build Messages JSON (simpler history)
     List<Map<String, dynamic>> messagesPayload = [];
-    // --- UPDATED SYSTEM PROMPT LOGIC FOR SEARCH ---
-    String effectiveSystemPrompt = _systemInstructionController.text;
-    if (_enableGrounding) {
-      effectiveSystemPrompt += "\n[SYSTEM NOTE: The user has enabled Web Search. If your model supports online tools or grounding, please search the internet for up-to-date information regarding the user's query.]";
-    }
-    if (effectiveSystemPrompt.isNotEmpty) {
-      messagesPayload.add({"role": "system", "content": effectiveSystemPrompt});
-    }
-    // ----------------------------------------------
-
+    if (_systemInstructionController.text.isNotEmpty) messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
     for (var msg in _messages) {
       if (msg == _messages.last) continue;
-      messagesPayload.add({
-        "role": msg.isUser ? "user" : "assistant",
-        "content": msg.text
-      });
+      messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
     }
-
     if (images.isEmpty) {
       messagesPayload.add({"role": "user", "content": text});
     } else {
-      List<Map<String, dynamic>> contentParts = [];
+      // ... Image logic ...
+       List<Map<String, dynamic>> contentParts = [];
       if (text.isNotEmpty) contentParts.add({"type": "text", "text": text});
       for (String path in images) {
         final bytes = await File(path).readAsBytes();
         final base64Img = base64Encode(bytes);
-        contentParts.add({
-          "type": "image_url",
-          "image_url": {"url": "data:image/jpeg;base64,$base64Img"}
-        });
+        contentParts.add({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,$base64Img"}});
       }
       messagesPayload.add({"role": "user", "content": contentParts});
     }
 
-    // 2. Send Request
-    final response = await http.post(
-      url,
+    // ✨ USE _httpClient
+    final response = await _httpClient!.post(
+      Uri.parse("https://openrouter.ai/api/v1/chat/completions"),
       headers: {
-        "Authorization": "Bearer $cleanKey",
+        "Authorization": "Bearer $_openRouterKey",
         "Content-Type": "application/json",
         "HTTP-Referer": "https://airp-chat.com",
         "X-Title": "AIRP Chat",
@@ -629,6 +638,8 @@ Future<void> _sendMessage() async {
         "temperature": _temperature,
       }),
     );
+
+    if (_isCancelled) return;
 
     if (response.statusCode == 200) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -641,65 +652,53 @@ Future<void> _sendMessage() async {
         _autoSaveCurrentSession();
       }
     } else {
-      debugPrint("OpenRouter Error Body: ${response.body}");
+       debugPrint("OpenRouter Error Body: ${response.body}");
       throw Exception("OpenRouter Error: ${response.statusCode} - ${response.body}");
     }
   }
 
-  // --- NEW LOCAL MESSAGE FUNCTION ---
+    // --- UPDATED LOCAL MESSAGE (Uses _httpClient) ---
   Future<void> _sendLocalMessage(String text, List<String> images) async {
-    // 1. Prepare URL
     String baseUrl = _localIpController.text.trim();
     if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
-    
-    // Auto-fix URL for LM Studio conventions
-    if (!baseUrl.endsWith('/chat/completions')) {
-      if (baseUrl.endsWith('/v1')) {
-        baseUrl += "/chat/completions";
-      } else {
-        baseUrl += "/v1/chat/completions";
-      }
-    }
-    final url = Uri.parse(baseUrl);
 
-    // 2. Build Payload
+    if (!baseUrl.endsWith('/chat/completions')) {
+      if (baseUrl.endsWith('/v1')) baseUrl += "/chat/completions";
+      else baseUrl += "/v1/chat/completions";
+    }
+
+    // ... (Your Payload building logic is same as before, omitted for brevity) ...
+    // Copy your existing "Build Payload" block here
     List<Map<String, dynamic>> messagesPayload = [];
+    // ... [Insert your existing message loop here] ...
+    // FOR CONTEXT: Just ensure the payload building matches your previous code
+
+    // Quick Re-build of payload for safety (You can copy-paste your old logic loop here)
     if (_systemInstructionController.text.isNotEmpty) {
       messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
     }
-
     for (var msg in _messages) {
       if (msg == _messages.last) continue;
-      messagesPayload.add({
-        "role": msg.isUser ? "user" : "assistant",
-        "content": msg.text
-      });
+      messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
     }
-
     if (images.isEmpty) {
       messagesPayload.add({"role": "user", "content": text});
     } else {
-      // Basic Image support for local (OpenAI format)
       List<Map<String, dynamic>> contentParts = [];
       if (text.isNotEmpty) contentParts.add({"type": "text", "text": text});
       for (String path in images) {
         final bytes = await File(path).readAsBytes();
         final base64Img = base64Encode(bytes);
-        contentParts.add({
-          "type": "image_url",
-          "image_url": {"url": "data:image/jpeg;base64,$base64Img"}
-        });
+        contentParts.add({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,$base64Img"}});
       }
       messagesPayload.add({"role": "user", "content": contentParts});
     }
+    // ... End Payload Build ...
 
-    // 3. Send
-    final response = await http.post(
-      url,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer local-key",
-      },
+    // ✨ USE _httpClient INSTEAD OF http
+    final response = await _httpClient!.post(
+      Uri.parse(baseUrl),
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer local-key" },
       body: jsonEncode({
         "model": _localModelName,
         "messages": messagesPayload,
@@ -707,6 +706,8 @@ Future<void> _sendMessage() async {
         "stream": false,
       }),
     );
+
+    if (_isCancelled) return; // Exit if cancelled during await
 
     if (response.statusCode == 200) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -721,7 +722,6 @@ Future<void> _sendMessage() async {
       } else if (data['message'] != null) {
         aiText = data['message'].toString();
       }
-
       setState(() {
         _messages.add(ChatMessage(text: aiText, isUser: false, modelName: "Local AI"));
         _isLoading = false;
@@ -2160,12 +2160,32 @@ void _showEditDialog(int index) {
                         ),
                       ),
 
-                    Row(
+                                        Row(
                       children: [
+                        // ✨ 1. IMAGE BUTTON (Existing)
                         IconButton(
                           icon: const Icon(Icons.image, color: Colors.cyanAccent),
-                          onPressed: _pickImage,
+                          tooltip: "Add Image",
+                          onPressed: _isLoading ? null : _pickImage,
                         ),
+
+                        // ✨ 2. ATTACHMENT BUTTON (New Request)
+                        // Note: For now, this acts as a Gallery picker to match your 'add file' request visually.
+                        // To allow PDFs/Docs, you need 'file_picker' package.
+                        IconButton(
+                          icon: const Icon(Icons.attach_file, color: Colors.white70),
+                          tooltip: "Add Attachment",
+                          onPressed: _isLoading ? null : () async {
+                            // If you added file_picker package:
+                            // FilePickerResult? result = await FilePicker.platform.pickFiles();
+                            // if (result != null) _pendingImages.add(result.files.single.path!);
+
+                            // For now, re-using image picker as placeholder for "File"
+                             // to prevent crashes if you haven't added the dependency yet.
+                            _pickImage();
+                           },
+                        ),
+
                         Expanded(
                           child: TextField(
                             controller: _textController,
@@ -2178,26 +2198,35 @@ void _showEditDialog(int index) {
                                   : (_enableGrounding
                                       ? 'Search & Chat...'
                                       : 'Ready to chat...'),
-                              hintStyle: TextStyle(color: Colors.white),
+                              hintStyle: TextStyle(color: Colors.grey[600]),
                               border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(24),
                                   borderSide: BorderSide.none),
                               filled: true,
-                              fillColor: const Color.fromARGB(255, 28, 57, 102),
+                              fillColor: const Color(0xFF2C2C2C), // Fixed color back to dark theme logic
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 10),
                             ),
-                            onSubmitted: (_) => _sendMessage(),
+                            // Allow Enter to send ONLY if not loading
+                            onSubmitted: _isLoading ? null : (_) => _sendMessage(),
                           ),
                         ),
                         const SizedBox(width: 8),
+
+                        // ✨ 3. DYNAMIC SEND / STOP BUTTON
                         IconButton.filled(
                           style: IconButton.styleFrom(
-                              backgroundColor: _enableGrounding
-                                  ? Colors.green
-                                  : Colors.cyanAccent),
-                          onPressed: _isLoading ? null : _sendMessage,
-                          icon: const Icon(Icons.send, color: Colors.black),
+                              backgroundColor: _isLoading
+                                 ? Colors.cyanAccent.withOpacity(0.2) // Dim background when stopping
+                                 : (_enableGrounding ? Colors.green : Colors.cyanAccent)
+                          ),
+                          // Toggle Function: Send if idle, Stop if loading
+                          onPressed: _isLoading ? _cancelGeneration : _sendMessage,
+                          // Toggle Icon: Stop Square if loading, Send Plane if idle
+                          icon: Icon(
+                            _isLoading ? Icons.stop_circle_outlined : Icons.send,
+                             color: _isLoading ? Colors.cyanAccent : Colors.black
+                          ),
                         ),
                       ],
                     ),
