@@ -41,7 +41,10 @@ String cleanModelName(String rawId) {
     return kModelDisplayNames[rawId]!;
   }
 
-  // 2. Algorithmically Clean the Name (The Maid Logic 🧹)
+  // Quick local check
+  if (rawId.contains("local")) return "Local / Home AI";
+
+  // 2. Algorithmically Clean the Name (The Maid Logic)
   String name = rawId;
 
   // Remove OpenRouter Vendor prefixes (e.g., "google/", "meta-llama/")
@@ -109,7 +112,7 @@ class GeminiChatApp extends StatelessWidget {
 // ----------------------------------------------------------------------
 // DATA CLASS
 // ----------------------------------------------------------------------
-enum AiProvider { gemini, openRouter, openAi }
+enum AiProvider { gemini, openRouter, openAi, local }
 
 class ChatSessionData {
   final String id;
@@ -181,6 +184,10 @@ class _ChatScreenState extends State<ChatScreen> {
   String _openRouterKey = '';
   String _openAiKey = ''; // Placeholder for possible OpenAI support
 
+  // ✨ NEW LOCAL VARS
+  final TextEditingController _localIpController = TextEditingController();
+  String _localModelName = 'local-model';
+
   String _selectedGeminiModel = 'models/gemini-flash-lite-latest'; // Default Gemini model
   String _openRouterModel = 'z-ai/glm-4.5-air:free'; // Default OR model
 
@@ -241,11 +248,20 @@ class _ChatScreenState extends State<ChatScreen> {
       _openRouterKey = prefs.getString('airp_key_openrouter') ?? '';
       _openAiKey = prefs.getString('airp_key_openai') ?? '';
 
+      // ✨ Load Local IP
+      _localIpController.text = prefs.getString('airp_local_ip') ?? 'http://192.168.1.15:1234/v1';
+
       // Load Provider
       final providerString = prefs.getString('airp_provider') ?? 'gemini';
-      if (providerString == 'openRouter') _currentProvider = AiProvider.openRouter;
-      else if (providerString == 'openAi') _currentProvider = AiProvider.openAi;
-      else _currentProvider = AiProvider.gemini;
+      if (providerString == 'openRouter') {
+        _currentProvider = AiProvider.openRouter;
+      } else if (providerString == 'openAi') {
+        _currentProvider = AiProvider.openAi;
+      } else if (providerString == 'local') {
+        _currentProvider = AiProvider.local;
+      } else {
+        _currentProvider = AiProvider.gemini;
+      }
 
       // ✨ LOAD PERSISTED MODEL LISTS ✨
       _geminiModelsList = prefs.getStringList('airp_list_gemini') ?? [];
@@ -272,6 +288,7 @@ class _ChatScreenState extends State<ChatScreen> {
       case AiProvider.gemini: _apiKeyController.text = _geminiKey; break;
       case AiProvider.openRouter: _apiKeyController.text = _openRouterKey; break;
       case AiProvider.openAi: _apiKeyController.text = _openAiKey; break;
+      case AiProvider.local: _apiKeyController.text = "No Key Needed"; break;
     }
   }
 
@@ -283,12 +300,14 @@ class _ChatScreenState extends State<ChatScreen> {
     // Trim inputs
     final cleanKey = _apiKeyController.text.trim();
     final cleanModel = _openRouterModelController.text.trim();
+    final cleanIp = _localIpController.text.trim(); // <--- GET IP
 
     setState(() {
       switch (_currentProvider) {
         case AiProvider.gemini: _geminiKey = cleanKey; break;
         case AiProvider.openRouter: _openRouterKey = cleanKey; break;
         case AiProvider.openAi: _openAiKey = cleanKey; break;
+        case AiProvider.local: break; // No key usually
       }
       _openRouterModel = cleanModel;
       _openRouterModelController.text = cleanModel;
@@ -298,6 +317,8 @@ class _ChatScreenState extends State<ChatScreen> {
         _selectedModel = cleanModel;
       } else if (_currentProvider == AiProvider.gemini) {
          _selectedModel = _selectedGeminiModel;
+      } else if (_currentProvider == AiProvider.local) {
+         _selectedModel = "Local Network AI"; // <--- UPDATE MODEL NAME
       }
     });
 
@@ -305,6 +326,7 @@ class _ChatScreenState extends State<ChatScreen> {
     await prefs.setString('airp_key_gemini', _geminiKey);
     await prefs.setString('airp_key_openrouter', _openRouterKey);
     await prefs.setString('airp_key_openai', _openAiKey);
+    await prefs.setString('airp_local_ip', cleanIp); // <--- SAVE IP
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString('airp_model_gemini', _selectedGeminiModel);
     await prefs.setString('airp_model_openrouter', _openRouterModel);
@@ -344,6 +366,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _currentSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
 
+    // Determine correct provider string
+    String providerStr = 'gemini';
+    if (_currentProvider == AiProvider.openRouter) providerStr = 'openRouter';
+    else if (_currentProvider == AiProvider.local) providerStr = 'local';
+    else if (_currentProvider == AiProvider.openAi) providerStr = 'openAi';
+
     final sessionData = ChatSessionData(
       id: _currentSessionId!,
       title: title,
@@ -352,6 +380,7 @@ class _ChatScreenState extends State<ChatScreen> {
       tokenCount: _tokenCount,
       systemInstruction: _systemInstructionController.text,
       backgroundImage: themeProvider.backgroundImagePath,
+      provider: providerStr,
     );
 
     setState(() {
@@ -446,7 +475,7 @@ Future<void> _sendMessage() async {
     final messageText = _textController.text;
     if (messageText.isEmpty && _pendingImages.isEmpty) return;
     
-    // 1. UI UPDATES (Same as before)
+    // 1. UI UPDATES
     final List<String> imagesToSend = List.from(_pendingImages);
     setState(() {
       _messages.add(ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend));
@@ -465,6 +494,9 @@ Future<void> _sendMessage() async {
       } else if (_currentProvider == AiProvider.openRouter) {
         // --- OPENROUTER LOGIC ---
         await _sendOpenRouterMessage(messageText, imagesToSend);
+      } else if (_currentProvider == AiProvider.local) {
+        // --- LOCAL LOGIC (NEW) ---
+        await _sendLocalMessage(messageText, imagesToSend);
       } else {
         // OpenAI Placeholder
         setState(() => _isLoading = false);
@@ -548,9 +580,15 @@ Future<void> _sendMessage() async {
 
     // 1. Build Messages JSON (simpler history)
     List<Map<String, dynamic>> messagesPayload = [];
-    if (_systemInstructionController.text.isNotEmpty) {
-      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
+    // --- UPDATED SYSTEM PROMPT LOGIC FOR SEARCH ---
+    String effectiveSystemPrompt = _systemInstructionController.text;
+    if (_enableGrounding) {
+      effectiveSystemPrompt += "\n[SYSTEM NOTE: The user has enabled Web Search. If your model supports online tools or grounding, please search the internet for up-to-date information regarding the user's query.]";
     }
+    if (effectiveSystemPrompt.isNotEmpty) {
+      messagesPayload.add({"role": "system", "content": effectiveSystemPrompt});
+    }
+    // ----------------------------------------------
 
     for (var msg in _messages) {
       if (msg == _messages.last) continue;
@@ -605,6 +643,92 @@ Future<void> _sendMessage() async {
     } else {
       debugPrint("OpenRouter Error Body: ${response.body}");
       throw Exception("OpenRouter Error: ${response.statusCode} - ${response.body}");
+    }
+  }
+
+  // --- NEW LOCAL MESSAGE FUNCTION ---
+  Future<void> _sendLocalMessage(String text, List<String> images) async {
+    // 1. Prepare URL
+    String baseUrl = _localIpController.text.trim();
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+    
+    // Auto-fix URL for LM Studio conventions
+    if (!baseUrl.endsWith('/chat/completions')) {
+      if (baseUrl.endsWith('/v1')) {
+        baseUrl += "/chat/completions";
+      } else {
+        baseUrl += "/v1/chat/completions";
+      }
+    }
+    final url = Uri.parse(baseUrl);
+
+    // 2. Build Payload
+    List<Map<String, dynamic>> messagesPayload = [];
+    if (_systemInstructionController.text.isNotEmpty) {
+      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
+    }
+
+    for (var msg in _messages) {
+      if (msg == _messages.last) continue;
+      messagesPayload.add({
+        "role": msg.isUser ? "user" : "assistant",
+        "content": msg.text
+      });
+    }
+
+    if (images.isEmpty) {
+      messagesPayload.add({"role": "user", "content": text});
+    } else {
+      // Basic Image support for local (OpenAI format)
+      List<Map<String, dynamic>> contentParts = [];
+      if (text.isNotEmpty) contentParts.add({"type": "text", "text": text});
+      for (String path in images) {
+        final bytes = await File(path).readAsBytes();
+        final base64Img = base64Encode(bytes);
+        contentParts.add({
+          "type": "image_url",
+          "image_url": {"url": "data:image/jpeg;base64,$base64Img"}
+        });
+      }
+      messagesPayload.add({"role": "user", "content": contentParts});
+    }
+
+    // 3. Send
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer local-key",
+      },
+      body: jsonEncode({
+        "model": _localModelName,
+        "messages": messagesPayload,
+        "temperature": _temperature,
+        "stream": false,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      String aiText = '';
+      if (data['choices'] != null && data['choices'] is List && data['choices'].isNotEmpty) {
+        final choice = data['choices'][0];
+        if (choice['message'] != null && choice['message']['content'] != null) {
+          aiText = choice['message']['content'].toString();
+        } else if (choice['text'] != null) {
+          aiText = choice['text'].toString();
+        }
+      } else if (data['message'] != null) {
+        aiText = data['message'].toString();
+      }
+
+      setState(() {
+        _messages.add(ChatMessage(text: aiText, isUser: false, modelName: "Local AI"));
+        _isLoading = false;
+      });
+      _autoSaveCurrentSession();
+    } else {
+      throw Exception("Local AI Error: ${response.statusCode} - ${response.body}");
     }
   }
 
@@ -1276,6 +1400,10 @@ void _showEditDialog(int index) {
                           _openRouterModelController.text = session.modelName; 
                           _selectedModel = session.modelName;
                         } 
+                        else if (session.provider == 'local') {
+                          _currentProvider = AiProvider.local;
+                          _selectedModel = "Local Network AI";
+                        }
                         else if (session.provider == 'openAi') {
                           _currentProvider = AiProvider.openAi;
                           // Handle OpenAI specific UI sync if added later
@@ -1391,17 +1519,38 @@ void _showEditDialog(int index) {
             
             const Text("API Key (BYOK)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
             const SizedBox(height: 5),
-            TextField(
-              controller: _apiKeyController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                hintText: "Paste AI Studio Key...",
-                border: OutlineInputBorder(),
-                filled: true, isDense: true,
+            // --- UPDATED API KEY / IP FIELD SECTION ---
+            if (_currentProvider != AiProvider.local) ...[
+              TextField(
+                controller: _apiKeyController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  hintText: "Paste AI Studio Key...",
+                  border: OutlineInputBorder(),
+                  filled: true, isDense: true,
+                ),
+                style: const TextStyle(fontSize: 12),
               ),
-              style: const TextStyle(fontSize: 12),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
+            ] else ...[
+              // LOCAL IP INPUT
+              TextField(
+                controller: _localIpController,
+                decoration: const InputDecoration(
+                  hintText: "http://192.168.1.X:1234/v1",
+                  labelText: "Local Server Address",
+                  labelStyle: TextStyle(color: Colors.greenAccent),
+                  border: OutlineInputBorder(),
+                  filled: true, isDense: true
+                ),
+                style: const TextStyle(fontSize: 12),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 4, left: 4),
+                child: Text("Ensure your local AI is listening on Network (0.0.0.0)", style: TextStyle(fontSize: 10, color: Colors.grey)),
+              ),
+              const SizedBox(height: 20),
+            ],
 
             const Text("Model Selection", style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 5),
@@ -1513,6 +1662,22 @@ void _showEditDialog(int index) {
                   style: OutlinedButton.styleFrom(foregroundColor: Colors.purpleAccent),
                 ),
               ),
+            ],
+            // -------------------------------------------
+            // LOCAL UI (NEW)
+            // -------------------------------------------
+            if (_currentProvider == AiProvider.local) ...[
+               const SizedBox(height: 5),
+               TextField(
+                 onChanged: (val) => _localModelName = val,
+                 decoration: const InputDecoration(
+                   hintText: "local-model",
+                   labelText: "Target Model ID (Optional)",
+                   border: OutlineInputBorder(), 
+                   isDense: true
+                 ),
+                 style: const TextStyle(fontSize: 13),
+               ),
             ],
             const SizedBox(height: 30),
 
@@ -1641,7 +1806,19 @@ void _showEditDialog(int index) {
             const SizedBox(height: 20),
             SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Temperature\nHigher is Creative"), subtitle: Text(_temperature.toStringAsFixed(1)), value: true, onChanged: (val) {},),
             Slider(value: _temperature, min: 0.0, max: 2.0, divisions: 20, activeColor: Colors.redAccent, onChanged: (val) => setState(() => _temperature = val),),
-            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Grounding (Google Search)"), value: _enableGrounding, activeThumbColor: Colors.greenAccent, onChanged: (val) { setState(() => _enableGrounding = val); },),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text("Grounding / Web Search"),
+              subtitle: Text(
+                _currentProvider == AiProvider.gemini ? "Uses Google Search (Native)" 
+                : _currentProvider == AiProvider.openRouter ? "Requests Online Access (Soft)"
+                : "Not available on Local",
+                style: const TextStyle(fontSize: 10, color: Colors.grey)
+              ),
+              value: _enableGrounding,
+              activeThumbColor: Colors.greenAccent,
+              onChanged: _currentProvider == AiProvider.local ? null : (val) { setState(() => _enableGrounding = val); },
+            ),
             SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Disable Safety Filters"), value: _disableSafety, activeThumbColor: Colors.redAccent, onChanged: (val) { setState(() => _disableSafety = val); },),
             
             const SizedBox(height: 50),
@@ -1873,6 +2050,12 @@ void _showEditDialog(int index) {
               value: AiProvider.openRouter,
               child: Row(children: [Icon(Icons.router, color: Colors.purpleAccent), SizedBox(width: 8), Text('AIRP - OpenRouter')]),
             ),
+            // --- ADDED LOCAL ITEM ---
+            const PopupMenuItem<AiProvider>(
+              value: AiProvider.local,
+              child: Row(children: [Icon(Icons.laptop_mac, color: Colors.greenAccent), SizedBox(width: 8), Text('AIRP - Local')]),
+            ),
+            // ------------------------
             const PopupMenuItem<AiProvider>(
               value: AiProvider.openAi,
               enabled: false,
@@ -1884,7 +2067,7 @@ void _showEditDialog(int index) {
             children: [
               Flexible(
                 child: Text(
-                  'AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" : _currentProvider == AiProvider.openRouter ? "OpenRouter" : "OpenAI"}',
+                  'AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" : _currentProvider == AiProvider.openRouter ? "OpenRouter" : _currentProvider == AiProvider.local ? "Local" : "OpenAI"}',
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   softWrap: false,
