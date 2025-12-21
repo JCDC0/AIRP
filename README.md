@@ -1,20 +1,22 @@
 # AIRP - Gemini & OpenRouter Chat Client
 
-**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models and the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), featuring deep visual customization and a robust system prompt library.
+**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models and the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more). It features a robust system prompt library, deep visual customization, and a persistent local history with search capabilities.
 
 ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white)
 
-## Features
+## Key Features
 
-*   **Multi-Provider Support**: Switch seamlessly between Google Gemini (native) and OpenRouter (access to 100+ models).
-*   **Visual Customization**: Change chat bubble colors, text colors, interface fonts, and set custom background wallpapers with dimming/opacity controls.
-*   **System Prompt Library**: Save, load, and manage custom roleplay personas or system instructions.
-*   **Multimodal Support**: Send images to compatible models (e.g., Gemini 1.5 Flash, GPT-4o via OpenRouter).
-*   **Google Search Grounding**: Enable real-time web search integration for Gemini models.
-*   **Chat History**: Auto-saves conversation history locally.
-*   **Token Counting**: Real-time token usage estimation.
+*   **Multi-Provider Support**: Seamlessly switch between Google Gemini (native) and OpenRouter.
+*   **Dynamic Model Lists**: Fetch the latest available models directly from the API providers.
+*   **Searchable History**: Quickly find past conversations using the integrated search bar.
+*   **Message Management**: Edit, copy, delete, or regenerate specific messages within a chat.
+*   **Visual Customization**: Control bubble colors, opacity, interface fonts, and custom background wallpapers.
+*   **System Prompt Library**: Save and load custom personas and roleplay instructions.
+*   **Multimodal Support**: Send images to compatible models.
+*   **Google Search Grounding**: Toggle real-time web search integration for Gemini models.
+*   **Token Counting**: Live token usage estimation to track context limits.
 
 ## Getting Started
 
@@ -24,7 +26,7 @@
 
 ### Installation
 
-1.  **Clone the repository to your desired folder**:
+1.  **Clone the repository**:
     ```bash
     git clone https://github.com/JCDC0/AIRP
     cd airp-chat
@@ -42,65 +44,75 @@
 
 ---
 
-## API Configuration
+## Configuration & API Keys
 
-This app follows a **BYOK (Bring Your Own Key)** architecture. Your keys are stored locally on your device and never sent to a third-party server other than the AI providers themselves.
+This app follows a **BYOK (Bring Your Own Key)** architecture. Keys are stored locally on your device.
 
-### 1. Google Gemini (Google AI Studio)
-*   **Best for**: Free tier usage, high speed, large context window.
-*   **How to get a key**:
-    1.  Go to [Google AI Studio](https://aistudio.google.com/).
-    2.  Click **"Get API key"** in the sidebar.
-    3.  Click **"Create API key"** (you can create one in a new or existing project).
-    4.  Copy the string starting with `AIza...`.
+### 1. Google Gemini
+1.  Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
+2.  Open the **Settings Drawer** (slide from right or click the gear icon).
+3.  Select **AIRP - Gemini** from the top dropdown.
+4.  Paste your key into the API Key field.
+5.  **Important:** Click **APPLY & SAVE**.
 
-### 2. OpenRouter (Universal API)
-*   **Best for**: Accessing models like DeepSeek, Claude 3.5 Sonnet, Llama 3, etc.
-*   **How to get a key**:
-    1.  Go to [OpenRouter.ai](https://openrouter.ai/).
-    2.  Sign up or Log in.
-    3.  Go to **Keys** in the profile menu.
-    4.  Click **"Create Key"**.
-    5.  Name it "AIRP Chat" (optional) and copy the key starting with `sk-or...`.
-    *   *Note: Some OpenRouter models are free, but most require you to add valid credits ($5 minimum) to your account.*
+### 2. OpenRouter
+1.  Obtain an API key from [OpenRouter.ai](https://openrouter.ai/).
+2.  Open the **Settings Drawer**.
+3.  Select **AIRP - OpenRouter** from the top dropdown.
+4.  Paste your key.
+5.  **Important:** Click **APPLY & SAVE**.
 
 ---
 
-## Usage Guide
+## Interface & Controls
 
-### Saving Settings (IMPORTANT)
-When entering API keys or changing settings in the Drawer:
-1.  Paste your API Key.
-2.  **YOU MUST PRESS THE "APPLY & SAVE" BUTTON.** 
-3.  If you do not press this button, the key will not be saved to disk, and the chat engine will not update to use the new credentials.
+### Conversation Management (Left Drawer)
+Slide from the **left** edge of the screen or tap the **Menu** icon to access your history.
 
-### Switching Models
-*   **Gemini**: Select from the dropdown list in Settings.
-*   **OpenRouter**:
-    1.  Enter your API Key and press **APPLY & SAVE**.
-    2.  Click the **"Load Model List"** button (cloud icon).
-    3.  Once fetched, select your desired model from the dropdown.
-    4.  Press **APPLY & SAVE** again to confirm the model choice.
+*   **Search**: Use the text field at the top of the drawer to filter conversations by title in real-time.
+*   **Navigation**: Tap any conversation to load it immediately.
+*   **Deletion**: **Long-press** any conversation tile to bring up the delete confirmation dialog.
+*   **New Chat**: Tap "New Conversation" to clear the current context and start fresh.
 
-### Custom Backgrounds
-1.  Open the Settings Drawer.
-2.  Scroll to "Visuals & Atmosphere".
-3.  Click the **Add Photo** icon to pick an image from your gallery.
-4.  Long-press a custom image to delete it.
+### Chat Controls (Main Screen)
+Interact with the message stream using gestures.
+
+*   **Message Options**: **Long-press** any message bubble (User or AI) to open the context menu:
+    *   **Copy**: Copies the message text to the clipboard.
+    *   **Edit**: Modify the message content.
+    *   **Retry**: Regenerate the response (available on the latest exchange).
+    *   **Delete**: Remove the message from the history.
+*   **Model Identification**: The specific model used to generate a response is displayed in a tag above the AI's message bubble.
+
+### Model Selection (Right Drawer)
+Slide from the **right** edge or tap the **Settings** icon.
+
+1.  Ensure you have entered your API Key and pressed **APPLY & SAVE**.
+2.  Locate the **Model Selection** section.
+3.  Press the **Refresh Model List** button. The app will fetch the specific list of models available for your API key.
+4.  Select your desired model from the dropdown menu. The list automatically cleans raw IDs (e.g., `models/gemini-3-pro-preview`) into readable titles (e.g., `Gemini 3 Pro Preview`).
+5.  Press **APPLY & SAVE** to confirm your selection.
+
+---
+
+## Customization
+
+### Visuals
+Located in the Settings Drawer under **Visuals & Atmosphere**:
+*   **Backgrounds**: Choose from built-in assets or tap the **Add Photo** icon to use a custom image from your gallery. Long-press a custom image to remove it.
+*   **Opacity**: Adjust the dimmer slider to improve text readability against backgrounds.
+*   **Colors & Fonts**: Customize chat bubble colors and the global application font.
+
+### System Prompts
+Located in the Settings Drawer:
+*   **Library**: Save frequently used system instructions (personas).
+*   **Load**: Select a preset from the dropdown to auto-fill the system instruction field.
 
 ---
 
 ## Disclaimer
 
-This project was made with AI.
-
-*   It was built rapidly to satisfy specific personal needs and aesthetic preferences.
-*   It utilizes AI assistance (LLMs) heavily in its development process for boilerplate and logic generation.
-*   While functional and tested, it is intended as a personal project/portfolio piece rather than enterprise-grade software.
-
-*Use at your own risk. The developer is not responsible for API costs incurred via OpenRouter or Google Cloud.*
-
----
+This project was developed with the assistance of AI tools. It is intended as a personal project and possibly as a portfolio piece. Use at your own risk; I am not responsible for API costs incurred via OpenRouter or Google Cloud. 
 
 ## License
 
