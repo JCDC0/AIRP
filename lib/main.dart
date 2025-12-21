@@ -11,6 +11,65 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
+// ----------------------------------------------------------------------
+// GLOBAL HELPERS & CONSTANTS
+// ----------------------------------------------------------------------
+const Map<String, String> kModelDisplayNames = {
+  // Gemini 3 Series
+  'models/gemini-3-pro-preview': 'Gemini 3 Pro Preview (Expensive)',
+  'models/gemini-3-flash-preview': 'Gemini 3 Flash Preview (Fast)',
+  'models/gemini-3-pro-image-preview': 'Gemini 3 Pro Image Preview (Multimodal)',
+  // Gemini 2.5 Series
+  'models/gemini-2.5-pro': 'Gemini 2.5 Pro (Middle ground)',
+  'models/gemini-flash-latest': 'Gemini 2.5 Flash Latest (Cheap)',
+  'models/gemini-flash-lite-latest': 'Gemini 2.5 Flash Latest Lite (Cheaper)',
+  'models/gemini-2.5-flash-image': 'Gemini 2.5 Flash Image (Multimodal)',
+  // Gemini 2.0 Series
+  'models/gemini-2.0-flash': 'Gemini 2.0 Flash',
+  'models/gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
+  // Gemma 3 Series
+  'models/gemma-3-27b-it': 'Gemma 3 27B (Desktop Class)',
+  'models/gemma-3-12b-it': 'Gemma 3 12B (Efficient)',
+  'models/gemma-3-4b-it': 'Gemma 3 4B (Lightweight)',
+  'models/gemma-3-2b-it': 'Gemma 3 2B (Small)',
+  'models/gemma-3-1b-it': 'Gemma 3 1B (Tiny)',
+};
+
+String cleanModelName(String rawId) {
+  // 1. Check if we have a manual override (The Dictionary)
+  if (kModelDisplayNames.containsKey(rawId)) {
+    return kModelDisplayNames[rawId]!;
+  }
+
+  // 2. Algorithmically Clean the Name (The Maid Logic 🧹)
+  String name = rawId;
+
+  // Remove OpenRouter Vendor prefixes (e.g., "google/", "meta-llama/")
+  if (name.contains('/')) {
+    name = name.split('/').last; 
+  }
+
+  // Remove typical suffixes
+  name = name.replaceAll(':free', ' (Free)');
+  
+  // Replace symbols with spaces
+  name = name.replaceAll('-', ' ').replaceAll('_', ' ').replaceAll('.', ' .');
+
+  // Capitalize Words (Title Case)
+  List<String> words = name.split(' ');
+  for (int i = 0; i < words.length; i++) {
+    if (words[i].isNotEmpty) {
+      words[i] = words[i][0].toUpperCase() + words[i].substring(1);
+    }
+  }
+  name = words.join(' ');
+
+  // Fix Dot spacing (e.g., "2 . 0" -> "2.0")
+  name = name.replaceAll(' .', '.');
+
+  return name;
+}
+
 void main() {
   runApp(
     ChangeNotifierProvider(
@@ -107,40 +166,14 @@ class _ChatScreenState extends State<ChatScreen> {
   static const _defaultApiKey = '';
 
   String _drawerSearchQuery = '';
-  
-  final List<String> _models = [
-    'models/gemini-3-pro-preview',
-    'models/gemini-3-flash-preview',
-    'models/gemini-2.5-pro',
-    'models/gemini-flash-latest',
-    'models/gemini-flash-lite-latest', 
-    'models/gemini-2.0-flash',
-    'models/gemini-2.0-flash-lite',
-    'models/gemma-3-27b-it',
-    'models/gemma-3-12b-it',
-    'models/gemma-3-4b-it',
-    'models/gemma-3-2b-it',
-    'models/gemma-3-1b-it',
-  ];
 
-  final Map<String, String> _modelDisplayNames = {
-    // Gemini 3 Series
-    'models/gemini-3-pro-preview': 'Gemini 3 Pro Preview (Expensive)',
-    'models/gemini-3-flash-preview': 'Gemini 3 Flash Preview (Fast)',
-    // Gemini 2.5 Series
-    'models/gemini-2.5-pro': 'Gemini 2.5 Pro (Middle ground)',
-    'models/gemini-flash-latest': 'Gemini 2.5 Flash Latest (Cheap)',
-    'models/gemini-flash-lite-latest': 'Gemini 2.5 Flash Latest Lite (Cheaper)',
-    // Gemini 2.0 Series
-    'models/gemini-2.0-flash': 'Gemini 2.0 Flash',
-    'models/gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
-    // Gemma 3 Series
-    'models/gemma-3-27b-it': 'Gemma 3 27B (Desktop Class)',
-    'models/gemma-3-12b-it': 'Gemma 3 12B (Efficient)',
-    'models/gemma-3-4b-it': 'Gemma 3 4B (Lightweight)',
-    'models/gemma-3-2b-it': 'Gemma 3 2B (Small)',
-    'models/gemma-3-1b-it': 'Gemma 3 1B (Tiny)',
-  };
+   // 1. DYNAMIC MODEL LISTS
+  List<String> _geminiModelsList = [];     // Stores fetched Gemini IDs
+  List<String> _openRouterModelsList = []; // Stores fetched OpenRouter IDs
+  
+  // 2. LOADING STATES
+  bool _isLoadingGeminiModels = false;
+  bool _isLoadingOpenRouterModels = false;
 
   AiProvider _currentProvider = AiProvider.gemini;
 
@@ -174,8 +207,6 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _currentSessionId;
   int _tokenCount = 0;
   static const int _tokenLimitWarning = 190000;
-  List<String> _openRouterModelsList = [];
-  bool _isLoadingModels = false;
   bool _isLoading = false;
 
   @override
@@ -201,7 +232,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // UPDATED SETTINGS LOADER
+  // UPDATED _loadSettings (Loads Saved Lists)
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -210,25 +241,26 @@ class _ChatScreenState extends State<ChatScreen> {
       _openRouterKey = prefs.getString('airp_key_openrouter') ?? '';
       _openAiKey = prefs.getString('airp_key_openai') ?? '';
 
-      // Load Provider State
+      // Load Provider
       final providerString = prefs.getString('airp_provider') ?? 'gemini';
-      if (providerString == 'openRouter') {
-        _currentProvider = AiProvider.openRouter;
-      } else if (providerString == 'openAi') {
-        _currentProvider = AiProvider.openAi;
-      } else {
-        _currentProvider = AiProvider.gemini;
-      }
+      if (providerString == 'openRouter') _currentProvider = AiProvider.openRouter;
+      else if (providerString == 'openAi') _currentProvider = AiProvider.openAi;
+      else _currentProvider = AiProvider.gemini;
 
-      // Load Models
+      // ✨ LOAD PERSISTED MODEL LISTS ✨
+      _geminiModelsList = prefs.getStringList('airp_list_gemini') ?? [];
+      _openRouterModelsList = prefs.getStringList('airp_list_openrouter') ?? [];
+
+      // Load Selected Models
+      // If the list is empty (first run), keep the default. 
+      // If list exists, check if saved model is valid.
+      _selectedGeminiModel = prefs.getString('airp_model_gemini') ?? 'models/gemini-1.5-flash';
       _openRouterModel = prefs.getString('airp_model_openrouter') ?? 'google/gemini-2.0-flash-lite-preview-02-05:free';
       _openRouterModelController.text = _openRouterModel;
       
-      // Update the visible API key box based on current provider
       _updateApiKeyTextField();
     });
 
-    // Only init Google Model if we are in Gemini mode
     if (_currentProvider == AiProvider.gemini) {
       await _initializeModel(); 
     }
@@ -274,6 +306,7 @@ class _ChatScreenState extends State<ChatScreen> {
     await prefs.setString('airp_key_openrouter', _openRouterKey);
     await prefs.setString('airp_key_openai', _openAiKey);
     await prefs.setString('airp_provider', _currentProvider.name);
+    await prefs.setString('airp_model_gemini', _selectedGeminiModel);
     await prefs.setString('airp_model_openrouter', _openRouterModel);
 
     if (_currentSessionId != null) {
@@ -576,53 +609,96 @@ Future<void> _sendMessage() async {
   }
 
   // ----------------------------------------------------------------------
+  // FETCH GOOGLE GEMINI MODELS
+  // ----------------------------------------------------------------------
+  Future<void> _fetchGeminiModels() async {
+    if (_geminiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Need API Key first!")));
+      return;
+    }
+
+    setState(() => _isLoadingGeminiModels = true);
+
+    try {
+      final url = Uri.parse("https://generativelanguage.googleapis.com/v1beta/models?key=$_geminiKey");
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> models = data['models'];
+
+        // Filter: We only want models that support "generateContent"
+        final List<String> fetchedIds = models
+            .where((m) {
+              final methods = List<String>.from(m['supportedGenerationMethods'] ?? []);
+              return methods.contains('generateContent');
+            })
+            .map<String>((m) => m['name'].toString()) // format: "models/gemini-pro"
+            .toList();
+
+        fetchedIds.sort(); // Sort A-Z
+
+        // Save to Disk
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('airp_list_gemini', fetchedIds);
+
+        setState(() {
+          _geminiModelsList = fetchedIds;
+          _isLoadingGeminiModels = false;
+          // If current model isn't in list, switch to first one or keep it?
+          if (!_geminiModelsList.contains(_selectedGeminiModel) && _geminiModelsList.isNotEmpty) {
+             _selectedGeminiModel = _geminiModelsList.first;
+          }
+        });
+
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Found ${_geminiModelsList.length} Gemini models!")));
+      } else {
+        throw Exception("Google API Error: ${response.body}");
+      }
+    } catch (e) {
+      setState(() => _isLoadingGeminiModels = false);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Fetch Error: $e"), backgroundColor: Colors.red));
+    }
+  }
+
+  // ----------------------------------------------------------------------
   // FETCH OPENROUTER MODELS
   // ----------------------------------------------------------------------
   Future<void> _fetchOpenRouterModels() async {
-    setState(() => _isLoadingModels = true);
+    setState(() => _isLoadingOpenRouterModels = true);
 
     try {
-      // 1. We don't strictly need a key for this public endpoint, 
-      // but it's good practice to send it if we have it.
       final response = await http.get(
         Uri.parse("https://openrouter.ai/api/v1/models"),
-        headers: {
-          "HTTP-Referer": "https://airp-chat.com",
-          "X-Title": "AIRP Chat",
-        },
+        headers: {"HTTP-Referer": "https://airp-chat.com", "X-Title": "AIRP Chat"},
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> dataList = data['data'];
 
-        // 2. Extract IDs and Sort Alphabetically
         final List<String> fetchedIds = dataList
             .map<String>((e) => e['id'].toString())
             .toList();
         
-        fetchedIds.sort(); // A-Z sort
+        fetchedIds.sort();
+
+        // Save to Disk
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('airp_list_openrouter', fetchedIds);
 
         setState(() {
           _openRouterModelsList = fetchedIds;
-          _isLoadingModels = false;
+          _isLoadingOpenRouterModels = false;
         });
         
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Fetched ${_openRouterModelsList.length} models! OwO"))
-          );
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Found ${_openRouterModelsList.length} OpenRouter models!")));
       } else {
         throw Exception("Status ${response.statusCode}");
       }
     } catch (e) {
-      setState(() => _isLoadingModels = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to fetch models: $e"), backgroundColor: Colors.redAccent)
-        );
-      }
+      setState(() => _isLoadingOpenRouterModels = false);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Fetch Error: $e"), backgroundColor: Colors.red));
     }
   }
 
@@ -1173,7 +1249,7 @@ void _showEditDialog(int index) {
                       )
                     ),
                     subtitle: Text(
-                      _modelDisplayNames[session.modelName] ?? session.modelName, 
+                      cleanModelName(session.modelName), 
                       style: TextStyle(fontSize: 10, color: Colors.grey[600])
                     ),
                     onTap: () {
@@ -1328,119 +1404,116 @@ void _showEditDialog(int index) {
             const SizedBox(height: 20),
 
             const Text("Model Selection", style: TextStyle(fontWeight: FontWeight.bold)),
-            
-            // DYNAMIC SELECTOR
-            if (_currentProvider == AiProvider.gemini) 
-              DropdownButton<String>(
-                isExpanded: true,
-                dropdownColor: Colors.grey[900],
-                value: _models.contains(_selectedGeminiModel) ? _selectedGeminiModel : _models.first,
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() { _selectedGeminiModel = newValue; _selectedModel = newValue; _initializeModel(); });
-                  }
-                },
-                items: _models.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(_modelDisplayNames[value] ?? value, style: const TextStyle(fontSize: 13, color: Colors.white)),
-                  );
-                }).toList(),
-              )
-            else if (_currentProvider == AiProvider.openRouter)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 5),
-                  
-                  if (_openRouterModelsList.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.black26,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: _openRouterModelsList.contains(_openRouterModel) 
-                              ? _openRouterModel 
-                              : null, // Handle case where current text isn't in list
-                          hint: Text(_openRouterModel, style: const TextStyle(color: Colors.white70)),
-                          dropdownColor: const Color(0xFF2C2C2C),
-                          items: _openRouterModelsList.map((String id) {
-                            return DropdownMenuItem<String>(
-                              value: id,
-                              child: Text(
-                                id, 
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            if (newValue != null) {
-                              setState(() {
-                                _openRouterModel = newValue;
-                                _openRouterModelController.text = newValue; 
-                              });
-                            }
-                          },
-                        ),
-                      ),
-                    )
-                  else
-                    // Fallback to Manual Entry if list isn't loaded
-                    TextField(
-                      controller: _openRouterModelController,
-                      decoration: const InputDecoration(
-                        hintText: "vendor/model-name",
-                        hintStyle: TextStyle(fontSize: 12),
-                        border: OutlineInputBorder(),
-                        filled: true,
-                        isDense: true,
-                      ),
-                      style: const TextStyle(fontSize: 13),
-                      onChanged: (val) { _openRouterModel = val.trim(); },
+            const SizedBox(height: 5),
+
+            // ============================================
+            // GEMINI UI
+            // ============================================
+            if (_currentProvider == AiProvider.gemini) ...[
+              if (_geminiModelsList.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF2C2C2C),
+                      value: _geminiModelsList.contains(_selectedGeminiModel) ? _selectedGeminiModel : null,
+                      hint: Text(cleanModelName(_selectedGeminiModel), style: const TextStyle(color: Colors.white)),
+                      items: _geminiModelsList.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(cleanModelName(value), style: const TextStyle(fontSize: 13, color: Colors.white)),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() { 
+                            _selectedGeminiModel = newValue; 
+                            _selectedModel = newValue; 
+                            // Don't init yet, let them press Save
+                          });
+                        }
+                      },
                     ),
+                  ),
+                )
+              else
+                // Fallback Text Field if list is empty/error
+                TextField(
+                  decoration: const InputDecoration(hintText: "models/gemini-1.5-flash", border: OutlineInputBorder(), isDense: true),
+                  onChanged: (val) => _selectedGeminiModel = val,
+                  controller: TextEditingController(text: _selectedGeminiModel),
+                ),
 
-                  const SizedBox(height: 8),
-
-                  if (_openRouterModelsList.isEmpty)
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: _isLoadingModels 
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                          : const Icon(Icons.cloud_download, size: 16),
-                        label: Text(_isLoadingModels ? "Loading..." : "Load Model List"),
-                        onPressed: _isLoadingModels ? null : _fetchOpenRouterModels,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.purpleAccent,
-                          side: const BorderSide(color: Colors.purpleAccent),
-                        ),
-                      ),
-                    ),
-                    
-                  if (_openRouterModelsList.isNotEmpty)
-                     Align(
-                       alignment: Alignment.centerRight,
-                       child: TextButton(
-                         onPressed: () {
-                           // Option to switch back to manual entry
-                           setState(() => _openRouterModelsList = []);
-                         },
-                         child: const Text("Switch to Manual Input", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                       ),
-                     ),
-
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4.0),
-                    child: Text("Check openrouter.ai/models for details", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                  )
-                ],
+              const SizedBox(height: 8),
+              // REFRESH BUTTON
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: _isLoadingGeminiModels 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                    : const Icon(Icons.cloud_sync, size: 16),
+                  label: Text(_isLoadingGeminiModels ? "Fetching..." : "Refresh Model List"),
+                  onPressed: _isLoadingGeminiModels ? null : _fetchGeminiModels,
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.blueAccent),
+                ),
               ),
+            ]
+
+            // ============================================
+            // OPENROUTER UI
+            // ============================================
+            else if (_currentProvider == AiProvider.openRouter) ...[
+              if (_openRouterModelsList.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF2C2C2C),
+                      value: _openRouterModelsList.contains(_openRouterModel) ? _openRouterModel : null,
+                      hint: Text(cleanModelName(_openRouterModel), style: const TextStyle(color: Colors.white)),
+                      items: _openRouterModelsList.map((String id) {
+                        return DropdownMenuItem<String>(
+                          value: id,
+                          child: Text(cleanModelName(id), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _openRouterModel = newValue;
+                            _openRouterModelController.text = newValue;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                )
+              else
+                TextField(
+                  controller: _openRouterModelController,
+                  decoration: const InputDecoration(hintText: "vendor/model-name", border: OutlineInputBorder(), isDense: true),
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (val) { _openRouterModel = val.trim(); },
+                ),
+
+              const SizedBox(height: 8),
+              
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: _isLoadingOpenRouterModels 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                    : const Icon(Icons.cloud_sync, size: 16),
+                  label: Text(_isLoadingOpenRouterModels ? "Fetching..." : "Refresh Model List"),
+                  onPressed: _isLoadingOpenRouterModels ? null : _fetchOpenRouterModels,
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.purpleAccent),
+                ),
+              ),
+            ],
             const SizedBox(height: 30),
 
             const Text("System Prompt", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -2256,7 +2329,7 @@ class MessageBubble extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      msg.modelName!,
+                      cleanModelName(msg.modelName!),
                       style: TextStyle(
                         fontSize: 10, 
                         color: textColor.withOpacity(0.7), 
