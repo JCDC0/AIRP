@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 
 // ----------------------------------------------------------------------
 // GLOBAL HELPERS & CONSTANTS
@@ -371,8 +372,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // Determine correct provider string
     String providerStr = 'gemini';
-    if (_currentProvider == AiProvider.openRouter) providerStr = 'openRouter';
-    else if (_currentProvider == AiProvider.local) providerStr = 'local';
+    if (_currentProvider == AiProvider.openRouter) {
+      providerStr = 'openRouter';
+    } else if (_currentProvider == AiProvider.local) providerStr = 'local';
     else if (_currentProvider == AiProvider.openAi) providerStr = 'openAi';
 
     final sessionData = ChatSessionData(
@@ -543,50 +545,93 @@ Future<void> _sendMessage() async {
     }
   }
 
-    Future<void> _sendGeminiMessage(String text, List<String> images) async {
-    // ... (Keep existing Gemini Content creation logic) ...
+          Future<void> _sendGeminiMessage(String text, List<String> images) async {
     Content userContent;
+    
+    final List<Part> parts = [];
+    String accumulatedText = text;
+
     if (images.isNotEmpty) {
-       final List<Part> parts = [];
-      if (text.isNotEmpty) parts.add(TextPart(text));
       for (String path in images) {
-        final bytes = await File(path).readAsBytes();
-        parts.add(DataPart(path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg', bytes));
+        final String ext = path.split('.').last.toLowerCase();
+
+        // 1. Handle Text Files by reading content
+        if (['txt', 'md', 'json', 'dart', 'js', 'py', 'html', 'css', 'csv', 'c', 'cpp', 'java'].contains(ext)) {
+          try {
+            final String fileContent = await File(path).readAsString();
+            accumulatedText += "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n";
+          } catch (e) {
+            debugPrint("Error reading text file: $e");
+          }
+        } 
+        // 2. Handle Binary Files (Images, PDF, etc.)
+        else {
+          final bytes = await File(path).readAsBytes();
+          String? mimeType;
+          
+          if (['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'].contains(ext)) {
+            mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+          } else if (ext == 'pdf') {
+            mimeType = 'application/pdf';
+          } 
+          // Note: Skipping doc/docx for DataPart as they often cause API errors. 
+          // Users should convert to PDF or Text for best results currently.
+
+          if (mimeType != null) {
+            parts.add(DataPart(mimeType, bytes));
+          }
+        }
       }
+    }
+
+    if (accumulatedText.isNotEmpty) {
+      parts.insert(0, TextPart(accumulatedText));
+    }
+
+    if (parts.isNotEmpty) {
       userContent = Content.multi(parts);
     } else {
-      userContent = Content.text(text);
+      userContent = Content.text(accumulatedText);
     }
 
     // Grounding Logic
     if (_enableGrounding && images.isEmpty) {
       final groundedText = await _performGroundedGeneration(text);
-      if (_isCancelled) return; // Check cancel
+      if (_isCancelled) return; 
       setState(() {
         _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false, modelName: _selectedModel));
         _isLoading = false;
       });
     } else {
       // Normal Chat
-      final response = await _chat.sendMessage(userContent);
+      try {
+        final response = await _chat.sendMessage(userContent);
 
-      if (_isCancelled) return; // Check cancel
+        if (_isCancelled) return; 
 
-      String fullText = "";
-      String? aiImageBase64;
-      if (response.candidates.isNotEmpty) {
-        final parts = response.candidates.first.content.parts;
-        for (var part in parts) {
-          if (part is TextPart) fullText += part.text;
-          else if (part is DataPart) aiImageBase64 = base64Encode(part.bytes);
+        String fullText = "";
+        String? aiImageBase64;
+        if (response.candidates.isNotEmpty) {
+          final parts = response.candidates.first.content.parts;
+          for (var part in parts) {
+            if (part is TextPart) fullText += part.text;
+            else if (part is DataPart) aiImageBase64 = base64Encode(part.bytes);
+          }
+        }
+        setState(() {
+          _messages.add(ChatMessage(text: fullText, isUser: false, aiImage: aiImageBase64, modelName: _selectedModel));
+          _isLoading = false;
+        });
+      } catch (e) {
+        if (!_isCancelled) {
+           setState(() {
+            _messages.add(ChatMessage(text: "System Error: $e", isUser: false, modelName: "System"));
+            _isLoading = false;
+          });
         }
       }
-      setState(() {
-        _messages.add(ChatMessage(text: fullText, isUser: false, aiImage: aiImageBase64, modelName: _selectedModel));
-        _isLoading = false;
-      });
     }
-    // ...
+    
     if (!_isCancelled) {
       await _initializeModel();
       _scrollToBottom();
@@ -663,8 +708,11 @@ Future<void> _sendMessage() async {
     if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
 
     if (!baseUrl.endsWith('/chat/completions')) {
-      if (baseUrl.endsWith('/v1')) baseUrl += "/chat/completions";
-      else baseUrl += "/v1/chat/completions";
+      if (baseUrl.endsWith('/v1')) {
+        baseUrl += "/chat/completions";
+      } else {
+        baseUrl += "/v1/chat/completions";
+      }
     }
 
     // ... (Your Payload building logic is same as before, omitted for brevity) ...
@@ -894,7 +942,7 @@ Future<void> _sendMessage() async {
     }
   }
 
-  Future<void> _pickImage() async { 
+    Future<void> _pickImage() async { 
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
@@ -905,6 +953,60 @@ Future<void> _sendMessage() async {
     } catch (e) {
       debugPrint("Error picking image: $e");
     }
+  }
+
+    Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'txt', 'md', 'doc', 'docx'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final path = result.files.single.path!;
+        setState(() {
+          _pendingImages.add(path);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error picking file: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error picking file: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showAttachmentMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.cyanAccent),
+                title: const Text('Image from Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.description, color: Colors.orangeAccent),
+                title: const Text('Document / File'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickFile();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // LOAD LIBRARY
@@ -2123,21 +2225,57 @@ void _showEditDialog(int index) {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_pendingImages.isNotEmpty)
+                                                            if (_pendingImages.isNotEmpty)
                       SizedBox(
-                        height: 70,
+                        height: 90,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: _pendingImages.length,
                           itemBuilder: (context, index) {
+                            final path = _pendingImages[index];
+                            final filename = path.split('/').last;
+                            final ext = path.split('.').last.toLowerCase();
+                            final isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic'].contains(ext);
+
                             return Padding(
                               padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
                               child: Stack(
                                 children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(File(_pendingImages[index]),
-                                        width: 60, height: 60, fit: BoxFit.cover),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: isImage
+                                            ? Image.file(File(path),
+                                                width: 60, height: 60, fit: BoxFit.cover)
+                                            : Container(
+                                                width: 60,
+                                                height: 60,
+                                                color: Colors.white12,
+                                                alignment: Alignment.center,
+                                                child: Icon(
+                                                  ext == 'pdf'
+                                                      ? Icons.picture_as_pdf
+                                                      : Icons.insert_drive_file,
+                                                  color: Colors.white70,
+                                                  size: 28,
+                                                ),
+                                              ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      SizedBox(
+                                        width: 60,
+                                        child: Text(
+                                          filename,
+                                          style: const TextStyle(
+                                              color: Colors.white70, fontSize: 9),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   // Delete button (X)
                                   Positioned(
@@ -2160,30 +2298,13 @@ void _showEditDialog(int index) {
                         ),
                       ),
 
-                                        Row(
+                                                            Row(
                       children: [
-                        // ✨ 1. IMAGE BUTTON (Existing)
+                        // ✨ MERGED ATTACHMENT BUTTON
                         IconButton(
-                          icon: const Icon(Icons.image, color: Colors.cyanAccent),
-                          tooltip: "Add Image",
-                          onPressed: _isLoading ? null : _pickImage,
-                        ),
-
-                        // ✨ 2. ATTACHMENT BUTTON (New Request)
-                        // Note: For now, this acts as a Gallery picker to match your 'add file' request visually.
-                        // To allow PDFs/Docs, you need 'file_picker' package.
-                        IconButton(
-                          icon: const Icon(Icons.attach_file, color: Colors.white70),
+                          icon: const Icon(Icons.attach_file, color: Colors.cyanAccent),
                           tooltip: "Add Attachment",
-                          onPressed: _isLoading ? null : () async {
-                            // If you added file_picker package:
-                            // FilePickerResult? result = await FilePicker.platform.pickFiles();
-                            // if (result != null) _pendingImages.add(result.files.single.path!);
-
-                            // For now, re-using image picker as placeholder for "File"
-                             // to prevent crashes if you haven't added the dependency yet.
-                            _pickImage();
-                           },
+                          onPressed: _isLoading ? null : _showAttachmentMenu,
                         ),
 
                         Expanded(
@@ -2552,8 +2673,8 @@ class MessageBubble extends StatelessWidget {
                   ),
                 ),
               // --------------------------------------
-              if (msg.imagePaths.isNotEmpty)
-                _buildImageGrid(msg.imagePaths),
+                            if (msg.imagePaths.isNotEmpty)
+                _buildAttachmentGrid(msg.imagePaths), // ✨ Renamed and Updated
               if (msg.aiImage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
@@ -2578,15 +2699,47 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildImageGrid(List<String> paths) {
+    Widget _buildAttachmentGrid(List<String> paths) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Wrap(
         spacing: 8, runSpacing: 8,
-        children: paths.map((path) => ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.file(File(path), width: 150, height: 150, fit: BoxFit.cover),
-        )).toList(),
+        children: paths.map((path) {
+          final String ext = path.split('.').last.toLowerCase();
+          final bool isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].contains(ext);
+
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 150, height: 150,
+              color: Colors.black26,
+              child: isImage 
+                ? Image.file(File(path), fit: BoxFit.cover)
+                : Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(
+                        ext == 'pdf' ? Icons.picture_as_pdf 
+                        : ['doc', 'docx'].contains(ext) ? Icons.description
+                        : Icons.insert_drive_file,
+                        size: 50, 
+                        color: Colors.white54
+                      ),
+                      Positioned(
+                        bottom: 8, left: 8, right: 8,
+                        child: Text(
+                          path.split('/').last,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 10, color: Colors.white70),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
