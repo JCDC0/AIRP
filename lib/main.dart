@@ -17,23 +17,43 @@ import 'package:file_picker/file_picker.dart';
 // ----------------------------------------------------------------------
 const Map<String, String> kModelDisplayNames = {
   // Gemini 3 Series
-  'models/gemini-3-pro-preview': 'Gemini 3 Pro Preview (Expensive)',
-  'models/gemini-3-flash-preview': 'Gemini 3 Flash Preview (Fast)',
-  'models/gemini-3-pro-image-preview': 'Gemini 3 Pro Image Preview (Multimodal)',
+  'models/gemini-3-pro-preview': '⭐Gemini 3 Pro Preview (Expensive)',
+  'models/gemini-3-flash-preview': '⭐Gemini 3 Flash Preview (Fast)',
   // Gemini 2.5 Series
-  'models/gemini-2.5-pro': 'Gemini 2.5 Pro (Middle ground)',
-  'models/gemini-flash-latest': 'Gemini 2.5 Flash Latest (Cheap)',
-  'models/gemini-flash-lite-latest': 'Gemini 2.5 Flash Latest Lite (Cheaper)',
-  'models/gemini-2.5-flash-image': 'Gemini 2.5 Flash Image (Multimodal)',
+  'models/gemini-2.5-pro': '⭐Gemini 2.5 Pro (Middle ground)',
+  'models/gemini-flash-latest': '⭐Gemini 2.5 Flash Latest (Cheap)',
+  'models/gemini-flash-lite-latest': '⭐Gemini 2.5 Flash Latest Lite (Cheaper)',
   // Gemini 2.0 Series
-  'models/gemini-2.0-flash': 'Gemini 2.0 Flash',
-  'models/gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
+  'models/gemini-2.0-flash': '⭐Gemini 2.0 Flash',
+  'models/gemini-2.0-flash-lite': '⭐Gemini 2.0 Flash Lite',
   // Gemma 3 Series
-  'models/gemma-3-27b-it': 'Gemma 3 27B (Desktop Class)',
-  'models/gemma-3-12b-it': 'Gemma 3 12B (Efficient)',
-  'models/gemma-3-4b-it': 'Gemma 3 4B (Lightweight)',
-  'models/gemma-3-2b-it': 'Gemma 3 2B (Small)',
-  'models/gemma-3-1b-it': 'Gemma 3 1B (Tiny)',
+  'models/gemma-3-27b-it': '⭐Gemma 3 27B (Desktop Class)',
+  'models/gemma-3-12b-it': '⭐Gemma 3 12B (Efficient)',
+  'models/gemma-3-4b-it': '⭐Gemma 3 4B (Lightweight)',
+  'models/gemma-3-2b-it': '⭐Gemma 3 2B (Small)',
+  'models/gemma-3-1b-it': '⭐Gemma 3 1B (Tiny)',
+  // OpenRouter Models (Free)
+  'z-ai/glm-4.5-air:free': '⭐GLM-4.5-AIR (OpenRouter Free)',
+  'deepseek/deepseek-r1-0528:free': '⭐DeepSeek R1 (OpenRouter Free)',
+  'mistralai/devstral-2512:free': '⭐DevStral 25B (OpenRouter Free)',
+  'tngtech/deepseek-r1t2-chimera:free': '⭐DeepSeek R1T2 Chimera (OpenRouter Free)',
+  'tngtech/deepseek-r1t-chimera:free': '⭐DeepSeek R1T Chimera (OpenRouter Free)',
+  'nex-agi/deepseek-v3.1-nex-n1:free': '⭐DeepSeek V3.1 NEX-N1 (OpenRouter Free)',
+  'tngtech/tng-r1t-chimera:free': '⭐TNG R1T Chimera (OpenRouter Free)',
+  'qwen/qwen3-coder:free': '⭐Qwen3 Coder (OpenRouter Free)',
+  'openai/gpt-oss-120b:free': '⭐GPT-OSS 120B (OpenRouter Free)',
+  'openai/gpt-oss-20b:free': '⭐GPT-OSS 20B (OpenRouter Free)',
+  'allenai/olmo-3.1-32b-think:free': '⭐Olmo 3.1 32B Think (OpenRouter Free)',
+  'meta-llama/llama-3.3-70b-instruct:free': '⭐Llama 3.3 70B Instruct (OpenRouter Free)',
+  'google/gemma-3-27b-it:free': '⭐Gemma 3 27B It (OpenRouter Free)',
+  'google/gemini-2.0-flash-exp:free': '⭐Gemini 2.0 Flash Exp (OpenRouter Free)',
+  'cognitivecomputations/dolphin-mistral-24b-venice-edition:free': '⭐Dolphin Mistral 24B Venice (OpenRouter Free)',
+  'meta-llama/llama-3.1-405b-instruct:free': '⭐Llama 3.1 405B Instruct (OpenRouter Free)',
+  'mistralai/mistral-7b-instruct:free': '⭐Mistral 7B Instruct (OpenRouter Free)',
+  'mistralai/mistral-small-3.1-24b-instruct:free': '⭐Mistral Small 3.1 24B Instruct (OpenRouter Free)',
+
+
+
 };
 
 String cleanModelName(String rawId) {
@@ -45,7 +65,7 @@ String cleanModelName(String rawId) {
   // Quick local check
   if (rawId.contains("local")) return "Local / Home AI";
 
-  // 2. Algorithmically Clean the Name (The Maid Logic)
+  // 2. Algorithmically Clean the Name
   String name = rawId;
 
   // Remove OpenRouter Vendor prefixes (e.g., "google/", "meta-llama/")
@@ -67,8 +87,7 @@ String cleanModelName(String rawId) {
     }
   }
   name = words.join(' ');
-
-  // Fix Dot spacing (e.g., "2 . 0" -> "2.0")
+  // Fix spacing before periods
   name = name.replaceAll(' .', '.');
 
   return name;
@@ -185,7 +204,6 @@ class _ChatScreenState extends State<ChatScreen> {
   String _openRouterKey = '';
   String _openAiKey = ''; // Placeholder for possible OpenAI support
 
-  // ✨ NEW LOCAL VARS
   final TextEditingController _localIpController = TextEditingController();
   String _localModelName = 'local-model';
 
@@ -252,7 +270,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _openRouterKey = prefs.getString('airp_key_openrouter') ?? '';
       _openAiKey = prefs.getString('airp_key_openai') ?? '';
 
-      // ✨ Load Local IP
+      // Load Local IP
       _localIpController.text = prefs.getString('airp_local_ip') ?? 'http://192.168.1.15:1234/v1';
 
       // Load Provider
@@ -267,15 +285,15 @@ class _ChatScreenState extends State<ChatScreen> {
         _currentProvider = AiProvider.gemini;
       }
 
-      // ✨ LOAD PERSISTED MODEL LISTS ✨
+      // LOAD PERSISTED MODEL LISTS
       _geminiModelsList = prefs.getStringList('airp_list_gemini') ?? [];
       _openRouterModelsList = prefs.getStringList('airp_list_openrouter') ?? [];
 
       // Load Selected Models
       // If the list is empty (first run), keep the default. 
       // If list exists, check if saved model is valid.
-      _selectedGeminiModel = prefs.getString('airp_model_gemini') ?? 'models/gemini-1.5-flash';
-      _openRouterModel = prefs.getString('airp_model_openrouter') ?? 'google/gemini-2.0-flash-lite-preview-02-05:free';
+      _selectedGeminiModel = prefs.getString('airp_model_gemini') ?? 'models/gemini-flash-lite-latest';
+      _openRouterModel = prefs.getString('airp_model_openrouter') ?? 'z-ai/glm-4.5-air:free';
       _openRouterModelController.text = _openRouterModel;
       
       _updateApiKeyTextField();
@@ -301,17 +319,16 @@ class _ChatScreenState extends State<ChatScreen> {
   // ----------------------------------------------------------------------
 
   Future<void> _saveSettings() async {
-    // Trim inputs
     final cleanKey = _apiKeyController.text.trim();
     final cleanModel = _openRouterModelController.text.trim();
-    final cleanIp = _localIpController.text.trim(); // <--- GET IP
+    final cleanIp = _localIpController.text.trim();
 
     setState(() {
       switch (_currentProvider) {
         case AiProvider.gemini: _geminiKey = cleanKey; break;
         case AiProvider.openRouter: _openRouterKey = cleanKey; break;
         case AiProvider.openAi: _openAiKey = cleanKey; break;
-        case AiProvider.local: break; // No key usually
+        case AiProvider.local: break;
       }
       _openRouterModel = cleanModel;
       _openRouterModelController.text = cleanModel;
@@ -322,7 +339,7 @@ class _ChatScreenState extends State<ChatScreen> {
       } else if (_currentProvider == AiProvider.gemini) {
          _selectedModel = _selectedGeminiModel;
       } else if (_currentProvider == AiProvider.local) {
-         _selectedModel = "Local Network AI"; // <--- UPDATE MODEL NAME
+         _selectedModel = "Local Network AI"; 
       }
     });
 
@@ -330,7 +347,7 @@ class _ChatScreenState extends State<ChatScreen> {
     await prefs.setString('airp_key_gemini', _geminiKey);
     await prefs.setString('airp_key_openrouter', _openRouterKey);
     await prefs.setString('airp_key_openai', _openAiKey);
-    await prefs.setString('airp_local_ip', cleanIp); // <--- SAVE IP
+    await prefs.setString('airp_local_ip', cleanIp); 
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString('airp_model_gemini', _selectedGeminiModel);
     await prefs.setString('airp_model_openrouter', _openRouterModel);
@@ -427,7 +444,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // 2. UI Feedback
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Generation Stopped 🛑"), 
+        content: Text("Generation Stopped Successfuly"), 
         duration: Duration(milliseconds: 500),
         backgroundColor: Colors.redAccent,
       )
@@ -511,8 +528,8 @@ Future<void> _sendMessage() async {
     setState(() {
       _messages.add(ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend));
       _isLoading = true;
-      _isCancelled = false; // Reset cancel flag
-      _httpClient = http.Client(); // ✨ Init new client
+      _isCancelled = false;
+      _httpClient = http.Client();
       _pendingImages.clear();
       _textController.clear();
     });
@@ -614,24 +631,44 @@ Future<void> _sendMessage() async {
         if (response.candidates.isNotEmpty) {
           final parts = response.candidates.first.content.parts;
           for (var part in parts) {
-            if (part is TextPart) fullText += part.text;
-            else if (part is DataPart) aiImageBase64 = base64Encode(part.bytes);
+            if (part is TextPart) {
+              fullText += part.text;
+            } else if (part is DataPart) aiImageBase64 = base64Encode(part.bytes);
           }
         }
         setState(() {
           _messages.add(ChatMessage(text: fullText, isUser: false, aiImage: aiImageBase64, modelName: _selectedModel));
           _isLoading = false;
         });
-      } catch (e) {
+            } catch (e) {
         if (!_isCancelled) {
            setState(() {
-            _messages.add(ChatMessage(text: "System Error: $e", isUser: false, modelName: "System"));
+            // Enhanced Error Logging for Debugging
+            String errorMsg = "System Error: $e";
+            if (e.toString().contains("400")) {
+              errorMsg += "\n\n(Tip: This model might not support the specific file type or prompt structure used. Try removing attachments or checking the model documentation.)";
+            }
+            _messages.add(ChatMessage(text: errorMsg, isUser: false, modelName: "System"));
             _isLoading = false;
           });
         }
       }
     }
     
+    // Check if response was empty
+    if (_messages.isNotEmpty && !_messages.last.isUser && _messages.last.text.isEmpty && _messages.last.aiImage == null) {
+       setState(() {
+         // Remove the empty message placeholder if it exists, or update it
+         _messages.removeLast(); 
+         _messages.add(ChatMessage(
+           text: "The model returned an empty response. \n\n- It might have been blocked by safety settings (even if disabled).\n- The model might be overloaded.\n- 'Gemini 3' previews are highly experimental.", 
+           isUser: false, 
+           modelName: "System Info"
+         ));
+         _isLoading = false;
+       });
+    }
+
     if (!_isCancelled) {
       await _initializeModel();
       _scrollToBottom();
@@ -640,10 +677,8 @@ Future<void> _sendMessage() async {
     }
   }
 
-    // --- UPDATED OPENROUTER (Uses _httpClient) ---
+    // OPENROUTER (Uses _httpClient) 
   Future<void> _sendOpenRouterMessage(String text, List<String> images) async {
-    // ... (Your existing Key Check and Payload logic) ...
-    // Ensure you copy your Payload logic here
     final cleanKey = _openRouterKey.trim();
     if (cleanKey.isEmpty) {
       throw Exception("OpenRouter Key is empty! Check settings.");
@@ -657,7 +692,7 @@ Future<void> _sendMessage() async {
     if (images.isEmpty) {
       messagesPayload.add({"role": "user", "content": text});
     } else {
-      // ... Image logic ...
+      // Image logic
        List<Map<String, dynamic>> contentParts = [];
       if (text.isNotEmpty) contentParts.add({"type": "text", "text": text});
       for (String path in images) {
@@ -668,7 +703,7 @@ Future<void> _sendMessage() async {
       messagesPayload.add({"role": "user", "content": contentParts});
     }
 
-    // ✨ USE _httpClient
+    // USE _httpClient
     final response = await _httpClient!.post(
       Uri.parse("https://openrouter.ai/api/v1/chat/completions"),
       headers: {
@@ -702,7 +737,7 @@ Future<void> _sendMessage() async {
     }
   }
 
-    // --- UPDATED LOCAL MESSAGE (Uses _httpClient) ---
+    // UPDATED LOCAL MESSAGE (Uses _httpClient) 
   Future<void> _sendLocalMessage(String text, List<String> images) async {
     String baseUrl = _localIpController.text.trim();
     if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
@@ -715,13 +750,7 @@ Future<void> _sendMessage() async {
       }
     }
 
-    // ... (Your Payload building logic is same as before, omitted for brevity) ...
-    // Copy your existing "Build Payload" block here
     List<Map<String, dynamic>> messagesPayload = [];
-    // ... [Insert your existing message loop here] ...
-    // FOR CONTEXT: Just ensure the payload building matches your previous code
-
-    // Quick Re-build of payload for safety (You can copy-paste your old logic loop here)
     if (_systemInstructionController.text.isNotEmpty) {
       messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
     }
@@ -741,9 +770,6 @@ Future<void> _sendMessage() async {
       }
       messagesPayload.add({"role": "user", "content": contentParts});
     }
-    // ... End Payload Build ...
-
-    // ✨ USE _httpClient INSTEAD OF http
     final response = await _httpClient!.post(
       Uri.parse(baseUrl),
       headers: { "Content-Type": "application/json", "Authorization": "Bearer local-key" },
@@ -755,7 +781,7 @@ Future<void> _sendMessage() async {
       }),
     );
 
-    if (_isCancelled) return; // Exit if cancelled during await
+    if (_isCancelled) return; 
 
     if (response.statusCode == 200) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -817,7 +843,6 @@ Future<void> _sendMessage() async {
         setState(() {
           _geminiModelsList = fetchedIds;
           _isLoadingGeminiModels = false;
-          // If current model isn't in list, switch to first one or keep it?
           if (!_geminiModelsList.contains(_selectedGeminiModel) && _geminiModelsList.isNotEmpty) {
              _selectedGeminiModel = _geminiModelsList.first;
           }
@@ -1041,9 +1066,9 @@ Future<void> _sendMessage() async {
       // Check if title exists, if so, update it. If not, add new.
       final index = _savedSystemPrompts.indexWhere((p) => p.title == newPrompt.title);
       if (index != -1) {
-        _savedSystemPrompts[index] = newPrompt; // Update existing
+        _savedSystemPrompts[index] = newPrompt; 
       } else {
-        _savedSystemPrompts.add(newPrompt); // Add new
+        _savedSystemPrompts.add(newPrompt); 
       }
     });
 
@@ -1063,7 +1088,6 @@ Future<void> _sendMessage() async {
     setState(() {
       _savedSystemPrompts.removeWhere((p) => p.title == title);
       _promptTitleController.clear();
-      // Don't clear system instruction, user might want to keep the text
     });
 
     final prefs = await SharedPreferences.getInstance();
@@ -1154,8 +1178,8 @@ Future<void> _sendMessage() async {
     // Case A: User wants to retry the AI's last response
     if (!msg.isUser) {
       setState(() {
-        _messages.removeAt(index); // Remove "bad" AI response
-        _isLoading = true; // Start loading
+        _messages.removeAt(index); 
+        _isLoading = true; 
       });
       
       if (_messages.isNotEmpty && _messages.last.isUser) {
@@ -1525,7 +1549,7 @@ void _showEditDialog(int index) {
                         _initializeModel();
                       });
 
-                      Navigator.pop(context); // Close Drawer
+                      Navigator.pop(context);
                       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
                     },
                     
@@ -1682,7 +1706,6 @@ void _showEditDialog(int index) {
                           setState(() { 
                             _selectedGeminiModel = newValue; 
                             _selectedModel = newValue; 
-                            // Don't init yet, let them press Save
                           });
                         }
                       },
@@ -2152,12 +2175,10 @@ void _showEditDialog(int index) {
               value: AiProvider.openRouter,
               child: Row(children: [Icon(Icons.router, color: Colors.purpleAccent), SizedBox(width: 8), Text('AIRP - OpenRouter')]),
             ),
-            // --- ADDED LOCAL ITEM ---
             const PopupMenuItem<AiProvider>(
               value: AiProvider.local,
               child: Row(children: [Icon(Icons.laptop_mac, color: Colors.greenAccent), SizedBox(width: 8), Text('AIRP - Local')]),
             ),
-            // ------------------------
             const PopupMenuItem<AiProvider>(
               value: AiProvider.openAi,
               enabled: false,
@@ -2300,7 +2321,7 @@ void _showEditDialog(int index) {
 
                                                             Row(
                       children: [
-                        // ✨ MERGED ATTACHMENT BUTTON
+                        // MERGED ATTACHMENT BUTTON
                         IconButton(
                           icon: const Icon(Icons.attach_file, color: Colors.cyanAccent),
                           tooltip: "Add Attachment",
@@ -2324,7 +2345,7 @@ void _showEditDialog(int index) {
                                   borderRadius: BorderRadius.circular(24),
                                   borderSide: BorderSide.none),
                               filled: true,
-                              fillColor: const Color(0xFF2C2C2C), // Fixed color back to dark theme logic
+                              fillColor: const Color(0xFF2C2C2C), 
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 10),
                             ),
@@ -2334,11 +2355,11 @@ void _showEditDialog(int index) {
                         ),
                         const SizedBox(width: 8),
 
-                        // ✨ 3. DYNAMIC SEND / STOP BUTTON
+                        // 3. DYNAMIC SEND / STOP BUTTON
                         IconButton.filled(
                           style: IconButton.styleFrom(
                               backgroundColor: _isLoading
-                                 ? Colors.cyanAccent.withOpacity(0.2) // Dim background when stopping
+                                 ? Colors.cyanAccent.withOpacity(0.2) 
                                  : (_enableGrounding ? Colors.green : Colors.cyanAccent)
                           ),
                           // Toggle Function: Send if idle, Stop if loading
@@ -2629,6 +2650,62 @@ class MessageBubble extends StatelessWidget {
     this.onLongPress,
   });
 
+    void _showImageZoom(BuildContext context, ImageProvider provider) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.9),
+      builder: (context) => Stack(
+        children: [
+          // 1. Zoomable Image
+          Positioned.fill(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image(image: provider, fit: BoxFit.contain),
+            ),
+          ),
+          // 2. Close Button (Top Right)
+          Positioned(
+            top: 40,
+            right: 20,
+            child: Material(
+              color: Colors.transparent,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+          // 3. Download Button (Bottom Center)
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white24,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    // Placeholder for actual download logic
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Image saved to Gallery (Simulated)")),
+                    );
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text("Download"),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
@@ -2674,13 +2751,16 @@ class MessageBubble extends StatelessWidget {
                 ),
               // --------------------------------------
                             if (msg.imagePaths.isNotEmpty)
-                _buildAttachmentGrid(msg.imagePaths), // ✨ Renamed and Updated
+                _buildAttachmentGrid(context, msg.imagePaths), 
               if (msg.aiImage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.memory(base64Decode(msg.aiImage!), width: 250, fit: BoxFit.contain),
+                  child: GestureDetector(
+                    onTap: () => _showImageZoom(context, MemoryImage(base64Decode(msg.aiImage!))),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.memory(base64Decode(msg.aiImage!), width: 250, fit: BoxFit.contain),
+                    ),
                   ),
                 ),
               if (msg.text.isNotEmpty)
@@ -2699,7 +2779,7 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-    Widget _buildAttachmentGrid(List<String> paths) {
+      Widget _buildAttachmentGrid(BuildContext context, List<String> paths) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Wrap(
@@ -2708,35 +2788,48 @@ class MessageBubble extends StatelessWidget {
           final String ext = path.split('.').last.toLowerCase();
           final bool isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].contains(ext);
 
+          if (isImage) {
+            return GestureDetector(
+              onTap: () => _showImageZoom(context, FileImage(File(path))),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 150, height: 150,
+                  color: Colors.black26,
+                  child: Image.file(File(path), fit: BoxFit.cover),
+                ),
+              ),
+            );
+          }
+
+          // Return Non-Image File Icon
           return ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
               width: 150, height: 150,
               color: Colors.black26,
-              child: isImage 
-                ? Image.file(File(path), fit: BoxFit.cover)
-                : Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        ext == 'pdf' ? Icons.picture_as_pdf 
-                        : ['doc', 'docx'].contains(ext) ? Icons.description
-                        : Icons.insert_drive_file,
-                        size: 50, 
-                        color: Colors.white54
-                      ),
-                      Positioned(
-                        bottom: 8, left: 8, right: 8,
-                        child: Text(
-                          path.split('/').last,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 10, color: Colors.white70),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(
+                    ext == 'pdf' ? Icons.picture_as_pdf 
+                    : ['doc', 'docx'].contains(ext) ? Icons.description
+                    : Icons.insert_drive_file,
+                    size: 50, 
+                    color: Colors.white54
                   ),
+                  Positioned(
+                    bottom: 8, left: 8, right: 8,
+                    child: Text(
+                      path.split('/').last,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 10, color: Colors.white70),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }).toList(),

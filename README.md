@@ -15,6 +15,8 @@
 *   **Visual Customization**: Control bubble colors, opacity, interface fonts, and custom background wallpapers.
 *   **System Prompt Library**: Save and load custom personas and roleplay instructions.
 *   **Multimodal Support**: Send images to compatible models.
+*   **File Attachment Support**: Attach PDFs and text-based files (txt, md, dart, etc.) to your messages for AI analysis.
+*   **Interactive Media**: Zoom into images sent by you or the AI, and download them (simulated) directly from the chat.
 *   **Google Search Grounding**: Toggle real-time web search integration for Gemini models.
 *   **Token Counting**: Live token usage estimation to track context limits.
 
