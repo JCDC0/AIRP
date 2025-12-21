@@ -1,4 +1,4 @@
-# AIRP - Gemini & OpenRouter Chat Client
+# AIRP - Chat Client
 
 **AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models and the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more). It features a robust system prompt library, deep visual customization, and a persistent local history with search capabilities.
 
