@@ -438,7 +438,11 @@ Future<void> _sendMessage() async {
       }
     } catch (e) {
       setState(() {
-        _messages.add(ChatMessage(text: "Error: $e", isUser: false));
+        _messages.add(ChatMessage(
+          text: "**System Error**\n\n```\n$e\n```",
+          isUser: false,
+          modelName: "System Alert",
+        ));
         _isLoading = false;
       });
       _autoSaveCurrentSession();
@@ -463,7 +467,7 @@ Future<void> _sendMessage() async {
     if (_enableGrounding && images.isEmpty) {
       final groundedText = await _performGroundedGeneration(text);
       setState(() {
-        _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false));
+        _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false, modelName: _selectedModel));
         _isLoading = false;
       });
     } else {
@@ -488,6 +492,7 @@ Future<void> _sendMessage() async {
           text: fullText,
           isUser: false,
           aiImage: aiImageBase64,
+          modelName: _selectedModel, // stamp model used
         ));
         _isLoading = false;
       });
@@ -559,7 +564,7 @@ Future<void> _sendMessage() async {
       if (data['choices'] != null && data['choices'].isNotEmpty) {
         final String aiText = data['choices'][0]['message']['content'];
         setState(() {
-          _messages.add(ChatMessage(text: aiText, isUser: false));
+          _messages.add(ChatMessage(text: aiText, isUser: false, modelName: _openRouterModel));
           _isLoading = false;
         });
         _autoSaveCurrentSession();
@@ -1957,11 +1962,13 @@ class ChatMessage {
   final bool isUser;
   final List<String> imagePaths; 
   final String? aiImage;
+  final String? modelName;
   ChatMessage({
     required this.text, 
     required this.isUser,
     this.imagePaths = const [],
     this.aiImage,
+    this.modelName,
     });
 
   Map<String, dynamic> toJson() => {
@@ -1969,6 +1976,7 @@ class ChatMessage {
     'isUser': isUser,
     'imagePaths': imagePaths, 
     'aiImage': aiImage,
+    'modelName': modelName,
   };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -1976,6 +1984,7 @@ class ChatMessage {
     isUser: json['isUser'],
     imagePaths: List<String>.from(json['imagePaths'] ?? []), 
     aiImage: json['aiImage'],
+    modelName: json['modelName'],
   );}
 
 
@@ -2236,6 +2245,28 @@ class MessageBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // --- MODEL NAME DISPLAY ADDED HERE ---
+              if (!msg.isUser && msg.modelName != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      msg.modelName!,
+                      style: TextStyle(
+                        fontSize: 10, 
+                        color: textColor.withOpacity(0.7), 
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace'
+                      ),
+                    ),
+                  ),
+                ),
+              // --------------------------------------
               if (msg.imagePaths.isNotEmpty)
                 _buildImageGrid(msg.imagePaths),
               if (msg.aiImage != null)
