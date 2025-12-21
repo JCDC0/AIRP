@@ -62,6 +62,22 @@ This app follows a **BYOK (Bring Your Own Key)** architecture. Keys are stored l
 4.  Paste your key.
 5.  **Important:** Click **APPLY & SAVE**.
 
+### 3. Local Network AI (LM Studio / Ollama)
+Connect to an LLM running on your own computer or home server.
+
+1.  **Prepare your Server**:
+    *   **LM Studio**: Start the Local Server. Ensure "Cross-Origin-Resource-Sharing (CORS)" is enabled and the server is listening on your local network IP (not just localhost).
+    *   **Ollama**: Run `OLLAMA_HOST=0.0.0.0 ollama serve`.
+2.  **Find your IP**: Get the IPv4 address of your computer (e.g., `192.168.1.15`).
+3.  **Configure AIRP**:
+    *   Select **AIRP - Local** from the top dropdown.
+    *   Open the **Settings Drawer**.
+    *   Enter the URL in the **Local Server Address** field.
+        *   Format: `http://<YOUR_PC_IP>:<PORT>/v1`
+        *   Example: `http://192.168.1.15:1234/v1`
+    *   (Optional) Enter a specific model ID if your server requires it.
+    *   Click **APPLY & SAVE**.
+
 ---
 
 ## Interface & Controls
