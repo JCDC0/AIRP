@@ -1,0 +1,173 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:io';
+import '../utils/constants.dart'; 
+
+// ----------------------------------------------------------------------
+// THEME PROVIDER
+// ----------------------------------------------------------------------
+class ThemeProvider extends ChangeNotifier {
+  String _fontStyle = 'Default';
+  String? _backgroundImagePath; 
+  double _backgroundOpacity = 0.7;
+  
+  Color _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
+  Color _userTextColor = Colors.white;
+  Color _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
+  Color _aiTextColor = Colors.white;
+
+  List<String> _customImagePaths = []; 
+
+  String get fontStyle => _fontStyle;
+  String? get backgroundImagePath => _backgroundImagePath;
+  double get backgroundOpacity => _backgroundOpacity;
+  List<String> get customImagePaths => _customImagePaths;
+  
+  Color get userBubbleColor => _userBubbleColor;
+  Color get userTextColor => _userTextColor;
+  Color get aiBubbleColor => _aiBubbleColor;
+  Color get aiTextColor => _aiTextColor;
+
+  ThemeProvider() {
+    _loadPreferences();
+  }
+
+  ImageProvider get currentImageProvider {
+    if (_backgroundImagePath == null) return const AssetImage(kDefaultBackground);
+    if (_backgroundImagePath!.startsWith('assets/')) {
+      return AssetImage(_backgroundImagePath!);
+    } else {
+      return FileImage(File(_backgroundImagePath!));
+    }
+  }
+
+  TextTheme get currentTextTheme {
+    const baseColor = Colors.white;
+    final baseTheme = ThemeData.dark().textTheme.apply(bodyColor: baseColor, displayColor: baseColor);
+    switch (_fontStyle) {
+      case 'Google': return GoogleFonts.openSansTextTheme(baseTheme);
+      case 'Apple': return GoogleFonts.interTextTheme(baseTheme);
+      case 'Roleplay': return GoogleFonts.loraTextTheme(baseTheme);
+      case 'Terminal': return GoogleFonts.spaceMonoTextTheme(baseTheme);
+      default: return baseTheme;
+    }
+  }
+
+  // --- Background Logic ---
+  Future<void> setBackgroundImage(String? path) async { 
+    _backgroundImagePath = path;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    if (path != null) {
+      await prefs.setString('app_bg_path', path);
+    } else {
+      await prefs.remove('app_bg_path');
+    }
+  }
+
+  Future<void> setBackgroundOpacity(double value) async {
+    _backgroundOpacity = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('app_bg_opacity', value);
+  }
+
+  Future<void> updateColor(String type, Color color) async {
+    switch (type) {
+      case 'userBubble': _userBubbleColor = color; break;
+      case 'userText': _userTextColor = color; break;
+      case 'aiBubble': _aiBubbleColor = color; break;
+      case 'aiText': _aiTextColor = color; break;
+    }
+    notifyListeners();
+    _saveColors();
+  }
+
+  Future<void> _saveColors() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int ub = (((_userBubbleColor.a * 255.0).round() & 0xff) << 24) |
+      (((_userBubbleColor.r * 255.0).round() & 0xff) << 16) |
+      (((_userBubbleColor.g * 255.0).round() & 0xff) << 8) |
+      ((_userBubbleColor.b * 255.0).round() & 0xff);
+    await prefs.setInt('color_user_bubble', ub);
+
+    final int ut = (((_userTextColor.a * 255.0).round() & 0xff) << 24) |
+      (((_userTextColor.r * 255.0).round() & 0xff) << 16) |
+      (((_userTextColor.g * 255.0).round() & 0xff) << 8) |
+      ((_userTextColor.b * 255.0).round() & 0xff);
+    await prefs.setInt('color_user_text', ut);
+
+    final int ab = (((_aiBubbleColor.a * 255.0).round() & 0xff) << 24) |
+      (((_aiBubbleColor.r * 255.0).round() & 0xff) << 16) |
+      (((_aiBubbleColor.g * 255.0).round() & 0xff) << 8) |
+      ((_aiBubbleColor.b * 255.0).round() & 0xff);
+    await prefs.setInt('color_ai_bubble', ab);
+
+    final int at = (((_aiTextColor.a * 255.0).round() & 0xff) << 24) |
+      (((_aiTextColor.r * 255.0).round() & 0xff) << 16) |
+      (((_aiTextColor.g * 255.0).round() & 0xff) << 8) |
+      ((_aiTextColor.b * 255.0).round() & 0xff);
+    await prefs.setInt('color_ai_text', at);
+  }
+
+  Future<void> addCustomImage(String path) async {
+    if (!_customImagePaths.contains(path)) {
+      _customImagePaths.add(path);
+      notifyListeners();
+      _saveCustomPaths();
+    }
+    setBackgroundImage(path);
+  }
+
+  Future<void> removeCustomImage(String path) async {
+    if (_customImagePaths.contains(path)) {
+      _customImagePaths.remove(path);
+      if (_backgroundImagePath == path) _backgroundImagePath = null;
+      notifyListeners();
+      _saveCustomPaths();
+    }
+  }
+
+  Future<void> _saveCustomPaths() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('app_custom_bg_list', _customImagePaths);
+  }
+  
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    _fontStyle = prefs.getString('app_font_style') ?? 'Default';
+    _backgroundImagePath = prefs.getString('app_bg_path');
+    _backgroundOpacity = prefs.getDouble('app_bg_opacity') ?? 0.7;
+    _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
+    
+    final int? userBubbleInt = prefs.getInt('color_user_bubble');
+    if (userBubbleInt != null) {
+      _userBubbleColor = Color(userBubbleInt);
+    } else {
+      _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
+    }
+
+    final int? userTextInt = prefs.getInt('color_user_text');
+    _userTextColor = userTextInt != null ? Color(userTextInt) : Colors.white;
+
+    final int? aiBubbleInt = prefs.getInt('color_ai_bubble');
+    if (aiBubbleInt != null) {
+      _aiBubbleColor = Color(aiBubbleInt);
+    } else {
+      _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
+    }
+
+    final int? aiTextInt = prefs.getInt('color_ai_text');
+    _aiTextColor = aiTextInt != null ? Color(aiTextInt) : Colors.white;
+    
+    notifyListeners();
+  }
+
+  Future<void> setFont(String fontName) async {
+    _fontStyle = fontName;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_font_style', fontName);
+  }
+}
