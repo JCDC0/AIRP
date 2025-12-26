@@ -8,7 +8,7 @@
 
 ## Key Features
 
-*   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, or Local.
+*   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, ArliAI, NanoGPT, or Local.
 *   **Dynamic Model Lists**: Fetch the latest available models directly from the API providers.
 *   **Searchable History**: Quickly find past conversations using the integrated search bar.
 *   **Message Management**: Edit, copy, delete, or regenerate specific messages within a chat.
@@ -55,16 +55,30 @@ This app follows a **BYOK (Bring Your Own Key)** architecture. Keys are stored l
 2.  Select **AIRP - Gemini** from the top dropdown.
 3.  Open the **Settings Drawer** (slide from right or click the gear icon).
 4.  Paste your key into the API Key field.
-5.  **Important:** Click **APPLY & SAVE**.
+5.  **Important:** Click the **Floating Save Button** (cyan circle) that appears at the bottom right.
 
 ### 2. OpenRouter
 1.  Obtain an API key from [OpenRouter.ai](https://openrouter.ai/).
 2.  Select **AIRP - OpenRouter** from the top dropdown.
 3.  Open the **Settings Drawer**.
 4.  Paste your key.
-5.  **Important:** Click **APPLY & SAVE**.
+5.  **Important:** Click the **Floating Save Button**.
 
-### 3. Local Network AI (LM Studio / Ollama)
+### 3. ArliAI
+1.  Obtain an API key from [ArliAI](https://arliai.com/).
+2.  Select **AIRP - ArliAI** from the top dropdown.
+3.  Open the **Settings Drawer**.
+4.  Paste your key.
+5.  **Important:** Click the **Floating Save Button**.
+
+### 4. NanoGPT
+1.  Obtain an API key from [NanoGPT](https://nano-gpt.com/).
+2.  Select **AIRP - NanoGPT** from the top dropdown.
+3.  Open the **Settings Drawer**.
+4.  Paste your key.
+5.  **Important:** Click the **Floating Save Button**.
+
+### 5. Local Network AI (LM Studio / Ollama)
 Connect to an LLM running on your own computer or home server.
 
 1.  **Prepare your Server**:
@@ -72,13 +86,13 @@ Connect to an LLM running on your own computer or home server.
     *   **Ollama**: Run `OLLAMA_HOST=0.0.0.0 ollama serve`.
 2.  **Find your IP**: Get the IPv4 address of your computer (e.g., `192.168.1.15` and add the port number next to it that comes with your local AI service).
 3.  **Configure AIRP**:
-    *   Select **AIRP - Local** from the top dropdown.
+        *   Select **AIRP - Local** from the top dropdown.
     *   Open the **Settings Drawer**.
     *   Enter the URL in the **Local Server Address** field.
         *   Format: `http://<YOUR_PC_IP>:<PORT>/v1`
         *   Example: `http://192.168.1.15:1234/v1`
     *   (Optional) Enter a specific model ID if your server requires it.
-    *   Click **APPLY & SAVE**.
+    *   Click the **Floating Save Button**.
 
 ---
 
@@ -105,11 +119,27 @@ Interact with the message stream using gestures.
 ### Model Selection (Right Drawer)
 Slide from the **right** edge or tap the **Settings** icon.
 
-1.  Ensure you have entered your API Key and pressed **APPLY & SAVE**.
+1.  Ensure you have entered your API Key and saved.
 2.  Locate the **Model Selection** section.
 3.  Press the **Refresh Model List** button. The app will fetch the specific list of models available for your API key.
 4.  Select your desired model from the dropdown menu. The list automatically cleans raw IDs (e.g., `models/gemini-3-pro-preview`) into readable titles (e.g., `Gemini 3 Pro Preview`).
-5.  Press **APPLY & SAVE** to confirm your selection.
+5.  The **Floating Save Button** will appear. Click it to confirm your selection.
+
+---
+
+## Advanced Generation Controls
+
+Fine-tune how the AI behaves using the **Settings Drawer**. All sliders support manual numeric input for precision.
+
+*   **Temperature (Creativity)**: Controls randomness.
+    *   **High (1.0 - 2.0)**: Creative, unpredictable, and diverse responses.
+    *   **Low (0.0 - 0.5)**: Focused, deterministic, and logical responses.
+*   **Top P (Nucleus Sampling)**: Limits the token selection to the top cumulative probability. Lower values (e.g., 0.9) make the text more coherent and less prone to "hallucinations."
+*   **Top K (Vocabulary Size)**: Restricts the AI to choosing from the top `K` most likely next words.
+*   **Max Output Tokens**: Sets the hard limit on response length. Increase this for longer stories or code generation.
+*   **Context Memory Limit**: Controls how many past messages are sent to the AI.
+    *   **Slider**: Adjusts the truncation window (e.g., last 20 messages).
+    *   **Usage**: Lower this if you encounter "Context Window Exceeded" errors or want to reduce API costs.
 
 ---
 
