@@ -21,7 +21,7 @@ class MessageBubble extends StatelessWidget {
     void _showImageZoom(BuildContext context, ImageProvider provider) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.9),
+      barrierColor: const Color.fromARGB(255, 0, 0, 0),
       builder: (context) => Stack(
         children: [
           // 1. Zoomable Image

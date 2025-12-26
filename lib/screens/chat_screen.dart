@@ -85,6 +85,14 @@ class _ChatScreenState extends State<ChatScreen> {
   List<ChatMessage> _messages = []; 
   List<ChatSessionData> _savedSessions = []; 
 
+  // ----------------------------------------------------------------------
+  // NEW SETTINGS VARIABLES
+  // ----------------------------------------------------------------------
+  double _topP = 0.95;       // Nucleus Sampling (0.0 - 1.0)
+  int _topK = 40;            // Top-K Sampling (1 - 100)
+  int _maxOutputTokens = 32768; // How much the AI writes back
+  int _historyLimit = 500;    // How many past messages to remember (Truncation)
+  bool _hasUnsavedChanges = false;
   String? _currentSessionId;
   int _tokenCount = 0;
   static const int _tokenLimitWarning = 190000;
@@ -113,7 +121,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // UPDATED _loadSettings (Loads Saved Lists)
+  // _loadSettings (Loads Saved Lists)
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -154,6 +162,11 @@ class _ChatScreenState extends State<ChatScreen> {
       _arliAiModel = prefs.getString('airp_model_arliai') ?? 'Mistral-Nemo-12B-Instruct-v1';
       _nanoGptModel = prefs.getString('airp_model_nanogpt') ?? 'gpt-4o';
 
+      // Load Other Settings
+      _topP = prefs.getDouble('airp_top_p') ?? 0.95;
+      _topK = prefs.getInt('airp_top_k') ?? 40;
+      _maxOutputTokens = prefs.getInt('airp_max_output') ?? 32768;
+      _historyLimit = prefs.getInt('airp_history_limit') ?? 500;
       
       _updateApiKeyTextField();
     });
@@ -181,6 +194,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final cleanIp = _localIpController.text.trim();
 
     setState(() {
+      _hasUnsavedChanges = false;
       switch (_currentProvider) {
         case AiProvider.gemini: _geminiKey = cleanKey; break;
         case AiProvider.openRouter: _openRouterKey = cleanKey; break;
@@ -218,6 +232,10 @@ class _ChatScreenState extends State<ChatScreen> {
     await prefs.setString('airp_key_nanogpt', _nanoGptKey);
     await prefs.setString('airp_model_arliai', _arliAiModel);
     await prefs.setString('airp_model_nanogpt', _nanoGptModel); 
+    await prefs.setDouble('airp_top_p', _topP);
+    await prefs.setInt('airp_top_k', _topK);
+    await prefs.setInt('airp_max_output', _maxOutputTokens);
+    await prefs.setInt('airp_history_limit', _historyLimit);
 
     if (_currentSessionId != null) {
       _autoSaveCurrentSession(); 
@@ -357,12 +375,21 @@ class _ChatScreenState extends State<ChatScreen> {
         systemInstruction: _systemInstructionController.text.isNotEmpty
             ? Content.system(_systemInstructionController.text)
             : null,
-        generationConfig: GenerationConfig(temperature: _temperature),
-        safetySettings: safetySettings,
-      );
+          generationConfig: GenerationConfig(
+            temperature: _temperature,
+            topP: _topP,
+            topK: _topK,
+            maxOutputTokens: _maxOutputTokens,
+          ),
+          safetySettings: safetySettings,
+        );
       
       List<Content> history = [];
-      for (var msg in _messages) {
+      // We slice the list to only take the last N messages
+      int startIndex = _messages.length - _historyLimit;
+      if (startIndex < 0) startIndex = 0;
+      final limitedMessages = _messages.sublist(startIndex);
+      for (var msg in limitedMessages) {
           final String role = msg.isUser ? 'user' : 'model';
           if (msg.isUser && msg.imagePaths.isNotEmpty) {
               List<Part> parts = [];
@@ -582,18 +609,19 @@ class _ChatScreenState extends State<ChatScreen> {
       messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
     }
     
+    final validHistory = _messages.take(_messages.length - 2).toList();
+    
+    int skipCount = validHistory.length - _historyLimit;
+    if (skipCount < 0) skipCount = 0;
+    
+    final truncatedHistory = validHistory.skip(skipCount).toList();
     // History
-    for (var msg in _messages) {
-      if (msg == _messages.last) continue; // Skip the empty placeholder we just added
-      // Skip the user message we just sent (it's added at the end)
-      if (msg == _messages[_messages.length - 2]) continue; 
-      
+    for (var msg in truncatedHistory) {
       messagesPayload.add({
         "role": msg.isUser ? "user" : "assistant", 
         "content": msg.text
       });
     }
-
     // Current User Message (Text + Image)
     if (images.isEmpty) {
       messagesPayload.add({"role": "user", "content": text});
@@ -626,7 +654,10 @@ class _ChatScreenState extends State<ChatScreen> {
       "model": _openRouterModel.trim(),
       "messages": messagesPayload,
       "temperature": _temperature,
-      "stream": true, // <--- IMPORTANT: Enable Streaming
+      "stream": true,
+      "top_p": _topP,
+      "top_k": _topK,
+      "max_tokens": _maxOutputTokens, 
     };
 
     // --- GROUNDING LOGIC FOR OPENROUTER ---
@@ -730,8 +761,15 @@ class _ChatScreenState extends State<ChatScreen> {
       messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
     }
 
-    for (var msg in _messages) {
-      if (msg == _messages.last) continue;
+    // 1. Calculate History (No placeholder exists yet, so we just remove the last one which is the User Message)
+    final validHistory = _messages.take(_messages.length - 1).toList(); 
+    
+    int skipCount = validHistory.length - _historyLimit;
+    if (skipCount < 0) skipCount = 0;
+    
+    final truncatedHistory = validHistory.skip(skipCount).toList();
+
+    for (var msg in truncatedHistory) {
       messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
     }
     
@@ -747,6 +785,9 @@ class _ChatScreenState extends State<ChatScreen> {
         "model": _arliAiModel,
         "messages": messagesPayload,
         "temperature": _temperature,
+        "top_p": _topP,
+        "top_k": _topK,
+        "max_tokens": _maxOutputTokens,
         "stream": false, 
       }),
     );
@@ -778,11 +819,17 @@ class _ChatScreenState extends State<ChatScreen> {
       messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
     }
 
-    for (var msg in _messages) {
-      if (msg == _messages.last) continue;
+    // 1. Calculate History (No placeholder exists yet, so we just remove the last one which is the User Message)
+    final validHistory = _messages.take(_messages.length - 1).toList(); 
+    
+    int skipCount = validHistory.length - _historyLimit;
+    if (skipCount < 0) skipCount = 0;
+    
+    final truncatedHistory = validHistory.skip(skipCount).toList();
+
+    for (var msg in truncatedHistory) {
       messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
     }
-    messagesPayload.add({"role": "user", "content": text});
 
     final response = await _httpClient!.post(
       Uri.parse("https://nano-gpt.com/api/v1/chat/completions"),
@@ -794,6 +841,9 @@ class _ChatScreenState extends State<ChatScreen> {
         "model": _nanoGptModel,
         "messages": messagesPayload,
         "temperature": _temperature,
+        "top_p": _topP,
+        "top_k": _topK,
+        "max_tokens": _maxOutputTokens, 
       }),
     );
 
@@ -829,10 +879,18 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_systemInstructionController.text.isNotEmpty) {
       messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
     }
-    for (var msg in _messages) {
-      if (msg == _messages.last) continue;
+    // 1. Calculate History (No placeholder exists yet, so we just remove the last one which is the User Message)
+    final validHistory = _messages.take(_messages.length - 1).toList(); 
+    
+    int skipCount = validHistory.length - _historyLimit;
+    if (skipCount < 0) skipCount = 0;
+    
+    final truncatedHistory = validHistory.skip(skipCount).toList();
+
+    for (var msg in truncatedHistory) {
       messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
     }
+    
     if (images.isEmpty) {
       messagesPayload.add({"role": "user", "content": text});
     } else {
@@ -852,6 +910,9 @@ class _ChatScreenState extends State<ChatScreen> {
         "model": _localModelName,
         "messages": messagesPayload,
         "temperature": _temperature,
+        "top_p": _topP,
+        "top_k": _topK,
+        "max_tokens": _maxOutputTokens, 
         "stream": false,
       }),
     );
@@ -1796,27 +1857,88 @@ void _showEditDialog(int index) {
     );
   }
 
+  Widget _buildSliderSetting({
+    required String title,
+    required double value,
+    required double min,
+    required double max,
+    int? divisions,
+    required Color activeColor,
+    required Function(double) onChanged,
+    bool isInt = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            SizedBox(
+              width: 60,
+              height: 30,
+              child: TextField(
+                controller: TextEditingController(
+                    text: isInt ? value.toInt().toString() : value.toStringAsFixed(2)),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(fontSize: 12, color: Colors.white),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  contentPadding: EdgeInsets.zero,
+                  filled: true,
+                  fillColor: Colors.white10,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none),
+                ),
+                onSubmitted: (val) {
+                  double? parsed = double.tryParse(val);
+                  if (parsed != null) {
+                    if (parsed < min) parsed = min;
+                    if (parsed > max) parsed = max;
+                    onChanged(parsed);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+        Slider(
+          value: value,
+          min: min,
+          max: max,
+          divisions: divisions,
+          activeColor: activeColor,
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
   Widget _buildSettingsDrawer() {
     return Drawer(
       width: 320,
       backgroundColor: const Color.fromARGB(255, 0, 0, 0),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+            child: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 40),
             const Text("Main Settings", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-            const Text("v0.1.9", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const Text("v0.1.9.1", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             const Divider(),
             const SizedBox(height: 10),
 
             const Text("API Key (BYOK)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
             const SizedBox(height: 5),
             // --- UPDATED API KEY / IP FIELD SECTION ---
-            if (_currentProvider != AiProvider.local) ...[
+                        if (_currentProvider != AiProvider.local) ...[
               TextField(
                 controller: _apiKeyController,
+                onChanged: (_) => setState(() => _hasUnsavedChanges = true),
                 obscureText: true,
                 decoration: const InputDecoration(
                   hintText: "Paste AI Studio Key...",
@@ -1827,9 +1949,10 @@ void _showEditDialog(int index) {
               ),
               const SizedBox(height: 20),
             ] else ...[
-              // LOCAL IP INPUT
+                            // LOCAL IP INPUT
               TextField(
                 controller: _localIpController,
+                onChanged: (_) => setState(() => _hasUnsavedChanges = true),
                 decoration: const InputDecoration(
                   hintText: "http://192.168.1.X:1234/v1",
                   labelText: "Local Server Address",
@@ -1864,10 +1987,7 @@ void _showEditDialog(int index) {
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                   suffixIcon: Icon(Icons.edit, size: 16, color: Colors.cyanAccent),
                 ),
-                onChanged: (val) {
-                  if (val.trim().isNotEmpty) {
-                    _autoSaveCurrentSession();}
-                },
+                                onChanged: (val) => setState(() => _hasUnsavedChanges = true),
               ),
             ),
             const SizedBox(height: 20),
@@ -1895,11 +2015,12 @@ void _showEditDialog(int index) {
                           child: Text(cleanModelName(value), style: const TextStyle(fontSize: 13, color: Colors.white)),
                         );
                       }).toList(),
-                      onChanged: (String? newValue) {
+                                            onChanged: (String? newValue) {
                         if (newValue != null) {
                           setState(() { 
                             _selectedGeminiModel = newValue; 
                             _selectedModel = newValue; 
+                            _hasUnsavedChanges = true;
                           });
                         }
                       },
@@ -1908,9 +2029,9 @@ void _showEditDialog(int index) {
                 )
               else
               // Fallback Text Field if list is empty/error
-                TextField(
+                                TextField(
                   decoration: const InputDecoration(hintText: "models/gemini-flash-lite-latest", border: OutlineInputBorder(), isDense: true),
-                  onChanged: (val) => _selectedGeminiModel = val,
+                  onChanged: (val) => setState(() { _selectedGeminiModel = val; _hasUnsavedChanges = true; }),
                   controller: TextEditingController(text: _selectedGeminiModel),
                 ),
 
@@ -1949,11 +2070,12 @@ void _showEditDialog(int index) {
                           child: Text(cleanModelName(id), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
                         );
                       }).toList(),
-                      onChanged: (String? newValue) {
+                                            onChanged: (String? newValue) {
                         if (newValue != null) {
                           setState(() {
                             _openRouterModel = newValue;
                             _openRouterModelController.text = newValue;
+                            _hasUnsavedChanges = true;
                           });
                         }
                       },
@@ -1961,11 +2083,11 @@ void _showEditDialog(int index) {
                   ),
                 )
               else
-                TextField(
+                                TextField(
                   controller: _openRouterModelController,
                   decoration: const InputDecoration(hintText: "vendor/model-name", border: OutlineInputBorder(), isDense: true),
                   style: const TextStyle(fontSize: 13),
-                  onChanged: (val) { _openRouterModel = val.trim(); },
+                  onChanged: (val) { setState(() { _openRouterModel = val.trim(); _hasUnsavedChanges = true; }); },
                 ),
 
               const SizedBox(height: 8),
@@ -1985,10 +2107,10 @@ void _showEditDialog(int index) {
             // -------------------------------------------
             // LOCAL UI
             // -------------------------------------------
-            if (_currentProvider == AiProvider.local) ...[
+                        if (_currentProvider == AiProvider.local) ...[
                const SizedBox(height: 5),
                TextField(
-                 onChanged: (val) => _localModelName = val,
+                 onChanged: (val) => setState(() { _localModelName = val; _hasUnsavedChanges = true; }),
                  decoration: const InputDecoration(
                    hintText: "local-model",
                    labelText: "Target Model ID (Optional)",
@@ -2019,11 +2141,12 @@ void _showEditDialog(int index) {
                           child: Text(cleanModelName(id), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
                         );
                       }).toList(),
-                      onChanged: (String? newValue) {
+                                            onChanged: (String? newValue) {
                         if (newValue != null) {
                           setState(() {
                             _arliAiModel = newValue;
                             _selectedModel = newValue;
+                            _hasUnsavedChanges = true;
                           });
                         }
                       },
@@ -2032,11 +2155,11 @@ void _showEditDialog(int index) {
                 )
               else
                 // Fallback TextField if list is empty
-                TextField(
+                                TextField(
                   controller: TextEditingController(text: _arliAiModel),
                   decoration: const InputDecoration(hintText: "Gemma-3-27B-Big-Tiger-v3", border: OutlineInputBorder(), isDense: true),
                   style: const TextStyle(fontSize: 13),
-                  onChanged: (val) { _arliAiModel = val.trim(); },
+                  onChanged: (val) { setState(() { _arliAiModel = val.trim(); _hasUnsavedChanges = true; }); },
                 ),
 
               const SizedBox(height: 8),
@@ -2075,11 +2198,12 @@ void _showEditDialog(int index) {
                           child: Text(cleanModelName(id), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
                         );
                       }).toList(),
-                      onChanged: (String? newValue) {
+                                            onChanged: (String? newValue) {
                         if (newValue != null) {
                           setState(() {
                             _nanoGptModel = newValue;
                             _selectedModel = newValue;
+                            _hasUnsavedChanges = true;
                           });
                         }
                       },
@@ -2088,11 +2212,11 @@ void _showEditDialog(int index) {
                 )
               else
                 // Fallback TextField
-                TextField(
+                                TextField(
                   controller: TextEditingController(text: _nanoGptModel),
                   decoration: const InputDecoration(hintText: "aion-labs/aion-rp-llama-3.1-8b", border: OutlineInputBorder(), isDense: true),
                   style: const TextStyle(fontSize: 13),
-                  onChanged: (val) { _nanoGptModel = val.trim(); },
+                  onChanged: (val) { setState(() { _nanoGptModel = val.trim(); _hasUnsavedChanges = true; }); },
                 ),
 
               const SizedBox(height: 8),
@@ -2147,17 +2271,19 @@ void _showEditDialog(int index) {
                       );
                     }),
                   ],
-                  onChanged: (String? newValue) {
+                                    onChanged: (String? newValue) {
                     if (newValue == "CREATE_NEW") {
                       setState(() {
                         _promptTitleController.clear();
                         _systemInstructionController.clear();
+                        _hasUnsavedChanges = true;
                       });
                     } else if (newValue != null) {
                       final prompt = _savedSystemPrompts.firstWhere((p) => p.title == newValue);
                       setState(() {
                         _promptTitleController.text = prompt.title;
                         _systemInstructionController.text = prompt.content;
+                        _hasUnsavedChanges = true;
                       });
                     }
                   },
@@ -2170,6 +2296,7 @@ void _showEditDialog(int index) {
             // 2. PROMPT TITLE FIELD
             TextField(
               controller: _promptTitleController,
+              onChanged: (_) => setState(() => _hasUnsavedChanges = true),
               decoration: const InputDecoration(
                 labelText: "Prompt Title (e.g., 'World of Japan')",
                 labelStyle: TextStyle(color: Colors.cyanAccent, fontSize: 12),
@@ -2183,9 +2310,10 @@ void _showEditDialog(int index) {
 
             const SizedBox(height: 5),
 
-            // 3. PROMPT CONTENT FIELD
+                        // 3. PROMPT CONTENT FIELD
             TextField(
               controller: _systemInstructionController,
+              onChanged: (_) => setState(() => _hasUnsavedChanges = true),
               maxLines: 5,
               decoration: const InputDecoration(
                 hintText: "Enter the roleplay rules here...",
@@ -2221,25 +2349,73 @@ void _showEditDialog(int index) {
               ],
             ),
 
-            const SizedBox(height: 20),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 40), 
-                backgroundColor: Colors.lightBlueAccent, 
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                Navigator.pop(context);
-                _saveSettings();
-              },
-              child: const Text("APPLY & SAVE"),
-            ),
-            const SizedBox(height: 20),
-            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Temperature\nHigher is Creative"), subtitle: Text(_temperature.toStringAsFixed(1)), value: true, onChanged: (val) {},),
-            Slider(value: _temperature, min: 0.0, max: 2.0, divisions: 20, activeColor: Colors.redAccent, onChanged: (val) => setState(() => _temperature = val),),
+                        const SizedBox(height: 20),
             
-            // --- GROUNDING SWITCH (Updated) ---
+            // --- TEMPERATURE ---
+            _buildSliderSetting(
+              title: "Temperature (Creativity)",
+              value: _temperature,
+              min: 0.0,
+              max: 2.0,
+              divisions: 40,
+              activeColor: Colors.redAccent,
+              onChanged: (val) => setState(() { _temperature = val; _hasUnsavedChanges = true; }),
+            ),
+
+            // --- TOP P ---
+            _buildSliderSetting(
+              title: "Top P (Nucleus Sampling)",
+              value: _topP,
+              min: 0.0,
+              max: 1.0,
+              divisions: 20,
+              activeColor: Colors.purpleAccent,
+              onChanged: (val) => setState(() { _topP = val; _hasUnsavedChanges = true; }),
+            ),
+
+            // --- TOP K ---
+            _buildSliderSetting(
+              title: "Top K (Vocabulary Size)",
+              value: _topK.toDouble(),
+              min: 1,
+              max: 100,
+              divisions: 99,
+              activeColor: Colors.orangeAccent,
+              isInt: true,
+              onChanged: (val) => setState(() { _topK = val.toInt(); _hasUnsavedChanges = true; }),
+            ),
+
+            // --- MAX OUTPUT TOKENS ---
+            _buildSliderSetting(
+              title: "Max Output Tokens",
+              value: _maxOutputTokens.toDouble(),
+              min: 256,
+              max: 32768, // User defined limit
+              // Removed divisions for smoother sliding on large range
+              activeColor: Colors.blueAccent,
+              isInt: true,
+              onChanged: (val) => setState(() { _maxOutputTokens = val.toInt(); _hasUnsavedChanges = true; }),
+            ),
+
+            // --- CONTEXT HISTORY LIMIT ---
+            const Divider(),
+            _buildSliderSetting(
+              title: "(Msg History) Limit",
+              value: _historyLimit.toDouble(),
+              min: 2,
+              max: 1000,
+              divisions: 499,
+              activeColor: Colors.greenAccent,
+              isInt: true,
+              onChanged: (val) => setState(() { _historyLimit = val.toInt(); _hasUnsavedChanges = true; }),
+            ),
+            const Text(
+              "Note: Lower this if you get 'Context Window Exceeded' errors.",
+              style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
+            ),
+            const Divider(),
+
+            // --- GROUNDING SWITCH ---
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text("Grounding / Web Search"),
@@ -2252,8 +2428,8 @@ void _showEditDialog(int index) {
               value: _enableGrounding,
               activeThumbColor: Colors.greenAccent,
               // Disable if not Gemini OR OpenRouter
-              onChanged: (_currentProvider == AiProvider.gemini || _currentProvider == AiProvider.openRouter)
-                  ? (val) { setState(() => _enableGrounding = val); }
+                            onChanged: (_currentProvider == AiProvider.gemini || _currentProvider == AiProvider.openRouter)
+                  ? (val) { setState(() { _enableGrounding = val; _hasUnsavedChanges = true; }); }
                   : null, 
             ),
 
@@ -2266,7 +2442,7 @@ void _showEditDialog(int index) {
                 subtitle: const Text("Applies to Gemini Only", style: TextStyle(fontSize: 10, color: Colors.grey)),
                 value: _disableSafety, 
                 activeThumbColor: Colors.redAccent, 
-                onChanged: (val) { setState(() => _disableSafety = val); },
+                onChanged: (val) { setState(() { _disableSafety = val; _hasUnsavedChanges = true; }); },
               ),
             
             const SizedBox(height: 50),
@@ -2455,12 +2631,25 @@ void _showEditDialog(int index) {
                       Text("Dimmer: ${(provider.backgroundOpacity * 100).toInt()}%", style: const TextStyle(fontSize: 12, color: Colors.grey)),
                       Slider(value: provider.backgroundOpacity, min: 0.0, max: 0.95, activeColor: Colors.cyanAccent, inactiveColor: Colors.grey[800], onChanged: (val) => provider.setBackgroundOpacity(val),),
                     ]
-                  ],
+                                    ],
                 );
               },
             ),
           ],
         ),
+      ),
+          if (_hasUnsavedChanges)
+            Positioned(
+              bottom: 30,
+              right: 20,
+              child: FloatingActionButton(
+                backgroundColor: Colors.cyanAccent,
+                foregroundColor: Colors.black,
+                onPressed: _saveSettings,
+                child: const Icon(Icons.save),
+              ),
+            ),
+        ],
       ),
     );
   }
