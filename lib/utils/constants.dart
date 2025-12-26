@@ -37,9 +37,16 @@ const Map<String, String> kModelDisplayNames = {
   'meta-llama/llama-3.1-405b-instruct:free': '⭐Llama 3.1 405B Instruct (OpenRouter Free)',
   'mistralai/mistral-7b-instruct:free': '⭐Mistral 7B Instruct (OpenRouter Free)',
   'mistralai/mistral-small-3.1-24b-instruct:free': '⭐Mistral Small 3.1 24B Instruct (OpenRouter Free)',
-
-
-
+  // ArliAI Models (Examples)
+  'Gemma-3-27B-Big-Tiger-v3': '⭐Gemma 3 27B Big Tiger (ArliAI)',
+  'GLM-4.5-Air-Derestricted': '⭐GLM 4.5 Air Derestricted (ArliAI)',
+  'GLM-4.7': '⭐GLM 4.7 (ArliAI)',
+  // NanoGPT Models (Examples)
+  'aion-labs/aion-rp-llama-3.1-8b': '⭐Aion RP Llama 3.1 8B (NanoGPT)',
+  'GLM-4.6-Derestricted-v5': '⭐GLM 4.6 Derestricted (NanoGPT)',
+  'TheDrummer/Magidonia-24B-v4.3': '⭐Magidonia 24B (NanoGPT)',
+  'TheDrummer/Cydonia-24B-v4.3': '⭐Cydonia 24B (NanoGPT)',
+  'Gemma-3-27B-Nidum-Uncensored' : '⭐Gemma 3 27B Nidum (NanoGPT)',
 };
 
 String cleanModelName(String rawId) {

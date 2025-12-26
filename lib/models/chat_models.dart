@@ -1,4 +1,4 @@
-enum AiProvider { gemini, openRouter, openAi, local }
+enum AiProvider { gemini, openRouter, openAi, local, arliAi, nanoGpt }
 
 class ChatSessionData {
   final String id;
@@ -8,7 +8,7 @@ class ChatSessionData {
   final int tokenCount;
   final String systemInstruction;
   final String? backgroundImage;
-  final String provider; // Added this field so save/load works correctly
+  final String provider;
 
   ChatSessionData({
     required this.id,

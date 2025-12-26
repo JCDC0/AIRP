@@ -40,22 +40,30 @@ class _ChatScreenState extends State<ChatScreen> {
    // 1. DYNAMIC MODEL LISTS
   List<String> _geminiModelsList = [];     
   List<String> _openRouterModelsList = []; 
+  List<String> _arliAiModelsList = []; 
+  List<String> _nanoGptModelsList = [];
   
   // 2. LOADING STATES
   bool _isLoadingGeminiModels = false;
   bool _isLoadingOpenRouterModels = false;
+  bool _isLoadingArliAiModels = false;
+  bool _isLoadingNanoGptModels = false;
 
   AiProvider _currentProvider = AiProvider.gemini;
 
   String _geminiKey = '';
   String _openRouterKey = '';
   String _openAiKey = ''; 
+  String _arliAiKey = '';
+  String _nanoGptKey = '';
 
   final TextEditingController _localIpController = TextEditingController();
   String _localModelName = 'local-model';
 
   String _selectedGeminiModel = 'models/gemini-flash-lite-latest'; 
   String _openRouterModel = 'z-ai/glm-4.5-air:free'; 
+  String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
+  String _nanoGptModel = 'gpt-4o';
 
   String _selectedModel = 'models/gemini-flash-lite-latest';
   double _temperature = 1; 
@@ -63,7 +71,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _disableSafety = true;
   
   late GenerativeModel _model;
-  late ChatSession _chat; // This comes from google_generative_ai package
+  late ChatSession _chat;
   final TextEditingController _openRouterModelController = TextEditingController();
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -125,6 +133,10 @@ class _ChatScreenState extends State<ChatScreen> {
         _currentProvider = AiProvider.openAi;
       } else if (providerString == 'local') {
         _currentProvider = AiProvider.local;
+      } else if (providerString == 'arliAi') {
+        _currentProvider = AiProvider.arliAi;
+      } else if (providerString == 'nanoGpt') {
+        _currentProvider = AiProvider.nanoGpt;
       } else {
         _currentProvider = AiProvider.gemini;
       }
@@ -132,11 +144,16 @@ class _ChatScreenState extends State<ChatScreen> {
       // LOAD PERSISTED MODEL LISTS
       _geminiModelsList = prefs.getStringList('airp_list_gemini') ?? [];
       _openRouterModelsList = prefs.getStringList('airp_list_openrouter') ?? [];
+      _arliAiModelsList = prefs.getStringList('airp_list_arliai') ?? [];
+      _nanoGptModelsList = prefs.getStringList('airp_list_nanogpt') ?? [];
 
       // Load Selected Models
       _selectedGeminiModel = prefs.getString('airp_model_gemini') ?? 'models/gemini-flash-lite-latest';
       _openRouterModel = prefs.getString('airp_model_openrouter') ?? 'z-ai/glm-4.5-air:free';
       _openRouterModelController.text = _openRouterModel;
+      _arliAiModel = prefs.getString('airp_model_arliai') ?? 'Mistral-Nemo-12B-Instruct-v1';
+      _nanoGptModel = prefs.getString('airp_model_nanogpt') ?? 'gpt-4o';
+
       
       _updateApiKeyTextField();
     });
@@ -153,6 +170,8 @@ class _ChatScreenState extends State<ChatScreen> {
       case AiProvider.openRouter: _apiKeyController.text = _openRouterKey; break;
       case AiProvider.openAi: _apiKeyController.text = _openAiKey; break;
       case AiProvider.local: _apiKeyController.text = "No Key Needed"; break;
+      case AiProvider.arliAi: _apiKeyController.text = _arliAiKey; break;
+      case AiProvider.nanoGpt: _apiKeyController.text = _nanoGptKey; break;
     }
   }
 
@@ -166,6 +185,8 @@ class _ChatScreenState extends State<ChatScreen> {
         case AiProvider.gemini: _geminiKey = cleanKey; break;
         case AiProvider.openRouter: _openRouterKey = cleanKey; break;
         case AiProvider.openAi: _openAiKey = cleanKey; break;
+        case AiProvider.arliAi: _arliAiKey = cleanKey; break;
+        case AiProvider.nanoGpt: _nanoGptKey = cleanKey; break;
         case AiProvider.local: break;
       }
       _openRouterModel = cleanModel;
@@ -176,6 +197,10 @@ class _ChatScreenState extends State<ChatScreen> {
         _selectedModel = cleanModel;
       } else if (_currentProvider == AiProvider.gemini) {
          _selectedModel = _selectedGeminiModel;
+      } else if (_currentProvider == AiProvider.arliAi) {
+         _selectedModel = _arliAiModel;
+      } else if (_currentProvider == AiProvider.nanoGpt) {
+         _selectedModel = _nanoGptModel;
       } else if (_currentProvider == AiProvider.local) {
          _selectedModel = "Local Network AI"; 
       }
@@ -189,6 +214,10 @@ class _ChatScreenState extends State<ChatScreen> {
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString('airp_model_gemini', _selectedGeminiModel);
     await prefs.setString('airp_model_openrouter', _openRouterModel);
+    await prefs.setString('airp_key_arliai', _arliAiKey);
+    await prefs.setString('airp_key_nanogpt', _nanoGptKey);
+    await prefs.setString('airp_model_arliai', _arliAiModel);
+    await prefs.setString('airp_model_nanogpt', _nanoGptModel); 
 
     if (_currentSessionId != null) {
       _autoSaveCurrentSession(); 
@@ -264,15 +293,16 @@ class _ChatScreenState extends State<ChatScreen> {
     _initializeModel();
   }
 
-    void _cancelGeneration() async {
+  void _cancelGeneration() async {
     setState(() {
       _isLoading = false;
       _isCancelled = true; 
     });
 
-    // 1. Kill HTTP Client (For Local & OpenRouter)
+    // 1. Kill HTTP Client (For Local, OpenRouter, Arli, Nano)
     try {
       _httpClient?.close();
+      _httpClient = null;
     } catch (e) {
       debugPrint("Error closing client: $e");
     }
@@ -287,7 +317,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Generation Stopped & Saved"), 
+          content: Text("Generation Stopped & Saved (Connection Cut)"), 
           duration: Duration(milliseconds: 500),
           backgroundColor: Colors.redAccent,
         )
@@ -372,12 +402,30 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add(ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend));
       _isLoading = true;
       _isCancelled = false;
-      _httpClient = http.Client();
+      _httpClient = http.Client(); // New Client for this request
       _pendingImages.clear();
       _textController.clear();
     });
     _scrollToBottom();
     _autoSaveCurrentSession();
+
+    // GROUNDING CHECK for GEMINI ONLY
+    // We only hijack for Gemini because its streaming SDK doesn't handle grounding easily yet.
+    // For OpenRouter, we use the integrated streaming + plugin approach.
+    if (_enableGrounding && _currentProvider == AiProvider.gemini && imagesToSend.isEmpty) {
+       try {
+         final groundedText = await _performGroundedGeneration(messageText);
+         if (_isCancelled) return; 
+         setState(() {
+           _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false, modelName: _selectedModel));
+           _isLoading = false;
+         });
+         return; 
+       } catch (e) {
+         // Fallback if grounding fails
+         debugPrint("Grounding failed, falling back to standard chat: $e");
+       }
+    }
 
     try {
       if (_currentProvider == AiProvider.gemini) {
@@ -386,6 +434,10 @@ class _ChatScreenState extends State<ChatScreen> {
         await _sendOpenRouterMessage(messageText, imagesToSend);
       } else if (_currentProvider == AiProvider.local) {
         await _sendLocalMessage(messageText, imagesToSend);
+      } else if (_currentProvider == AiProvider.arliAi) {
+        await _sendArliAiMessage(messageText, imagesToSend);
+      } else if (_currentProvider == AiProvider.nanoGpt) {
+        await _sendNanoGptMessage(messageText, imagesToSend);
       } else {
         setState(() => _isLoading = false);
       }
@@ -437,19 +489,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (accumulatedText.isNotEmpty) parts.insert(0, TextPart(accumulatedText));
     userContent = parts.isNotEmpty ? Content.multi(parts) : Content.text(accumulatedText);
 
-    // --- 2. GROUNDING CHECK ---
-    if (_enableGrounding && images.isEmpty) {
-      // Grounding doesn't support streaming well yet in the basic SDK, keeping as is
-      final groundedText = await _performGroundedGeneration(text);
-      if (_isCancelled) return; 
-      setState(() {
-        _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false, modelName: _selectedModel));
-        _isLoading = false;
-      });
-      return;
-    }
-
-    // --- 3. STREAMING LOGIC (The New Stuff) ---
+    // --- 3. STREAMING LOGIC ---
     try {
       // A. Create a placeholder message for the AI response
       setState(() {
@@ -457,7 +497,7 @@ class _ChatScreenState extends State<ChatScreen> {
           text: "", // Start empty
           isUser: false, 
           modelName: _selectedModel,
-          aiImage: null // Gemini Stream doesn't support image generation, only text
+          aiImage: null 
         ));
       });
 
@@ -490,7 +530,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (!_isCancelled) {
              setState(() {
               _messages.last = ChatMessage(
-                text: _messages.last.text + "\n\n**Error:** $e",
+                text: "${_messages.last.text}\n\n**Error:** $e",
                 isUser: false,
                 modelName: "System Alert"
               );
@@ -520,43 +560,238 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // OPENROUTER (Uses _httpClient) ==================================
+  // ----------------------------------------------------------------------
+  // OPENROUTER (STREAMING & GROUNDING)
+  // ----------------------------------------------------------------------
   Future<void> _sendOpenRouterMessage(String text, List<String> images) async {
     final cleanKey = _openRouterKey.trim();
-    if (cleanKey.isEmpty) {
-      throw Exception("OpenRouter Key is empty! Check settings.");
-    }
+    if (cleanKey.isEmpty) throw Exception("OpenRouter Key is empty!");
+
+    // 1. Setup Placeholder Message for Streaming
+    setState(() {
+      _messages.add(ChatMessage(
+        text: "", // Start empty
+        isUser: false, 
+        modelName: _openRouterModel
+      ));
+    });
+
+    // 2. Build Payload
     List<Map<String, dynamic>> messagesPayload = [];
-    if (_systemInstructionController.text.isNotEmpty) messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
-    for (var msg in _messages) {
-      if (msg == _messages.last) continue;
-      messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
+    if (_systemInstructionController.text.isNotEmpty) {
+      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
     }
+    
+    // History
+    for (var msg in _messages) {
+      if (msg == _messages.last) continue; // Skip the empty placeholder we just added
+      // Skip the user message we just sent (it's added at the end)
+      if (msg == _messages[_messages.length - 2]) continue; 
+      
+      messagesPayload.add({
+        "role": msg.isUser ? "user" : "assistant", 
+        "content": msg.text
+      });
+    }
+
+    // Current User Message (Text + Image)
     if (images.isEmpty) {
       messagesPayload.add({"role": "user", "content": text});
     } else {
-      // Image logic
-       List<Map<String, dynamic>> contentParts = [];
+      List<Map<String, dynamic>> contentParts = [];
       if (text.isNotEmpty) contentParts.add({"type": "text", "text": text});
       for (String path in images) {
         final bytes = await File(path).readAsBytes();
         final base64Img = base64Encode(bytes);
-        contentParts.add({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,$base64Img"}});
+        // Note: OpenRouter supports standard openai image_url format
+        contentParts.add({
+          "type": "image_url", 
+          "image_url": {"url": "data:image/jpeg;base64,$base64Img"}
+        });
       }
       messagesPayload.add({"role": "user", "content": contentParts});
     }
 
-    // USE _httpClient
+    // 3. Prepare Request (Use http.Request for streaming)
+    final request = http.Request('POST', Uri.parse("https://openrouter.ai/api/v1/chat/completions"));
+    
+    request.headers.addAll({
+      "Authorization": "Bearer $cleanKey",
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://airp-chat.com",
+      "X-Title": "AIRP Chat",
+    });
+
+    final bodyMap = {
+      "model": _openRouterModel.trim(),
+      "messages": messagesPayload,
+      "temperature": _temperature,
+      "stream": true, // <--- IMPORTANT: Enable Streaming
+    };
+
+    // --- GROUNDING LOGIC FOR OPENROUTER ---
+    if (_enableGrounding) {
+      bodyMap["plugins"] = ["web_search"]; 
+    }
+
+    request.body = jsonEncode(bodyMap);
+
+    try {
+      // 4. Send & Listen
+      _httpClient ??= http.Client();
+      final streamedResponse = await _httpClient!.send(request);
+
+      if (streamedResponse.statusCode != 200) {
+        // Read error from stream
+        final errorBody = await streamedResponse.stream.bytesToString();
+        throw Exception("Error ${streamedResponse.statusCode}: $errorBody");
+      }
+
+      // 5. Process Stream
+      String fullResponseText = "";
+      
+      // Listen to the byte stream, decode to UTF8, split by lines
+      await streamedResponse.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((String line) {
+            
+        if (_isCancelled) return; // Stop processing if cancelled
+
+        // OpenAI Stream format: "data: {JSON}"
+        if (line.startsWith("data: ")) {
+          final dataStr = line.substring(6).trim(); // Remove "data: "
+          if (dataStr == "[DONE]") return; // End of stream
+
+          try {
+            final json = jsonDecode(dataStr);
+            final choices = json['choices'] as List;
+            if (choices.isNotEmpty) {
+              final delta = choices[0]['delta'];
+              if (delta != null && delta['content'] != null) {
+                final contentChunk = delta['content'].toString();
+                
+                fullResponseText += contentChunk;
+
+                // Update UI incrementally
+                setState(() {
+                  _messages.last = ChatMessage(
+                    text: fullResponseText, 
+                    isUser: false, 
+                    modelName: _openRouterModel
+                  );
+                });
+
+                // Auto Scroll
+                if (_scrollController.hasClients && 
+                    _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+                   _scrollToBottom();
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore parse errors for partial chunks
+          }
+        }
+      }).asFuture();
+
+      // Done
+      if (!_isCancelled) {
+        setState(() => _isLoading = false);
+        _autoSaveCurrentSession();
+      }
+
+    } catch (e) {
+      if (!_isCancelled) {
+        setState(() {
+          _messages.last = ChatMessage(
+            text: "**Stream Error**\n$e",
+            isUser: false,
+            modelName: "System Alert"
+          );
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // ARLI AI IMPLEMENTATION
+  // ----------------------------------------------------------------------
+  Future<void> _sendArliAiMessage(String text, List<String> images) async {
+    final cleanKey = _arliAiKey.trim();
+    if (cleanKey.isEmpty) throw Exception("ArliAI Key is empty!");
+    
+    // (You can implement similar streaming logic here as OpenRouter if desired, 
+    // for now sticking to the original blocking post for Arli/Nano unless you request it).
+
+    List<Map<String, dynamic>> messagesPayload = [];
+    if (_systemInstructionController.text.isNotEmpty) {
+      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
+    }
+
+    for (var msg in _messages) {
+      if (msg == _messages.last) continue;
+      messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
+    }
+    
+    messagesPayload.add({"role": "user", "content": text});
+
     final response = await _httpClient!.post(
-      Uri.parse("https://openrouter.ai/api/v1/chat/completions"),
+      Uri.parse("https://api.arliai.com/v1/chat/completions"),
       headers: {
-        "Authorization": "Bearer $_openRouterKey",
+        "Authorization": "Bearer $cleanKey",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://airp-chat.com",
-        "X-Title": "AIRP Chat",
       },
       body: jsonEncode({
-        "model": _openRouterModel.trim(),
+        "model": _arliAiModel,
+        "messages": messagesPayload,
+        "temperature": _temperature,
+        "stream": false, 
+      }),
+    );
+
+    if (_isCancelled) return;
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      final String aiText = data['choices'][0]['message']['content'];
+      setState(() {
+        _messages.add(ChatMessage(text: aiText, isUser: false, modelName: _arliAiModel));
+        _isLoading = false;
+      });
+      _autoSaveCurrentSession();
+    } else {
+      throw Exception("ArliAI Error: ${response.statusCode} - ${response.body}");
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // NANOGPT IMPLEMENTATION
+  // ----------------------------------------------------------------------
+  Future<void> _sendNanoGptMessage(String text, List<String> images) async {
+    final cleanKey = _nanoGptKey.trim();
+    if (cleanKey.isEmpty) throw Exception("NanoGPT Key is empty!");
+
+    List<Map<String, dynamic>> messagesPayload = [];
+    if (_systemInstructionController.text.isNotEmpty) {
+      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
+    }
+
+    for (var msg in _messages) {
+      if (msg == _messages.last) continue;
+      messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
+    }
+    messagesPayload.add({"role": "user", "content": text});
+
+    final response = await _httpClient!.post(
+      Uri.parse("https://nano-gpt.com/api/v1/chat/completions"),
+      headers: {
+        "Authorization": "Bearer $cleanKey",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "model": _nanoGptModel,
         "messages": messagesPayload,
         "temperature": _temperature,
       }),
@@ -566,17 +801,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
-      if (data['choices'] != null && data['choices'].isNotEmpty) {
-        final String aiText = data['choices'][0]['message']['content'];
-        setState(() {
-          _messages.add(ChatMessage(text: aiText, isUser: false, modelName: _openRouterModel));
-          _isLoading = false;
-        });
-        _autoSaveCurrentSession();
-      }
+      final String aiText = data['choices'][0]['message']['content'];
+      setState(() {
+        _messages.add(ChatMessage(text: aiText, isUser: false, modelName: _nanoGptModel));
+        _isLoading = false;
+      });
+      _autoSaveCurrentSession();
     } else {
-       debugPrint("OpenRouter Error Body: ${response.body}");
-      throw Exception("OpenRouter Error: ${response.statusCode} - ${response.body}");
+      throw Exception("NanoGPT Error: ${response.statusCode} - ${response.body}");
     }
   }
 
@@ -735,6 +967,122 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       setState(() => _isLoadingOpenRouterModels = false);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Fetch Error: $e"), backgroundColor: Colors.red));
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // FETCH ARLI AI MODELS 
+  // ----------------------------------------------------------------------
+  Future<void> _fetchArliAiModels() async {
+    if (_arliAiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Need ArliAI API Key first!")));
+      return;
+    }
+
+    setState(() => _isLoadingArliAiModels = true);
+
+    try {
+      // 1. Try to fetch from API
+      final response = await http.get(
+        Uri.parse("https://api.arliai.com/v1/models"),
+        headers: {"Authorization": "Bearer ${_arliAiKey.trim()}"}, // Fixed: Trim key
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> dataList = data['data'];
+
+        final List<String> fetchedIds = dataList
+            .map<String>((e) => e['id'].toString())
+            .toList();
+        
+        fetchedIds.sort();
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('airp_list_arliai', fetchedIds);
+
+        setState(() {
+          _arliAiModelsList = fetchedIds;
+          _isLoadingArliAiModels = false;
+        });
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Found ${_arliAiModelsList.length} ArliAI models!")));
+      
+      } else {
+        // If 401 or other error, throw to trigger fallback
+        throw Exception("Status ${response.statusCode}");
+      }
+
+    } catch (e) {
+      // 2. FALLBACK: Use known models if API fails (e.g. 401 on Free Tier)
+      debugPrint("ArliAI Fetch failed ($e), using fallback list.");
+
+      setState(() {
+        _isLoadingArliAiModels = false;
+        // Auto-select first if current is invalid
+        if (!_arliAiModelsList.contains(_arliAiModel)) {
+          _arliAiModel = _arliAiModelsList.first;
+          if (_currentProvider == AiProvider.arliAi) _selectedModel = _arliAiModel;
+        }
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("API Fetch Failed ($e)."), 
+            backgroundColor: Colors.orange
+          )
+        );
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // FETCH NANOGPT MODELS
+  // ----------------------------------------------------------------------
+  Future<void> _fetchNanoGptModels() async {
+    if (_nanoGptKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Need NanoGPT API Key first!")));
+      return;
+    }
+
+    setState(() => _isLoadingNanoGptModels = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse("https://nano-gpt.com/api/v1/models"),
+        headers: {"Authorization": "Bearer ${_nanoGptKey.trim()}"},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> dataList = data['data'] ?? []; 
+
+        final List<String> fetchedIds = dataList
+            .map<String>((e) => e['id'].toString())
+            .toList();
+        
+        fetchedIds.sort();
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('airp_list_nanogpt', fetchedIds);
+
+        setState(() {
+          _nanoGptModelsList = fetchedIds;
+          _isLoadingNanoGptModels = false;
+           // Auto-select first if current is invalid
+          if (!_nanoGptModelsList.contains(_nanoGptModel) && _nanoGptModelsList.isNotEmpty) {
+            _nanoGptModel = _nanoGptModelsList.first;
+            if (_currentProvider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
+          }
+        });
+        
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Found ${_nanoGptModelsList.length} NanoGPT models!")));
+      } else {
+        throw Exception("Status ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() => _isLoadingNanoGptModels = false);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Fetch Error: $e"), backgroundColor: Colors.red));
     }
   }
@@ -1459,34 +1807,10 @@ void _showEditDialog(int index) {
           children: [
             const SizedBox(height: 40),
             const Text("Main Settings", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Text("v0.1.9", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             const Divider(),
+            const SizedBox(height: 10),
 
-            const Text("Conversation Title", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-            const SizedBox(height: 5),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: TextField(
-                controller: _titleController,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(
-                  hintText: "Type a title...",
-                  hintStyle: TextStyle(color: Colors.white24),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  suffixIcon: Icon(Icons.edit, size: 16, color: Colors.cyanAccent),
-                ),
-                onChanged: (val) {
-                  if (val.trim().isNotEmpty) {
-                    _autoSaveCurrentSession();}
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            
             const Text("API Key (BYOK)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
             const SizedBox(height: 5),
             // --- UPDATED API KEY / IP FIELD SECTION ---
@@ -1521,6 +1845,32 @@ void _showEditDialog(int index) {
               ),
               const SizedBox(height: 20),
             ],
+
+            const Text("Conversation Title", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            const SizedBox(height: 5),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: TextField(
+                controller: _titleController,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                decoration: const InputDecoration(
+                  hintText: "Type a title...",
+                  hintStyle: TextStyle(color: Colors.white24),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  suffixIcon: Icon(Icons.edit, size: 16, color: Colors.cyanAccent),
+                ),
+                onChanged: (val) {
+                  if (val.trim().isNotEmpty) {
+                    _autoSaveCurrentSession();}
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
 
             const Text("Model Selection", style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 5),
@@ -1557,9 +1907,9 @@ void _showEditDialog(int index) {
                   ),
                 )
               else
-                // Fallback Text Field if list is empty/error
+              // Fallback Text Field if list is empty/error
                 TextField(
-                  decoration: const InputDecoration(hintText: "models/gemini-1.5-flash", border: OutlineInputBorder(), isDense: true),
+                  decoration: const InputDecoration(hintText: "models/gemini-flash-lite-latest", border: OutlineInputBorder(), isDense: true),
                   onChanged: (val) => _selectedGeminiModel = val,
                   controller: TextEditingController(text: _selectedGeminiModel),
                 ),
@@ -1633,7 +1983,7 @@ void _showEditDialog(int index) {
               ),
             ],
             // -------------------------------------------
-            // LOCAL UI (NEW)
+            // LOCAL UI
             // -------------------------------------------
             if (_currentProvider == AiProvider.local) ...[
                const SizedBox(height: 5),
@@ -1648,6 +1998,119 @@ void _showEditDialog(int index) {
                  style: const TextStyle(fontSize: 13),
                ),
             ],
+
+            // ============================================
+            // ARLI AI UI
+            // ============================================
+            if (_currentProvider == AiProvider.arliAi) ...[
+              if (_arliAiModelsList.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF2C2C2C),
+                      value: _arliAiModelsList.contains(_arliAiModel) ? _arliAiModel : null,
+                      hint: Text(cleanModelName(_arliAiModel), style: const TextStyle(color: Colors.white)),
+                      items: _arliAiModelsList.map((String id) {
+                        return DropdownMenuItem<String>(
+                          value: id,
+                          child: Text(cleanModelName(id), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _arliAiModel = newValue;
+                            _selectedModel = newValue;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                )
+              else
+                // Fallback TextField if list is empty
+                TextField(
+                  controller: TextEditingController(text: _arliAiModel),
+                  decoration: const InputDecoration(hintText: "Gemma-3-27B-Big-Tiger-v3", border: OutlineInputBorder(), isDense: true),
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (val) { _arliAiModel = val.trim(); },
+                ),
+
+              const SizedBox(height: 8),
+              
+              // REFRESH BUTTON
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: _isLoadingArliAiModels 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                    : const Icon(Icons.cloud_sync, size: 16),
+                  label: Text(_isLoadingArliAiModels ? "Fetching..." : "Refresh Model List"),
+                  onPressed: _isLoadingArliAiModels ? null : _fetchArliAiModels,
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.orangeAccent),
+                ),
+              ),
+            ],
+
+            // ============================================
+            // NANOGPT UI
+            // ============================================
+            if (_currentProvider == AiProvider.nanoGpt) ...[
+              if (_nanoGptModelsList.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF2C2C2C),
+                      value: _nanoGptModelsList.contains(_nanoGptModel) ? _nanoGptModel : null,
+                      hint: Text(cleanModelName(_nanoGptModel), style: const TextStyle(color: Colors.white)),
+                      items: _nanoGptModelsList.map((String id) {
+                        return DropdownMenuItem<String>(
+                          value: id,
+                          child: Text(cleanModelName(id), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _nanoGptModel = newValue;
+                            _selectedModel = newValue;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                )
+              else
+                // Fallback TextField
+                TextField(
+                  controller: TextEditingController(text: _nanoGptModel),
+                  decoration: const InputDecoration(hintText: "aion-labs/aion-rp-llama-3.1-8b", border: OutlineInputBorder(), isDense: true),
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (val) { _nanoGptModel = val.trim(); },
+                ),
+
+              const SizedBox(height: 8),
+              
+              // REFRESH BUTTON
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: _isLoadingNanoGptModels 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                    : const Icon(Icons.cloud_sync, size: 16),
+                  label: Text(_isLoadingNanoGptModels ? "Fetching..." : "Refresh Model List"),
+                  onPressed: _isLoadingNanoGptModels ? null : _fetchNanoGptModels,
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.yellowAccent),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 30),
 
             const Text("System Prompt", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -1775,20 +2238,36 @@ void _showEditDialog(int index) {
             const SizedBox(height: 20),
             SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Temperature\nHigher is Creative"), subtitle: Text(_temperature.toStringAsFixed(1)), value: true, onChanged: (val) {},),
             Slider(value: _temperature, min: 0.0, max: 2.0, divisions: 20, activeColor: Colors.redAccent, onChanged: (val) => setState(() => _temperature = val),),
+            
+            // --- GROUNDING SWITCH (Updated) ---
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text("Grounding / Web Search"),
               subtitle: Text(
                 _currentProvider == AiProvider.gemini ? "Uses Google Search (Native)" 
-                : _currentProvider == AiProvider.openRouter ? "Requests Online Access (Soft)"
-                : "Not available on Local",
+                : _currentProvider == AiProvider.openRouter ? "Try OpenRouter Web Plugin"
+                : "Not available on this provider",
                 style: const TextStyle(fontSize: 10, color: Colors.grey)
               ),
               value: _enableGrounding,
               activeThumbColor: Colors.greenAccent,
-              onChanged: _currentProvider == AiProvider.local ? null : (val) { setState(() => _enableGrounding = val); },
+              // Disable if not Gemini OR OpenRouter
+              onChanged: (_currentProvider == AiProvider.gemini || _currentProvider == AiProvider.openRouter)
+                  ? (val) { setState(() => _enableGrounding = val); }
+                  : null, 
             ),
-            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text("Disable Safety Filters"), value: _disableSafety, activeThumbColor: Colors.redAccent, onChanged: (val) { setState(() => _disableSafety = val); },),
+
+            // --- SAFETY FILTERS (Conditional Visibility) ---
+            // Only show for Gemini, as it's the only one with explicit client-side safety toggles
+            if (_currentProvider == AiProvider.gemini)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text("Disable Safety Filters"), 
+                subtitle: const Text("Applies to Gemini Only", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                value: _disableSafety, 
+                activeThumbColor: Colors.redAccent, 
+                onChanged: (val) { setState(() => _disableSafety = val); },
+              ),
             
             const SizedBox(height: 50),
             const Divider(height: 30),
@@ -1997,7 +2476,7 @@ void _showEditDialog(int index) {
       appBar: AppBar(
         backgroundColor: themeProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha((0 * 255).round())
-          : const Color(0xFF2C2C2C),
+          : const Color.fromARGB(255, 0, 0, 0),
         leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
         
         title: PopupMenuButton<AiProvider>(
@@ -2019,6 +2498,14 @@ void _showEditDialog(int index) {
               value: AiProvider.openRouter,
               child: Row(children: [Icon(Icons.router, color: Colors.purpleAccent), SizedBox(width: 8), Text('AIRP - OpenRouter')]),
             ),
+                        const PopupMenuItem<AiProvider>(
+              value: AiProvider.arliAi,
+              child: Row(children: [Icon(Icons.alternate_email, color: Colors.orangeAccent), SizedBox(width: 8), Text('AIRP - ArliAI')]),
+            ),
+            const PopupMenuItem<AiProvider>(
+              value: AiProvider.nanoGpt,
+              child: Row(children: [Icon(Icons.bolt, color: Colors.yellowAccent), SizedBox(width: 8), Text('AIRP - NanoGPT')]),
+            ),
             const PopupMenuItem<AiProvider>(
               value: AiProvider.local,
               child: Row(children: [Icon(Icons.laptop_mac, color: Colors.greenAccent), SizedBox(width: 8), Text('AIRP - Local')]),
@@ -2034,7 +2521,13 @@ void _showEditDialog(int index) {
             children: [
               Flexible(
                 child: Text(
-                  'AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" : _currentProvider == AiProvider.openRouter ? "OpenRouter" : _currentProvider == AiProvider.local ? "Local" : "OpenAI"}',
+                  // FIXED: Added checks for ArliAI and NanoGPT
+                  'AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" 
+                      : _currentProvider == AiProvider.openRouter ? "OpenRouter" 
+                      : _currentProvider == AiProvider.arliAi ? "ArliAI"
+                      : _currentProvider == AiProvider.nanoGpt ? "NanoGPT"
+                      : _currentProvider == AiProvider.local ? "Local" 
+                      : "OpenAI"}',
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   softWrap: false,
@@ -2189,7 +2682,7 @@ void _showEditDialog(int index) {
                                   borderRadius: BorderRadius.circular(24),
                                   borderSide: BorderSide.none),
                               filled: true,
-                              fillColor: const Color(0xFF2C2C2C), 
+                              fillColor: const Color.fromARGB(255, 0, 0, 0), 
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 10),
                             ),
