@@ -7,13 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import '../utils/constants.dart';
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/message_bubble.dart';
+import '../services/chat_api_service.dart';
+import '../widgets/conversation_drawer.dart';
+import '../widgets/settings_drawer.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -28,11 +29,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   static const _defaultApiKey = ''; // hardcode a default key if desired
 
-  String _drawerSearchQuery = '';
-
   // LOADING STATES
   bool _isLoading = false;
-  http.Client? _httpClient; 
   bool _isCancelled = false;
   StreamSubscription? _geminiSubscription; 
 
@@ -95,7 +93,6 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _hasUnsavedChanges = false;
   String? _currentSessionId;
   int _tokenCount = 0;
-  static const int _tokenLimitWarning = 190000;
 
 
   @override
@@ -311,31 +308,23 @@ class _ChatScreenState extends State<ChatScreen> {
     _initializeModel();
   }
 
-  void _cancelGeneration() async {
+    void _cancelGeneration() async {
     setState(() {
       _isLoading = false;
       _isCancelled = true; 
     });
 
-    // 1. Kill HTTP Client (For Local, OpenRouter, Arli, Nano)
-    try {
-      _httpClient?.close();
-      _httpClient = null;
-    } catch (e) {
-      debugPrint("Error closing client: $e");
-    }
-
-    // 2. Kill Gemini Stream
+    // 1. Kill Gemini Stream (if active)
     if (_geminiSubscription != null) {
       await _geminiSubscription?.cancel();
       _geminiSubscription = null;
     }
 
-    // 3. UI Feedback
+    // 2. UI Feedback
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Generation Stopped & Saved (Connection Cut)"), 
+          content: Text("Generation Stopped (Stream Cancelled)"), 
           duration: Duration(milliseconds: 500),
           backgroundColor: Colors.redAccent,
         )
@@ -419,55 +408,175 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
 // SEND BUTTON LOGIC ==================================================
+  
+  // ======================================================================
+  // REFACTORED SEND MESSAGE LOGIC
+  // ======================================================================
   Future<void> _sendMessage() async {
     final messageText = _textController.text;
     if (messageText.isEmpty && _pendingImages.isEmpty) return;
 
-    // 1. UI UPDATES
     final List<String> imagesToSend = List.from(_pendingImages);
+    
+    // 1. Update UI (Optimistic Update)
     setState(() {
       _messages.add(ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend));
       _isLoading = true;
       _isCancelled = false;
-      _httpClient = http.Client(); // New Client for this request
       _pendingImages.clear();
       _textController.clear();
     });
     _scrollToBottom();
     _autoSaveCurrentSession();
 
-    // GROUNDING CHECK for GEMINI ONLY
-    // We only hijack for Gemini because its streaming SDK doesn't handle grounding easily yet.
-    // For OpenRouter, we use the integrated streaming + plugin approach.
+    // 2. Handle Grounding (Gemini Special Case)
     if (_enableGrounding && _currentProvider == AiProvider.gemini && imagesToSend.isEmpty) {
        try {
-         final groundedText = await _performGroundedGeneration(messageText);
+         final activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
+         // CALL SERVICE
+         final groundedText = await ChatApiService.performGeminiGrounding(
+            apiKey: activeKey, 
+            model: _selectedModel, 
+            history: _messages.sublist(0, _messages.length - 1), // Exclude current
+            userMessage: messageText, 
+            systemInstruction: _systemInstructionController.text,
+            disableSafety: _disableSafety
+         );
+         
          if (_isCancelled) return; 
+         
          setState(() {
            _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false, modelName: _selectedModel));
            _isLoading = false;
          });
          return; 
        } catch (e) {
-         // Fallback if grounding fails
-         debugPrint("Grounding failed, falling back to standard chat: $e");
+         debugPrint("Grounding failed: $e");
+         // Fall through to normal chat if grounding fails
        }
     }
 
+    // 3. Prepare AI Response Placeholder
+    setState(() {
+      _messages.add(ChatMessage(
+        text: "", // Start empty
+        isUser: false, 
+        modelName: _selectedModel
+      ));
+    });
+
+    Stream<String>? responseStream;
+
     try {
+      // 4. Select Provider and Get Stream from Service
       if (_currentProvider == AiProvider.gemini) {
-        await _sendGeminiMessage(messageText, imagesToSend);
-      } else if (_currentProvider == AiProvider.openRouter) {
-        await _sendOpenRouterMessage(messageText, imagesToSend);
-      } else if (_currentProvider == AiProvider.local) {
-        await _sendLocalMessage(messageText, imagesToSend);
-      } else if (_currentProvider == AiProvider.arliAi) {
-        await _sendArliAiMessage(messageText, imagesToSend);
-      } else if (_currentProvider == AiProvider.nanoGpt) {
-        await _sendNanoGptMessage(messageText, imagesToSend);
-      } else {
-        setState(() => _isLoading = false);
+        responseStream = ChatApiService.streamGeminiResponse(
+          chatSession: _chat, // We pass the SDK session object
+          message: messageText,
+          imagePaths: imagesToSend,
+          modelName: _selectedModel,
+        );
+      } 
+      else {
+        // Prepare common variables for OpenAI-style APIs
+        String baseUrl = "";
+        String apiKey = "";
+        Map<String, String>? headers;
+
+        // History: Take all except the last 2 (The user message we just added, and the empty AI placeholder)
+        // actually, we need the history *before* the new user message for context building usually,
+        // but the Service method expects 'history'.
+        // Let's filter _messages to get context.
+        final contextMessages = _messages.sublist(0, _messages.length - 2); 
+        // Apply history limit
+        int startIndex = contextMessages.length - _historyLimit;
+        if (startIndex < 0) startIndex = 0;
+        final limitedHistory = contextMessages.sublist(startIndex);
+
+        if (_currentProvider == AiProvider.openRouter) {
+          baseUrl = "https://openrouter.ai/api/v1/chat/completions";
+          apiKey = _openRouterKey;
+          headers = {
+            "HTTP-Referer": "https://airp-chat.com",
+            "X-Title": "AIRP Chat",
+          };
+        } else if (_currentProvider == AiProvider.arliAi) {
+          baseUrl = "https://api.arliai.com/v1/chat/completions";
+          apiKey = _arliAiKey;
+        } else if (_currentProvider == AiProvider.nanoGpt) {
+          baseUrl = "https://nano-gpt.com/api/v1/chat/completions";
+          apiKey = _nanoGptKey;
+        } else if (_currentProvider == AiProvider.local) {
+          baseUrl = _localIpController.text.trim();
+          if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+          if (!baseUrl.endsWith('/chat/completions')) {
+             baseUrl += baseUrl.endsWith('/v1') ? "/chat/completions" : "/v1/chat/completions";
+          }
+          apiKey = "local-key";
+        }
+
+        responseStream = ChatApiService.streamOpenAiCompatible(
+          apiKey: apiKey,
+          baseUrl: baseUrl,
+          model: _currentProvider == AiProvider.local ? _localModelName : _selectedModel,
+          history: limitedHistory,
+          systemInstruction: _systemInstructionController.text,
+          userMessage: messageText,
+          imagePaths: imagesToSend,
+          temperature: _temperature,
+          topP: _topP,
+          topK: _topK,
+          maxTokens: _maxOutputTokens,
+          enableGrounding: _enableGrounding && _currentProvider == AiProvider.openRouter,
+          extraHeaders: headers,
+        );
       }
+
+      // 5. Listen to the Stream
+      if (responseStream != null) {
+        String fullText = "";
+        _geminiSubscription = responseStream.listen(
+          (chunk) {
+            if (_isCancelled) return;
+            fullText += chunk;
+            setState(() {
+              _messages.last = ChatMessage(
+                text: fullText,
+                isUser: false,
+                modelName: _selectedModel
+              );
+            });
+             // Auto-scroll logic
+            if (_scrollController.hasClients && _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+               _scrollToBottom();
+            }
+          },
+          onError: (e) {
+            if (!_isCancelled) {
+              setState(() {
+                _messages.last = ChatMessage(
+                  text: "${_messages.last.text}\n\n**Error:** $e",
+                  isUser: false,
+                  modelName: "System Alert"
+                );
+                _isLoading = false;
+              });
+            }
+          },
+          onDone: () async {
+            if (!_isCancelled) {
+              setState(() => _isLoading = false);
+              _autoSaveCurrentSession();
+              // Refresh Gemini context if needed
+              if (_currentProvider == AiProvider.gemini) {
+                await _initializeModel(); 
+                if (!_enableGrounding) _updateTokenCount();
+              }
+            }
+          },
+        );
+      }
+
     } catch (e) {
       if (!_isCancelled) {
         setState(() {
@@ -480,465 +589,6 @@ class _ChatScreenState extends State<ChatScreen> {
         });
         _autoSaveCurrentSession();
       }
-    }
-  }
-
-// GEMINI (Uses google_generative_ai package) ==================================
-  // GEMINI (Streaming Implementation) ==================================
-  Future<void> _sendGeminiMessage(String text, List<String> images) async {
-    Content userContent;
-    final List<Part> parts = [];
-    String accumulatedText = text;
-
-    // --- 1. PREPARE CONTENT (Same as before) ---
-    if (images.isNotEmpty) {
-      for (String path in images) {
-        final String ext = path.split('.').last.toLowerCase();
-        // Text Files
-        if (['txt', 'md', 'json', 'dart', 'js', 'py', 'html', 'css', 'csv', 'c', 'cpp', 'java'].contains(ext)) {
-          try {
-            final String fileContent = await File(path).readAsString();
-            accumulatedText += "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n";
-          } catch (e) { debugPrint("Error reading text file: $e"); }
-        } 
-        // Binary Files
-        else {
-          final bytes = await File(path).readAsBytes();
-          String? mimeType;
-          if (['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'].contains(ext)) {
-            mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
-          } else if (ext == 'pdf') mimeType = 'application/pdf';
-          if (mimeType != null) parts.add(DataPart(mimeType, bytes));
-        }
-      }
-    }
-
-    if (accumulatedText.isNotEmpty) parts.insert(0, TextPart(accumulatedText));
-    userContent = parts.isNotEmpty ? Content.multi(parts) : Content.text(accumulatedText);
-
-    // --- 3. STREAMING LOGIC ---
-    try {
-      // A. Create a placeholder message for the AI response
-      setState(() {
-        _messages.add(ChatMessage(
-          text: "", // Start empty
-          isUser: false, 
-          modelName: _selectedModel,
-          aiImage: null 
-        ));
-      });
-
-      // B. Start the stream
-      final stream = _chat.sendMessageStream(userContent);
-      
-      String fullResponseText = "";
-
-      _geminiSubscription = stream.listen(
-        (response) {
-          // This runs every time a chunk of text arrives
-          final textChunk = response.text;
-          if (textChunk != null) {
-            fullResponseText += textChunk;
-            setState(() {
-              // Update the LAST message (the placeholder we made)
-              _messages.last = ChatMessage(
-                text: fullResponseText,
-                isUser: false,
-                modelName: _selectedModel,
-              );
-            });
-            // Auto-scroll slightly to keep up
-            if (_scrollController.hasClients && _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
-               _scrollToBottom();
-            }
-          }
-        },
-        onError: (e) {
-          if (!_isCancelled) {
-             setState(() {
-              _messages.last = ChatMessage(
-                text: "${_messages.last.text}\n\n**Error:** $e",
-                isUser: false,
-                modelName: "System Alert"
-              );
-              _isLoading = false;
-            });
-          }
-        },
-        onDone: () async {
-          // Stream finished successfully
-          if (!_isCancelled) {
-             setState(() => _isLoading = false);
-             _geminiSubscription = null;
-             await _initializeModel(); // Refresh context
-             _autoSaveCurrentSession();
-             if (!_enableGrounding) _updateTokenCount();
-          }
-        },
-      );
-
-    } catch (e) {
-      if (!_isCancelled) {
-         setState(() {
-          _messages.add(ChatMessage(text: "System Error: $e", isUser: false, modelName: "System"));
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  // ----------------------------------------------------------------------
-  // OPENROUTER (STREAMING & GROUNDING)
-  // ----------------------------------------------------------------------
-  Future<void> _sendOpenRouterMessage(String text, List<String> images) async {
-    final cleanKey = _openRouterKey.trim();
-    if (cleanKey.isEmpty) throw Exception("OpenRouter Key is empty!");
-
-    // 1. Setup Placeholder Message for Streaming
-    setState(() {
-      _messages.add(ChatMessage(
-        text: "", // Start empty
-        isUser: false, 
-        modelName: _openRouterModel
-      ));
-    });
-
-    // 2. Build Payload
-    List<Map<String, dynamic>> messagesPayload = [];
-    if (_systemInstructionController.text.isNotEmpty) {
-      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
-    }
-    
-    final validHistory = _messages.take(_messages.length - 2).toList();
-    
-    int skipCount = validHistory.length - _historyLimit;
-    if (skipCount < 0) skipCount = 0;
-    
-    final truncatedHistory = validHistory.skip(skipCount).toList();
-    // History
-    for (var msg in truncatedHistory) {
-      messagesPayload.add({
-        "role": msg.isUser ? "user" : "assistant", 
-        "content": msg.text
-      });
-    }
-    // Current User Message (Text + Image)
-    if (images.isEmpty) {
-      messagesPayload.add({"role": "user", "content": text});
-    } else {
-      List<Map<String, dynamic>> contentParts = [];
-      if (text.isNotEmpty) contentParts.add({"type": "text", "text": text});
-      for (String path in images) {
-        final bytes = await File(path).readAsBytes();
-        final base64Img = base64Encode(bytes);
-        // Note: OpenRouter supports standard openai image_url format
-        contentParts.add({
-          "type": "image_url", 
-          "image_url": {"url": "data:image/jpeg;base64,$base64Img"}
-        });
-      }
-      messagesPayload.add({"role": "user", "content": contentParts});
-    }
-
-    // 3. Prepare Request (Use http.Request for streaming)
-    final request = http.Request('POST', Uri.parse("https://openrouter.ai/api/v1/chat/completions"));
-    
-    request.headers.addAll({
-      "Authorization": "Bearer $cleanKey",
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://airp-chat.com",
-      "X-Title": "AIRP Chat",
-    });
-
-    final bodyMap = {
-      "model": _openRouterModel.trim(),
-      "messages": messagesPayload,
-      "temperature": _temperature,
-      "stream": true,
-      "top_p": _topP,
-      "top_k": _topK,
-      "max_tokens": _maxOutputTokens, 
-    };
-
-    // --- GROUNDING LOGIC FOR OPENROUTER ---
-    if (_enableGrounding) {
-      bodyMap["plugins"] = ["web_search"]; 
-    }
-
-    request.body = jsonEncode(bodyMap);
-
-    try {
-      // 4. Send & Listen
-      _httpClient ??= http.Client();
-      final streamedResponse = await _httpClient!.send(request);
-
-      if (streamedResponse.statusCode != 200) {
-        // Read error from stream
-        final errorBody = await streamedResponse.stream.bytesToString();
-        throw Exception("Error ${streamedResponse.statusCode}: $errorBody");
-      }
-
-      // 5. Process Stream
-      String fullResponseText = "";
-      
-      // Listen to the byte stream, decode to UTF8, split by lines
-      await streamedResponse.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((String line) {
-            
-        if (_isCancelled) return; // Stop processing if cancelled
-
-        // OpenAI Stream format: "data: {JSON}"
-        if (line.startsWith("data: ")) {
-          final dataStr = line.substring(6).trim(); // Remove "data: "
-          if (dataStr == "[DONE]") return; // End of stream
-
-          try {
-            final json = jsonDecode(dataStr);
-            final choices = json['choices'] as List;
-            if (choices.isNotEmpty) {
-              final delta = choices[0]['delta'];
-              if (delta != null && delta['content'] != null) {
-                final contentChunk = delta['content'].toString();
-                
-                fullResponseText += contentChunk;
-
-                // Update UI incrementally
-                setState(() {
-                  _messages.last = ChatMessage(
-                    text: fullResponseText, 
-                    isUser: false, 
-                    modelName: _openRouterModel
-                  );
-                });
-
-                // Auto Scroll
-                if (_scrollController.hasClients && 
-                    _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
-                   _scrollToBottom();
-                }
-              }
-            }
-          } catch (e) {
-            // Ignore parse errors for partial chunks
-          }
-        }
-      }).asFuture();
-
-      // Done
-      if (!_isCancelled) {
-        setState(() => _isLoading = false);
-        _autoSaveCurrentSession();
-      }
-
-    } catch (e) {
-      if (!_isCancelled) {
-        setState(() {
-          _messages.last = ChatMessage(
-            text: "**Stream Error**\n$e",
-            isUser: false,
-            modelName: "System Alert"
-          );
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  // ----------------------------------------------------------------------
-  // ARLI AI IMPLEMENTATION
-  // ----------------------------------------------------------------------
-  Future<void> _sendArliAiMessage(String text, List<String> images) async {
-    final cleanKey = _arliAiKey.trim();
-    if (cleanKey.isEmpty) throw Exception("ArliAI Key is empty!");
-    
-    // (You can implement similar streaming logic here as OpenRouter if desired, 
-    // for now sticking to the original blocking post for Arli/Nano unless you request it).
-
-    List<Map<String, dynamic>> messagesPayload = [];
-    if (_systemInstructionController.text.isNotEmpty) {
-      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
-    }
-
-    // 1. Calculate History (No placeholder exists yet, so we just remove the last one which is the User Message)
-    final validHistory = _messages.take(_messages.length - 1).toList(); 
-    
-    int skipCount = validHistory.length - _historyLimit;
-    if (skipCount < 0) skipCount = 0;
-    
-    final truncatedHistory = validHistory.skip(skipCount).toList();
-
-    for (var msg in truncatedHistory) {
-      messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
-    }
-    
-    messagesPayload.add({"role": "user", "content": text});
-
-    final response = await _httpClient!.post(
-      Uri.parse("https://api.arliai.com/v1/chat/completions"),
-      headers: {
-        "Authorization": "Bearer $cleanKey",
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "model": _arliAiModel,
-        "messages": messagesPayload,
-        "temperature": _temperature,
-        "top_p": _topP,
-        "top_k": _topK,
-        "max_tokens": _maxOutputTokens,
-        "stream": false, 
-      }),
-    );
-
-    if (_isCancelled) return;
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      final String aiText = data['choices'][0]['message']['content'];
-      setState(() {
-        _messages.add(ChatMessage(text: aiText, isUser: false, modelName: _arliAiModel));
-        _isLoading = false;
-      });
-      _autoSaveCurrentSession();
-    } else {
-      throw Exception("ArliAI Error: ${response.statusCode} - ${response.body}");
-    }
-  }
-
-  // ----------------------------------------------------------------------
-  // NANOGPT IMPLEMENTATION
-  // ----------------------------------------------------------------------
-  Future<void> _sendNanoGptMessage(String text, List<String> images) async {
-    final cleanKey = _nanoGptKey.trim();
-    if (cleanKey.isEmpty) throw Exception("NanoGPT Key is empty!");
-
-    List<Map<String, dynamic>> messagesPayload = [];
-    if (_systemInstructionController.text.isNotEmpty) {
-      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
-    }
-
-    // 1. Calculate History (No placeholder exists yet, so we just remove the last one which is the User Message)
-    final validHistory = _messages.take(_messages.length - 1).toList(); 
-    
-    int skipCount = validHistory.length - _historyLimit;
-    if (skipCount < 0) skipCount = 0;
-    
-    final truncatedHistory = validHistory.skip(skipCount).toList();
-
-    for (var msg in truncatedHistory) {
-      messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
-    }
-
-    final response = await _httpClient!.post(
-      Uri.parse("https://nano-gpt.com/api/v1/chat/completions"),
-      headers: {
-        "Authorization": "Bearer $cleanKey",
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "model": _nanoGptModel,
-        "messages": messagesPayload,
-        "temperature": _temperature,
-        "top_p": _topP,
-        "top_k": _topK,
-        "max_tokens": _maxOutputTokens, 
-      }),
-    );
-
-    if (_isCancelled) return;
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      final String aiText = data['choices'][0]['message']['content'];
-      setState(() {
-        _messages.add(ChatMessage(text: aiText, isUser: false, modelName: _nanoGptModel));
-        _isLoading = false;
-      });
-      _autoSaveCurrentSession();
-    } else {
-      throw Exception("NanoGPT Error: ${response.statusCode} - ${response.body}");
-    }
-  }
-
-  // UPDATED LOCAL MESSAGE (Uses _httpClient) 
-  Future<void> _sendLocalMessage(String text, List<String> images) async {
-    String baseUrl = _localIpController.text.trim();
-    if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
-
-    if (!baseUrl.endsWith('/chat/completions')) {
-      if (baseUrl.endsWith('/v1')) {
-        baseUrl += "/chat/completions";
-      } else {
-        baseUrl += "/v1/chat/completions";
-      }
-    }
-
-    List<Map<String, dynamic>> messagesPayload = [];
-    if (_systemInstructionController.text.isNotEmpty) {
-      messagesPayload.add({"role": "system", "content": _systemInstructionController.text});
-    }
-    // 1. Calculate History (No placeholder exists yet, so we just remove the last one which is the User Message)
-    final validHistory = _messages.take(_messages.length - 1).toList(); 
-    
-    int skipCount = validHistory.length - _historyLimit;
-    if (skipCount < 0) skipCount = 0;
-    
-    final truncatedHistory = validHistory.skip(skipCount).toList();
-
-    for (var msg in truncatedHistory) {
-      messagesPayload.add({"role": msg.isUser ? "user" : "assistant", "content": msg.text});
-    }
-    
-    if (images.isEmpty) {
-      messagesPayload.add({"role": "user", "content": text});
-    } else {
-      List<Map<String, dynamic>> contentParts = [];
-      if (text.isNotEmpty) contentParts.add({"type": "text", "text": text});
-      for (String path in images) {
-        final bytes = await File(path).readAsBytes();
-        final base64Img = base64Encode(bytes);
-        contentParts.add({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,$base64Img"}});
-      }
-      messagesPayload.add({"role": "user", "content": contentParts});
-    }
-    final response = await _httpClient!.post(
-      Uri.parse(baseUrl),
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer local-key" },
-      body: jsonEncode({
-        "model": _localModelName,
-        "messages": messagesPayload,
-        "temperature": _temperature,
-        "top_p": _topP,
-        "top_k": _topK,
-        "max_tokens": _maxOutputTokens, 
-        "stream": false,
-      }),
-    );
-
-    if (_isCancelled) return; 
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      String aiText = '';
-      if (data['choices'] != null && data['choices'] is List && data['choices'].isNotEmpty) {
-        final choice = data['choices'][0];
-        if (choice['message'] != null && choice['message']['content'] != null) {
-          aiText = choice['message']['content'].toString();
-        } else if (choice['text'] != null) {
-          aiText = choice['text'].toString();
-        }
-      } else if (data['message'] != null) {
-        aiText = data['message'].toString();
-      }
-      setState(() {
-        _messages.add(ChatMessage(text: aiText, isUser: false, modelName: "Local AI"));
-        _isLoading = false;
-      });
-      _autoSaveCurrentSession();
-    } else {
-      throw Exception("Local AI Error: ${response.statusCode} - ${response.body}");
     }
   }
 
@@ -1148,60 +798,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<String?> _performGroundedGeneration(String userMessage) async {
-    final activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
-    final modelId = _selectedModel.replaceAll('models/', '');
-    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$activeKey');
-
-    final List<Map<String, dynamic>> contents = [];
-    for (var msg in _messages) {
-      if (msg == _messages.last) continue; 
-      contents.add({
-        "role": msg.isUser ? "user" : "model",
-        "parts": [{"text": msg.text}]
-      });
-    }
-    contents.add({"role": "user", "parts": [{"text": userMessage}]});
-
-    final toolsPayload = [ { "google_search": {} } ];
-    final body = jsonEncode({
-      "contents": contents,
-      "tools": toolsPayload,
-      "system_instruction": _systemInstructionController.text.isNotEmpty ? {
-        "parts": [{"text": _systemInstructionController.text}]
-      } : null,
-      "generationConfig": {"temperature": _temperature},
-      "safetySettings": _disableSafety ? [
-          {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-          {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-          {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-          {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-      ] : []
-    });
-
-    final response = await http.post(url, headers: {'Content-Type': 'application/json'}, body: body);
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['candidates'] != null && (data['candidates'] as List).isNotEmpty) {
-        final candidate = data['candidates'][0];
-        final parts = candidate['content']['parts'] as List;
-        String fullText = "";
-        for (var part in parts) { if (part['text'] != null) fullText += part['text']; }
-        if (candidate['groundingMetadata'] != null) {
-            fullText += "\n\n--- \n**Sources Found:**\n";
-            final metadata = candidate['groundingMetadata'];
-            if (metadata['groundingChunks'] != null) {
-              for (var chunk in metadata['groundingChunks']) {
-                if (chunk['web'] != null) fullText += "- [${chunk['web']['title']}](${chunk['web']['uri']})\n";
-              }
-            }
-        }
-        return fullText;
-      }
-    } 
-    return null;
-  }
-
 // TOKEN COUNTING LOGIC ==================================
   Future<void> _updateTokenCount() async {
     if (_messages.isEmpty) {
@@ -1346,64 +942,6 @@ class _ChatScreenState extends State<ChatScreen> {
     
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Deleted '$title'")));
-  }
-
-  // COLOR PICKER WIDGET =================================
-  Widget _buildColorCircle(String label, Color color, Function(Color) onSave) {
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: () => _showColorPickerDialog(color, onSave), 
-          child: Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 8)],
-            ),
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-      ],
-    );
-  }
-
-  // COLOR PICKER DIALOG =================================
-  void _showColorPickerDialog(Color initialColor, Function(Color) onSave) {
-    Color tempColor = initialColor;
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF2C2C2C),
-            title: const Text("Pick a Color", style: TextStyle(color: Colors.white)),
-            content: SingleChildScrollView(
-              child: ColorPicker(
-                pickerColor: tempColor,
-                onColorChanged: (c) => setDialogState(() => tempColor = c),
-                pickerAreaHeightPercent: 0.7,
-                enableAlpha: false,
-                displayThumbColor: true,
-                paletteType: PaletteType.hsvWithHue,
-              ),
-            ),
-            actions: [
-              TextButton(child: const Text("Cancel"), onPressed: () => Navigator.pop(context)),
-              TextButton(
-                child: const Text("Done", style: TextStyle(color: Colors.cyanAccent)),
-                onPressed: () {
-                  onSave(tempColor);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          );
-        },
-      ),
-    );
   }
 
   // SCROLL TO BOTTOM LOGIC =================================
@@ -1641,1016 +1179,176 @@ void _showEditDialog(int index) {
     );
   }
 
-  // ----------------------------------------------------------------------
+    // ----------------------------------------------------------------------
   // UI BUILDERS
   // ----------------------------------------------------------------------
 
   Widget _buildLeftDrawer() {
-    final tokenColor = _tokenCount > _tokenLimitWarning ? Colors.redAccent : Colors.greenAccent;
-    
-    final filteredSessions = _savedSessions.where((session) {
-      final titleLower = session.title.toLowerCase();
-      final queryLower = _drawerSearchQuery.toLowerCase();
-      return titleLower.contains(queryLower);
-    }).toList();
+    return ConversationDrawer(
+      savedSessions: _savedSessions,
+      currentSessionId: _currentSessionId,
+      tokenCount: _tokenCount,
+      onNewSession: _createNewSession,
+      onLoadSession: (session) {
+        final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+        setState(() {
+          _messages = List.from(session.messages);
+          _currentSessionId = session.id;
+          _tokenCount = session.tokenCount;
+          _systemInstructionController.text = session.systemInstruction;
+          _titleController.text = session.title;
 
-    return Drawer(
-      width: 280,
-      backgroundColor: const Color.fromARGB(255, 0, 0, 0),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 50, 16, 20),
-            color: Colors.black26,
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Conversations List", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Icon(Icons.token, color: tokenColor, size: 16),
-                    const SizedBox(width: 8),
-                    Text("$_tokenCount / 1M \n Limit: ~190k", style: TextStyle(color: tokenColor, fontWeight: FontWeight.bold, fontSize: 12)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          ListTile(
-            leading: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
-            title: const Text("New Conversation", style: TextStyle(color: Colors.green)),
-            subtitle: const Text("Hold Chat to delete", style: TextStyle(color: Colors.orangeAccent, fontSize: 10)),
-            onTap: () {
-              _createNewSession();
-              Navigator.pop(context);
-            },
-          ),
+          if (session.backgroundImage != null) {
+            themeProvider.setBackgroundImage(session.backgroundImage!);
+          }
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(20),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TextField(
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: const InputDecoration(
-                  hintText: "Find conversation...",
-                  hintStyle: TextStyle(color: Colors.white38),
-                  prefixIcon: Icon(Icons.search, color: Colors.cyanAccent, size: 18),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  isDense: true,
-                ),
-                onChanged: (val) {
-                  setState(() {
-                    _drawerSearchQuery = val;
-                  });
-                },
-              ),
-            ),
-          ),
-          
-          const Divider(color: Colors.grey),
-          
-          Expanded(
-            child: filteredSessions.isEmpty 
-            ? const Center(child: Text("No chats found", style: TextStyle(color: Colors.grey)))
-            : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), 
-              itemCount: filteredSessions.length,
-              itemBuilder: (context, index) {
-                final session = filteredSessions[index];
-                final bool isActive = session.id == _currentSessionId;
-                
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: isActive ? Colors.cyanAccent.withAlpha((0.05 * 255).round()) : Colors.transparent,
-                    border: isActive ? Border.all(color: Colors.cyanAccent, width: 1.5) : null, 
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    splashColor: Colors.red.withAlpha((0.95 * 255).round()),
-                    leading: Icon(
-                      isActive ? Icons.check_circle : Icons.history, 
-                      color: isActive ? Colors.cyanAccent : Colors.grey[600]
-                    ),
-                    title: Text(
-                      session.title, 
-                      maxLines: 1, 
-                      overflow: TextOverflow.ellipsis, 
-                      style: TextStyle(
-                        color: isActive ? Colors.cyanAccent : Colors.grey[300], 
-                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal
-                      )
-                    ),
-                    subtitle: Text(
-                      cleanModelName(session.modelName), 
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600])
-                    ),
-                    onTap: () {
-                      final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-                      
-                      setState(() {
-                        // 1. Load Messages & Basic Data
-                        _messages = List.from(session.messages);
-                        _currentSessionId = session.id;
-                        _tokenCount = session.tokenCount;
-                        _systemInstructionController.text = session.systemInstruction;
-                        _titleController.text = session.title;
-
-                        // 2. Restore Visuals
-                        if (session.backgroundImage != null) {
-                          themeProvider.setBackgroundImage(session.backgroundImage!);
-                        }
-
-                        // 3. Restore Provider & Model UI State 
-                        // This ensures the Settings Drawer shows the correct model/provider
-                        if (session.provider == 'openRouter') {
-                          _currentProvider = AiProvider.openRouter;
-                          _openRouterModel = session.modelName;
-                          _openRouterModelController.text = session.modelName; 
-                          _selectedModel = session.modelName;
-                        } 
-                        else if (session.provider == 'local') {
-                          _currentProvider = AiProvider.local;
-                          _selectedModel = "Local Network AI";
-                        }
-                        else if (session.provider == 'openAi') {
-                          _currentProvider = AiProvider.openAi;
-                          // Handle OpenAI specific UI sync if added later
-                          _selectedModel = session.modelName;
-                        } 
-                        else {
-                          // Default to Gemini
-                          _currentProvider = AiProvider.gemini;
-                          _selectedGeminiModel = session.modelName; 
-                          _selectedModel = session.modelName;
-                        }
-
-                        // 4. Update the API Key text box to match the restored provider
-                        _updateApiKeyTextField();
-
-                        // 5. Re-initialize the chat engine
-                        _initializeModel();
-                      });
-
-                      Navigator.pop(context);
-                      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                    },
-                    
-                    onLongPress: () {
-                      HapticFeedback.heavyImpact();
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          backgroundColor: const Color(0xFF2C2C2C),
-                          title: const Row(
-                            children: [
-                              Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
-                              SizedBox(width: 10),
-                              Text("Delete?", style: TextStyle(color: Colors.redAccent)),
-                            ],
-                          ),
-                          content: Text("Permanently deletes ${session.title}", style: const TextStyle(color: Colors.white70)),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text("Cancel"),
-                            ),
-                            FilledButton.icon(
-                              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-                              icon: const Icon(Icons.delete_forever, color: Colors.white),
-                              label: const Text("DELETE"),
-                              onPressed: () {
-                                setState(() {
-                                  _savedSessions.removeWhere((s) => s.id == session.id);
-                                  if (session.id == _currentSessionId) {
-                                    _createNewSession();
-                                  }
-                                });
-                                _autoSaveCurrentSession();
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Conversation Deleted"), backgroundColor: Colors.redAccent)
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSliderSetting({
-    required String title,
-    required double value,
-    required double min,
-    required double max,
-    int? divisions,
-    required Color activeColor,
-    required Function(double) onChanged,
-    bool isInt = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            SizedBox(
-              width: 60,
-              height: 30,
-              child: TextField(
-                controller: TextEditingController(
-                    text: isInt ? value.toInt().toString() : value.toStringAsFixed(2)),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(fontSize: 12, color: Colors.white),
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  contentPadding: EdgeInsets.zero,
-                  filled: true,
-                  fillColor: Colors.white10,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none),
-                ),
-                onSubmitted: (val) {
-                  double? parsed = double.tryParse(val);
-                  if (parsed != null) {
-                    if (parsed < min) parsed = min;
-                    if (parsed > max) parsed = max;
-                    onChanged(parsed);
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
-        Slider(
-          value: value,
-          min: min,
-          max: max,
-          divisions: divisions,
-          activeColor: activeColor,
-          onChanged: onChanged,
-        ),
-      ],
+          if (session.provider == 'openRouter') {
+            _currentProvider = AiProvider.openRouter;
+            _openRouterModel = session.modelName;
+            _openRouterModelController.text = session.modelName;
+            _selectedModel = session.modelName;
+          } else if (session.provider == 'local') {
+            _currentProvider = AiProvider.local;
+            _selectedModel = "Local Network AI";
+          } else if (session.provider == 'openAi') {
+            _currentProvider = AiProvider.openAi;
+            _selectedModel = session.modelName;
+          } else {
+            _currentProvider = AiProvider.gemini;
+            _selectedGeminiModel = session.modelName;
+            _selectedModel = session.modelName;
+          }
+          _updateApiKeyTextField();
+          _initializeModel();
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      },
+      onDeleteSession: (id) {
+        setState(() {
+          _savedSessions.removeWhere((s) => s.id == id);
+          if (id == _currentSessionId) {
+            _createNewSession();
+          }
+        });
+        _autoSaveCurrentSession();
+      },
     );
   }
 
   Widget _buildSettingsDrawer() {
-    return Drawer(
-      width: 320,
-      backgroundColor: const Color.fromARGB(255, 0, 0, 0),
-            child: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 40),
-            const Text("Main Settings", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-            const Text("v0.1.10", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
-            const Divider(),
-            const SizedBox(height: 10),
-
-            const Text("API Key (BYOK)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-            const SizedBox(height: 5),
-            // --- UPDATED API KEY / IP FIELD SECTION ---
-                        if (_currentProvider != AiProvider.local) ...[
-              TextField(
-                controller: _apiKeyController,
-                onChanged: (_) => setState(() => _hasUnsavedChanges = true),
-                obscureText: true,
-                decoration: const InputDecoration(
-                  hintText: "Paste AI Studio Key...",
-                  border: OutlineInputBorder(),
-                  filled: true, isDense: true,
-                ),
-                style: const TextStyle(fontSize: 12),
-              ),
-              const SizedBox(height: 20),
-            ] else ...[
-                            // LOCAL IP INPUT
-              TextField(
-                controller: _localIpController,
-                onChanged: (_) => setState(() => _hasUnsavedChanges = true),
-                decoration: const InputDecoration(
-                  hintText: "http://192.168.1.X:1234/v1",
-                  labelText: "Local Server Address",
-                  labelStyle: TextStyle(color: Colors.greenAccent),
-                  border: OutlineInputBorder(),
-                  filled: true, isDense: true
-                ),
-                style: const TextStyle(fontSize: 12),
-              ),
-              const Padding(
-                padding: EdgeInsets.only(top: 4, left: 4),
-                child: Text("Ensure your local AI is listening on Network (0.0.0.0)", style: TextStyle(fontSize: 10, color: Colors.grey)),
-              ),
-              const SizedBox(height: 20),
-            ],
-
-            const Text("Conversation Title", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-            const SizedBox(height: 5),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: TextField(
-                controller: _titleController,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(
-                  hintText: "Type a title...",
-                  hintStyle: TextStyle(color: Colors.white24),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  suffixIcon: Icon(Icons.edit, size: 16, color: Colors.cyanAccent),
-                ),
-                                onChanged: (val) => setState(() => _hasUnsavedChanges = true),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            const Text("Model Selection", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 5),
-
-            // ============================================
-            // GEMINI UI
-            // ============================================
-            if (_currentProvider == AiProvider.gemini) ...[
-              if (_geminiModelsList.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFF2C2C2C),
-                      value: _geminiModelsList.contains(_selectedGeminiModel) ? _selectedGeminiModel : null,
-                      hint: Text(cleanModelName(_selectedGeminiModel), style: const TextStyle(color: Colors.white)),
-                      items: _geminiModelsList.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(cleanModelName(value), style: const TextStyle(fontSize: 13, color: Colors.white)),
-                        );
-                      }).toList(),
-                                            onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() { 
-                            _selectedGeminiModel = newValue; 
-                            _selectedModel = newValue; 
-                            _hasUnsavedChanges = true;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                )
-              else
-              // Fallback Text Field if list is empty/error
-                                TextField(
-                  decoration: const InputDecoration(hintText: "models/gemini-flash-lite-latest", border: OutlineInputBorder(), isDense: true),
-                  onChanged: (val) => setState(() { _selectedGeminiModel = val; _hasUnsavedChanges = true; }),
-                  controller: TextEditingController(text: _selectedGeminiModel),
-                ),
-
-              const SizedBox(height: 8),
-              // REFRESH BUTTON
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: _isLoadingGeminiModels 
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                    : const Icon(Icons.cloud_sync, size: 16),
-                  label: Text(_isLoadingGeminiModels ? "Fetching..." : "Refresh Model List"),
-                  onPressed: _isLoadingGeminiModels ? null : _fetchGeminiModels,
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.blueAccent),
-                ),
-              ),
-            ]
-
-            // ============================================
-            // OPENROUTER UI
-            // ============================================
-            else if (_currentProvider == AiProvider.openRouter) ...[
-              if (_openRouterModelsList.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFF2C2C2C),
-                      value: _openRouterModelsList.contains(_openRouterModel) ? _openRouterModel : null,
-                      hint: Text(cleanModelName(_openRouterModel), style: const TextStyle(color: Colors.white)),
-                      items: _openRouterModelsList.map((String id) {
-                        return DropdownMenuItem<String>(
-                          value: id,
-                          child: Text(cleanModelName(id), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
-                        );
-                      }).toList(),
-                                            onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _openRouterModel = newValue;
-                            _openRouterModelController.text = newValue;
-                            _hasUnsavedChanges = true;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                )
-              else
-                                TextField(
-                  controller: _openRouterModelController,
-                  decoration: const InputDecoration(hintText: "vendor/model-name", border: OutlineInputBorder(), isDense: true),
-                  style: const TextStyle(fontSize: 13),
-                  onChanged: (val) { setState(() { _openRouterModel = val.trim(); _hasUnsavedChanges = true; }); },
-                ),
-
-              const SizedBox(height: 8),
-              
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: _isLoadingOpenRouterModels 
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                    : const Icon(Icons.cloud_sync, size: 16),
-                  label: Text(_isLoadingOpenRouterModels ? "Fetching..." : "Refresh Model List"),
-                  onPressed: _isLoadingOpenRouterModels ? null : _fetchOpenRouterModels,
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.purpleAccent),
-                ),
-              ),
-            ],
-            // -------------------------------------------
-            // LOCAL UI
-            // -------------------------------------------
-                        if (_currentProvider == AiProvider.local) ...[
-               const SizedBox(height: 5),
-               TextField(
-                 onChanged: (val) => setState(() { _localModelName = val; _hasUnsavedChanges = true; }),
-                 decoration: const InputDecoration(
-                   hintText: "local-model",
-                   labelText: "Target Model ID (Optional)",
-                   border: OutlineInputBorder(), 
-                   isDense: true
-                 ),
-                 style: const TextStyle(fontSize: 13),
-               ),
-            ],
-
-            // ============================================
-            // ARLI AI UI
-            // ============================================
-            if (_currentProvider == AiProvider.arliAi) ...[
-              if (_arliAiModelsList.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFF2C2C2C),
-                      value: _arliAiModelsList.contains(_arliAiModel) ? _arliAiModel : null,
-                      hint: Text(cleanModelName(_arliAiModel), style: const TextStyle(color: Colors.white)),
-                      items: _arliAiModelsList.map((String id) {
-                        return DropdownMenuItem<String>(
-                          value: id,
-                          child: Text(cleanModelName(id), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
-                        );
-                      }).toList(),
-                                            onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _arliAiModel = newValue;
-                            _selectedModel = newValue;
-                            _hasUnsavedChanges = true;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                )
-              else
-                // Fallback TextField if list is empty
-                                TextField(
-                  controller: TextEditingController(text: _arliAiModel),
-                  decoration: const InputDecoration(hintText: "Gemma-3-27B-Big-Tiger-v3", border: OutlineInputBorder(), isDense: true),
-                  style: const TextStyle(fontSize: 13),
-                  onChanged: (val) { setState(() { _arliAiModel = val.trim(); _hasUnsavedChanges = true; }); },
-                ),
-
-              const SizedBox(height: 8),
-              
-              // REFRESH BUTTON
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: _isLoadingArliAiModels 
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                    : const Icon(Icons.cloud_sync, size: 16),
-                  label: Text(_isLoadingArliAiModels ? "Fetching..." : "Refresh Model List"),
-                  onPressed: _isLoadingArliAiModels ? null : _fetchArliAiModels,
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.orangeAccent),
-                ),
-              ),
-            ],
-
-            // ============================================
-            // NANOGPT UI
-            // ============================================
-            if (_currentProvider == AiProvider.nanoGpt) ...[
-              if (_nanoGptModelsList.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFF2C2C2C),
-                      value: _nanoGptModelsList.contains(_nanoGptModel) ? _nanoGptModel : null,
-                      hint: Text(cleanModelName(_nanoGptModel), style: const TextStyle(color: Colors.white)),
-                      items: _nanoGptModelsList.map((String id) {
-                        return DropdownMenuItem<String>(
-                          value: id,
-                          child: Text(cleanModelName(id), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
-                        );
-                      }).toList(),
-                                            onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _nanoGptModel = newValue;
-                            _selectedModel = newValue;
-                            _hasUnsavedChanges = true;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                )
-              else
-                // Fallback TextField
-                                TextField(
-                  controller: TextEditingController(text: _nanoGptModel),
-                  decoration: const InputDecoration(hintText: "aion-labs/aion-rp-llama-3.1-8b", border: OutlineInputBorder(), isDense: true),
-                  style: const TextStyle(fontSize: 13),
-                  onChanged: (val) { setState(() { _nanoGptModel = val.trim(); _hasUnsavedChanges = true; }); },
-                ),
-
-              const SizedBox(height: 8),
-              
-              // REFRESH BUTTON
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: _isLoadingNanoGptModels 
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                    : const Icon(Icons.cloud_sync, size: 16),
-                  label: Text(_isLoadingNanoGptModels ? "Fetching..." : "Refresh Model List"),
-                  onPressed: _isLoadingNanoGptModels ? null : _fetchNanoGptModels,
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.yellowAccent),
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 30),
-
-            const Text("System Prompt", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 5),
-            
-            // 1. THE DROPDOWN & ACTIONS ROW
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  hint: const Text("Select from Library...", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  dropdownColor: const Color(0xFF2C2C2C),
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.cyanAccent),
-                  value: null, 
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: "CREATE_NEW",
-                      child: Row(children: [
-                        Icon(Icons.add, color: Colors.greenAccent, size: 16),
-                        SizedBox(width: 8),
-                        Text("Create New", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
-                      ]),
-                    ),
-                    ..._savedSystemPrompts.map((prompt) {
-                      return DropdownMenuItem<String>(
-                        value: prompt.title,
-                        child: Text(prompt.title, overflow: TextOverflow.ellipsis),
-                      );
-                    }),
-                  ],
-                                    onChanged: (String? newValue) {
-                    if (newValue == "CREATE_NEW") {
-                      setState(() {
-                        _promptTitleController.clear();
-                        _systemInstructionController.clear();
-                        _hasUnsavedChanges = true;
-                      });
-                    } else if (newValue != null) {
-                      final prompt = _savedSystemPrompts.firstWhere((p) => p.title == newValue);
-                      setState(() {
-                        _promptTitleController.text = prompt.title;
-                        _systemInstructionController.text = prompt.content;
-                        _hasUnsavedChanges = true;
-                      });
-                    }
-                  },
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 10),
-
-            // 2. PROMPT TITLE FIELD
-            TextField(
-              controller: _promptTitleController,
-              onChanged: (_) => setState(() => _hasUnsavedChanges = true),
-              decoration: const InputDecoration(
-                labelText: "Prompt Title (e.g., 'World of Japan')",
-                labelStyle: TextStyle(color: Colors.cyanAccent, fontSize: 12),
-                border: OutlineInputBorder(),
-                filled: true, fillColor: Colors.black12,
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                isDense: true,
-              ),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-            ),
-
-            const SizedBox(height: 5),
-
-                        // 3. PROMPT CONTENT FIELD
-            TextField(
-              controller: _systemInstructionController,
-              onChanged: (_) => setState(() => _hasUnsavedChanges = true),
-              maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: "Enter the roleplay rules here...",
-                border: OutlineInputBorder(),
-                filled: true, fillColor: Colors.black26,
-              ),
-              style: const TextStyle(fontSize: 13),
-            ),
-            
-            const SizedBox(height: 8),
-
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.cyanAccent, 
-                      side: const BorderSide(color: Colors.cyanAccent),
-                      padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
-                    ),
-                    onPressed: _savePromptToLibrary,
-                    icon: const Icon(Icons.save, size: 16),
-                    label: const Text("Save Preset"),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                IconButton.filled(
-                  style: IconButton.styleFrom(backgroundColor: Colors.redAccent.withAlpha((0.2 * 255).round())),
-                  icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                  tooltip: "Delete Preset",
-                  onPressed: _deletePromptFromLibrary,
-                ),
-              ],
-            ),
-
-                        const SizedBox(height: 20),
-            
-            // --- TEMPERATURE ---
-            _buildSliderSetting(
-              title: "Temperature (Creativity)",
-              value: _temperature,
-              min: 0.0,
-              max: 2.0,
-              divisions: 40,
-              activeColor: Colors.redAccent,
-              onChanged: (val) => setState(() { _temperature = val; _hasUnsavedChanges = true; }),
-            ),
-
-            // --- TOP P ---
-            _buildSliderSetting(
-              title: "Top P (Nucleus Sampling)",
-              value: _topP,
-              min: 0.0,
-              max: 1.0,
-              divisions: 20,
-              activeColor: Colors.purpleAccent,
-              onChanged: (val) => setState(() { _topP = val; _hasUnsavedChanges = true; }),
-            ),
-
-            // --- TOP K ---
-            _buildSliderSetting(
-              title: "Top K (Vocabulary Size)",
-              value: _topK.toDouble(),
-              min: 1,
-              max: 100,
-              divisions: 99,
-              activeColor: Colors.orangeAccent,
-              isInt: true,
-              onChanged: (val) => setState(() { _topK = val.toInt(); _hasUnsavedChanges = true; }),
-            ),
-
-            // --- MAX OUTPUT TOKENS ---
-            _buildSliderSetting(
-              title: "Max Output Tokens",
-              value: _maxOutputTokens.toDouble(),
-              min: 256,
-              max: 32768, // User defined limit
-              // Removed divisions for smoother sliding on large range
-              activeColor: Colors.blueAccent,
-              isInt: true,
-              onChanged: (val) => setState(() { _maxOutputTokens = val.toInt(); _hasUnsavedChanges = true; }),
-            ),
-
-            // --- CONTEXT HISTORY LIMIT ---
-            const Divider(),
-            _buildSliderSetting(
-              title: "(Msg History) Limit",
-              value: _historyLimit.toDouble(),
-              min: 2,
-              max: 1000,
-              divisions: 499,
-              activeColor: Colors.greenAccent,
-              isInt: true,
-              onChanged: (val) => setState(() { _historyLimit = val.toInt(); _hasUnsavedChanges = true; }),
-            ),
-            const Text(
-              "Note: Lower this if you get 'Context Window Exceeded' errors.",
-              style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
-            ),
-            const Divider(),
-
-            // --- GROUNDING SWITCH ---
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text("Grounding / Web Search"),
-              subtitle: Text(
-                _currentProvider == AiProvider.gemini ? "Uses Google Search (Native)" 
-                : _currentProvider == AiProvider.openRouter ? "Try OpenRouter Web Plugin"
-                : "Not available on this provider",
-                style: const TextStyle(fontSize: 10, color: Colors.grey)
-              ),
-              value: _enableGrounding,
-              activeThumbColor: Colors.greenAccent,
-              // Disable if not Gemini OR OpenRouter
-                            onChanged: (_currentProvider == AiProvider.gemini || _currentProvider == AiProvider.openRouter)
-                  ? (val) { setState(() { _enableGrounding = val; _hasUnsavedChanges = true; }); }
-                  : null, 
-            ),
-
-            // --- SAFETY FILTERS (Conditional Visibility) ---
-            // Only show for Gemini, as it's the only one with explicit client-side safety toggles
-            if (_currentProvider == AiProvider.gemini)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text("Disable Safety Filters"), 
-                subtitle: const Text("Applies to Gemini Only", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                value: _disableSafety, 
-                activeThumbColor: Colors.redAccent, 
-                onChanged: (val) { setState(() { _disableSafety = val; _hasUnsavedChanges = true; }); },
-              ),
-            
-            const SizedBox(height: 50),
-            const Divider(height: 30),
-            
-            const Text("Global Interface Font", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-            Consumer<ThemeProvider>(
-              builder: (context, provider, child) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12),),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true, value: provider.fontStyle, dropdownColor: const Color(0xFF2C2C2C), icon: const Icon(Icons.text_fields, color: Colors.cyanAccent),
-                      items: const [
-                        DropdownMenuItem(value: 'Default', child: Text("Default (System)")),
-                        DropdownMenuItem(value: 'Google', child: Text("Google Sans (Open Sans)")),
-                        DropdownMenuItem(value: 'Apple', child: Text("Apple SF (Inter)")),
-                        DropdownMenuItem(value: 'Roleplay', child: Text("Storybook (Lora)")),
-                        DropdownMenuItem(value: 'Terminal', child: Text("Hacker (Space Mono)")),
-                      ],
-                      onChanged: (String? newValue) { if (newValue != null) provider.setFont(newValue); },
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const Divider(),
-            const Text("Chat Customization", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-            Consumer<ThemeProvider>(
-              builder: (context, provider, child) {
-                return Column(
-                  children: [
-                    const SizedBox(height: 15),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildColorCircle("User BG", provider.userBubbleColor, (c) => provider.updateColor('userBubble', c.withAlpha(((provider.userBubbleColor.a * 255.0).round() & 0xff)))),
-                        _buildColorCircle("User Text", provider.userTextColor, (c) => provider.updateColor('userText', c)),
-                        _buildColorCircle("AI BG", provider.aiBubbleColor, (c) => provider.updateColor('aiBubble', c.withAlpha(((provider.aiBubbleColor.a * 255.0).round() & 0xff)))),
-                        _buildColorCircle("AI Text", provider.aiTextColor, (c) => provider.updateColor('aiText', c)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: [
-                          const Text("User Opacity:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          const Spacer(),
-                          Text("${(provider.userBubbleColor.a * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-                        ],
-                      ),
-                    ),
-                    Slider(
-                      value: provider.userBubbleColor.a,
-                      min: 0.0, max: 1.0,
-                      activeColor: provider.userBubbleColor.withAlpha(255), 
-                      inactiveColor: Colors.grey[800],
-                      onChanged: (val) {
-                        provider.updateColor('userBubble', provider.userBubbleColor.withAlpha((val * 255).round()));
-                      },
-                    ),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: [
-                          const Text("AI Opacity:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          const Spacer(),
-                          Text("${(provider.aiBubbleColor.a * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                        ],
-                      ),
-                    ),
-                    Slider(
-                      value: provider.aiBubbleColor.a,
-                      min: 0.0, max: 1.0,
-                      activeColor: provider.aiBubbleColor.withAlpha(255),
-                      inactiveColor: Colors.grey[800],
-                      onChanged: (val) {
-                        provider.updateColor('aiBubble', provider.aiBubbleColor.withAlpha((val * 255).round()));
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-
-            const SizedBox(height: 20),
-            const Divider(),
-            const Text("Visuals & Atmosphere", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-            Consumer<ThemeProvider>(
-              builder: (context, provider, child) {
-                return Column(
-                  children: [
-                    if (provider.backgroundImagePath != null) ...[
-                      const SizedBox(height: 10),
-                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                          InkWell(onTap: () => provider.setBackgroundImage("assets/default.jpg"), child: const Text("CLEAR BACKGROUND", style: TextStyle(fontSize: 15, color: Colors.redAccent)),)
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    Container(
-                      height: 250, 
-                      decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white10),),
-                      child: GridView.builder(
-                        padding: const EdgeInsets.all(8),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8,),
-                        itemCount: 1 + provider.customImagePaths.length + kAssetBackgrounds.length,
-                       itemBuilder: (context, index) {
-                          if (index == 0) {
-                            return GestureDetector(
-                              onTap: () async {
-                                final ImagePicker picker = ImagePicker();
-                                final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-                                if (image != null) provider.addCustomImage(image.path);
-                              },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.cyanAccent.withAlpha((0.1 * 255).round()),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.cyanAccent.withAlpha((0.5 * 255).round())),
-                                ),
-                                child: const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center, 
-                                  children: [Icon(Icons.add_photo_alternate, color: Colors.cyanAccent), Text("Add", style: TextStyle(fontSize: 10, color: Colors.cyanAccent))],
-                                ),
-                              ),
-                            );
-                          }
-
-                          final int adjustedIndex = index - 1;
-                          final int customCount = provider.customImagePaths.length;
-                          String path;
-                          bool isCustom;
-                          
-                          if (adjustedIndex < customCount) { 
-                            path = provider.customImagePaths[adjustedIndex]; 
-                            isCustom = true; 
-                          } else { 
-                            path = kAssetBackgrounds[adjustedIndex - customCount]; 
-                            isCustom = false; 
-                          }
-
-                          final bool isSelected = provider.backgroundImagePath == path;
-
-                          return InkWell(
-                            onTap: () => provider.setBackgroundImage(path),
-                            // Long Press triggers "Red Delete"
-                            onLongPress: isCustom ? () {
-                              HapticFeedback.mediumImpact(); 
-                              provider.removeCustomImage(path);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Image Deleted"), backgroundColor: Colors.redAccent, duration: Duration(milliseconds: 500)),
-                              );
-                            } : null,
-                            splashColor: Colors.redAccent.withAlpha((0.8 * 255).round()), // The Red Blur Effect on hold
-                            highlightColor: Colors.redAccent.withAlpha((0.4 * 255).round()),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8), 
-                                  child: isCustom 
-                                    ? Image.file(File(path), fit: BoxFit.cover) 
-                                    : Image.asset(path, fit: BoxFit.cover),
-                                ),
-                                if (isSelected) 
-                                  Container(
-                                    decoration: BoxDecoration(border: Border.all(color: Colors.cyanAccent, width: 3), borderRadius: BorderRadius.circular(8), color: Colors.black26), 
-                                    child: const Center(child: Icon(Icons.check_circle, color: Colors.cyanAccent)),
-                                  ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    if (provider.backgroundImagePath != null) ...[
-                      const SizedBox(height: 5),
-                      Text("Dimmer: ${(provider.backgroundOpacity * 100).toInt()}%", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                      Slider(value: provider.backgroundOpacity, min: 0.0, max: 0.95, activeColor: Colors.cyanAccent, inactiveColor: Colors.grey[800], onChanged: (val) => provider.setBackgroundOpacity(val),),
-                    ]
-                                    ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-          if (_hasUnsavedChanges)
-            Positioned(
-              bottom: 30,
-              right: 20,
-              child: FloatingActionButton(
-                backgroundColor: Colors.cyanAccent,
-                foregroundColor: Colors.black,
-                onPressed: _saveSettings,
-                child: const Icon(Icons.save),
-              ),
-            ),
-        ],
-      ),
+    return SettingsDrawer(
+      currentProvider: _currentProvider,
+      apiKey: _apiKeyController.text,
+      localIp: _localIpController.text,
+      title: _titleController.text,
+      geminiModelsList: _geminiModelsList,
+      openRouterModelsList: _openRouterModelsList,
+      arliAiModelsList: _arliAiModelsList,
+      nanoGptModelsList: _nanoGptModelsList,
+      selectedGeminiModel: _selectedGeminiModel,
+      openRouterModel: _openRouterModel,
+      arliAiModel: _arliAiModel,
+      nanoGptModel: _nanoGptModel,
+      localModelName: _localModelName,
+      isLoadingGeminiModels: _isLoadingGeminiModels,
+      isLoadingOpenRouterModels: _isLoadingOpenRouterModels,
+      isLoadingArliAiModels: _isLoadingArliAiModels,
+      isLoadingNanoGptModels: _isLoadingNanoGptModels,
+      temperature: _temperature,
+      topP: _topP,
+      topK: _topK,
+      maxOutputTokens: _maxOutputTokens,
+      historyLimit: _historyLimit,
+      enableGrounding: _enableGrounding,
+      disableSafety: _disableSafety,
+      hasUnsavedChanges: _hasUnsavedChanges,
+      savedSystemPrompts: _savedSystemPrompts,
+      promptTitle: _promptTitleController.text,
+      systemInstruction: _systemInstructionController.text,
+      onApiKeyChanged: (val) {
+        setState(() {
+          switch (_currentProvider) {
+            case AiProvider.gemini: _geminiKey = val; break;
+            case AiProvider.openRouter: _openRouterKey = val; break;
+            case AiProvider.openAi: _openAiKey = val; break;
+            case AiProvider.arliAi: _arliAiKey = val; break;
+            case AiProvider.nanoGpt: _nanoGptKey = val; break;
+            case AiProvider.local: break;
+          }
+          _apiKeyController.text = val;
+          _hasUnsavedChanges = true;
+        });
+      },
+      onLocalIpChanged: (val) {
+        setState(() {
+          _localIpController.text = val;
+          _hasUnsavedChanges = true;
+        });
+      },
+      onTitleChanged: (val) {
+        setState(() {
+          _titleController.text = val;
+          _hasUnsavedChanges = true;
+        });
+      },
+      onModelSelected: (val) {
+        setState(() {
+          if (_currentProvider == AiProvider.gemini) {
+            _selectedGeminiModel = val;
+            _selectedModel = val;
+          } else if (_currentProvider == AiProvider.openRouter) {
+            _openRouterModel = val;
+            _openRouterModelController.text = val;
+            _selectedModel = val;
+          } else if (_currentProvider == AiProvider.arliAi) {
+            _arliAiModel = val;
+            _selectedModel = val;
+          } else if (_currentProvider == AiProvider.nanoGpt) {
+            _nanoGptModel = val;
+            _selectedModel = val;
+          }
+          _hasUnsavedChanges = true;
+        });
+      },
+      onLocalModelNameChanged: (val) {
+        setState(() {
+          _localModelName = val;
+          _hasUnsavedChanges = true;
+        });
+      },
+      onFetchGeminiModels: _fetchGeminiModels,
+      onFetchOpenRouterModels: _fetchOpenRouterModels,
+      onFetchArliAiModels: _fetchArliAiModels,
+      onFetchNanoGptModels: _fetchNanoGptModels,
+      onTemperatureChanged: (val) => setState(() { _temperature = val; _hasUnsavedChanges = true; }),
+      onTopPChanged: (val) => setState(() { _topP = val; _hasUnsavedChanges = true; }),
+      onTopKChanged: (val) => setState(() { _topK = val; _hasUnsavedChanges = true; }),
+      onMaxOutputTokensChanged: (val) => setState(() { _maxOutputTokens = val; _hasUnsavedChanges = true; }),
+      onHistoryLimitChanged: (val) => setState(() { _historyLimit = val; _hasUnsavedChanges = true; }),
+      onEnableGroundingChanged: (val) => setState(() { _enableGrounding = val; _hasUnsavedChanges = true; }),
+      onDisableSafetyChanged: (val) => setState(() { _disableSafety = val; _hasUnsavedChanges = true; }),
+      onPromptTitleChanged: (val) {
+        setState(() {
+          _promptTitleController.text = val;
+          _hasUnsavedChanges = true;
+        });
+      },
+      onSystemInstructionChanged: (val) {
+        setState(() {
+          _systemInstructionController.text = val;
+          _hasUnsavedChanges = true;
+        });
+      },
+      onSavePrompt: _savePromptToLibrary,
+      onDeletePrompt: _deletePromptFromLibrary,
+      onLoadPrompt: (title, content) {
+        setState(() {
+          _promptTitleController.text = title;
+          _systemInstructionController.text = content;
+          _hasUnsavedChanges = true;
+        });
+      },
+      onSaveSettings: _saveSettings,
     );
   }
 
