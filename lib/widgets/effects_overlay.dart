@@ -33,20 +33,39 @@ class EffectsOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        if (showMotes) MotesEffect(color: effectColor, numberOfMotes: motesDensity.toInt()),
-        if (showRain) RainEffect(color: Colors.white, numberOfDrops: rainIntensity.toInt()),
-        if (showFireflies) FirefliesEffect(numberOfFireflies: firefliesCount.toInt()),
-        if (showGlitch) GlitchEffect(intensity: glitchIntensity),
+        if (showMotes)
+          MotesEffect(
+            color: effectColor,
+            numberOfMotes: motesDensity.toInt(),
+          ),
+        if (showRain)
+          RainEffect(
+            color: Colors.white,
+            numberOfDrops: rainIntensity.toInt(),
+          ),
+        if (showFireflies)
+          FirefliesEffect(
+            numberOfFireflies: firefliesCount.toInt(),
+          ),
+        if (showGlitch)
+          GlitchEffect(intensity: glitchIntensity),
       ],
     );
   }
 }
+
+// =======================================================================
+// Dust Motes Effect
 // =======================================================================
 class MotesEffect extends StatelessWidget {
   final int numberOfMotes;
   final Color color;
 
-  MotesEffect({super.key, this.numberOfMotes = 50, required this.color});
+  MotesEffect({
+    super.key,
+    this.numberOfMotes = 50,
+    required this.color,
+  });
 
   final Random random = Random();
 
@@ -54,13 +73,17 @@ class MotesEffect extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: List.generate(numberOfMotes, (index) {
-        final size = random.nextDouble() * 2.5 + 0.5;
-        final duration = Duration(milliseconds: random.nextInt(15000) + 30000);
-        
+        final baseSize = random.nextDouble() * 4.0 + 1.0;
+        final opacity = random.nextDouble() * 0.4 + 0.3;
+        final duration =
+            Duration(milliseconds: random.nextInt(20000) + 30000);
+
         final tween = MovieTween()
           ..scene(duration: duration, curve: Curves.easeInOutSine)
               .tween('x', Tween(begin: random.nextDouble(), end: random.nextDouble()))
-              .tween('y', Tween(begin: random.nextDouble(), end: random.nextDouble()));
+              .tween('y', Tween(begin: random.nextDouble(), end: random.nextDouble()))
+          ..scene(duration: duration, curve: Curves.easeInOut)
+              .tween('scale', Tween(begin: 0.6, end: 1.4));
 
         return Positioned.fill(
           child: LoopAnimationBuilder<Movie>(
@@ -71,8 +94,9 @@ class MotesEffect extends StatelessWidget {
                 painter: MotePainter(
                   x: value.get('x'),
                   y: value.get('y'),
-                  size: size,
+                  size: baseSize * value.get('scale'),
                   color: color,
+                  opacity: opacity,
                 ),
               );
             },
@@ -88,23 +112,32 @@ class MotePainter extends CustomPainter {
   final double y;
   final double size;
   final Color color;
+  final double opacity;
 
-  MotePainter({required this.x, required this.y, required this.size, required this.color});
-
-  final Random random = Random();
+  MotePainter({
+    required this.x,
+    required this.y,
+    required this.size,
+    required this.color,
+    required this.opacity,
+  });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final double opacity = (random.nextDouble() * 0.5 + 0.4).clamp(0.0, 1.0);
-    
+  void paint(Canvas canvas, Size canvasSize) {
     final paint = Paint()
-      ..color = color.withOpacity(opacity)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, this.size * 1.5);
-    canvas.drawCircle(Offset(x * size.width, y * size.height), this.size, paint);
+      ..color = color.withOpacity(0.9)
+      ..maskFilter =
+          MaskFilter.blur(BlurStyle.normal, size * 1.1);
+
+    canvas.drawCircle(
+      Offset(x * canvasSize.width, y * canvasSize.height),
+      size,
+      paint,
+    );
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => true;
+  bool shouldRepaint(_) => true;
 }
 
 // =======================================================================
@@ -114,8 +147,11 @@ class RainEffect extends StatelessWidget {
   final int numberOfDrops;
   final Color color;
 
-  // Reduced count slightly to be less chaotic
-  RainEffect({super.key, this.numberOfDrops = 80, required this.color});
+  RainEffect({
+    super.key,
+    this.numberOfDrops = 40,
+    required this.color,
+  });
 
   final Random random = Random();
 
@@ -123,13 +159,13 @@ class RainEffect extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: List.generate(numberOfDrops, (index) {
-        final duration = Duration(milliseconds: random.nextInt(1500) + 1500);
+        final speed = random.nextDouble() * 0.8;
+        final duration =
+            Duration(milliseconds: (2000 / speed).toInt());
 
         final tween = MovieTween()
-          ..scene(
-            duration: duration,
-            curve: Curves.linear,
-          ).tween('y', Tween(begin: -0.2, end: 1.2));
+          ..scene(duration: duration, curve: Curves.linear)
+              .tween('y', Tween(begin: -0.2, end: 1.2));
 
         return Positioned.fill(
           child: LoopAnimationBuilder<Movie>(
@@ -140,8 +176,8 @@ class RainEffect extends StatelessWidget {
                 painter: RainPainter(
                   x: random.nextDouble(),
                   y: value.get('y'),
-                  // UPDATED: Much longer lines
-                  length: random.nextDouble() * 150,
+                  length: 300 * speed,
+                  speed: speed,
                   color: color,
                 ),
               );
@@ -157,18 +193,24 @@ class RainPainter extends CustomPainter {
   final double x;
   final double y;
   final double length;
+  final double speed;
   final Color color;
 
-  RainPainter({required this.x, required this.y, required this.length, required this.color});
+  RainPainter({
+    required this.x,
+    required this.y,
+    required this.length,
+    required this.speed,
+    required this.color,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      // UPDATED: Lower opacity for "gentler" look
-      ..color = color.withOpacity(0.25) 
-      ..strokeWidth = 1
+      ..color = color.withOpacity(0.18)
+      ..strokeWidth = speed * 1.4
       ..strokeCap = StrokeCap.round;
-      
+
     canvas.drawLine(
       Offset(x * size.width, y * size.height),
       Offset(x * size.width, y * size.height + length),
@@ -177,48 +219,56 @@ class RainPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => true;
+  bool shouldRepaint(_) => true;
 }
 
 // =======================================================================
-// Fireflies Effect
+// Fireflies Effect (DESYNCED PROPERLY)
 // =======================================================================
 class FirefliesEffect extends StatelessWidget {
   final int numberOfFireflies;
 
-  const FirefliesEffect({super.key, this.numberOfFireflies = 30});
+  const FirefliesEffect({
+    super.key,
+    this.numberOfFireflies = 30,
+  });
 
   @override
   Widget build(BuildContext context) {
     final Random random = Random();
-    
+
     return Stack(
       children: List.generate(numberOfFireflies, (index) {
-        final duration = Duration(milliseconds: random.nextInt(8000) + 4000);
+        final duration =
+            Duration(milliseconds: random.nextInt(8000) + 4000);
 
-        // UPDATED: Color logic - Yellows and Greens
-        final bool isGreen = random.nextDouble() > 0.7; // 30% chance of green
-        final Color flyColor = isGreen ? Colors.lightGreenAccent : Colors.yellowAccent;
+        final double pulsePhase = random.nextDouble();
 
-        final tween = MovieTween()
+        final bool isGreen = random.nextDouble() > 0.7;
+        final Color flyColor =
+            isGreen ? Colors.lightGreenAccent : Colors.yellowAccent;
+
+        final pathTween = MovieTween()
           ..scene(duration: duration, curve: Curves.easeInOutSine)
               .tween('x', Tween(begin: random.nextDouble(), end: random.nextDouble()))
               .tween('y', Tween(begin: random.nextDouble(), end: random.nextDouble()));
-        
+
         final pulseTween = MovieTween()
-          ..scene(duration: const Duration(seconds: 2), curve: Curves.easeInOut)
-              .tween('opacity', Tween(begin: 0.2, end: 0.8))
-          ..scene(duration: const Duration(seconds: 2), curve: Curves.easeInOut)
-              .tween('opacity', Tween(begin: 0.8, end: 0.2));
+          ..scene(duration: const Duration(milliseconds: 1200), curve: Curves.easeOut)
+              .tween('opacity', Tween(begin: 0.1, end: 0.9))
+          ..scene(duration: const Duration(milliseconds: 2200), curve: Curves.easeIn)
+              .tween('opacity', Tween(begin: 0.9, end: 0.1));
 
         return Positioned.fill(
           child: LoopAnimationBuilder<Movie>(
-            tween: tween,
+            tween: pathTween,
             duration: duration,
             builder: (context, pathValue, child) {
-              return LoopAnimationBuilder<Movie>(
+              return CustomAnimationBuilder<Movie>(
                 tween: pulseTween,
                 duration: pulseTween.duration,
+                control: Control.loop,
+                startPosition: pulsePhase,
                 builder: (context, pulseValue, child) {
                   return CustomPaint(
                     painter: FireflyPainter(
@@ -244,69 +294,83 @@ class FireflyPainter extends CustomPainter {
   final double opacity;
   final Color color;
 
-  FireflyPainter({required this.x, required this.y, required this.opacity, required this.color});
+  FireflyPainter({
+    required this.x,
+    required this.y,
+    required this.opacity,
+    required this.color,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color.withOpacity(opacity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
-    
-    // Slight glow core
-    canvas.drawCircle(Offset(x * size.width, y * size.height), 2.5, paint);
+
+    canvas.drawCircle(
+      Offset(x * size.width, y * size.height),
+      2.5,
+      paint,
+    );
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => true;
+  bool shouldRepaint(_) => true;
 }
 
 // =======================================================================
-// Glitch Effect
+// Glitch Effect (unchanged)
 // =======================================================================
 class GlitchEffect extends StatefulWidget {
   final double intensity;
-  const GlitchEffect({super.key, this.intensity = 0.5});
+
+  const GlitchEffect({
+    super.key,
+    this.intensity = 0.5,
+  });
 
   @override
   State<GlitchEffect> createState() => _GlitchEffectState();
 }
 
-class _GlitchEffectState extends State<GlitchEffect> with SingleTickerProviderStateMixin {
+class _GlitchEffectState extends State<GlitchEffect>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   final Random random = Random();
-  
   final List<_GlitchArtifact> _artifacts = [];
+
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))
-      ..addListener(() {
-        final spawnChance = widget.intensity * 0.25;
-        if (random.nextDouble() < spawnChance) {
-           _addArtifact();
-        }
-        _cleanupArtifacts();
-      })
-      ..repeat();
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 1))
+          ..addListener(() {
+            final spawnChance = widget.intensity * 0.25;
+            if (random.nextDouble() < spawnChance) {
+              _addArtifact();
+            }
+            _cleanupArtifacts();
+          })
+          ..repeat();
   }
-  
+
   void _addArtifact() {
-     if (!mounted) return;
-     setState(() {
-       _artifacts.add(_GlitchArtifact(
-         top: random.nextDouble(),
-         height: random.nextDouble() * 0.0005 + 0.0002, 
-         offset: random.nextDouble() * 5 - 2.5,
-         isChromatic: random.nextDouble() > 0.3, 
-       ));
-     });
+    if (!mounted) return;
+    setState(() {
+      _artifacts.add(_GlitchArtifact(
+        top: random.nextDouble(),
+        height: random.nextDouble() * 0.0005 + 0.0002,
+        offset: random.nextDouble() * 5 - 2.5,
+        isChromatic: random.nextDouble() > 0.3,
+      ));
+    });
   }
-  
+
   void _cleanupArtifacts() {
-     if (!mounted) return;
-     setState(() {
-        _artifacts.removeWhere((a) => a.isExpired);
-     });
+    if (!mounted) return;
+    setState(() {
+      _artifacts.removeWhere((a) => a.isExpired);
+    });
   }
 
   @override
@@ -318,69 +382,65 @@ class _GlitchEffectState extends State<GlitchEffect> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Stack(
-      children: [
-        // Optional: Random scanline pulse
-        if (_artifacts.length > 5) 
-           Positioned.fill(
-             child: Opacity(
-               opacity: 0.03,
-               child: Container(color: Colors.white),
-             ),
-           ),
-        
-        ..._artifacts.map((artifact) {
-           return Positioned(
-             top: artifact.top * MediaQuery.of(context).size.height,
-             height: artifact.height * MediaQuery.of(context).size.height,
-             left: 0, right: 0,
-             child: _GlitchBar(artifact: artifact),
-           );
-        }),
-      ],
+      children: _artifacts.map((artifact) {
+        return Positioned(
+          top: artifact.top * MediaQuery.of(context).size.height,
+          height:
+              artifact.height * MediaQuery.of(context).size.height,
+          left: 0,
+          right: 0,
+          child: _GlitchBar(artifact: artifact),
+        );
+      }).toList(),
     );
   }
 }
 
 class _GlitchArtifact {
-   final double top;
-   final double height;
-   final double offset;
-   final bool isChromatic;
-   final DateTime createdAt = DateTime.now();
-   final int lifeSpan = Random().nextInt(150) + 50; 
-   
-   bool get isExpired => DateTime.now().difference(createdAt).inMilliseconds > lifeSpan;
-   
-   _GlitchArtifact({required this.top, required this.height, required this.offset, required this.isChromatic});
+  final double top;
+  final double height;
+  final double offset;
+  final bool isChromatic;
+  final DateTime createdAt = DateTime.now();
+  final int lifeSpan = Random().nextInt(150) + 50;
 
+  bool get isExpired =>
+      DateTime.now().difference(createdAt).inMilliseconds > lifeSpan;
+
+  _GlitchArtifact({
+    required this.top,
+    required this.height,
+    required this.offset,
+    required this.isChromatic,
+  });
 }
 
 class _GlitchBar extends StatelessWidget {
-   final _GlitchArtifact artifact;
-   
-   const _GlitchBar({required this.artifact});
-   
-   @override
-   Widget build(BuildContext context) {
-      if (artifact.isChromatic) {
-         return Stack(
-            children: [
-               Transform.translate(
-                  offset: Offset(artifact.offset, 0),
-                  child: Container(
-                    color: Colors.red.withOpacity(0.8),
-                  ),
-               ),
-               Transform.translate(
-                  offset: Offset(-artifact.offset * 1.5, 0),
-                  child: Container(
-                    color: Colors.cyan.withOpacity(0.8),
-                  ),
-               ),
-            ],
-         );
-      } else {
-         return Container(color: Colors.white.withOpacity(0.5));
-      }
-   }
+  final _GlitchArtifact artifact;
+
+  const _GlitchBar({required this.artifact});
+
+  @override
+  Widget build(BuildContext context) {
+    if (artifact.isChromatic) {
+      return Stack(
+        children: [
+          Transform.translate(
+            offset: Offset(artifact.offset, 0),
+            child: Container(
+              color: Colors.red.withOpacity(0.8),
+            ),
+          ),
+          Transform.translate(
+            offset: Offset(-artifact.offset * 1.5, 0),
+            child: Container(
+              color: Colors.cyan.withOpacity(0.8),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Container(color: Colors.white.withOpacity(0.5));
+    }
+  }
 }

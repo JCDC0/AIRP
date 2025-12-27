@@ -314,7 +314,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
               )
             ),
-            const Text("v0.1.11", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const Text("v0.1.12.1", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             const Divider(),
             const SizedBox(height: 10),
 
