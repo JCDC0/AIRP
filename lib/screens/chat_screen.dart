@@ -1928,7 +1928,7 @@ void _showEditDialog(int index) {
           children: [
             const SizedBox(height: 40),
             const Text("Main Settings", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-            const Text("v0.1.9.1", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const Text("v0.1.10", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             const Divider(),
             const SizedBox(height: 10),
 
@@ -2658,7 +2658,7 @@ void _showEditDialog(int index) {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       resizeToAvoidBottomInset: true, 
       drawer: _buildLeftDrawer(),
       endDrawer: _buildSettingsDrawer(),
