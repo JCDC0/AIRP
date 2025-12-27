@@ -140,7 +140,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   late TextEditingController _titleController;
   late TextEditingController _promptTitleController;
   late TextEditingController _systemInstructionController;
-  late TextEditingController _openRouterModelController; // Kept for manual entry if needed
+  late TextEditingController _openRouterModelController; 
 
   @override
   void initState() {
@@ -291,10 +291,14 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Drawer(
       width: 320,
       backgroundColor: const Color.fromARGB(255, 0, 0, 0),
-            child: Stack(
+      shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.3) : null,
+      elevation: themeProvider.enableBloom ? 20 : 16,
+      child: Stack(
         children: [
           SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -302,12 +306,25 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 40),
-            const Text("Main Settings", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text("Main Settings", 
+              style: TextStyle(
+                fontSize: 22, 
+                fontWeight: FontWeight.bold, 
+                color: themeProvider.appThemeColor,
+                shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
+              )
+            ),
             const Text("v0.1.11", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
             const Divider(),
             const SizedBox(height: 10),
 
-            const Text("API Key (BYOK)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            Text("API Key (BYOK)", 
+              style: TextStyle(
+                fontWeight: FontWeight.bold, 
+                color: themeProvider.appThemeColor,
+                shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
+              )
+            ),
             const SizedBox(height: 5),
             
             if (widget.currentProvider != AiProvider.local) ...[
@@ -315,9 +332,14 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 controller: _apiKeyController,
                 onChanged: widget.onApiKeyChanged,
                 obscureText: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: "Paste AI Studio Key...",
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide(),
+                  ),
+                  enabledBorder: themeProvider.enableBloom 
+                    ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5)))
+                    : const OutlineInputBorder(),
                   filled: true, isDense: true,
                 ),
                 style: const TextStyle(fontSize: 12),
@@ -343,30 +365,37 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               const SizedBox(height: 20),
             ],
 
-            const Text("Conversation Title", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            Text("Conversation Title", 
+              style: TextStyle(
+                fontWeight: FontWeight.bold, 
+                color: themeProvider.appThemeColor,
+                shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
+              )
+            ),
             const SizedBox(height: 5),
             Container(
               decoration: BoxDecoration(
                 color: Colors.black26,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12),
+                boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : [],
               ),
               child: TextField(
                 controller: _titleController,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: "Type a title...",
-                  hintStyle: TextStyle(color: Colors.white24),
+                  hintStyle: const TextStyle(color: Colors.white24),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  suffixIcon: Icon(Icons.edit, size: 16, color: Colors.cyanAccent),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  suffixIcon: Icon(Icons.edit, size: 16, color: themeProvider.appThemeColor),
                 ),
                 onChanged: widget.onTitleChanged,
               ),
             ),
             const SizedBox(height: 20),
 
-            const Text("Model Selection", style: TextStyle(fontWeight: FontWeight.bold)),
+            Text("Model Selection", style: TextStyle(fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
             const SizedBox(height: 5),
 
             // ============================================
@@ -376,7 +405,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               if (widget.geminiModelsList.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12), boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : []),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
@@ -423,7 +452,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               if (widget.openRouterModelsList.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12), boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : []),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
@@ -491,7 +520,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               if (widget.arliAiModelsList.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12), boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : []),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
@@ -539,7 +568,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               if (widget.nanoGptModelsList.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12), boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : []),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
@@ -582,7 +611,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
             const SizedBox(height: 30),
 
-            const Text("System Prompt", style: TextStyle(fontWeight: FontWeight.bold)),
+            Text("System Prompt", style: TextStyle(fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
             const SizedBox(height: 5),
             
             // 1. THE DROPDOWN & ACTIONS ROW
@@ -591,14 +620,15 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               decoration: BoxDecoration(
                 color: Colors.black26,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12),
+                boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : [],
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
                   hint: const Text("Select from Library...", style: TextStyle(color: Colors.grey, fontSize: 12)),
                   dropdownColor: const Color(0xFF2C2C2C),
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.cyanAccent),
+                  icon: Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor),
                   value: null, 
                   items: [
                     const DropdownMenuItem<String>(
@@ -635,12 +665,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
             TextField(
               controller: _promptTitleController,
               onChanged: widget.onPromptTitleChanged,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Prompt Title (e.g., 'World of Japan')",
-                labelStyle: TextStyle(color: Colors.cyanAccent, fontSize: 12),
-                border: OutlineInputBorder(),
+                labelStyle: TextStyle(color: themeProvider.appThemeColor, fontSize: 12),
+                border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
+                enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
                 filled: true, fillColor: Colors.black12,
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 isDense: true,
               ),
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
@@ -653,9 +684,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               controller: _systemInstructionController,
               onChanged: widget.onSystemInstructionChanged,
               maxLines: 5,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: "Enter the roleplay rules here...",
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
+                enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
                 filled: true, fillColor: Colors.black26,
               ),
               style: const TextStyle(fontSize: 13),
@@ -668,8 +700,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.cyanAccent, 
-                      side: const BorderSide(color: Colors.cyanAccent),
+                      foregroundColor: themeProvider.appThemeColor, 
+                      side: BorderSide(color: themeProvider.appThemeColor),
                       padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
                     ),
                     onPressed: widget.onSavePrompt,
@@ -728,8 +760,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               title: "Max Output Tokens",
               value: widget.maxOutputTokens.toDouble(),
               min: 256,
-              max: 32768, // User defined limit
-              // Removed divisions for smoother sliding on large range
+              max: 32768,
               activeColor: Colors.blueAccent,
               isInt: true,
               onChanged: (val) => widget.onMaxOutputTokensChanged(val.toInt()),
@@ -780,25 +811,31 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 activeThumbColor: Colors.redAccent, 
                 onChanged: widget.onDisableSafetyChanged,
               ),
+            const Divider(height: 0),
+            const SizedBox(height: 30),
+            Text("Visuals & Atmosphere", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
+            const Divider(height: 10),
             
-            const SizedBox(height: 50),
-            const Divider(height: 30),
-            
-            const Text("Global Interface Font", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            Text("Global Interface Font", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
             Consumer<ThemeProvider>(
               builder: (context, provider, child) {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12),),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: provider.enableBloom ? provider.appThemeColor.withOpacity(0.5) : Colors.white12), boxShadow: provider.enableBloom ? [BoxShadow(color: provider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : []),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      isExpanded: true, value: provider.fontStyle, dropdownColor: const Color(0xFF2C2C2C), icon: const Icon(Icons.text_fields, color: Colors.cyanAccent),
+                      isExpanded: true, value: provider.fontStyle, dropdownColor: const Color(0xFF2C2C2C), icon: Icon(Icons.text_fields, color: provider.appThemeColor),
                       items: const [
                         DropdownMenuItem(value: 'Default', child: Text("Default (System)")),
                         DropdownMenuItem(value: 'Google', child: Text("Google Sans (Open Sans)")),
                         DropdownMenuItem(value: 'Apple', child: Text("Apple SF (Inter)")),
                         DropdownMenuItem(value: 'Roleplay', child: Text("Storybook (Lora)")),
                         DropdownMenuItem(value: 'Terminal', child: Text("Hacker (Space Mono)")),
+                        DropdownMenuItem(value: 'Manuscript', child: Text("Ancient Tome (EB Garamond)")),
+                        DropdownMenuItem(value: 'Cyber', child: Text("Neon HUD (Orbitron)")),
+                        DropdownMenuItem(value: 'ModernAnime', child: Text("Light Novel (Quicksand)")),
+                        DropdownMenuItem(value: 'Gothic', child: Text("Victorian (Crimson Text)")),
+                        DropdownMenuItem(value: 'Journal', child: Text("Handwritten (Caveat)")),
                       ],
                       onChanged: (String? newValue) { if (newValue != null) provider.setFont(newValue); },
                     ),
@@ -808,12 +845,16 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
             ),
 
             const Divider(),
-            const Text("Chat Customization", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            Text("Chat Customization", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
             Consumer<ThemeProvider>(
               builder: (context, provider, child) {
                 return Column(
                   children: [
                     const SizedBox(height: 15),
+                    // NEW: App Theme Picker (this updates the global theme)
+                    _buildColorCircle("App Theme", provider.appThemeColor, (c) => provider.updateColor('appTheme', c)),
+                    const SizedBox(height: 15),
+                    
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -831,7 +872,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         children: [
                           const Text("User Opacity:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                           const Spacer(),
-                          Text("${(provider.userBubbleColor.a * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+                          Text("${(provider.userBubbleColor.a * 100).toInt()}%", style: TextStyle(fontWeight: FontWeight.bold, color: provider.appThemeColor)),
                         ],
                       ),
                     ),
@@ -864,19 +905,53 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         provider.updateColor('aiBubble', provider.aiBubbleColor.withAlpha((val * 255).round()));
                       },
                     ),
+                    
+                    const SizedBox(height: 10),
+                    Center(
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text("Reset to Defaults", style: TextStyle(fontSize: 12)),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              backgroundColor: const Color(0xFF2C2C2C),
+                              title: const Text("Reset Theme?", style: TextStyle(color: Colors.white)),
+                              content: const Text("This will revert all colors and visual settings.", style: TextStyle(color: Colors.white70)),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                                IconButton(
+                                  icon: const Icon(Icons.check_circle, color: Colors.greenAccent),
+                                  onPressed: () {
+                                    provider.resetToDefaults();
+                                    Navigator.pop(ctx);
+                                  },
+                                )
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 );
               },
             ),
             const SizedBox(height: 10),
-
-            const SizedBox(height: 20),
-            const Divider(),
-            const Text("Visuals & Atmosphere", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
             Consumer<ThemeProvider>(
               builder: (context, provider, child) {
                 return Column(
                   children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Enable Bloom (Glow)", style: TextStyle(fontSize: 14)),
+                      subtitle: const Text("Adds a dreamy glow effect", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      value: provider.enableBloom,
+                      activeThumbColor: provider.appThemeColor,
+                      onChanged: (val) => provider.toggleBloom(val),
+                    ),
+                    const SizedBox(height: 10),
                     if (provider.backgroundImagePath != null) ...[
                       const SizedBox(height: 10),
                       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -902,13 +977,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                               },
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.cyanAccent.withAlpha((0.1 * 255).round()),
+                                  color: provider.appThemeColor.withAlpha((0.1 * 255).round()),
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.cyanAccent.withAlpha((0.5 * 255).round())),
+                                  border: Border.all(color: provider.appThemeColor.withAlpha((0.5 * 255).round())),
                                 ),
-                                child: const Column(
+                                child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center, 
-                                  children: [Icon(Icons.add_photo_alternate, color: Colors.cyanAccent), Text("Add", style: TextStyle(fontSize: 10, color: Colors.cyanAccent))],
+                                  children: [Icon(Icons.add_photo_alternate, color: provider.appThemeColor), Text("Add", style: TextStyle(fontSize: 10, color: provider.appThemeColor))],
                                 ),
                               ),
                             );
@@ -953,8 +1028,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                                 ),
                                 if (isSelected) 
                                   Container(
-                                    decoration: BoxDecoration(border: Border.all(color: Colors.cyanAccent, width: 3), borderRadius: BorderRadius.circular(8), color: Colors.black26), 
-                                    child: const Center(child: Icon(Icons.check_circle, color: Colors.cyanAccent)),
+                                    decoration: BoxDecoration(border: Border.all(color: provider.appThemeColor, width: 3), borderRadius: BorderRadius.circular(8), color: Colors.black26), 
+                                    child: Center(child: Icon(Icons.check_circle, color: provider.appThemeColor)),
                                   ),
                               ],
                             ),
@@ -965,7 +1040,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     if (provider.backgroundImagePath != null) ...[
                       const SizedBox(height: 5),
                       Text("Dimmer: ${(provider.backgroundOpacity * 100).toInt()}%", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                      Slider(value: provider.backgroundOpacity, min: 0.0, max: 0.95, activeColor: Colors.cyanAccent, inactiveColor: Colors.grey[800], onChanged: (val) => provider.setBackgroundOpacity(val),),
+                      Slider(value: provider.backgroundOpacity, min: 0.0, max: 0.95, activeColor: provider.appThemeColor, inactiveColor: Colors.grey[800], onChanged: (val) => provider.setBackgroundOpacity(val),),
                     ]
                                     ],
                 );
@@ -974,17 +1049,19 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
           ],
         ),
       ),
-          if (widget.hasUnsavedChanges)
-            Positioned(
-              bottom: 30,
-              right: 20,
-              child: FloatingActionButton(
-                backgroundColor: Colors.cyanAccent,
-                foregroundColor: Colors.black,
-                onPressed: widget.onSaveSettings,
-                child: const Icon(Icons.save),
-              ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 800),
+            curve: widget.hasUnsavedChanges ? Curves.bounceOut : Curves.easeInBack,
+            bottom: widget.hasUnsavedChanges ? 30 : MediaQuery.of(context).size.height + 200,
+            right: 20,
+            child: FloatingActionButton(
+              backgroundColor: themeProvider.appThemeColor,
+              foregroundColor: Colors.black,
+              onPressed: widget.onSaveSettings,
+              elevation: 10,
+              child: const Icon(Icons.save),
             ),
+          ),
         ],
       ),
     );

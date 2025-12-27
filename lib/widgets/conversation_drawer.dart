@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
+import '../providers/theme_provider.dart';
 import '../utils/constants.dart';
 
 class ConversationDrawer extends StatefulWidget {
@@ -32,6 +34,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final tokenColor = widget.tokenCount > widget.tokenLimitWarning ? Colors.redAccent : Colors.greenAccent;
     
     final filteredSessions = widget.savedSessions.where((session) {
@@ -43,6 +46,8 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
     return Drawer(
       width: 280,
       backgroundColor: const Color.fromARGB(255, 0, 0, 0),
+      shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.3) : null,
+      elevation: themeProvider.enableBloom ? 20 : 16,
       child: Column(
         children: [
           Container(
@@ -52,13 +57,34 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Conversations List", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+                Text(
+                  "Conversations List", 
+                  style: TextStyle(
+                    fontSize: 24, 
+                    fontWeight: FontWeight.bold, 
+                    color: themeProvider.appThemeColor,
+                    shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
+                  )
+                ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Icon(Icons.token, color: tokenColor, size: 16),
+                    Icon(
+                      Icons.token, 
+                      color: tokenColor, 
+                      size: 16,
+                      shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 8)] : [],
+                    ),
                     const SizedBox(width: 8),
-                    Text("${widget.tokenCount} / 1M \n Limit: ~190k", style: TextStyle(color: tokenColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                    Text(
+                      "${widget.tokenCount} / 1M \n Limit: ~190k", 
+                      style: TextStyle(
+                        color: tokenColor, 
+                        fontWeight: FontWeight.bold, 
+                        fontSize: 12,
+                        shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 8)] : [],
+                      )
+                    ),
                   ],
                 ),
               ],
@@ -66,8 +92,18 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
           ),
           
           ListTile(
-            leading: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
-            title: const Text("New Conversation", style: TextStyle(color: Colors.green)),
+            leading: Icon(
+              Icons.add_circle_outline, 
+              color: Colors.greenAccent,
+              shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.greenAccent, blurRadius: 8)] : [],
+            ),
+            title: Text(
+              "New Conversation", 
+              style: TextStyle(
+                color: Colors.green,
+                shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.green, blurRadius: 8)] : [],
+              )
+            ),
             subtitle: const Text("Hold Chat to delete", style: TextStyle(color: Colors.orangeAccent, fontSize: 10)),
             onTap: () {
               widget.onNewSession();
@@ -81,15 +117,22 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
               decoration: BoxDecoration(
                 color: Colors.white.withAlpha(20),
                 borderRadius: BorderRadius.circular(20),
+                border: themeProvider.enableBloom ? Border.all(color: themeProvider.appThemeColor.withOpacity(0.3)) : null,
+                boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 6)] : [],
               ),
               child: TextField(
                 style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: "Find conversation...",
-                  hintStyle: TextStyle(color: Colors.white38),
-                  prefixIcon: Icon(Icons.search, color: Colors.cyanAccent, size: 18),
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  prefixIcon: Icon(
+                    Icons.search, 
+                    color: themeProvider.appThemeColor, 
+                    size: 18,
+                    shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 6)] : [],
+                  ),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   isDense: true,
                 ),
                 onChanged: (val) {
@@ -116,9 +159,14 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: isActive ? Colors.cyanAccent.withAlpha((0.05 * 255).round()) : Colors.transparent,
-                    border: isActive ? Border.all(color: Colors.cyanAccent, width: 1.5) : null, 
+                    color: isActive ? themeProvider.appThemeColor.withAlpha((0.05 * 255).round()) : Colors.transparent,
+                    border: isActive 
+                        ? Border.all(color: themeProvider.appThemeColor, width: 1.5) 
+                        : null, 
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: (isActive && themeProvider.enableBloom) 
+                        ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.2), blurRadius: 8, spreadRadius: 1)] 
+                        : [],
                   ),
                   child: ListTile(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -126,15 +174,21 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                     splashColor: Colors.red.withAlpha((0.95 * 255).round()),
                     leading: Icon(
                       isActive ? Icons.check_circle : Icons.history, 
-                      color: isActive ? Colors.cyanAccent : Colors.grey[600]
+                      color: isActive ? themeProvider.appThemeColor : Colors.grey[600],
+                      shadows: (isActive && themeProvider.enableBloom) 
+                          ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] 
+                          : [],
                     ),
                     title: Text(
                       session.title, 
                       maxLines: 1, 
                       overflow: TextOverflow.ellipsis, 
                       style: TextStyle(
-                        color: isActive ? Colors.cyanAccent : Colors.grey[300], 
-                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal
+                        color: isActive ? themeProvider.appThemeColor : Colors.grey[300], 
+                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                        shadows: (isActive && themeProvider.enableBloom) 
+                            ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] 
+                            : [],
                       )
                     ),
                     subtitle: Text(

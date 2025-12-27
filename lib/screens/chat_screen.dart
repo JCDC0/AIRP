@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -344,7 +345,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     if (activeKey.isEmpty) {
-      // Don't error out immediately, just warn
       debugPrint("Warning: No API Key found for ${_currentProvider.name}");
     }
 
@@ -374,7 +374,7 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       
       List<Content> history = [];
-      // We slice the list to only take the last N messages
+      // TRUNCATE MESSAGE HISTORY
       int startIndex = _messages.length - _historyLimit;
       if (startIndex < 0) startIndex = 0;
       final limitedMessages = _messages.sublist(startIndex);
@@ -392,7 +392,6 @@ class _ChatScreenState extends State<ChatScreen> {
               }
               history.add(Content(role, parts));
           } else if (history.isNotEmpty && history.last.role == role) {
-              // Merge Logic for Gemini SDK
               final List<Part> existingParts = history.last.parts.toList();
               existingParts.add(TextPart("\n\n${msg.text}"));
               history[history.length - 1] = Content(role, existingParts);
@@ -405,12 +404,9 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       debugPrint("Model Init Error: $e");
     }
-  }
-
-// SEND BUTTON LOGIC ==================================================
-  
+  }  
   // ======================================================================
-  // REFACTORED SEND MESSAGE LOGIC
+  // SEND MESSAGE LOGIC
   // ======================================================================
   Future<void> _sendMessage() async {
     final messageText = _textController.text;
@@ -437,7 +433,7 @@ class _ChatScreenState extends State<ChatScreen> {
          final groundedText = await ChatApiService.performGeminiGrounding(
             apiKey: activeKey, 
             model: _selectedModel, 
-            history: _messages.sublist(0, _messages.length - 1), // Exclude current
+            history: _messages.sublist(0, _messages.length - 1), 
             userMessage: messageText, 
             systemInstruction: _systemInstructionController.text,
             disableSafety: _disableSafety
@@ -452,14 +448,13 @@ class _ChatScreenState extends State<ChatScreen> {
          return; 
        } catch (e) {
          debugPrint("Grounding failed: $e");
-         // Fall through to normal chat if grounding fails
        }
     }
 
     // 3. Prepare AI Response Placeholder
     setState(() {
       _messages.add(ChatMessage(
-        text: "", // Start empty
+        text: "",
         isUser: false, 
         modelName: _selectedModel
       ));
@@ -471,7 +466,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // 4. Select Provider and Get Stream from Service
       if (_currentProvider == AiProvider.gemini) {
         responseStream = ChatApiService.streamGeminiResponse(
-          chatSession: _chat, // We pass the SDK session object
+          chatSession: _chat, 
           message: messageText,
           imagePaths: imagesToSend,
           modelName: _selectedModel,
@@ -483,12 +478,7 @@ class _ChatScreenState extends State<ChatScreen> {
         String apiKey = "";
         Map<String, String>? headers;
 
-        // History: Take all except the last 2 (The user message we just added, and the empty AI placeholder)
-        // actually, we need the history *before* the new user message for context building usually,
-        // but the Service method expects 'history'.
-        // Let's filter _messages to get context.
         final contextMessages = _messages.sublist(0, _messages.length - 2); 
-        // Apply history limit
         int startIndex = contextMessages.length - _historyLimit;
         if (startIndex < 0) startIndex = 0;
         final limitedHistory = contextMessages.sublist(startIndex);
@@ -533,50 +523,47 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       // 5. Listen to the Stream
-      if (responseStream != null) {
-        String fullText = "";
-        _geminiSubscription = responseStream.listen(
-          (chunk) {
-            if (_isCancelled) return;
-            fullText += chunk;
+      String fullText = "";
+      _geminiSubscription = responseStream.listen(
+        (chunk) {
+          if (_isCancelled) return;
+          fullText += chunk;
+          setState(() {
+            _messages.last = ChatMessage(
+              text: fullText,
+              isUser: false,
+              modelName: _selectedModel
+            );
+          });
+           // Auto-scroll logic
+          if (_scrollController.hasClients && _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+             _scrollToBottom();
+          }
+        },
+        onError: (e) {
+          if (!_isCancelled) {
             setState(() {
               _messages.last = ChatMessage(
-                text: fullText,
+                text: "${_messages.last.text}\n\n**Error:** $e",
                 isUser: false,
-                modelName: _selectedModel
+                modelName: "System Alert"
               );
+              _isLoading = false;
             });
-             // Auto-scroll logic
-            if (_scrollController.hasClients && _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
-               _scrollToBottom();
+          }
+        },
+        onDone: () async {
+          if (!_isCancelled) {
+            setState(() => _isLoading = false);
+            _autoSaveCurrentSession();
+            if (_currentProvider == AiProvider.gemini) {
+              await _initializeModel(); 
+              if (!_enableGrounding) _updateTokenCount();
             }
-          },
-          onError: (e) {
-            if (!_isCancelled) {
-              setState(() {
-                _messages.last = ChatMessage(
-                  text: "${_messages.last.text}\n\n**Error:** $e",
-                  isUser: false,
-                  modelName: "System Alert"
-                );
-                _isLoading = false;
-              });
-            }
-          },
-          onDone: () async {
-            if (!_isCancelled) {
-              setState(() => _isLoading = false);
-              _autoSaveCurrentSession();
-              // Refresh Gemini context if needed
-              if (_currentProvider == AiProvider.gemini) {
-                await _initializeModel(); 
-                if (!_enableGrounding) _updateTokenCount();
-              }
-            }
-          },
-        );
-      }
-
+          }
+        },
+      );
+    
     } catch (e) {
       if (!_isCancelled) {
         setState(() {
@@ -697,7 +684,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // 1. Try to fetch from API
       final response = await http.get(
         Uri.parse("https://api.arliai.com/v1/models"),
-        headers: {"Authorization": "Bearer ${_arliAiKey.trim()}"}, // Fixed: Trim key
+        headers: {"Authorization": "Bearer ${_arliAiKey.trim()}"},
       );
 
       if (response.statusCode == 200) {
@@ -849,7 +836,9 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _showAttachmentMenu() {
+    void _showAttachmentMenu() {
+    // Get ThemeProvider to style the bottom sheet if needed
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
@@ -858,13 +847,15 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Wrap(
             children: <Widget>[
               ListTile(
-                leading: const Icon(Icons.photo_library, color: Colors.cyanAccent),
+                // Use theme color for attachment icons
+                leading: Icon(Icons.photo_library, color: themeProvider.appThemeColor),
                 title: const Text('Image from Gallery'),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage();
                 },
               ),
+
               ListTile(
                 leading: const Icon(Icons.description, color: Colors.orangeAccent),
                 title: const Text('Document / File'),
@@ -960,10 +951,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // Logic:
     // 1. If it's an AI message, delete it, then find the user message before it, and re-send.
     // 2. If it's a User message, delete everything after it, and re-send that user message.
-    
-    // For simplicity/safety, let's only allow regenerating the LAST AI message for now.
-    // Or if the user clicks their own last message.
-    
+
     final msg = _messages[index];
     
     // Case A: User wants to retry the AI's last response
@@ -1001,9 +989,10 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
   
-  void _showMessageOptions(BuildContext context, int index) {
+    void _showMessageOptions(BuildContext context, int index) {
     final msg = _messages[index];
     final bool isLastMessage = index == _messages.length - 1;
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
 
     showModalBottomSheet(
       context: context,
@@ -1031,7 +1020,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     _buildMenuIcon(
                       icon: Icons.copy, 
                       label: "Copy", 
-                      color: Colors.cyanAccent, 
+                      color: themeProvider.appThemeColor, // Changed to Theme Color
                       onTap: () {
                         Navigator.pop(context);
                         Clipboard.setData(ClipboardData(text: msg.text));
@@ -1040,6 +1029,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
 
                     // 2. EDIT (Only for user messages usually, but allowed for both here)
+
                     _buildMenuIcon(
                       icon: Icons.edit, 
                       label: "Edit", 
@@ -1104,6 +1094,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
 void _showEditDialog(int index) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final TextEditingController editController = TextEditingController(text: _messages[index].text);
     showDialog(
       context: context,
@@ -1127,12 +1118,13 @@ void _showEditDialog(int index) {
               
               Navigator.pop(context);
             },
-            child: const Text("Save", style: TextStyle(color: Colors.cyanAccent)),
+            child: Text("Save", style: TextStyle(color: themeProvider.appThemeColor)),
           ),
         ],
       ),
     );
   }
+
 
   // ----------------------------------------------------------------------
   // DELETE WITH CONFIRMATION
@@ -1366,8 +1358,12 @@ void _showEditDialog(int index) {
           : const Color.fromARGB(255, 0, 0, 0),
         leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
         
-        title: PopupMenuButton<AiProvider>(
+                title: PopupMenuButton<AiProvider>(
           initialValue: _currentProvider,
+          color: const Color(0xFF2C2C2C),
+          // MODIFIED: Use theme color for shadow/bloom
+          shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : null,
+          elevation: themeProvider.enableBloom ? 12 : 8,
           onSelected: (AiProvider result) {
             setState(() {
               _currentProvider = result;
@@ -1377,25 +1373,25 @@ void _showEditDialog(int index) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Switched to ${result.name.toUpperCase()}")));
           },
           itemBuilder: (BuildContext context) => <PopupMenuEntry<AiProvider>>[
-            const PopupMenuItem<AiProvider>(
+            PopupMenuItem<AiProvider>(
               value: AiProvider.gemini,
-              child: Row(children: [Icon(Icons.auto_awesome, color: Colors.blueAccent), SizedBox(width: 8), Text('AIRP - Gemini')]),
+              child: Row(children: [Icon(Icons.auto_awesome, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - Gemini')]),
             ),
-            const PopupMenuItem<AiProvider>(
+            PopupMenuItem<AiProvider>(
               value: AiProvider.openRouter,
-              child: Row(children: [Icon(Icons.router, color: Colors.purpleAccent), SizedBox(width: 8), Text('AIRP - OpenRouter')]),
+              child: Row(children: [Icon(Icons.router, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - OpenRouter')]),
             ),
-                        const PopupMenuItem<AiProvider>(
+                        PopupMenuItem<AiProvider>(
               value: AiProvider.arliAi,
-              child: Row(children: [Icon(Icons.alternate_email, color: Colors.orangeAccent), SizedBox(width: 8), Text('AIRP - ArliAI')]),
+              child: Row(children: [Icon(Icons.alternate_email, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - ArliAI')]),
             ),
-            const PopupMenuItem<AiProvider>(
+            PopupMenuItem<AiProvider>(
               value: AiProvider.nanoGpt,
-              child: Row(children: [Icon(Icons.bolt, color: Colors.yellowAccent), SizedBox(width: 8), Text('AIRP - NanoGPT')]),
+              child: Row(children: [Icon(Icons.bolt, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - NanoGPT')]),
             ),
-            const PopupMenuItem<AiProvider>(
+            PopupMenuItem<AiProvider>(
               value: AiProvider.local,
-              child: Row(children: [Icon(Icons.laptop_mac, color: Colors.greenAccent), SizedBox(width: 8), Text('AIRP - Local')]),
+              child: Row(children: [Icon(Icons.laptop_mac, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - Local')]),
             ),
             const PopupMenuItem<AiProvider>(
               value: AiProvider.openAi,
@@ -1408,7 +1404,6 @@ void _showEditDialog(int index) {
             children: [
               Flexible(
                 child: Text(
-                  // FIXED: Added checks for ArliAI and NanoGPT
                   'AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" 
                       : _currentProvider == AiProvider.openRouter ? "OpenRouter" 
                       : _currentProvider == AiProvider.arliAi ? "ArliAI"
@@ -1418,18 +1413,26 @@ void _showEditDialog(int index) {
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   softWrap: false,
+                  // MODIFIED: Use theme color for the title
+                  style: TextStyle(
+                    color: themeProvider.appThemeColor,
+                    fontWeight: FontWeight.bold,
+                    shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] : [],
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.arrow_drop_down),
+              // MODIFIED: Use theme color for the arrow
+              Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor),
             ],
           ),
         ),
+
         actions: [
           Builder(builder: (c) => IconButton(icon: const Icon(Icons.settings), onPressed: () => Scaffold.of(c).openEndDrawer())),
         ],
       ),
-      body: Stack(
+            body: Stack(
         children: [
           if (themeProvider.backgroundImagePath != null)
             Positioned.fill(
@@ -1438,7 +1441,7 @@ void _showEditDialog(int index) {
                 fit: BoxFit.cover,
               ),
             ),
-          if (themeProvider.backgroundImagePath != null)
+                              if (themeProvider.backgroundImagePath != null)
             Positioned.fill(
               child: Container(
                   color: Colors.black
@@ -1461,7 +1464,7 @@ void _showEditDialog(int index) {
                   ),
                 ),
               if (_isLoading)
-                const LinearProgressIndicator(color: Colors.cyanAccent, minHeight: 2),
+                LinearProgressIndicator(color: themeProvider.appThemeColor, minHeight: 2),
               
               Container(
                 padding: const EdgeInsets.all(8.0),
@@ -1545,9 +1548,8 @@ void _showEditDialog(int index) {
 
                     Row(
                       children: [
-                        // MERGED ATTACHMENT BUTTON
                         IconButton(
-                          icon: const Icon(Icons.attach_file, color: Colors.cyanAccent),
+                          icon: Icon(Icons.attach_file, color: themeProvider.appThemeColor),
                           tooltip: "Add Attachment",
                           onPressed: _isLoading ? null : _showAttachmentMenu,
                         ),
@@ -1580,18 +1582,19 @@ void _showEditDialog(int index) {
                         const SizedBox(width: 8),
 
                         // 3. DYNAMIC SEND / STOP BUTTON
+                        // MODIFIED: Uses appThemeColor for button background/icon details
                         IconButton.filled(
                           style: IconButton.styleFrom(
                               backgroundColor: _isLoading
-                                 ? Colors.cyanAccent.withOpacity(0.2) 
-                                 : (_enableGrounding ? Colors.green : Colors.cyanAccent)
+                                 ? themeProvider.appThemeColor.withOpacity(0.2) 
+                                 : (_enableGrounding ? Colors.green : themeProvider.appThemeColor)
                           ),
                           // Toggle Function: Send if idle, Stop if loading
                           onPressed: _isLoading ? _cancelGeneration : _sendMessage,
                           // Toggle Icon: Stop Square if loading, Send Plane if idle
                           icon: Icon(
                             _isLoading ? Icons.stop_circle_outlined : Icons.send,
-                             color: _isLoading ? Colors.cyanAccent : Colors.black
+                             color: _isLoading ? themeProvider.appThemeColor : Colors.black
                           ),
                         ),
                       ],
@@ -1602,6 +1605,7 @@ void _showEditDialog(int index) {
             ],
             ),
           ),
+
         ],
       ),
     );

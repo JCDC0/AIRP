@@ -74,11 +74,23 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
     final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
     final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
     final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha(128) : Colors.white10;
+
+    // BLOOM LOGIC
+    List<BoxShadow> boxShadows = [];
+    if (themeProvider.enableBloom) {
+      boxShadows = [
+        BoxShadow(
+          color: bubbleColor.withOpacity(0.5),
+          blurRadius: 12,
+          spreadRadius: 1,
+        ),
+      ];
+    }
 
     return Align(
       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -91,6 +103,7 @@ class MessageBubble extends StatelessWidget {
             color: bubbleColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: borderColor),
+            boxShadow: boxShadows, // Apply Glow
           ),
           constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
           child: Column(
@@ -105,6 +118,7 @@ class MessageBubble extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.black26,
                       borderRadius: BorderRadius.circular(4),
+                      boxShadow: themeProvider.enableBloom ? [BoxShadow(color: Colors.white10, blurRadius: 4)] : [],
                     ),
                     child: Text(
                       cleanModelName(msg.modelName!),
@@ -112,7 +126,8 @@ class MessageBubble extends StatelessWidget {
                         fontSize: 10, 
                         color: textColor.withOpacity(0.7), 
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace'
+                        fontFamily: 'monospace',
+                        shadows: themeProvider.enableBloom ? [Shadow(color: textColor.withOpacity(0.5), blurRadius: 4)] : [],
                       ),
                     ),
                   ),
@@ -131,13 +146,27 @@ class MessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (msg.text.isNotEmpty)
+                            if (msg.text.isNotEmpty)
                 MarkdownBody(
                   data: msg.text,
                   styleSheet: MarkdownStyleSheet(
-                    p: TextStyle(color: textColor),
-                    a: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline),
-                    code: TextStyle(color: textColor, backgroundColor: Colors.black26),
+                    p: TextStyle(
+                      color: textColor,
+                      shadows: themeProvider.enableBloom ? [Shadow(color: textColor.withOpacity(0.6), blurRadius: 8)] : [],
+                    ),
+                    a: TextStyle(
+                      color: Colors.blueAccent, 
+                      decoration: TextDecoration.underline,
+                      shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)] : [],
+                    ),
+                    code: TextStyle(
+                      color: textColor, 
+                      backgroundColor: Colors.black26,
+                      shadows: themeProvider.enableBloom ? [Shadow(color: textColor.withOpacity(0.4), blurRadius: 4)] : [],
+                    ),
+                    h1: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+                    h2: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+                    h3: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
                   ),
                 ),
             ],

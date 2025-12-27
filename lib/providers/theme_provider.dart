@@ -10,24 +10,28 @@ import '../utils/constants.dart';
 class ThemeProvider extends ChangeNotifier {
   String _fontStyle = 'Default';
   String? _backgroundImagePath; 
-  double _backgroundOpacity = 0.7;
+    double _backgroundOpacity = 0.7;
+  bool _enableBloom = false;
   
-  Color _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
+    Color _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
   Color _userTextColor = Colors.white;
   Color _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
   Color _aiTextColor = Colors.white;
+  Color _appThemeColor = Colors.cyanAccent; 
 
   List<String> _customImagePaths = []; 
 
   String get fontStyle => _fontStyle;
-  String? get backgroundImagePath => _backgroundImagePath;
+    String? get backgroundImagePath => _backgroundImagePath;
   double get backgroundOpacity => _backgroundOpacity;
+  bool get enableBloom => _enableBloom;
   List<String> get customImagePaths => _customImagePaths;
   
   Color get userBubbleColor => _userBubbleColor;
   Color get userTextColor => _userTextColor;
   Color get aiBubbleColor => _aiBubbleColor;
   Color get aiTextColor => _aiTextColor;
+  Color get appThemeColor => _appThemeColor;
 
   ThemeProvider() {
     _loadPreferences();
@@ -46,11 +50,26 @@ class ThemeProvider extends ChangeNotifier {
     const baseColor = Colors.white;
     final baseTheme = ThemeData.dark().textTheme.apply(bodyColor: baseColor, displayColor: baseColor);
     switch (_fontStyle) {
-      case 'Google': return GoogleFonts.openSansTextTheme(baseTheme);
-      case 'Apple': return GoogleFonts.interTextTheme(baseTheme);
-      case 'Roleplay': return GoogleFonts.loraTextTheme(baseTheme);
-      case 'Terminal': return GoogleFonts.spaceMonoTextTheme(baseTheme);
-      default: return baseTheme;
+case 'Google': 
+      return GoogleFonts.openSansTextTheme(baseTheme);
+    case 'Apple': 
+      return GoogleFonts.interTextTheme(baseTheme);
+    case 'Roleplay': 
+      return GoogleFonts.loraTextTheme(baseTheme);
+    case 'Terminal': 
+      return GoogleFonts.spaceMonoTextTheme(baseTheme);
+    case 'Manuscript':
+      return GoogleFonts.ebGaramondTextTheme(baseTheme);
+    case 'Cyber': 
+      return GoogleFonts.orbitronTextTheme(baseTheme);
+    case 'ModernAnime': 
+      return GoogleFonts.quicksandTextTheme(baseTheme);
+    case 'Gothic': 
+      return GoogleFonts.crimsonProTextTheme(baseTheme);
+    case 'Journal': 
+      return GoogleFonts.caveatTextTheme(baseTheme);
+    default: 
+      return baseTheme;
     }
   }
 
@@ -66,26 +85,58 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> setBackgroundOpacity(double value) async {
+    Future<void> setBackgroundOpacity(double value) async {
     _backgroundOpacity = value;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('app_bg_opacity', value);
   }
 
-  Future<void> updateColor(String type, Color color) async {
+  Future<void> toggleBloom(bool value) async {
+    _enableBloom = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_enable_bloom', value);
+  }
+
+    Future<void> updateColor(String type, Color color) async {
     switch (type) {
       case 'userBubble': _userBubbleColor = color; break;
       case 'userText': _userTextColor = color; break;
       case 'aiBubble': _aiBubbleColor = color; break;
       case 'aiText': _aiTextColor = color; break;
+      case 'appTheme': _appThemeColor = color; break;
     }
     notifyListeners();
     _saveColors();
   }
 
+  Future<void> resetToDefaults() async {
+    _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
+    _userTextColor = Colors.white;
+    _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
+    _aiTextColor = Colors.white;
+    _appThemeColor = Colors.cyanAccent;
+    _enableBloom = false;
+    _backgroundOpacity = 0.7;
+    
+    notifyListeners();
+    _saveColors();
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_enable_bloom', false);
+    await prefs.setDouble('app_bg_opacity', 0.7);
+  }
+
   Future<void> _saveColors() async {
     final prefs = await SharedPreferences.getInstance();
+    
+    final int themeVal = (((_appThemeColor.a * 255.0).round() & 0xff) << 24) |
+      (((_appThemeColor.r * 255.0).round() & 0xff) << 16) |
+      (((_appThemeColor.g * 255.0).round() & 0xff) << 8) |
+      ((_appThemeColor.b * 255.0).round() & 0xff);
+    await prefs.setInt('color_app_theme', themeVal);
+
     final int ub = (((_userBubbleColor.a * 255.0).round() & 0xff) << 24) |
       (((_userBubbleColor.r * 255.0).round() & 0xff) << 16) |
       (((_userBubbleColor.g * 255.0).round() & 0xff) << 8) |
@@ -134,13 +185,17 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setStringList('app_custom_bg_list', _customImagePaths);
   }
   
-  Future<void> _loadPreferences() async {
+    Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _fontStyle = prefs.getString('app_font_style') ?? 'Default';
     _backgroundImagePath = prefs.getString('app_bg_path');
     _backgroundOpacity = prefs.getDouble('app_bg_opacity') ?? 0.7;
-    _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
+    _enableBloom = prefs.getBool('app_enable_bloom') ?? false;
+        _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
     
+    final int? themeInt = prefs.getInt('color_app_theme');
+    _appThemeColor = themeInt != null ? Color(themeInt) : Colors.cyanAccent;
+
     final int? userBubbleInt = prefs.getInt('color_user_bubble');
     if (userBubbleInt != null) {
       _userBubbleColor = Color(userBubbleInt);
