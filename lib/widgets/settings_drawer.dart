@@ -951,6 +951,78 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       activeThumbColor: provider.appThemeColor,
                       onChanged: (val) => provider.toggleBloom(val),
                     ),
+                    const Divider(),
+                    Text("Environmental Effects", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor.withOpacity(0.8))),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Floating Dust Motes", style: TextStyle(fontSize: 14)),
+                      subtitle: const Text("Subtle, glowing particles", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      value: provider.enableMotes,
+                      activeThumbColor: themeProvider.appThemeColor,
+                      onChanged: (val) => provider.toggleMotes(val),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Gentle Rain", style: TextStyle(fontSize: 14)),
+                      subtitle: const Text("A calming, rainy mood", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      value: provider.enableRain,
+                      activeThumbColor: themeProvider.appThemeColor,
+                      onChanged: (val) => provider.toggleRain(val),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Glowing Fireflies", style: TextStyle(fontSize: 14)),
+                      subtitle: const Text("Blinking lights for a cozy vibe", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      value: provider.enableFireflies,
+                      activeThumbColor: themeProvider.appThemeColor,
+                      onChanged: (val) => provider.toggleFireflies(val),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("VHS Glitch Effect", style: TextStyle(fontSize: 14)),
+                      subtitle: const Text("A retro, cyberpunk feel", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      value: provider.enableGlitch,
+                      activeThumbColor: themeProvider.appThemeColor,
+                      onChanged: (val) => provider.toggleGlitch(val),
+                    ),
+                    const Divider(),
+                    // Sliders for VFX
+                    if (provider.enableMotes)
+                      _buildSliderSetting(
+                          title: "Motes Density",
+                          value: provider.motesDensity.toDouble(),
+                          min: 1,
+                          max: 150,
+                          isInt: true,
+                          activeColor: themeProvider.appThemeColor,
+                          onChanged: (val) => provider.setMotesDensity(val.toInt())),
+                    if (provider.enableRain)
+                      _buildSliderSetting(
+                          title: "Rainfall Intensity",
+                          value: provider.rainIntensity.toDouble(),
+                          min: 1,
+                          max: 200,
+                          isInt: true,
+                          activeColor: themeProvider.appThemeColor,
+                          onChanged: (val) => provider.setRainIntensity(val.toInt())),
+                    if (provider.enableFireflies)
+                      _buildSliderSetting(
+                          title: "Fireflies Count",
+                          value: provider.firefliesCount.toDouble(),
+                          min: 1,
+                          max: 100,
+                          isInt: true,
+                          activeColor: themeProvider.appThemeColor,
+                          onChanged: (val) => provider.setFirefliesCount(val.toInt())),
+                    if (provider.enableGlitch)
+                      _buildSliderSetting(
+                          title: "Glitch Frequency",
+                          value: provider.glitchIntensity,
+                          min: 0,
+                          max: 1,
+                          activeColor: themeProvider.appThemeColor,
+                          onChanged: (val) => provider.setGlitchIntensity(val)),
+
                     const SizedBox(height: 10),
                     if (provider.backgroundImagePath != null) ...[
                       const SizedBox(height: 10),
@@ -993,13 +1065,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                           final int customCount = provider.customImagePaths.length;
                           String path;
                           bool isCustom;
-                          
-                          if (adjustedIndex < customCount) { 
-                            path = provider.customImagePaths[adjustedIndex]; 
-                            isCustom = true; 
-                          } else { 
-                            path = kAssetBackgrounds[adjustedIndex - customCount]; 
-                            isCustom = false; 
+
+                          if (adjustedIndex < customCount) {
+                            path = provider.customImagePaths[adjustedIndex];
+                            isCustom = true;
+                          } else {
+                            path = kAssetBackgrounds[adjustedIndex - customCount];
+                            isCustom = false;
                           }
 
                           final bool isSelected = provider.backgroundImagePath == path;
@@ -1021,9 +1093,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                               fit: StackFit.expand,
                               children: [
                                 ClipRRect(
-                                  borderRadius: BorderRadius.circular(8), 
-                                  child: isCustom 
-                                    ? Image.file(File(path), fit: BoxFit.cover) 
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: isCustom
+                                    ? Image.file(File(path), fit: BoxFit.cover)
                                     : Image.asset(path, fit: BoxFit.cover),
                                 ),
                                 if (isSelected) 
@@ -1067,3 +1139,4 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     );
   }
 }
+

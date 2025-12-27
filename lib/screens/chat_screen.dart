@@ -16,6 +16,7 @@ import '../widgets/message_bubble.dart';
 import '../services/chat_api_service.dart';
 import '../widgets/conversation_drawer.dart';
 import '../widgets/settings_drawer.dart';
+import '../widgets/effects_overlay.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -1413,7 +1414,6 @@ void _showEditDialog(int index) {
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   softWrap: false,
-                  // MODIFIED: Use theme color for the title
                   style: TextStyle(
                     color: themeProvider.appThemeColor,
                     fontWeight: FontWeight.bold,
@@ -1422,7 +1422,6 @@ void _showEditDialog(int index) {
                 ),
               ),
               const SizedBox(width: 4),
-              // MODIFIED: Use theme color for the arrow
               Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor),
             ],
           ),
@@ -1435,17 +1434,30 @@ void _showEditDialog(int index) {
             body: Stack(
         children: [
           if (themeProvider.backgroundImagePath != null)
-            Positioned.fill(
+                        Positioned.fill(
               child: Image(
                 image: themeProvider.currentImageProvider,
                 fit: BoxFit.cover,
               ),
             ),
-                              if (themeProvider.backgroundImagePath != null)
+          if (themeProvider.backgroundImagePath != null)
             Positioned.fill(
               child: Container(
                   color: Colors.black
                       .withAlpha((themeProvider.backgroundOpacity * 255).round())),
+            ),
+            Positioned.fill(
+              child: EffectsOverlay(
+                showMotes: themeProvider.enableMotes,
+                showRain: themeProvider.enableRain,
+                showFireflies: themeProvider.enableFireflies,
+                showGlitch: themeProvider.enableGlitch,
+                effectColor: themeProvider.appThemeColor,
+                motesDensity: themeProvider.motesDensity.toDouble(),
+                rainIntensity: themeProvider.rainIntensity.toDouble(),
+                firefliesCount: themeProvider.firefliesCount.toDouble(),
+                glitchIntensity: themeProvider.glitchIntensity,
+              ),
             ),
           SafeArea(
             child: Column(

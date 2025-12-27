@@ -10,10 +10,22 @@ import '../utils/constants.dart';
 class ThemeProvider extends ChangeNotifier {
   String _fontStyle = 'Default';
   String? _backgroundImagePath; 
-    double _backgroundOpacity = 0.7;
+  double _backgroundOpacity = 0.7;
+
+// VFX toggles
   bool _enableBloom = false;
-  
-    Color _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
+  bool _enableMotes = false;
+  bool _enableRain = false;
+  bool _enableFireflies = false;
+  bool _enableGlitch = false;
+
+// VFX INTENSITY
+  int _motesDensity = 75;
+  int _rainIntensity = 100;
+  int _firefliesCount = 50;
+  double _glitchIntensity = 0.5;
+// Color settings
+  Color _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
   Color _userTextColor = Colors.white;
   Color _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
   Color _aiTextColor = Colors.white;
@@ -22,10 +34,20 @@ class ThemeProvider extends ChangeNotifier {
   List<String> _customImagePaths = []; 
 
   String get fontStyle => _fontStyle;
-    String? get backgroundImagePath => _backgroundImagePath;
+  String? get backgroundImagePath => _backgroundImagePath;
   double get backgroundOpacity => _backgroundOpacity;
   bool get enableBloom => _enableBloom;
+  bool get enableMotes => _enableMotes;
+  bool get enableRain => _enableRain;
+  bool get enableFireflies => _enableFireflies;
+  bool get enableGlitch => _enableGlitch;
   List<String> get customImagePaths => _customImagePaths;
+  
+    // INTENSITY GETTERS
+  int get motesDensity => _motesDensity;
+  int get rainIntensity => _rainIntensity;
+  int get firefliesCount => _firefliesCount;
+  double get glitchIntensity => _glitchIntensity;
   
   Color get userBubbleColor => _userBubbleColor;
   Color get userTextColor => _userTextColor;
@@ -99,7 +121,62 @@ case 'Google':
     await prefs.setBool('app_enable_bloom', value);
   }
 
-    Future<void> updateColor(String type, Color color) async {
+  Future<void> toggleMotes(bool value) async {
+    _enableMotes = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_enable_motes', value);
+  }
+
+  Future<void> toggleRain(bool value) async {
+    _enableRain = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_enable_rain', value);
+  }
+
+  Future<void> toggleFireflies(bool value) async {
+    _enableFireflies = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_enable_fireflies', value);
+  }
+
+  Future<void> toggleGlitch(bool value) async {
+    _enableGlitch = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_enable_glitch', value);
+  }
+
+    // INTENSITY SETTERS
+  Future<void> setMotesDensity(int value) async {
+    _motesDensity = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('vfx_motes_density', value);
+  }
+  Future<void> setRainIntensity(int value) async {
+    _rainIntensity = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('vfx_rain_intensity', value);
+  }
+  Future<void> setFirefliesCount(int value) async {
+    _firefliesCount = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('vfx_fireflies_count', value);
+  }
+  Future<void> setGlitchIntensity(double value) async {
+    _glitchIntensity = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('vfx_glitch_intensity', value);
+  }
+
+
+  Future<void> updateColor(String type, Color color) async {
     switch (type) {
       case 'userBubble': _userBubbleColor = color; break;
       case 'userText': _userTextColor = color; break;
@@ -116,16 +193,32 @@ case 'Google':
     _userTextColor = Colors.white;
     _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
     _aiTextColor = Colors.white;
-    _appThemeColor = Colors.cyanAccent;
+        _appThemeColor = Colors.cyanAccent;
     _enableBloom = false;
+        _enableMotes = false;
+    _enableRain = false;
+    _enableFireflies = false;
+    _enableGlitch = false;
     _backgroundOpacity = 0.7;
+        _motesDensity = 75;
+    _rainIntensity = 100;
+    _firefliesCount = 50;
+    _glitchIntensity = 0.5;
     
     notifyListeners();
     _saveColors();
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('app_enable_bloom', false);
+    await prefs.setBool('app_enable_motes', false);
+    await prefs.setBool('app_enable_rain', false);
+        await prefs.setBool('app_enable_fireflies', false);
+    await prefs.setBool('app_enable_glitch', false);
     await prefs.setDouble('app_bg_opacity', 0.7);
+        await prefs.setInt('vfx_motes_density', 75);
+    await prefs.setInt('vfx_rain_intensity', 100);
+    await prefs.setInt('vfx_fireflies_count', 50);
+    await prefs.setDouble('vfx_glitch_intensity', 0.5);
   }
 
   Future<void> _saveColors() async {
@@ -188,11 +281,21 @@ case 'Google':
     Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _fontStyle = prefs.getString('app_font_style') ?? 'Default';
-    _backgroundImagePath = prefs.getString('app_bg_path');
+        _backgroundImagePath = prefs.getString('app_bg_path');
     _backgroundOpacity = prefs.getDouble('app_bg_opacity') ?? 0.7;
     _enableBloom = prefs.getBool('app_enable_bloom') ?? false;
-        _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
+    _enableMotes = prefs.getBool('app_enable_motes') ?? false;
+    _enableRain = prefs.getBool('app_enable_rain') ?? false;
+        _enableFireflies = prefs.getBool('app_enable_fireflies') ?? false;
+    _enableGlitch = prefs.getBool('app_enable_glitch') ?? false;
+    _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
     
+        // LOAD INTENSITIES
+    _motesDensity = prefs.getInt('vfx_motes_density') ?? 75;
+    _rainIntensity = prefs.getInt('vfx_rain_intensity') ?? 100;
+    _firefliesCount = prefs.getInt('vfx_fireflies_count') ?? 50;
+    _glitchIntensity = prefs.getDouble('vfx_glitch_intensity') ?? 0.5;
+
     final int? themeInt = prefs.getInt('color_app_theme');
     _appThemeColor = themeInt != null ? Color(themeInt) : Colors.cyanAccent;
 
