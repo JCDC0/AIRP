@@ -944,50 +944,77 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  // ----------------------------------------------------------------------
+    // ----------------------------------------------------------------------
   // REGENERATE FUNCTION
   // ----------------------------------------------------------------------
   void _regenerateResponse(int index) {
-    // Logic:
-    // 1. If it's an AI message, delete it, then find the user message before it, and re-send.
-    // 2. If it's a User message, delete everything after it, and re-send that user message.
-
+    if (index < 0 || index >= _messages.length) return;
     final msg = _messages[index];
-    
-    // Case A: User wants to retry the AI's last response
-    if (!msg.isUser) {
-      setState(() {
-        _messages.removeAt(index); 
-        _isLoading = true; 
-      });
-      
-      if (_messages.isNotEmpty && _messages.last.isUser) {
-        final lastUserMsg = _messages.last;
-        _messages.removeLast(); 
+
+    setState(() {
+      if (!msg.isUser) {
+        // If AI message, rewind to the User message that triggered it
+        int userMsgIndex = index - 1;
+        if (userMsgIndex >= 0 && _messages[userMsgIndex].isUser) {
+          final userMsg = _messages[userMsgIndex];
+          // Prune history from that user message onwards
+          _messages.removeRange(userMsgIndex, _messages.length);
+          
+          _textController.text = userMsg.text;
+          _pendingImages.clear();
+          _pendingImages.addAll(userMsg.imagePaths);
+          _isLoading = true; // Set loading before async call
+          
+          // Use a post-frame callback to ensure state is settled before sending
+          WidgetsBinding.instance.addPostFrameCallback((_) => _sendMessage());
+        } else {
+          // Fallback: just delete this orphan AI message
+          _messages.removeAt(index);
+        }
+      } else {
+        // If User message, rewind to this message
+        final userMsg = _messages[index];
+        _messages.removeRange(index, _messages.length);
         
-        _textController.text = lastUserMsg.text;
-        _pendingImages.addAll(lastUserMsg.imagePaths);
-        _sendMessage(); 
+        _textController.text = userMsg.text;
+        _pendingImages.clear();
+        _pendingImages.addAll(userMsg.imagePaths);
+        _isLoading = true;
+        
+        WidgetsBinding.instance.addPostFrameCallback((_) => _sendMessage());
       }
-    }
-    // Case B: User wants to retry their message
-    else if (msg.isUser) {
-       // Only allow if it's the very last message
-       if (index == _messages.length - 1) {
-         setState(() {
-           _messages.removeAt(index);
-           _isLoading = true;
-         });
-         _textController.text = msg.text;
-         _pendingImages.addAll(msg.imagePaths);
-         _sendMessage();
-       } else {
-         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text("Can only regenerate the latest exchange"))
-         );
-       }
-    }
+    });
   }
+  
+  void _confirmRegenerate(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Regenerate?", style: TextStyle(color: Colors.white)),
+        content: const Text(
+          "This will delete this message and all subsequent history, then retry the generation.", 
+          style: TextStyle(color: Colors.white70)
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent),
+            onPressed: () {
+              Navigator.pop(context);
+              _regenerateResponse(index);
+            },
+            child: const Text("Regenerate", style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
+
   
     void _showMessageOptions(BuildContext context, int index) {
     final msg = _messages[index];
@@ -1459,7 +1486,7 @@ void _showEditDialog(int index) {
             child: Column(
               children: [
                 Expanded(
-                  child: ListView.builder(
+                                    child: ListView.builder(
                     controller: _scrollController,
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
@@ -1467,6 +1494,15 @@ void _showEditDialog(int index) {
                         msg: _messages[index],
                         themeProvider: themeProvider,
                         onLongPress: () => _showMessageOptions(context, index),
+                        onCopy: () {
+                          Clipboard.setData(ClipboardData(text: _messages[index].text));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Copied!"), duration: Duration(milliseconds: 600))
+                          );
+                        },
+                        onEdit: () => _showEditDialog(index),
+                        onRegenerate: () => _confirmRegenerate(index),
+                        onDelete: () => _confirmDeleteMessage(index),
                       );
                     },
                   ),

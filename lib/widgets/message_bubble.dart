@@ -12,12 +12,20 @@ class MessageBubble extends StatelessWidget {
   final ChatMessage msg;
   final ThemeProvider themeProvider;
   final VoidCallback? onLongPress;
+  final VoidCallback? onCopy;
+  final VoidCallback? onEdit;
+  final VoidCallback? onRegenerate;
+  final VoidCallback? onDelete;
 
   const MessageBubble({
     super.key,
     required this.msg,
     required this.themeProvider,
     this.onLongPress,
+    this.onCopy,
+    this.onEdit,
+    this.onRegenerate,
+    this.onDelete,
   });
 
     void _showImageZoom(BuildContext context, ImageProvider provider) {
@@ -189,11 +197,56 @@ class MessageBubble extends StatelessWidget {
           child: contentColumn,
         );
 
-    return Align(
+        return Align(
       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        onLongPress: onLongPress,
-        child: bubbleWidget,
+      child: Column(
+        crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onLongPress: onLongPress,
+            child: bubbleWidget,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 8, left: 4, right: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                 // 1. REGENERATE (Leftmost for AI)
+                 if (onRegenerate != null)
+                   _buildIconBtn(Icons.refresh, "Regenerate", onRegenerate!, textColor),
+
+                 // 2. COPY
+                 if (onCopy != null)
+                   _buildIconBtn(Icons.copy_rounded, "Copy", onCopy!, textColor),
+
+                 // 3. EDIT (User Only usually)
+                 if (onEdit != null)
+                   _buildIconBtn(Icons.edit_outlined, "Edit", onEdit!, textColor),
+
+                 // 4. DELETE
+                 if (onDelete != null)
+                   _buildIconBtn(Icons.delete_outline, "Delete", onDelete!, textColor),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIconBtn(IconData icon, String tooltip, VoidCallback onTap, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: IconButton(
+        icon: Icon(icon, size: 16, color: color.withOpacity(0.5)),
+        onPressed: onTap,
+        tooltip: tooltip,
+        constraints: const BoxConstraints(),
+        padding: const EdgeInsets.all(6),
+        style: IconButton.styleFrom(
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          hoverColor: color.withOpacity(0.1),
+        ),
       ),
     );
   }
