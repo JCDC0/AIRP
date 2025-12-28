@@ -143,10 +143,12 @@ class MessageBubble extends StatelessWidget {
                 if (msg.text.isNotEmpty)
           MarkdownBody(
             data: msg.text,
-            builders: {
-              'pre': CodeElementBuilder(context, codeStyle),
+                        builders: {
+              'code': CodeElementBuilder(context, codeStyle),
             },
             styleSheet: MarkdownStyleSheet(
+              codeblockPadding: EdgeInsets.zero,
+              codeblockDecoration: const BoxDecoration(color: Colors.transparent),
               p: TextStyle(
                 color: textColor,
                 shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 15)] : [],
@@ -316,15 +318,41 @@ class CodeElementBuilder extends MarkdownElementBuilder {
 
   CodeElementBuilder(this.context, this.textStyle);
 
-  @override
+    @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     var language = '';
 
+    // 1. Detect Language safely
     if (element.attributes['class'] != null) {
       String lg = element.attributes['class'] as String;
-      language = lg.substring(9);
+      if (lg.startsWith('language-')) {
+        language = lg.substring(9);
+      } else {
+        language = lg;
+      }
     }
 
+    // 2. Decide if this is a Block Code or Inline Code
+    // If it has a language class or contains newlines, treat as block.
+    final bool isBlock = language.isNotEmpty || element.textContent.contains('\n');
+
+    if (!isBlock) {
+      // INLINE CODE STYLE
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Text(
+          element.textContent,
+          style: textStyle.copyWith(fontSize: (textStyle.fontSize ?? 14) * 0.9),
+        ),
+      );
+    }
+
+    // BLOCK CODE STYLE
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
