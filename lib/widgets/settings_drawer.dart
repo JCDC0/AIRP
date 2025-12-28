@@ -156,12 +156,24 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   @override
   void didUpdateWidget(SettingsDrawer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.apiKey != oldWidget.apiKey) _apiKeyController.text = widget.apiKey;
-    if (widget.localIp != oldWidget.localIp) _localIpController.text = widget.localIp;
-    if (widget.title != oldWidget.title) _titleController.text = widget.title;
-    if (widget.promptTitle != oldWidget.promptTitle) _promptTitleController.text = widget.promptTitle;
-    if (widget.systemInstruction != oldWidget.systemInstruction) _systemInstructionController.text = widget.systemInstruction;
-    if (widget.openRouterModel != oldWidget.openRouterModel) _openRouterModelController.text = widget.openRouterModel;
+    if (widget.apiKey != oldWidget.apiKey && widget.apiKey != _apiKeyController.text) {
+      _apiKeyController.text = widget.apiKey;
+    }
+    if (widget.localIp != oldWidget.localIp && widget.localIp != _localIpController.text) {
+      _localIpController.text = widget.localIp;
+    }
+    if (widget.title != oldWidget.title && widget.title != _titleController.text) {
+      _titleController.text = widget.title;
+    }
+    if (widget.promptTitle != oldWidget.promptTitle && widget.promptTitle != _promptTitleController.text) {
+      _promptTitleController.text = widget.promptTitle;
+    }
+    if (widget.systemInstruction != oldWidget.systemInstruction && widget.systemInstruction != _systemInstructionController.text) {
+      _systemInstructionController.text = widget.systemInstruction;
+    }
+    if (widget.openRouterModel != oldWidget.openRouterModel && widget.openRouterModel != _openRouterModelController.text) {
+      _openRouterModelController.text = widget.openRouterModel;
+    }
   }
 
   @override
@@ -296,8 +308,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     return Drawer(
       width: 320,
       backgroundColor: const Color.fromARGB(255, 0, 0, 0),
-      shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.3) : null,
-      elevation: themeProvider.enableBloom ? 20 : 16,
+      shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.9) : null,
+      elevation: themeProvider.enableBloom ? 30 : 16,
       child: Stack(
         children: [
           SingleChildScrollView(
@@ -311,12 +323,18 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 fontSize: 22, 
                 fontWeight: FontWeight.bold, 
                 color: themeProvider.appThemeColor,
-                shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
+                shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.12.1", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const Text("v0.1.12.2", 
+              style: TextStyle(
+                fontSize: 16, 
+                fontWeight: FontWeight.bold, 
+                color: Colors.grey
+                )),
             const Divider(),
             const SizedBox(height: 10),
+            
 
             Text("API Key (BYOK)", 
               style: TextStyle(
@@ -787,7 +805,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
             // --- GROUNDING SWITCH ---
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text("Grounding / Web Search"),
+              title: Text("Grounding / Web Search", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
               subtitle: Text(
                 widget.currentProvider == AiProvider.gemini ? "Uses Google Search (Native)" 
                 : widget.currentProvider == AiProvider.openRouter ? "Try OpenRouter Web Plugin"
@@ -805,7 +823,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
             if (widget.currentProvider == AiProvider.gemini)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text("Disable Safety Filters"), 
+                title: Text("Disable Safety Filters", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])), 
                 subtitle: const Text("Applies to Gemini Only", style: TextStyle(fontSize: 10, color: Colors.grey)),
                 value: widget.disableSafety, 
                 activeThumbColor: Colors.redAccent, 
@@ -945,17 +963,17 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   children: [
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text("Enable Bloom (Glow)", style: TextStyle(fontSize: 14)),
+                      title: Text("Enable Bloom (Glow)", style: TextStyle(fontSize: 14, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
                       subtitle: const Text("Adds a dreamy glow effect", style: TextStyle(fontSize: 10, color: Colors.grey)),
                       value: provider.enableBloom,
                       activeThumbColor: provider.appThemeColor,
                       onChanged: (val) => provider.toggleBloom(val),
                     ),
                     const Divider(),
-                    Text("Environmental Effects", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor.withOpacity(0.8))),
+                    Text("Environmental Effects", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor.withOpacity(0.8), shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text("Floating Dust Motes", style: TextStyle(fontSize: 14)),
+                      title: Text("Floating Dust Motes", style: TextStyle(fontSize: 14, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
                       subtitle: const Text("Subtle, glowing particles", style: TextStyle(fontSize: 10, color: Colors.grey)),
                       value: provider.enableMotes,
                       activeThumbColor: themeProvider.appThemeColor,
@@ -963,7 +981,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text("Gentle Rain", style: TextStyle(fontSize: 14)),
+                      title: Text("Gentle Rain", style: TextStyle(fontSize: 14, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
                       subtitle: const Text("A calming, rainy mood", style: TextStyle(fontSize: 10, color: Colors.grey)),
                       value: provider.enableRain,
                       activeThumbColor: themeProvider.appThemeColor,
@@ -971,19 +989,11 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text("Glowing Fireflies", style: TextStyle(fontSize: 14)),
+                      title: Text("Glowing Fireflies", style: TextStyle(fontSize: 14, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
                       subtitle: const Text("Blinking lights for a cozy vibe", style: TextStyle(fontSize: 10, color: Colors.grey)),
                       value: provider.enableFireflies,
                       activeThumbColor: themeProvider.appThemeColor,
                       onChanged: (val) => provider.toggleFireflies(val),
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text("VHS Glitch Effect", style: TextStyle(fontSize: 14)),
-                      subtitle: const Text("A retro, cyberpunk feel", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                      value: provider.enableGlitch,
-                      activeThumbColor: themeProvider.appThemeColor,
-                      onChanged: (val) => provider.toggleGlitch(val),
                     ),
                     const Divider(),
                     // Sliders for VFX
@@ -1014,14 +1024,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                           isInt: true,
                           activeColor: themeProvider.appThemeColor,
                           onChanged: (val) => provider.setFirefliesCount(val.toInt())),
-                    if (provider.enableGlitch)
-                      _buildSliderSetting(
-                          title: "Glitch Frequency",
-                          value: provider.glitchIntensity,
-                          min: 0,
-                          max: 1,
-                          activeColor: themeProvider.appThemeColor,
-                          onChanged: (val) => provider.setGlitchIntensity(val)),
 
                     const SizedBox(height: 10),
                     if (provider.backgroundImagePath != null) ...[
@@ -1100,7 +1102,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                                 ),
                                 if (isSelected) 
                                   Container(
-                                    decoration: BoxDecoration(border: Border.all(color: provider.appThemeColor, width: 3), borderRadius: BorderRadius.circular(8), color: Colors.black26), 
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: provider.appThemeColor, width: 2), 
+                                      borderRadius: BorderRadius.circular(8), 
+                                    ), 
                                     child: Center(child: Icon(Icons.check_circle, color: provider.appThemeColor)),
                                   ),
                               ],

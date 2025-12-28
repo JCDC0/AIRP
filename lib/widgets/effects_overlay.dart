@@ -9,24 +9,20 @@ class EffectsOverlay extends StatelessWidget {
   final bool showMotes;
   final bool showRain;
   final bool showFireflies;
-  final bool showGlitch;
   final Color effectColor;
   final double motesDensity;
   final double rainIntensity;
   final double firefliesCount;
-  final double glitchIntensity;
 
   const EffectsOverlay({
     super.key,
     this.showMotes = false,
     this.showRain = false,
     this.showFireflies = false,
-    this.showGlitch = false,
     required this.effectColor,
     this.motesDensity = 50.0,
     this.rainIntensity = 80.0,
     this.firefliesCount = 30.0,
-    this.glitchIntensity = 0.5,
   });
 
   @override
@@ -47,8 +43,6 @@ class EffectsOverlay extends StatelessWidget {
           FirefliesEffect(
             numberOfFireflies: firefliesCount.toInt(),
           ),
-        if (showGlitch)
-          GlitchEffect(intensity: glitchIntensity),
       ],
     );
   }
@@ -318,129 +312,3 @@ class FireflyPainter extends CustomPainter {
   bool shouldRepaint(_) => true;
 }
 
-// =======================================================================
-// Glitch Effect (unchanged)
-// =======================================================================
-class GlitchEffect extends StatefulWidget {
-  final double intensity;
-
-  const GlitchEffect({
-    super.key,
-    this.intensity = 0.5,
-  });
-
-  @override
-  State<GlitchEffect> createState() => _GlitchEffectState();
-}
-
-class _GlitchEffectState extends State<GlitchEffect>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  final Random random = Random();
-  final List<_GlitchArtifact> _artifacts = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 1))
-          ..addListener(() {
-            final spawnChance = widget.intensity * 0.25;
-            if (random.nextDouble() < spawnChance) {
-              _addArtifact();
-            }
-            _cleanupArtifacts();
-          })
-          ..repeat();
-  }
-
-  void _addArtifact() {
-    if (!mounted) return;
-    setState(() {
-      _artifacts.add(_GlitchArtifact(
-        top: random.nextDouble(),
-        height: random.nextDouble() * 0.0005 + 0.0002,
-        offset: random.nextDouble() * 5 - 2.5,
-        isChromatic: random.nextDouble() > 0.3,
-      ));
-    });
-  }
-
-  void _cleanupArtifacts() {
-    if (!mounted) return;
-    setState(() {
-      _artifacts.removeWhere((a) => a.isExpired);
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: _artifacts.map((artifact) {
-        return Positioned(
-          top: artifact.top * MediaQuery.of(context).size.height,
-          height:
-              artifact.height * MediaQuery.of(context).size.height,
-          left: 0,
-          right: 0,
-          child: _GlitchBar(artifact: artifact),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _GlitchArtifact {
-  final double top;
-  final double height;
-  final double offset;
-  final bool isChromatic;
-  final DateTime createdAt = DateTime.now();
-  final int lifeSpan = Random().nextInt(150) + 50;
-
-  bool get isExpired =>
-      DateTime.now().difference(createdAt).inMilliseconds > lifeSpan;
-
-  _GlitchArtifact({
-    required this.top,
-    required this.height,
-    required this.offset,
-    required this.isChromatic,
-  });
-}
-
-class _GlitchBar extends StatelessWidget {
-  final _GlitchArtifact artifact;
-
-  const _GlitchBar({required this.artifact});
-
-  @override
-  Widget build(BuildContext context) {
-    if (artifact.isChromatic) {
-      return Stack(
-        children: [
-          Transform.translate(
-            offset: Offset(artifact.offset, 0),
-            child: Container(
-              color: Colors.red.withOpacity(0.8),
-            ),
-          ),
-          Transform.translate(
-            offset: Offset(-artifact.offset * 1.5, 0),
-            child: Container(
-              color: Colors.cyan.withOpacity(0.8),
-            ),
-          ),
-        ],
-      );
-    } else {
-      return Container(color: Colors.white.withOpacity(0.5));
-    }
-  }
-}

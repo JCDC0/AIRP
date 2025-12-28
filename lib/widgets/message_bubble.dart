@@ -79,104 +79,118 @@ class MessageBubble extends StatelessWidget {
     final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
     final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
     final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha(128) : Colors.white10;
+    final useBloom = themeProvider.enableBloom;
 
-    // BLOOM LOGIC
-    List<BoxShadow> boxShadows = [];
-    if (themeProvider.enableBloom) {
-      boxShadows = [
-        BoxShadow(
-          color: bubbleColor.withOpacity(0.5),
-          blurRadius: 12,
-          spreadRadius: 1,
-        ),
-      ];
-    }
+    // Define the content once to avoid repetition
+    final contentColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min, // Important for CustomPaint to get the correct size
+      children: [
+        // --- MODEL NAME DISPLAY ADDED HERE ---
+        if (!msg.isUser && msg.modelName != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: useBloom ? [const BoxShadow(color: Color.fromARGB(26, 255, 255, 255), blurRadius: 4)] : [],
+              ),
+              child: Text(
+                cleanModelName(msg.modelName!),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: textColor.withOpacity(0.7),
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
+                ),
+              ),
+            ),
+          ),
+        // --------------------------------------
+        if (msg.imagePaths.isNotEmpty)
+          _buildAttachmentGrid(context, msg.imagePaths),
+        if (msg.aiImage != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: GestureDetector(
+              onTap: () => _showImageZoom(context, MemoryImage(base64Decode(msg.aiImage!))),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(base64Decode(msg.aiImage!), width: 250, fit: BoxFit.contain),
+              ),
+            ),
+          ),
+        if (msg.text.isNotEmpty)
+          MarkdownBody(
+            data: msg.text,
+            styleSheet: MarkdownStyleSheet(
+              p: TextStyle(
+                color: textColor,
+                shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 20)] : [],
+              ),
+              a: TextStyle(
+                color: Colors.blueAccent,
+                decoration: TextDecoration.underline,
+                shadows: useBloom ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)] : [],
+              ),
+              code: TextStyle(
+                color: textColor,
+                backgroundColor: Colors.black26,
+                shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
+              ),
+              h1: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+              h2: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+              h3: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+            ),
+          ),
+      ],
+    );
+
+        // Use the CustomPaint for the glowing border, or a simple Container if bloom is off
+    final bubbleWidget = useBloom
+      ? Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          child: CustomPaint(
+            painter: BorderGlowPainter(
+              backgroundColor: bubbleColor,
+              borderColor: borderColor,
+              glowColor: (msg.isUser ? bubbleColor : Colors.white).withOpacity(0.25),
+              radius: 12.0,
+              strokeWidth: 2.0,
+              glowStrokeWidth: 10.0,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+              child: contentColumn,
+            ),
+          ),
+        )
+      : Container(
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          padding: const EdgeInsets.all(12),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor),
+          ),
+          child: contentColumn,
+        );
 
     return Align(
       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
         onLongPress: onLongPress,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor),
-            boxShadow: boxShadows, // Apply Glow
-          ),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- MODEL NAME DISPLAY ADDED HERE ---
-              if (!msg.isUser && msg.modelName != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.black26,
-                      borderRadius: BorderRadius.circular(4),
-                      boxShadow: themeProvider.enableBloom ? [BoxShadow(color: Colors.white10, blurRadius: 4)] : [],
-                    ),
-                    child: Text(
-                      cleanModelName(msg.modelName!),
-                      style: TextStyle(
-                        fontSize: 10, 
-                        color: textColor.withOpacity(0.7), 
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                        shadows: themeProvider.enableBloom ? [Shadow(color: textColor.withOpacity(0.5), blurRadius: 4)] : [],
-                      ),
-                    ),
-                  ),
-                ),
-              // --------------------------------------
-                            if (msg.imagePaths.isNotEmpty)
-                _buildAttachmentGrid(context, msg.imagePaths), 
-              if (msg.aiImage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: GestureDetector(
-                    onTap: () => _showImageZoom(context, MemoryImage(base64Decode(msg.aiImage!))),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(base64Decode(msg.aiImage!), width: 250, fit: BoxFit.contain),
-                    ),
-                  ),
-                ),
-                            if (msg.text.isNotEmpty)
-                MarkdownBody(
-                  data: msg.text,
-                  styleSheet: MarkdownStyleSheet(
-                    p: TextStyle(
-                      color: textColor,
-                      shadows: themeProvider.enableBloom ? [Shadow(color: textColor.withOpacity(0.6), blurRadius: 8)] : [],
-                    ),
-                    a: TextStyle(
-                      color: Colors.blueAccent, 
-                      decoration: TextDecoration.underline,
-                      shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)] : [],
-                    ),
-                    code: TextStyle(
-                      color: textColor, 
-                      backgroundColor: Colors.black26,
-                      shadows: themeProvider.enableBloom ? [Shadow(color: textColor.withOpacity(0.4), blurRadius: 4)] : [],
-                    ),
-                    h1: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-                    h2: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-                    h3: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        child: bubbleWidget,
       ),
     );
   }
 
-      Widget _buildAttachmentGrid(BuildContext context, List<String> paths) {
+    Widget _buildAttachmentGrid(BuildContext context, List<String> paths) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Wrap(
@@ -234,3 +248,66 @@ class MessageBubble extends StatelessWidget {
     );
   }
 }
+
+
+/// A custom painter to draw a bubble with a glowing border effect.
+/// This provides more control than a simple boxShadow, allowing the glow
+/// to emanate directly from the border line.
+class BorderGlowPainter extends CustomPainter {
+  final Color backgroundColor;
+  final Color borderColor;
+  final Color glowColor;
+  final double radius;
+  final double strokeWidth;
+  final double glowStrokeWidth;
+
+  BorderGlowPainter({
+    required this.backgroundColor,
+    required this.borderColor,
+    required this.glowColor,
+    this.radius = 12.0,
+    this.strokeWidth = 1.0,
+    this.glowStrokeWidth = 3.0,
+  });
+
+    @override
+  void paint(Canvas canvas, Size size) {
+    // Paint for the glowing effect
+    final glowPaint = Paint()
+      ..color = glowColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = glowStrokeWidth
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12.0); // Increased blur for "dreamy" look
+
+    // Paint for the solid background fill
+    final bgPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.fill;
+
+    // Paint for the crisp, visible border
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
+
+    // Draw the glow first, so it's behind everything
+    canvas.drawRRect(rrect, glowPaint);
+
+    // Draw the background fill on top of the glow
+    canvas.drawRRect(rrect, bgPaint);
+
+    // Draw the crisp border on top of the background
+    canvas.drawRRect(rrect.inflate(-strokeWidth / 2), borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant BorderGlowPainter oldDelegate) {
+    return oldDelegate.backgroundColor != backgroundColor ||
+           oldDelegate.borderColor != borderColor ||
+           oldDelegate.glowColor != glowColor;
+  }
+}
+

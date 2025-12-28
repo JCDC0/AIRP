@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -1451,13 +1450,10 @@ void _showEditDialog(int index) {
                 showMotes: themeProvider.enableMotes,
                 showRain: themeProvider.enableRain,
                 showFireflies: themeProvider.enableFireflies,
-                showGlitch: themeProvider.enableGlitch,
                 effectColor: themeProvider.appThemeColor,
                 motesDensity: themeProvider.motesDensity.toDouble(),
                 rainIntensity: themeProvider.rainIntensity.toDouble(),
-                firefliesCount: themeProvider.firefliesCount.toDouble(),
-                glitchIntensity: themeProvider.glitchIntensity,
-              ),
+                firefliesCount: themeProvider.firefliesCount.toDouble(),              ),
             ),
           SafeArea(
             child: Column(
