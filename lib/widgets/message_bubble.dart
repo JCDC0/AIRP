@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:markdown/markdown.dart' as md;
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
 import '../utils/constants.dart'; 
@@ -76,10 +78,17 @@ class MessageBubble extends StatelessWidget {
 
     @override
   Widget build(BuildContext context) {
-    final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
+        final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
     final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
     final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha(128) : Colors.white10;
     final useBloom = themeProvider.enableBloom;
+
+    final codeStyle = TextStyle(
+      color: textColor,
+      backgroundColor: Colors.black26,
+      shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
+      fontFamily: 'monospace',
+    );
 
     // Define the content once to avoid repetition
     final contentColumn = Column(
@@ -123,24 +132,23 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-        if (msg.text.isNotEmpty)
+                if (msg.text.isNotEmpty)
           MarkdownBody(
             data: msg.text,
+            builders: {
+              'pre': CodeElementBuilder(context, codeStyle),
+            },
             styleSheet: MarkdownStyleSheet(
               p: TextStyle(
                 color: textColor,
-                shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 20)] : [],
+                shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 15)] : [],
               ),
               a: TextStyle(
                 color: Colors.blueAccent,
                 decoration: TextDecoration.underline,
                 shadows: useBloom ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)] : [],
               ),
-              code: TextStyle(
-                color: textColor,
-                backgroundColor: Colors.black26,
-                shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
-              ),
+              code: codeStyle,
               h1: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
               h2: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
               h3: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
@@ -157,7 +165,7 @@ class MessageBubble extends StatelessWidget {
             painter: BorderGlowPainter(
               backgroundColor: bubbleColor,
               borderColor: borderColor,
-              glowColor: (msg.isUser ? bubbleColor : Colors.white).withOpacity(0.25),
+              glowColor: (msg.isUser ? bubbleColor : Colors.white).withOpacity(0.15),
               radius: 12.0,
               strokeWidth: 2.0,
               glowStrokeWidth: 10.0,
@@ -246,9 +254,83 @@ class MessageBubble extends StatelessWidget {
         }).toList(),
       ),
     );
-  }
+    }
 }
 
+class CodeElementBuilder extends MarkdownElementBuilder {
+  final BuildContext context;
+  final TextStyle textStyle;
+
+  CodeElementBuilder(this.context, this.textStyle);
+
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    var language = '';
+
+    if (element.attributes['class'] != null) {
+      String lg = element.attributes['class'] as String;
+      language = lg.substring(9);
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Code Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: const BoxDecoration(
+              color: Colors.white10,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (language.isNotEmpty)
+                  Text(
+                    language.toUpperCase(),
+                    style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+                  )
+                else
+                   const SizedBox.shrink(),
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: element.textContent));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Code copied!'), duration: Duration(seconds: 1)),
+                    );
+                  },
+                  child: const Row(
+                    children: [
+                      Icon(Icons.copy, color: Colors.white70, size: 14),
+                      SizedBox(width: 6),
+                      Text("Copy Code", style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Code Body
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              element.textContent.trimRight(),
+              style: textStyle.copyWith(backgroundColor: Colors.transparent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// A custom painter to draw a bubble with a glowing border effect.
 /// This provides more control than a simple boxShadow, allowing the glow
