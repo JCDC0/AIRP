@@ -174,17 +174,17 @@ case 'Google':
   }
 
   Future<void> resetToDefaults() async {
-    _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
+    _userBubbleColor = const Color.fromARGB(255, 0, 70, 70).withAlpha((0.8 * 255).round());
     _userTextColor = Colors.white;
-    _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
+    _aiBubbleColor = const Color.fromARGB(255, 57, 0, 0).withAlpha((0.8 * 255).round());
     _aiTextColor = Colors.white;
-        _appThemeColor = Colors.cyanAccent;
+    _appThemeColor = const Color.fromARGB(255, 255, 255, 255);
     _enableBloom = false;
-        _enableMotes = false;
+    _enableMotes = false;
     _enableRain = false;
     _enableFireflies = false;
     _backgroundOpacity = 0.7;
-        _motesDensity = 75;
+    _motesDensity = 75;
     _rainIntensity = 100;
     _firefliesCount = 50;
     
