@@ -14,7 +14,7 @@
 *   **Developer Friendly**: Full Markdown support with **syntax highlighting** for code blocks and one-click code copying.
 *   **Message Management**: Edit, copy, delete, or regenerate specific messages within a chat.
 *   **Deep Visual Customization**: Control global accent colors, bubble colors, opacity, and choose from thematic font presets.
-*   **Atmospheric Effects**: Toggle "Bloom" for a neon glow, or enable environmental effects like **Floating Motes**, **Rain**, or **Fireflies**.
+*   **Atmospheric Effects**: Toggle "Bloom" for a glow dependent on your chosen color, or enable environmental effects like **Floating Motes**, **Rain**, or **Fireflies**.
 *   **System Prompt Library**: Save and load custom personas and roleplay instructions.
 *   **Multimodal Support**: Send images to compatible models.
 *   **File Attachment Support**: Attach PDFs and text-based files (txt, md, dart, etc.) to your messages for AI analysis.
@@ -172,7 +172,7 @@ Located in the Settings Drawer under **Visuals & Atmosphere**. You have full con
 
 ## Disclaimer
 
-This project was developed with the assistance of AI tools. It is intended as a personal project and possibly as a portfolio piece. Use at your own risk; I am not responsible for API costs incurred via OpenRouter or Google Cloud. 
+This project was developed with the assistance of AI tools. It is intended as a personal project and possibly as a portfolio piece. Use at your own risk; I am not responsible for API costs incurred via OpenRouter, Google Cloud, or other supporting platforms.
 
 ## License
 
