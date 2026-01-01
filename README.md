@@ -21,8 +21,7 @@
 *   **Google Search Grounding**: Toggle real-time web search integration for Gemini models.
 *   **Token Counting**: Live token usage estimation to track context limits.
 *   **Enhanced Zoom Controls**: Pinch-to-zoom the conversation for better readability. An animated reset button appears for easy navigation.
-```
-apple
+
 ## Getting Started
 
 ### Prerequisites
@@ -149,17 +148,25 @@ Fine-tune how the AI behaves using the **Settings Drawer**. All sliders support 
 
 ## Customization
 
-### Visuals
-Located in the Settings Drawer under **Visuals & Atmosphere**:
-*   **Backgrounds**: Choose from built-in assets or tap the **Add Photo** icon to use a custom image from your gallery. Long-press a custom image to remove it.
-*   **Opacity**: Adjust the dimmer slider to improve text readability against backgrounds.
-*   **Colors & Fonts**: Customize chat bubble colors and the global application font.
-*   **Bloom & Effects**: Toggle the "Bloom" switch for a dreamy glow effect on text and icons. Enable environmental effects like **Floating Motes**, **Rain**, or **Fireflies** to set the mood.
+### Visuals & Atmosphere
+Located in the Settings Drawer under **Visuals & Atmosphere**. You have full control over the app's "Vibe":
 
-### System Prompts
-Located in the Settings Drawer:
-*   **Library**: Save frequently used system instructions (personas).
-*   **Load**: Select a preset from the dropdown to auto-fill the system instruction field.
+*   **Global Theme**: Change the primary accent color of the entire application (borders, icons, glow effects).
+*   **Backgrounds**: Choose from built-in assets or tap the **Add Photo** icon to use a custom image from your gallery.
+*   **Thematic Fonts**: Switch between distinct typography styles:
+    *   *Default* (System)
+    *   *Roleplay* (Lora)
+    *   *Terminal* (Space Mono)
+    *   *Cyber* (Orbitron)
+    *   *Modern Anime* (Quicksand)
+    *   *Gothic* (Crimson Pro)
+    *   *And more...*
+*   **Bloom & Effects**: Toggle the "Bloom" switch for a dreamy glow effect on text and icons.
+*   **Weather & Particles**: Enable dynamic overlays:
+    *   **Floating Motes**: Dusty, ambient particles.
+    *   **Rain**: A melancholic weather effect.
+    *   **Fireflies**: Glowing orbs that pulse and move.
+*   **Opacity Control**: Fine-tune the transparency of the background dimmer and message bubbles independently.
 
 ---
 
