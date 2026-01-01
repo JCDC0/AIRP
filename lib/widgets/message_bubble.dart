@@ -213,21 +213,20 @@ class MessageBubble extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                 // 1. REGENERATE (Leftmost for AI)
+                // 1. REGENERATE (Leftmost for AI)
                  if (onRegenerate != null)
-                   _buildIconBtn(Icons.refresh, "Regenerate", onRegenerate!, textColor),
+                   _buildIconBtn(Icons.refresh, "Regenerate", onRegenerate!, textColor, 25),
 
                  // 2. COPY
                  if (onCopy != null)
-                   _buildIconBtn(Icons.copy_rounded, "Copy", onCopy!, textColor),
+                   _buildIconBtn(Icons.copy_rounded, "Copy", onCopy!, textColor, 25),
 
                  // 3. EDIT (User Only usually)
                  if (onEdit != null)
-                   _buildIconBtn(Icons.edit_outlined, "Edit", onEdit!, textColor),
-
+                   _buildIconBtn(Icons.edit_outlined, "Edit", onEdit!, textColor, 25),
                  // 4. DELETE
                  if (onDelete != null)
-                   _buildIconBtn(Icons.delete_outline, "Delete", onDelete!, textColor),
+                   _buildIconBtn(Icons.delete_outline, "Delete", onDelete!, textColor, 25),
               ],
             ),
           ),
@@ -236,15 +235,15 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildIconBtn(IconData icon, String tooltip, VoidCallback onTap, Color color) {
+    Widget _buildIconBtn(IconData icon, String tooltip, VoidCallback onTap, Color color, double size) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: IconButton(
-        icon: Icon(icon, size: 16, color: color.withOpacity(0.5)),
+        icon: Icon(icon, size: size, color: color.withOpacity(0.5)),
         onPressed: onTap,
         tooltip: tooltip,
         constraints: const BoxConstraints(),
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(8),
         style: IconButton.styleFrom(
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           hoverColor: color.withOpacity(0.1),

@@ -836,9 +836,11 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-    void _showAttachmentMenu() {
-    // Get ThemeProvider to style the bottom sheet if needed
+      void _showAttachmentMenu() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final bool useBloom = themeProvider.enableBloom;
+    final Color themeColor = themeProvider.appThemeColor;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
@@ -847,9 +849,18 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Wrap(
             children: <Widget>[
               ListTile(
-                // Use theme color for attachment icons
-                leading: Icon(Icons.photo_library, color: themeProvider.appThemeColor),
-                title: const Text('Image from Gallery'),
+                leading: Icon(
+                  Icons.photo_library, 
+                  color: themeColor,
+                  shadows: useBloom ? [Shadow(color: themeColor, blurRadius: 10)] : [],
+                ),
+                title: Text(
+                  'Image from Gallery',
+                  style: TextStyle(
+                    color: Colors.white,
+                    shadows: useBloom ? [Shadow(color: themeColor, blurRadius: 8)] : [],
+                  ),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage();
@@ -857,8 +868,18 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
 
               ListTile(
-                leading: const Icon(Icons.description, color: Colors.orangeAccent),
-                title: const Text('Document / File'),
+                leading: Icon(
+                  Icons.description, 
+                  color: Colors.orangeAccent,
+                  shadows: useBloom ? [const Shadow(color: Colors.orangeAccent, blurRadius: 10)] : [],
+                ),
+                title: Text(
+                  'Document / File',
+                  style: TextStyle(
+                    color: Colors.white,
+                    shadows: useBloom ? [Shadow(color: themeColor, blurRadius: 8)] : [],
+                  ),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickFile();
@@ -947,7 +968,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // ----------------------------------------------------------------------
   // REGENERATE FUNCTION
   // ----------------------------------------------------------------------
-  void _regenerateResponse(int index) {
+    Future<void> _regenerateResponse(int index) async {
     if (index < 0 || index >= _messages.length) return;
     final msg = _messages[index];
 
@@ -964,9 +985,6 @@ class _ChatScreenState extends State<ChatScreen> {
           _pendingImages.clear();
           _pendingImages.addAll(userMsg.imagePaths);
           _isLoading = true; // Set loading before async call
-          
-          // Use a post-frame callback to ensure state is settled before sending
-          WidgetsBinding.instance.addPostFrameCallback((_) => _sendMessage());
         } else {
           // Fallback: just delete this orphan AI message
           _messages.removeAt(index);
@@ -980,10 +998,14 @@ class _ChatScreenState extends State<ChatScreen> {
         _pendingImages.clear();
         _pendingImages.addAll(userMsg.imagePaths);
         _isLoading = true;
-        
-        WidgetsBinding.instance.addPostFrameCallback((_) => _sendMessage());
       }
     });
+
+    // FIX: Re-initialize model to clear internal history of deleted messages
+    await _initializeModel();
+    
+    // Send message directly (no need for post frame callback if we awaited init)
+    _sendMessage();
   }
   
   void _confirmRegenerate(int index) {
@@ -1020,6 +1042,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final msg = _messages[index];
     final bool isLastMessage = index == _messages.length - 1;
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final bool useBloom = themeProvider.enableBloom;
 
     showModalBottomSheet(
       context: context,
@@ -1036,7 +1059,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 Container(
                   width: 40, height: 4,
                   margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600], 
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: useBloom ? [const BoxShadow(color: Colors.white24, blurRadius: 6)] : [],
+                  ),
                 ),
                 
                 // THE ICON ROW
@@ -1048,6 +1075,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       icon: Icons.copy, 
                       label: "Copy", 
                       color: themeProvider.appThemeColor, // Changed to Theme Color
+                      useBloom: useBloom,
                       onTap: () {
                         Navigator.pop(context);
                         Clipboard.setData(ClipboardData(text: msg.text));
@@ -1061,6 +1089,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       icon: Icons.edit, 
                       label: "Edit", 
                       color: Colors.orangeAccent, 
+                      useBloom: useBloom,
                       onTap: () {
                         Navigator.pop(context);
                         _showEditDialog(index);
@@ -1074,6 +1103,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         icon: Icons.refresh, 
                         label: "Retry", 
                         color: Colors.greenAccent, 
+                        useBloom: useBloom,
                         onTap: isLastMessage ? () {
                           Navigator.pop(context);
                           _regenerateResponse(index);
@@ -1086,6 +1116,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       icon: Icons.delete, 
                       label: "Delete", 
                       color: Colors.redAccent, 
+                      useBloom: useBloom,
                       onTap: () {
                         Navigator.pop(context); 
                         _confirmDeleteMessage(index); 
@@ -1101,7 +1132,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMenuIcon({required IconData icon, required String label, required Color color, VoidCallback? onTap}) {
+    Widget _buildMenuIcon({required IconData icon, required String label, required Color color, VoidCallback? onTap, bool useBloom = false}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1109,13 +1140,25 @@ class _ChatScreenState extends State<ChatScreen> {
           style: IconButton.styleFrom(
             backgroundColor: color.withValues(alpha: 0.1),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
           ),
-          icon: Icon(icon, color: color, size: 28),
+          icon: Icon(
+            icon, 
+            color: color, 
+            size: 36,
+            shadows: useBloom ? [Shadow(color: color, blurRadius: 10)] : [],
+          ),
           onPressed: onTap,
         ),
         const SizedBox(height: 8),
-        Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+        Text(
+          label, 
+          style: TextStyle(
+            color: Colors.grey[400], 
+            fontSize: 12,
+            shadows: useBloom ? [Shadow(color: color, blurRadius: 8)] : [],
+          )
+        ),
       ],
     );
   }
@@ -1182,13 +1225,16 @@ void _showEditDialog(int index) {
     );
   }
 
-  // DELETE LOGIC
+    // DELETE LOGIC
   void _deleteMessage(int index) {
     setState(() {
       _messages.removeAt(index);
     });
     _autoSaveCurrentSession();
     
+    // FIX: Sync internal model history with UI
+    _initializeModel();
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("Message deleted"),
@@ -1388,7 +1434,6 @@ void _showEditDialog(int index) {
                 title: PopupMenuButton<AiProvider>(
           initialValue: _currentProvider,
           color: const Color(0xFF2C2C2C),
-          // MODIFIED: Use theme color for shadow/bloom
           shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : null,
           elevation: themeProvider.enableBloom ? 12 : 8,
           onSelected: (AiProvider result) {
