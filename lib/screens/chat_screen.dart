@@ -27,7 +27,7 @@ class ChatScreen extends StatefulWidget {
 // ----------------------------------------------------------------------
 // CONFIGURATION
 // ----------------------------------------------------------------------
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   static const _defaultApiKey = ''; // hardcode a default key if desired
 
   // LOADING STATES
@@ -96,12 +96,50 @@ class _ChatScreenState extends State<ChatScreen> {
   int _tokenCount = 0;
 
 
+    // ZOOM STATE
+  final TransformationController _transformationController = TransformationController();
+  bool _isZoomed = false;
+
   @override
   void initState() {
     super.initState();
     _loadSessions();
     _loadSettings(); 
     _loadSystemPrompts();
+    _transformationController.addListener(_onZoomChange);
+  }
+
+  @override
+  void dispose() {
+    _transformationController.removeListener(_onZoomChange);
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _onZoomChange() {
+    final scale = _transformationController.value.getMaxScaleOnAxis();
+    if (scale > 1.01 && !_isZoomed) {
+      setState(() => _isZoomed = true);
+    } else if (scale <= 1.01 && _isZoomed) {
+      setState(() => _isZoomed = false);
+    }
+  }
+
+  void _resetZoom() {
+    final animation = Matrix4Tween(
+      begin: _transformationController.value,
+      end: Matrix4.identity(),
+    ).animate(CurvedAnimation(
+      parent: AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 300),
+      )..forward(),
+      curve: Curves.easeOut,
+    ));
+
+    animation.addListener(() {
+      _transformationController.value = animation.value;
+    });
   }
 
   Future<void> _loadSessions() async {
@@ -1504,197 +1542,215 @@ void _showEditDialog(int index) {
       ),
             body: Stack(
         children: [
-          if (themeProvider.backgroundImagePath != null)
-                        Positioned.fill(
-              child: Image(
-                image: themeProvider.currentImageProvider,
-                fit: BoxFit.cover,
-              ),
-            ),
-          if (themeProvider.backgroundImagePath != null)
-            Positioned.fill(
-              child: Container(
-                  color: Colors.black
-                      .withAlpha((themeProvider.backgroundOpacity * 255).round())),
-            ),
-            Positioned.fill(
-              child: EffectsOverlay(
-                showMotes: themeProvider.enableMotes,
-                showRain: themeProvider.enableRain,
-                showFireflies: themeProvider.enableFireflies,
-                effectColor: themeProvider.appThemeColor,
-                motesDensity: themeProvider.motesDensity.toDouble(),
-                rainIntensity: themeProvider.rainIntensity.toDouble(),
-                firefliesCount: themeProvider.firefliesCount.toDouble(),              ),
-            ),
-          SafeArea(
-            child: Column(
+          // 1. ZOOMABLE CONTENT (Chat History + Background)
+          InteractiveViewer(
+            transformationController: _transformationController,
+            minScale: 1.0,
+            maxScale: 5.0,
+            child: Stack(
               children: [
-                Expanded(
-                                    child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: _messages.length,
-                    itemBuilder: (context, index) {
-                      return MessageBubble(
-                        msg: _messages[index],
-                        themeProvider: themeProvider,
-                        onLongPress: () => _showMessageOptions(context, index),
-                        onCopy: () {
-                          Clipboard.setData(ClipboardData(text: _messages[index].text));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Copied!"), duration: Duration(milliseconds: 600))
-                          );
-                        },
-                        onEdit: () => _showEditDialog(index),
-                        onRegenerate: () => _confirmRegenerate(index),
-                        onDelete: () => _confirmDeleteMessage(index),
-                      );
-                    },
+                if (themeProvider.backgroundImagePath != null)
+                  Positioned.fill(
+                    child: Image(
+                      image: themeProvider.currentImageProvider,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                if (themeProvider.backgroundImagePath != null)
+                  Positioned.fill(
+                    child: Container(
+                        color: Colors.black.withAlpha((themeProvider.backgroundOpacity * 255).round())),
+                  ),
+                Positioned.fill(
+                  child: EffectsOverlay(
+                    showMotes: themeProvider.enableMotes,
+                    showRain: themeProvider.enableRain,
+                    showFireflies: themeProvider.enableFireflies,
+                    effectColor: themeProvider.appThemeColor,
+                    motesDensity: themeProvider.motesDensity.toDouble(),
+                    rainIntensity: themeProvider.rainIntensity.toDouble(),
+                    firefliesCount: themeProvider.firefliesCount.toDouble(),
                   ),
                 ),
-              if (_isLoading)
-                LinearProgressIndicator(color: themeProvider.appThemeColor, minHeight: 2),
-              
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                color: const Color(0xFFFFFFFF).withAlpha((0.1 * 255).round()),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_pendingImages.isNotEmpty)
-                      SizedBox(
-                        height: 90,
+                SafeArea(
+                  child: Column(
+                    children: [
+                      Expanded(
                         child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _pendingImages.length,
+                          controller: _scrollController,
+                          itemCount: _messages.length,
+                          padding: const EdgeInsets.only(bottom: 120), // Add padding for input area
                           itemBuilder: (context, index) {
-                            final path = _pendingImages[index];
-                            final filename = path.split('/').last;
-                            final ext = path.split('.').last.toLowerCase();
-                            final isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic'].contains(ext);
-
-                            return Padding(
-                              padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
-                              child: Stack(
-                                children: [
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: isImage
-                                            ? Image.file(File(path),
-                                                width: 60, height: 60, fit: BoxFit.cover)
-                                            : Container(
-                                                width: 60,
-                                                height: 60,
-                                                color: Colors.white12,
-                                                alignment: Alignment.center,
-                                                child: Icon(
-                                                  ext == 'pdf'
-                                                      ? Icons.picture_as_pdf
-                                                      : Icons.insert_drive_file,
-                                                  color: Colors.white70,
-                                                  size: 28,
-                                                ),
-                                              ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      SizedBox(
-                                        width: 60,
-                                        child: Text(
-                                          filename,
-                                          style: const TextStyle(
-                                              color: Colors.white70, fontSize: 9),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  // Delete button (X)
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: InkWell(
-                                      onTap: () => setState(
-                                          () => _pendingImages.removeAt(index)),
-                                      child: const CircleAvatar(
-                                          radius: 10,
-                                          backgroundColor: Colors.red,
-                                          child: Icon(Icons.close,
-                                              size: 12, color: Colors.white)),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            return MessageBubble(
+                              msg: _messages[index],
+                              themeProvider: themeProvider,
+                              onLongPress: () => _showMessageOptions(context, index),
+                              onCopy: () {
+                                Clipboard.setData(ClipboardData(text: _messages[index].text));
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                    content: Text("Copied!"), duration: Duration(milliseconds: 600)));
+                              },
+                              onEdit: () => _showEditDialog(index),
+                              onRegenerate: () => _confirmRegenerate(index),
+                              onDelete: () => _confirmDeleteMessage(index),
                             );
                           },
                         ),
                       ),
-
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.attach_file, color: themeProvider.appThemeColor),
-                          tooltip: "Add Attachment",
-                          onPressed: _isLoading ? null : _showAttachmentMenu,
-                        ),
-
-                        Expanded(
-                          child: TextField(
-                            controller: _textController,
-                            minLines: 1,
-                            maxLines: 6,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              hintText: _pendingImages.isNotEmpty
-                                  ? 'Add a caption...'
-                                  : (_enableGrounding
-                                      ? 'Search & Chat...'
-                                      : 'Ready to chat...'),
-                              hintStyle: TextStyle(color: Colors.grey[600]),
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: BorderSide.none),
-                              filled: true,
-                              fillColor: const Color.fromARGB(255, 0, 0, 0), 
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 10),
-                            ),
-                            // Allow Enter to send ONLY if not loading
-                            onSubmitted: _isLoading ? null : (_) => _sendMessage(),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        // 3. DYNAMIC SEND / STOP BUTTON
-                        // MODIFIED: Uses appThemeColor for button background/icon details
-                        IconButton.filled(
-                          style: IconButton.styleFrom(
-                              backgroundColor: _isLoading
-                                 ? themeProvider.appThemeColor.withOpacity(0.2) 
-                                 : (_enableGrounding ? Colors.green : themeProvider.appThemeColor)
-                          ),
-                          // Toggle Function: Send if idle, Stop if loading
-                          onPressed: _isLoading ? _cancelGeneration : _sendMessage,
-                          // Toggle Icon: Stop Square if loading, Send Plane if idle
-                          icon: Icon(
-                            _isLoading ? Icons.stop_circle_outlined : Icons.send,
-                             color: _isLoading ? themeProvider.appThemeColor : Colors.black
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
             ),
           ),
 
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_isLoading)
+                  LinearProgressIndicator(color: themeProvider.appThemeColor, minHeight: 4),
+                  Container(
+                    padding: const EdgeInsets.all(4.0),
+                    color: const Color(0xFFFFFFFF).withAlpha((0.1 * 255).round()),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_pendingImages.isNotEmpty)
+                          SizedBox(
+                            height: 90,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _pendingImages.length,
+                              itemBuilder: (context, index) {
+                                final path = _pendingImages[index];
+                                final filename = path.split('/').last;
+                                final ext = path.split('.').last.toLowerCase();
+                                final isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic'].contains(ext);
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+                                  child: Stack(
+                                    children: [
+                                      Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: isImage
+                                                ? Image.file(File(path),
+                                                    width: 60, height: 60, fit: BoxFit.cover)
+                                                : Container(
+                                                    width: 60,
+                                                    height: 60,
+                                                    color: Colors.white12,
+                                                    alignment: Alignment.center,
+                                                    child: Icon(
+                                                      ext == 'pdf'
+                                                          ? Icons.picture_as_pdf
+                                                          : Icons.insert_drive_file,
+                                                      color: Colors.white70,
+                                                      size: 28,
+                                                    ),
+                                                  ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          SizedBox(
+                                            width: 60,
+                                            child: Text(
+                                              filename,
+                                              style: const TextStyle(
+                                                  color: Colors.white70, fontSize: 9),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Positioned(
+                                        right: 0,
+                                        top: 0,
+                                        child: InkWell(
+                                          onTap: () => setState(() => _pendingImages.removeAt(index)),
+                                          child: const CircleAvatar(
+                                              radius: 10,
+                                              backgroundColor: Colors.red,
+                                              child: Icon(Icons.close, size: 12, color: Colors.white)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.attach_file, color: themeProvider.appThemeColor),
+                              tooltip: "Add Attachment",
+                              onPressed: _isLoading ? null : _showAttachmentMenu,
+                            ),
+                            Expanded(
+                              child: TextField(
+                                controller: _textController,
+                                minLines: 1,
+                                maxLines: 6,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: _pendingImages.isNotEmpty
+                                      ? 'Add a caption...'
+                                      : (_enableGrounding ? 'Search & Chat...' : 'Ready to chat...'),
+                                  hintStyle: TextStyle(color: Colors.grey[600]),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                                  filled: true,
+                                  fillColor: const Color.fromARGB(255, 0, 0, 0),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                ),
+                                onSubmitted: _isLoading ? null : (_) => _sendMessage(),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton.filled(
+                              style: IconButton.styleFrom(
+                                  backgroundColor: _isLoading
+                                      ? themeProvider.appThemeColor.withOpacity(0.2)
+                                      : (_enableGrounding ? Colors.green : themeProvider.appThemeColor)),
+                              onPressed: _isLoading ? _cancelGeneration : _sendMessage,
+                              icon: Icon(_isLoading ? Icons.stop_circle_outlined : Icons.send,
+                                  color: _isLoading ? themeProvider.appThemeColor : Colors.black),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 3. ZOOM RESET BUTTON
+          if (_isZoomed)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: SafeArea(
+                child: FloatingActionButton.small(
+                  backgroundColor: Colors.black87,
+                  foregroundColor: Colors.white,
+                  onPressed: _resetZoom,
+                  child: const Icon(Icons.zoom_out_map),
+                ),
+              ),
+            ),
         ],
       ),
     );
