@@ -22,7 +22,7 @@
 *   **Token Counting**: Live token usage estimation to track context limits.
 *   **Enhanced Zoom Controls**: Pinch-to-zoom the conversation for better readability. An animated reset button appears for easy navigation.
 ```
-
+apple
 ## Getting Started
 
 ### Prerequisites
