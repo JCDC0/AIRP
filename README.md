@@ -11,14 +11,17 @@
 *   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, ArliAI, NanoGPT, or Local.
 *   **Dynamic Model Lists**: Fetch the latest available models directly from the API providers.
 *   **Searchable History**: Quickly find past conversations using the integrated search bar.
+*   **Developer Friendly**: Full Markdown support with **syntax highlighting** for code blocks and one-click code copying.
 *   **Message Management**: Edit, copy, delete, or regenerate specific messages within a chat.
-*   **Visual Customization**: Control bubble colors, opacity, interface fonts, and custom background wallpapers.
+*   **Deep Visual Customization**: Control global accent colors, bubble colors, opacity, and choose from thematic font presets.
+*   **Atmospheric Effects**: Toggle "Bloom" for a neon glow, or enable environmental effects like **Floating Motes**, **Rain**, or **Fireflies**.
 *   **System Prompt Library**: Save and load custom personas and roleplay instructions.
 *   **Multimodal Support**: Send images to compatible models.
 *   **File Attachment Support**: Attach PDFs and text-based files (txt, md, dart, etc.) to your messages for AI analysis.
-*   **Interactive Media**: Zoom into images sent by you or the AI, and download them (simulated) directly from the chat.
 *   **Google Search Grounding**: Toggle real-time web search integration for Gemini models.
 *   **Token Counting**: Live token usage estimation to track context limits.
+*   **Enhanced Zoom Controls**: Pinch-to-zoom the conversation for better readability. An animated reset button appears for easy navigation.
+```
 
 ## Getting Started
 
@@ -115,6 +118,7 @@ Interact with the message stream using gestures.
     *   **Retry**: Regenerate the response (available on the latest exchange).
     *   **Delete**: Remove the message from the history.
 *   **Model Identification**: The specific model used to generate a response is displayed in a tag above the AI's message bubble.
+*   **Zoom & Pan**: **Pinch-to-zoom** anywhere on the chat history to get a closer look at text or images. When zoomed in, an animated button will appear in the top-right corner, allowing you to instantly reset the view to its default position.
 
 ### Model Selection (Right Drawer)
 Slide from the **right** edge or tap the **Settings** icon.
@@ -150,6 +154,7 @@ Located in the Settings Drawer under **Visuals & Atmosphere**:
 *   **Backgrounds**: Choose from built-in assets or tap the **Add Photo** icon to use a custom image from your gallery. Long-press a custom image to remove it.
 *   **Opacity**: Adjust the dimmer slider to improve text readability against backgrounds.
 *   **Colors & Fonts**: Customize chat bubble colors and the global application font.
+*   **Bloom & Effects**: Toggle the "Bloom" switch for a dreamy glow effect on text and icons. Enable environmental effects like **Floating Motes**, **Rain**, or **Fireflies** to set the mood.
 
 ### System Prompts
 Located in the Settings Drawer:
