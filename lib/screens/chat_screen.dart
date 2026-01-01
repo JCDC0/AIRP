@@ -1603,7 +1603,7 @@ void _showEditDialog(int index) {
               ],
             ),
           ),
-
+          // 2. FIXED INPUT AREA (Stays at bottom, doesn't zoom)
           Positioned(
             left: 0,
             right: 0,
@@ -1737,20 +1737,49 @@ void _showEditDialog(int index) {
             ),
           ),
 
-          // 3. ZOOM RESET BUTTON
-          if (_isZoomed)
-            Positioned(
-              top: 16,
-              right: 16,
-              child: SafeArea(
+          // 3. ANIMATED ZOOM RESET BUTTON
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+            top: _isZoomed ? 16.0 : -60.0, 
+            right: 16,
+                        child: SafeArea(
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: themeProvider.enableBloom
+                      ? [
+                          BoxShadow(
+                            color: themeProvider.appThemeColor.withOpacity(0.6),
+                            blurRadius: 20,
+                            spreadRadius: 0,
+                          )
+                        ]
+                      : [],
+                ),
                 child: FloatingActionButton.small(
                   backgroundColor: Colors.black87,
                   foregroundColor: Colors.white,
                   onPressed: _resetZoom,
-                  child: const Icon(Icons.zoom_out_map),
+                  child: Icon(
+                    Icons.zoom_out_map,
+                    shadows: themeProvider.enableBloom
+                        ? [
+                            Shadow(
+                              color: Colors.white.withOpacity(0.7),
+                              blurRadius: 4,
+                            ),
+                            Shadow(
+                              color: themeProvider.appThemeColor.withOpacity(0.7),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : null,
+                  ),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
