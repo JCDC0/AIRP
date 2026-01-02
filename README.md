@@ -10,6 +10,7 @@
 
 *   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, ArliAI, NanoGPT, or Local.
 *   **Dynamic Model Lists**: Fetch the latest available models directly from the API providers.
+*   **Intelligent Model Selector**: A powerful, searchable dialog for managing large model lists. Features a **Bookmarking System** to pin your favorites to the top and smart sorting that prioritizes your bookmarks and featured models.
 *   **Searchable History**: Quickly find past conversations using the integrated search bar.
 *   **Developer Friendly**: Full Markdown support with **syntax highlighting** for code blocks and one-click code copying.
 *   **Message Management**: Edit, copy, delete, or regenerate specific messages within a chat.
@@ -125,8 +126,12 @@ Slide from the **right** edge or tap the **Settings** icon.
 1.  Ensure you have entered your API Key and saved.
 2.  Locate the **Model Selection** section.
 3.  Press the **Refresh Model List** button. The app will fetch the specific list of models available for your API key.
-4.  Select your desired model from the dropdown menu. The list automatically cleans raw IDs (e.g., `models/gemini-3-pro-preview`) into readable titles (e.g., `Gemini 3 Pro Preview`).
-5.  The **Floating Save Button** will appear. Click it to confirm your selection.
+4.  **Tap the Selector**: This opens the new **Model Manager Dialog**.
+    *   **Search**: Type in the top bar to filter instantly (e.g., "flash", "llama").
+    *   **Bookmark**: Tap the bookmark icon on the right of any model to pin it to the top of the list forever.
+    *   **Subtitles**: Every model now displays its raw API ID underneath the clean name, so you know exactly what you are selecting (crucial for OpenRouter).
+5.  Select your desired model. The list automatically cleans raw IDs (e.g., `models/gemini-3-pro-preview`) into readable titles (e.g., `Gemini 3 Pro Preview`).
+6.  The **Floating Save Button** will appear. Click it to confirm your selection.
 
 ---
 
