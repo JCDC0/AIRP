@@ -71,7 +71,7 @@ class ChatApiService {
     required String model,
     required List<ChatMessage> history, // Current chat history
     required String systemInstruction,
-    required String userMessage,
+        required String userMessage,
     required List<String> imagePaths,
     // Settings
     double temperature = 1.0,
@@ -79,6 +79,7 @@ class ChatApiService {
     int topK = 40,
     int maxTokens = 32768,
     bool enableGrounding = false, // specific to OpenRouter
+    String reasoningEffort = "none", // "none", "low", "medium", "high"
     Map<String, String>? extraHeaders,
   }) async* {
     
@@ -118,7 +119,7 @@ class ChatApiService {
       messagesPayload.add({"role": "user", "content": contentParts});
     }
 
-    // 2. Request Body
+        // 2. Request Body
     final bodyMap = {
       "model": model.trim(),
       "messages": messagesPayload,
@@ -129,8 +130,28 @@ class ChatApiService {
       "max_tokens": maxTokens,
     };
 
-    if (enableGrounding) {
-      bodyMap["plugins"] = ["web_search"];
+    // Apply Reasoning Effort if supported
+    if (reasoningEffort != "none") {
+      // 1. OpenRouter Standard (often uses 'reasoning' block or provider-specific parameters)
+      // OpenRouter supports 'reasoning' parameter which can be { "effort": "medium" } or similar depending on vendor
+      // BUT standard OpenAI/Anthropic/DeepSeek spec usually just implies it via model name or specific flags.
+      // However, newer models like o1/o3-mini use 'reasoning_effort': 'low'/'medium'/'high'
+      
+      // Let's try the modern standard key first
+      bodyMap["reasoning_effort"] = reasoningEffort; 
+      
+      // Also try OpenRouter's specific provider routing if needed, but usually passing it at top level works for supported models
+      // Some models (like DeepSeek R1) might need it in a different way, but standardizing on 'reasoning_effort' is the current trend.
+    }
+
+            if (enableGrounding) {
+      // OpenRouter specific parameter for web search
+      if (baseUrl.contains("openrouter.ai")) {
+        bodyMap["plugins"] = [{"id": "web"}];
+      } else {
+        // Generic fallback or for providers that might support similar flags in the future
+        bodyMap["plugins"] = ["web_search"]; 
+      }
     }
 
     // 3. Prepare Request

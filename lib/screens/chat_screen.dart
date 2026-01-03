@@ -64,10 +64,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
   String _nanoGptModel = 'gpt-4o';
 
-  String _selectedModel = 'models/gemini-flash-lite-latest';
+    String _selectedModel = 'models/gemini-flash-lite-latest';
   double _temperature = 1; 
   bool _enableGrounding = false;
   bool _disableSafety = true;
+  String _reasoningEffort = "none"; // "none", "low", "medium", "high"
   
   late GenerativeModel _model;
   late ChatSession _chat;
@@ -202,7 +203,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _topP = prefs.getDouble('airp_top_p') ?? 0.95;
       _topK = prefs.getInt('airp_top_k') ?? 40;
       _maxOutputTokens = prefs.getInt('airp_max_output') ?? 32768;
-      _historyLimit = prefs.getInt('airp_history_limit') ?? 500;
+            _historyLimit = prefs.getInt('airp_history_limit') ?? 500;
+      _temperature = prefs.getDouble('airp_temperature') ?? 1.0;
+      _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
+      
+      // Load Default System Instruction if current is empty
+      if (_systemInstructionController.text.isEmpty) {
+        _systemInstructionController.text = prefs.getString('airp_default_system_instruction') ?? '';
+      }
       
       _updateApiKeyTextField();
     });
@@ -268,10 +276,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     await prefs.setString('airp_key_nanogpt', _nanoGptKey);
     await prefs.setString('airp_model_arliai', _arliAiModel);
     await prefs.setString('airp_model_nanogpt', _nanoGptModel); 
-    await prefs.setDouble('airp_top_p', _topP);
+        await prefs.setDouble('airp_top_p', _topP);
     await prefs.setInt('airp_top_k', _topK);
     await prefs.setInt('airp_max_output', _maxOutputTokens);
-    await prefs.setInt('airp_history_limit', _historyLimit);
+        await prefs.setInt('airp_history_limit', _historyLimit);
+    await prefs.setDouble('airp_temperature', _temperature);
+    await prefs.setString('airp_reasoning_effort', _reasoningEffort);
+    await prefs.setString('airp_default_system_instruction', _systemInstructionController.text);
 
     if (_currentSessionId != null) {
       _autoSaveCurrentSession(); 
@@ -338,10 +349,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   void _createNewSession() {
     setState(() {
-      _messages.clear();
+            _messages.clear();
       _tokenCount = 0;
       _currentSessionId = null; 
-      _systemInstructionController.clear();
+      // We don't clear system instruction here so it acts as a persistent persona
+      // _systemInstructionController.clear();
       _titleController.clear();
     });
     _initializeModel();
@@ -463,7 +475,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _scrollToBottom();
     _autoSaveCurrentSession();
 
-    // 2. Handle Grounding (Gemini Special Case)
+  // 2. Handle Grounding (Gemini Native Search)
     if (_enableGrounding && _currentProvider == AiProvider.gemini && imagesToSend.isEmpty) {
        try {
          final activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
@@ -555,7 +567,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           topP: _topP,
           topK: _topK,
           maxTokens: _maxOutputTokens,
-          enableGrounding: _enableGrounding && _currentProvider == AiProvider.openRouter,
+                    enableGrounding: _enableGrounding,
+          reasoningEffort: _reasoningEffort,
           extraHeaders: headers,
         );
       }
@@ -590,14 +603,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             });
           }
         },
-        onDone: () async {
+                onDone: () async {
           if (!_isCancelled) {
             setState(() => _isLoading = false);
             _autoSaveCurrentSession();
+            
             if (_currentProvider == AiProvider.gemini) {
               await _initializeModel(); 
-              if (!_enableGrounding) _updateTokenCount();
             }
+            
+            // Update token count for all providers (Gemini uses SDK, others use estimate)
+            if (!_enableGrounding) _updateTokenCount();
           }
         },
       );
@@ -829,12 +845,30 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       setState(() => _tokenCount = 0);
       return;
     }
-    final contents = _messages.map((m) => m.isUser ? Content.text(m.text) : Content.model([TextPart(m.text)])).toList();
-    try {
-      final response = await _model.countTokens(contents);
-      if (mounted) setState(() => _tokenCount = response.totalTokens);
-    } catch (e) {
-      debugPrint('Token count error: $e');
+
+    if (_currentProvider == AiProvider.gemini) {
+      // GEMINI: Use Official SDK
+      try {
+        final contents = _messages.map((m) => m.isUser ? Content.text(m.text) : Content.model([TextPart(m.text)])).toList();
+        final response = await _model.countTokens(contents);
+        if (mounted) setState(() => _tokenCount = response.totalTokens);
+      } catch (e) {
+        debugPrint('Token count error: $e');
+      }
+    } else {
+      // OTHERS: Local Estimation (Heuristic)
+      // Approx 3.5 - 4 chars per token for English text
+      int totalChars = 0;
+      int imgCount = 0;
+      
+      for (var msg in _messages) {
+        totalChars += msg.text.length;
+        imgCount += msg.imagePaths.length;
+      }
+
+      // Calculation: (Chars / 3.5) + (Images * ~200)
+      final int estimatedTokens = (totalChars / 3.5).ceil() + (imgCount * 200);
+      if (mounted) setState(() => _tokenCount = estimatedTokens);
     }
   }
 
@@ -1362,9 +1396,10 @@ void _showEditDialog(int index) {
       topK: _topK,
       maxOutputTokens: _maxOutputTokens,
       historyLimit: _historyLimit,
-      enableGrounding: _enableGrounding,
+            enableGrounding: _enableGrounding,
       disableSafety: _disableSafety,
       hasUnsavedChanges: _hasUnsavedChanges,
+      reasoningEffort: _reasoningEffort,
       savedSystemPrompts: _savedSystemPrompts,
       promptTitle: _promptTitleController.text,
       systemInstruction: _systemInstructionController.text,
@@ -1430,6 +1465,7 @@ void _showEditDialog(int index) {
       onHistoryLimitChanged: (val) => setState(() { _historyLimit = val; _hasUnsavedChanges = true; }),
       onEnableGroundingChanged: (val) => setState(() { _enableGrounding = val; _hasUnsavedChanges = true; }),
       onDisableSafetyChanged: (val) => setState(() { _disableSafety = val; _hasUnsavedChanges = true; }),
+      onReasoningEffortChanged: (val) => setState(() { _reasoningEffort = val; _hasUnsavedChanges = true; }),
       onPromptTitleChanged: (val) {
         setState(() {
           _promptTitleController.text = val;

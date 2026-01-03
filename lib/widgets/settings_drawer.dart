@@ -43,6 +43,7 @@ class SettingsDrawer extends StatefulWidget {
   final bool enableGrounding;
   final bool disableSafety;
   final bool hasUnsavedChanges;
+  final String reasoningEffort; // "none", "low", "medium", "high"
 
   // Prompt System
   final List<SystemPromptData> savedSystemPrompts;
@@ -68,6 +69,7 @@ class SettingsDrawer extends StatefulWidget {
   final Function(int) onHistoryLimitChanged;
   final Function(bool) onEnableGroundingChanged;
   final Function(bool) onDisableSafetyChanged;
+  final Function(String) onReasoningEffortChanged;
   
   final Function(String) onPromptTitleChanged;
   final Function(String) onSystemInstructionChanged;
@@ -104,6 +106,7 @@ class SettingsDrawer extends StatefulWidget {
     required this.enableGrounding,
     required this.disableSafety,
     required this.hasUnsavedChanges,
+    required this.reasoningEffort,
     required this.savedSystemPrompts,
     required this.promptTitle,
     required this.systemInstruction,
@@ -123,6 +126,7 @@ class SettingsDrawer extends StatefulWidget {
     required this.onHistoryLimitChanged,
     required this.onEnableGroundingChanged,
     required this.onDisableSafetyChanged,
+    required this.onReasoningEffortChanged,
     required this.onPromptTitleChanged,
     required this.onSystemInstructionChanged,
     required this.onSavePrompt,
@@ -525,7 +529,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.14", 
+            const Text("v0.1.15", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -879,7 +883,77 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 ),
               ],
             ),
+// --- CONTEXT HISTORY LIMIT ---
+            const Divider(),
+            _buildSliderSetting(
+              title: "(Msg History) Limit",
+              value: widget.historyLimit.toDouble(),
+              min: 2,
+              max: 1000,
+              divisions: 499,
+              activeColor: Colors.greenAccent,
+              isInt: true,
+              onChanged: (val) => widget.onHistoryLimitChanged(val.toInt()),
+            ),
+            const Text(
+              "Note: Lower this if you get 'Context Window Exceeded' errors.",
+              style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
+            ),
+            const Divider(),
 
+            // --- GROUNDING SWITCH ---
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text("Grounding / Web Search", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+              subtitle: Text(
+                widget.currentProvider == AiProvider.gemini ? "Uses Google Search (Native)" 
+                : widget.currentProvider == AiProvider.openRouter ? "Uses OpenRouter Web Plugin"
+                : "Not available on this provider",
+                style: const TextStyle(fontSize: 10, color: Colors.grey)
+              ),
+              value: widget.enableGrounding,
+              activeThumbColor: Colors.greenAccent,
+              onChanged: (widget.currentProvider == AiProvider.gemini || widget.currentProvider == AiProvider.openRouter || widget.currentProvider == AiProvider.arliAi || widget.currentProvider == AiProvider.nanoGpt)
+                  ? widget.onEnableGroundingChanged
+                  : null, 
+            ),
+
+            // --- REASONING MODE ---
+            const SizedBox(height: 10),
+             Text("Reasoning / Thinking Effort", style: TextStyle(fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+            const SizedBox(height: 5),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12),
+                boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : [],
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: widget.reasoningEffort,
+                  dropdownColor: const Color(0xFF2C2C2C),
+                  icon: Icon(Icons.psychology, color: themeProvider.appThemeColor),
+                  items: const [
+                    DropdownMenuItem(value: "none", child: Text("Disabled (None)")),
+                    DropdownMenuItem(value: "low", child: Text("Low / Minimal")),
+                    DropdownMenuItem(value: "medium", child: Text("Medium")),
+                    DropdownMenuItem(value: "high", child: Text("High / Deep Think")),
+                  ],
+                  onChanged: (val) {
+                     if (val != null) widget.onReasoningEffortChanged(val);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 5),
+            const Text(
+              "Controls the depth of thought (Thinking Models Only).",
+              style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
+            ),
+            const Divider(),
             const SizedBox(height: 20),
             
             // --- TEMPERATURE ---
@@ -925,41 +999,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               activeColor: Colors.blueAccent,
               isInt: true,
               onChanged: (val) => widget.onMaxOutputTokensChanged(val.toInt()),
-            ),
-
-            // --- CONTEXT HISTORY LIMIT ---
-            const Divider(),
-            _buildSliderSetting(
-              title: "(Msg History) Limit",
-              value: widget.historyLimit.toDouble(),
-              min: 2,
-              max: 1000,
-              divisions: 499,
-              activeColor: Colors.greenAccent,
-              isInt: true,
-              onChanged: (val) => widget.onHistoryLimitChanged(val.toInt()),
-            ),
-            const Text(
-              "Note: Lower this if you get 'Context Window Exceeded' errors.",
-              style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
-            ),
-            const Divider(),
-
-            // --- GROUNDING SWITCH ---
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text("Grounding / Web Search", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-              subtitle: Text(
-                widget.currentProvider == AiProvider.gemini ? "Uses Google Search (Native)" 
-                : widget.currentProvider == AiProvider.openRouter ? "Try OpenRouter Web Plugin"
-                : "Not available on this provider",
-                style: const TextStyle(fontSize: 10, color: Colors.grey)
-              ),
-              value: widget.enableGrounding,
-              activeThumbColor: Colors.greenAccent,
-              onChanged: (widget.currentProvider == AiProvider.gemini || widget.currentProvider == AiProvider.openRouter)
-                  ? widget.onEnableGroundingChanged
-                  : null, 
             ),
 
             // --- SAFETY FILTERS (Conditional Visibility) ---
