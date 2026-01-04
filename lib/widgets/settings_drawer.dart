@@ -44,7 +44,7 @@ class SettingsDrawer extends StatefulWidget {
   final bool enableGrounding;
   final bool disableSafety;
   final bool hasUnsavedChanges;
-  final String reasoningEffort; // "none", "low", "medium", "high"
+  final String reasoningEffort;
 
   // Prompt System
   final List<SystemPromptData> savedSystemPrompts;
@@ -207,10 +207,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
   Future<void> _saveCustomRulesToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    // We only save the definition (label/content), not the 'active' state, 
-    // because 'active' state is derived from the actual text in the system prompt.
-    // However, for UI convenience, we can save 'active' to remember the toggle state 
-    // if we want to default it on/off, but here we prioritize the text presence.
     final String encoded = jsonEncode(_customRules);
     await prefs.setString(kCustomRulesKey, encoded);
   }
@@ -239,14 +235,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     }
 
         // 3. Detect Custom Rules
-    // We iterate through our known library of rules. If their content exists in the prompt,
-    // we extract it and mark the rule as active.
     for (var rule in _customRules) {
       final content = rule['content'] as String;
       if (workingText.contains(content.trim())) {
         rule['active'] = true;
-        // Remove *one* instance of it.
-        // We use replaceFirst to remove the content. We also trim to ensure whitespace doesn't mess it up.
         workingText = workingText.replaceFirst(content.trim(), "");
         advancedVisualText += "${content.trim()}\n\n";
       } else {
@@ -255,7 +247,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     }
 
     // 4. Cleanup
-    // We aggressively trim to remove any leftover newlines from the "extraction" process
     workingText = workingText.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
     advancedVisualText = advancedVisualText.trim();
 
@@ -486,7 +477,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
       void _deleteCustomRuleForever(int index) {
       setState(() {
-        // If it was active, we should probably update the text too
         bool wasActive = _customRules[index]['active'] == true;
         _customRules.removeAt(index);
         _saveCustomRulesToPrefs();
@@ -1362,10 +1352,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         },
                       );
                    }),
-
-                   // Removed "Clear Active Tweaks" button as requested
-
-                                      // EDITABLE RAW PROMPT
+                  // EDITABLE RAW PROMPT
                    const Divider(),
                    Padding(
                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -1649,7 +1636,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 return Column(
                   children: [
                     const SizedBox(height: 15),
-                    // NEW: App Theme Picker (this updates the global theme)
                     _buildColorCircle("App Theme", provider.appThemeColor, (c) => provider.updateColor('appTheme', c)),
                     const SizedBox(height: 15),
                     

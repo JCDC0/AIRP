@@ -27,7 +27,6 @@ class EffectsOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We use Keys to ensure the widgets maintain state unless the type changes
     return Stack(
       children: [
         if (showMotes)

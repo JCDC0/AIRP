@@ -68,7 +68,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   double _temperature = 1; 
   bool _enableGrounding = false;
   bool _disableSafety = true;
-  String _reasoningEffort = "none"; // "none", "low", "medium", "high"
+  String _reasoningEffort = "none";
   
   late GenerativeModel _model;
   late ChatSession _chat;
@@ -215,9 +215,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     });
 
     if (_currentProvider == AiProvider.gemini) {
-      // Do NOT send system instruction here or model will initialize with it visible in history?
-      // Actually, standard Gemini initialization doesn't add it to chat history automatically.
-      // The issue is likely how we construct the history for the API call.
       await _initializeModel(); 
     }
   }
@@ -321,14 +318,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     _currentSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
 
-    // Determine correct provider string
     String providerStr = 'gemini';
     if (_currentProvider == AiProvider.openRouter) {
       providerStr = 'openRouter';
     } else if (_currentProvider == AiProvider.local) providerStr = 'local';
     else if (_currentProvider == AiProvider.openAi) providerStr = 'openAi';
 
-    // FIX: Using ChatSessionData from imports
     final sessionData = ChatSessionData(
       id: _currentSessionId!,
       title: title,
@@ -354,8 +349,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             _messages.clear();
       _tokenCount = 0;
       _currentSessionId = null; 
-      // We don't clear system instruction here so it acts as a persistent persona
-      // _systemInstructionController.clear();
       _titleController.clear();
     });
     _initializeModel();
@@ -430,14 +423,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       int startIndex = _messages.length - _historyLimit;
       if (startIndex < 0) startIndex = 0;
       final limitedMessages = _messages.sublist(startIndex);
-
-      // IMPORTANT: We do NOT manually add the System Prompt to the 'history' list here.
-      // The GenerativeModel constructor (above) already took the systemInstruction argument.
-      // If we add it to 'history', it will appear as a turn in the conversation, which might be why
-      // you are seeing it "display" if your UI logic was rendering it from history.
-      // However, if your issue is that the text is physically appearing in the UI chat list, 
-      // check if you are adding a ChatMessage for it somewhere. 
-      // Based on this code, we only add _messages to history.
 
       for (var msg in limitedMessages) {
           final String role = msg.isUser ? 'user' : 'model';
@@ -1314,8 +1299,6 @@ void _showEditDialog(int index) {
       _messages.removeAt(index);
     });
     _autoSaveCurrentSession();
-    
-    // FIX: Sync internal model history with UI
     _initializeModel();
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1327,7 +1310,7 @@ void _showEditDialog(int index) {
     );
   }
 
-    // ----------------------------------------------------------------------
+  // ----------------------------------------------------------------------
   // UI BUILDERS
   // ----------------------------------------------------------------------
 
@@ -1626,7 +1609,7 @@ void _showEditDialog(int index) {
                         child: ListView.builder(
                           controller: _scrollController,
                           itemCount: _messages.length,
-                          padding: const EdgeInsets.only(bottom: 120), // Add padding for input area
+                          padding: const EdgeInsets.only(bottom: 120),
                           itemBuilder: (context, index) {
                             return MessageBubble(
                               msg: _messages[index],

@@ -6,14 +6,11 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/chat_models.dart';
 
 class ChatApiService {
-  // We use a singleton pattern or just static methods, but let's keep it simple with static helpers 
-  // so you don't have to manage an instance.
-
   // ==============================================================================
   // 1. GEMINI STREAMING
   // ==============================================================================
   static Stream<String> streamGeminiResponse({
-    required ChatSession chatSession, // The active Gemini SDK session
+    required ChatSession chatSession,
     required String message,
     required List<String> imagePaths,
     required String modelName,
@@ -69,17 +66,18 @@ class ChatApiService {
     required String apiKey,
     required String baseUrl, // e.g., https://openrouter.ai/api/v1/chat/completions
     required String model,
-    required List<ChatMessage> history, // Current chat history
+    required List<ChatMessage> history,
     required String systemInstruction,
-        required String userMessage,
+    required String userMessage,
     required List<String> imagePaths,
+
     // Settings
     double temperature = 1.0,
     double topP = 0.95,
     int topK = 40,
     int maxTokens = 32768,
-    bool enableGrounding = false, // specific to OpenRouter
-    String reasoningEffort = "none", // "none", "low", "medium", "high"
+    bool enableGrounding = false, 
+    String reasoningEffort = "none", 
     Map<String, String>? extraHeaders,
   }) async* {
     
@@ -93,8 +91,6 @@ class ChatApiService {
     }
 
     // Convert History
-    // Note: We usually skip the very last message in 'history' if it was just added to UI 
-    // but hasn't been sent yet. Assuming 'history' passed here EXCLUDES the current new message.
     for (var msg in history) {
       messagesPayload.add({
         "role": msg.isUser ? "user" : "assistant",
@@ -119,12 +115,12 @@ class ChatApiService {
       messagesPayload.add({"role": "user", "content": contentParts});
     }
 
-        // 2. Request Body
+    // 2. Request Body
     final bodyMap = {
       "model": model.trim(),
       "messages": messagesPayload,
       "temperature": temperature,
-      "stream": true, // We force stream true for this method
+      "stream": true, 
       "top_p": topP,
       "top_k": topK,
       "max_tokens": maxTokens,
@@ -133,16 +129,8 @@ class ChatApiService {
     // Apply Reasoning Effort if supported
     if (reasoningEffort != "none") {
       // 1. OpenRouter Standard (often uses 'reasoning' block or provider-specific parameters)
-      // OpenRouter supports 'reasoning' parameter which can be { "effort": "medium" } or similar depending on vendor
-      // BUT standard OpenAI/Anthropic/DeepSeek spec usually just implies it via model name or specific flags.
-      // However, newer models like o1/o3-mini use 'reasoning_effort': 'low'/'medium'/'high'
-      
-      // Let's try the modern standard key first
       bodyMap["reasoning_effort"] = reasoningEffort; 
-      
-      // Also try OpenRouter's specific provider routing if needed, but usually passing it at top level works for supported models
-      // Some models (like DeepSeek R1) might need it in a different way, but standardizing on 'reasoning_effort' is the current trend.
-    }
+      }
 
             if (enableGrounding) {
       // OpenRouter specific parameter for web search
@@ -251,7 +239,6 @@ class ChatApiService {
     required String systemInstruction,
     bool disableSafety = true,
   }) async {
-    // This is a REST call, not streaming, matching your original logic
     final modelId = model.replaceAll('models/', '');
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$apiKey');
 

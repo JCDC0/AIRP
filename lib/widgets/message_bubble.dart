@@ -107,7 +107,7 @@ class MessageBubble extends StatelessWidget {
     // Define the content once to avoid repetition
     final contentColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min, // Important for CustomPaint to get the correct size
+      mainAxisSize: MainAxisSize.min,
       children: [
         // --- MODEL NAME DISPLAY ADDED HERE ---
         if (!msg.isUser && msg.modelName != null)
@@ -132,7 +132,6 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-        // --------------------------------------
 
         // --- REASONING DROPDOWN ---
         if (reasoningText.isNotEmpty)
@@ -142,7 +141,6 @@ class MessageBubble extends StatelessWidget {
             useBloom: useBloom,
             isDone: isReasoningDone,
           ),
-        // --------------------------------------
 
         if (msg.imagePaths.isNotEmpty)
           _buildAttachmentGrid(context, msg.imagePaths),

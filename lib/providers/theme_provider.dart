@@ -270,7 +270,7 @@ case 'Google':
         _enableFireflies = prefs.getBool('app_enable_fireflies') ?? false;
     _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
     
-        // LOAD INTENSITIES
+    // LOAD INTENSITIES
     _motesDensity = prefs.getInt('vfx_motes_density') ?? 75;
     _rainIntensity = prefs.getInt('vfx_rain_intensity') ?? 100;
     _firefliesCount = prefs.getInt('vfx_fireflies_count') ?? 50;

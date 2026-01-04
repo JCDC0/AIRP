@@ -17,6 +17,7 @@
 *   **Deep Visual Customization**: Control global accent colors, bubble colors, opacity, and choose from thematic font presets.
 *   **Atmospheric Effects**: Toggle "Bloom" for a glow dependent on your chosen color, or enable environmental effects like **Floating Motes**, **Rain**, or **Fireflies**.
 *   **System Prompt Library**: Save and load custom personas and roleplay instructions.
+*   **Advanced Prompting Engine**: Create, edit, and toggle individual "tweaks" or "character cards" (Advanced System Prompts) that stack on top of your main persona.
 *   **Multimodal Support**: Send images to compatible models.
 *   **File Attachment Support**: Attach PDFs and text-based files (txt, md, dart, etc.) to your messages for AI analysis.
 *   **Google Search Grounding**: Toggle real-time web search integration for Gemini models.
@@ -132,6 +133,22 @@ Slide from the **right** edge or tap the **Settings** icon.
     *   **Subtitles**: Every model now displays its raw API ID underneath the clean name, so you know exactly what you are selecting (crucial for OpenRouter).
 5.  Select your desired model. The list automatically cleans raw IDs (e.g., `models/gemini-3-pro-preview`) into readable titles (e.g., `Gemini 3 Pro Preview`).
 6.  The **Floating Save Button** will appear. Click it to confirm your selection.
+
+### System Prompting & Personas
+
+**AIRP** features a layered prompting system designed for complex roleplay and character consistency.
+
+1.  **Main System Prompt**:
+    *   This is your "World Rulebook" or "Main Persona".
+    *   Type directly into the large text box in the settings drawer.
+    *   **Save/Load**: Use the dropdown menu to save your prompt to a local library for later use.
+
+2.  **Advanced Tweaks (Character Cards)**:
+    *   Below the main prompt, expand the **"Advanced System Prompt"** section.
+    *   **Create Rules**: Add small, specific instructions (e.g., "Always speak in rhymes", "User is an enemy", "Enable Kaomoji").
+    *   **Toggle**: Each rule has a switch. You can turn them ON or OFF dynamically between turns without deleting the text.
+    *   **Edit**: Tap the **Pencil Icon** to modify a rule's name or content.
+    *   **Stacking**: Active rules are automatically prepended to the Main System Prompt when sending the request to the AI.
 
 ---
 
