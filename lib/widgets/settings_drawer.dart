@@ -142,11 +142,12 @@ class SettingsDrawer extends StatefulWidget {
 class _SettingsDrawerState extends State<SettingsDrawer> {
   late TextEditingController _apiKeyController;
   late TextEditingController _localIpController;
-  late TextEditingController _titleController;
+    late TextEditingController _titleController;
   late TextEditingController _promptTitleController;
-  late TextEditingController _systemInstructionController;
-    late TextEditingController _openRouterModelController; 
+  late TextEditingController _mainPromptController;
+  late TextEditingController _openRouterModelController; 
   late TextEditingController _advancedPromptController;
+
   late TextEditingController _ruleLabelController;
 
 
@@ -193,20 +194,20 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     mainPart = mainPart.trim();
     advancedPart = detectedAdvanced.join("\n\n");
 
-    _advancedPromptController = TextEditingController(text: advancedPart);
-    _systemInstructionController = TextEditingController(text: mainPart);
+        _advancedPromptController = TextEditingController(text: advancedPart);
+    _mainPromptController = TextEditingController(text: mainPart);
     _loadBookmarks();
   }
+
   
   // Track switches
   bool _isReasoningFixEnabled = false;
   bool _isKaomojiFixEnabled = false;
   
-    void _updateSystemInstruction() {
-    // Combine Advanced + Main
+          void _handleSaveSettings() {
     String finalPrompt;
     String advanced = _advancedPromptController.text.trim();
-    String main = _systemInstructionController.text.trim();
+    String main = _mainPromptController.text;
     
     if (advanced.isNotEmpty && main.isNotEmpty) {
       finalPrompt = "$advanced\n\n$main";
@@ -215,9 +216,11 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     }
     
     widget.onSystemInstructionChanged(finalPrompt);
+    widget.onSaveSettings();
   }
   
   void _onAdvancedSwitchChanged() {
+
      String currentText = _advancedPromptController.text;
      
      // REASONING
@@ -253,11 +256,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
      }
      
      _advancedPromptController.text = currentText;
-     _updateSystemInstruction();
+     // _updateSystemInstruction(); // Removed real-time update
   }
 
-    void _addRuleFromInput() {
-    final text = _systemInstructionController.text.trim();
+
+        void _addRuleFromInput() {
+    final text = _mainPromptController.text.trim();
     if (text.isEmpty) return;
 
     final String label = _ruleLabelController.text.trim().isNotEmpty 
@@ -270,14 +274,15 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         'active': true,
         'label': label,
       });
-      _systemInstructionController.clear();
+      _mainPromptController.clear();
       _ruleLabelController.clear();
       _onAdvancedSwitchChanged(); 
     });
   }
 
   void _copyToClipboard() {
-    final text = _systemInstructionController.text;
+    final text = _mainPromptController.text;
+
     if (text.isNotEmpty) {
       Clipboard.setData(ClipboardData(text: text));
       ScaffoldMessenger.of(context).showSnackBar(
@@ -286,15 +291,16 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     }
   }
 
-  Future<void> _pasteFromClipboard() async {
+      Future<void> _pasteFromClipboard() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null) {
       setState(() {
-        _systemInstructionController.text = data!.text!;
-        _updateSystemInstruction();
+        _mainPromptController.text = data!.text!;
       });
     }
   }
+
+
 
   void _deleteActiveRulesWithConfirmation() {
     bool hasActive = _isReasoningFixEnabled || _isKaomojiFixEnabled || _customRules.any((r) => r['active'] == true);
@@ -366,9 +372,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     if (widget.promptTitle != oldWidget.promptTitle && widget.promptTitle != _promptTitleController.text) {
       _promptTitleController.text = widget.promptTitle;
     }
-                if (widget.systemInstruction != oldWidget.systemInstruction) {
+                                    if (widget.systemInstruction != oldWidget.systemInstruction) {
         String advanced = _advancedPromptController.text.trim();
-        String main = _systemInstructionController.text.trim();
+        String main = _mainPromptController.text;
         String currentCombined = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main;
 
         if (widget.systemInstruction != currentCombined) {
@@ -395,11 +401,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
              setState(() {
                 _isReasoningFixEnabled = rFix;
                 _isKaomojiFixEnabled = kFix;
-                _systemInstructionController.text = full;
+                _mainPromptController.text = full;
                 _advancedPromptController.text = adv;
              });
         }
     }
+
     if (widget.openRouterModel != oldWidget.openRouterModel && widget.openRouterModel != _openRouterModelController.text) {
       _openRouterModelController.text = widget.openRouterModel;
     }
@@ -409,10 +416,11 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   void dispose() {
     _apiKeyController.dispose();
     _localIpController.dispose();
-    _titleController.dispose();
+        _titleController.dispose();
     _promptTitleController.dispose();
-    _systemInstructionController.dispose();
-        _openRouterModelController.dispose();
+    _mainPromptController.dispose();
+    _openRouterModelController.dispose();
+
     _advancedPromptController.dispose();
     _ruleLabelController.dispose();
     super.dispose();
@@ -1048,12 +1056,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
 
-            const SizedBox(height: 5),
+                        const SizedBox(height: 5),
 
-            // 3. PROMPT CONTENT FIELD
+            // 3. MAIN PROMPT CONTENT FIELD (Restored)
             TextField(
-              controller: _systemInstructionController,
-              onChanged: widget.onSystemInstructionChanged,
+              controller: _mainPromptController,
+              // No onChanged to prevent lag - commit on save
               maxLines: 5,
               decoration: InputDecoration(
                 hintText: "Enter the roleplay rules here...",
@@ -1061,12 +1069,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
                 filled: true, fillColor: Colors.black26,
               ),
-                            style: const TextStyle(fontSize: 13),
+              style: const TextStyle(fontSize: 13),
             ),
             
-            // BUTTON ROW (Add, Copy, Paste, Delete)
             const SizedBox(height: 8),
+
             Row(
+
               children: [
                 Expanded(
                   child: Container(
@@ -1215,7 +1224,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       );
                    }),
 
-                   // EDITABLE RAW PROMPT
+                                      // EDITABLE RAW PROMPT
                    const Divider(),
                    Padding(
                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -1240,9 +1249,46 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                                _isReasoningFixEnabled = val.contains(kDefaultReasoningFix);
                                _isKaomojiFixEnabled = val.contains(kDefaultKaomojiFix);
                              });
-                             _updateSystemInstruction();
                            },
                          ),
+                         
+                        const SizedBox(height: 8),
+                        // BUTTON ROW (Add, Copy, Paste, Delete) - Moved Here
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
+                                tooltip: "Add as Advanced Rule",
+                                onPressed: _addRuleFromInput,
+                              ),
+                              Container(width: 1, height: 20, color: Colors.white12),
+                              IconButton(
+                                icon: const Icon(Icons.copy, color: Colors.blueAccent),
+                                tooltip: "Copy Text",
+                                onPressed: _copyToClipboard,
+                              ),
+                              Container(width: 1, height: 20, color: Colors.white12),
+                              IconButton(
+                                icon: const Icon(Icons.paste, color: Colors.orangeAccent),
+                                tooltip: "Paste Text",
+                                onPressed: _pasteFromClipboard,
+                              ),
+                              Container(width: 1, height: 20, color: Colors.white12),
+                              IconButton(
+                                icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
+                                tooltip: "Delete Active Settings",
+                                onPressed: _deleteActiveRulesWithConfirmation,
+                              ),
+                            ],
+                          ),
+                        ),
                        ],
                      ),
                    ),
@@ -1251,12 +1297,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
             ),
             
             const SizedBox(height: 10),
-
-                        // 4. PROMPT CONTENT FIELD (Main) - Titled "Main Roleplay Rules"
-            const Text("Main Roleplay Rules", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 4),
             
             // Subtitle / Label Input for Custom Rule
+
             TextField(
               controller: _ruleLabelController,
               decoration: InputDecoration(
@@ -1269,69 +1312,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               ),
               style: const TextStyle(fontSize: 12, color: Colors.white),
             ),
-            const SizedBox(height: 4),
-
-            TextField(
-              controller: _systemInstructionController,
-              onChanged: (val) => _updateSystemInstruction(),
-              maxLines: 3, 
-              decoration: InputDecoration(
-                hintText: "You Speak as a Pirate, using nautical terms...",
-                border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
-                enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
-                filled: true, fillColor: Colors.black26,
-              ),
-              style: const TextStyle(fontSize: 13),
-            ),
-            
-            const SizedBox(height: 8),
-
-            // BUTTON ROW (Add, Copy, Paste, Delete)
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black26,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
-                          tooltip: "Add as Advanced Rule",
-                          onPressed: _addRuleFromInput,
-                        ),
-                        Container(width: 1, height: 20, color: Colors.white12),
-                        IconButton(
-                          icon: const Icon(Icons.copy, color: Colors.blueAccent),
-                          tooltip: "Copy Text",
-                          onPressed: _copyToClipboard,
-                        ),
-                        Container(width: 1, height: 20, color: Colors.white12),
-                        IconButton(
-                          icon: const Icon(Icons.paste, color: Colors.orangeAccent),
-                          tooltip: "Paste Text",
-                          onPressed: _pasteFromClipboard,
-                        ),
-                        Container(width: 1, height: 20, color: Colors.white12),
-                        IconButton(
-                          icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
-                          tooltip: "Delete Active Settings",
-                          onPressed: _deleteActiveRulesWithConfirmation,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 8),
+                        const SizedBox(height: 8),
 
             _buildSliderSetting(
+
               title: "(Msg History) Limit",
               value: widget.historyLimit.toDouble(),
               min: 2,
@@ -1760,12 +1744,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
             bottom: widget.hasUnsavedChanges ? 30 : MediaQuery.of(context).size.height + 200,
             right: 20,
             child: FloatingActionButton(
-              backgroundColor: themeProvider.appThemeColor,
+                            backgroundColor: themeProvider.appThemeColor,
               foregroundColor: Colors.black,
-              onPressed: widget.onSaveSettings,
+              onPressed: _handleSaveSettings,
               elevation: 10,
               child: const Icon(Icons.save),
             ),
+
           ),
         ],
       ),
