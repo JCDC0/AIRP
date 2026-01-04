@@ -529,7 +529,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.15", 
+            const Text("v0.1.15.1", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -995,7 +995,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               title: "Max Output Tokens",
               value: widget.maxOutputTokens.toDouble(),
               min: 256,
-              max: 32768,
+              max: 8192,
               activeColor: Colors.blueAccent,
               isInt: true,
               onChanged: (val) => widget.onMaxOutputTokensChanged(val.toInt()),
