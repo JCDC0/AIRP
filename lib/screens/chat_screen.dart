@@ -210,12 +210,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       // Load Default System Instruction if current is empty
       if (_systemInstructionController.text.isEmpty) {
         _systemInstructionController.text = prefs.getString('airp_default_system_instruction') ?? '';
-      }
-      
+    }
       _updateApiKeyTextField();
     });
 
     if (_currentProvider == AiProvider.gemini) {
+      // Do NOT send system instruction here or model will initialize with it visible in history?
+      // Actually, standard Gemini initialization doesn't add it to chat history automatically.
+      // The issue is likely how we construct the history for the API call.
       await _initializeModel(); 
     }
   }
@@ -423,11 +425,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           safetySettings: safetySettings,
         );
       
-      List<Content> history = [];
+            List<Content> history = [];
       // TRUNCATE MESSAGE HISTORY
       int startIndex = _messages.length - _historyLimit;
       if (startIndex < 0) startIndex = 0;
       final limitedMessages = _messages.sublist(startIndex);
+
+      // IMPORTANT: We do NOT manually add the System Prompt to the 'history' list here.
+      // The GenerativeModel constructor (above) already took the systemInstruction argument.
+      // If we add it to 'history', it will appear as a turn in the conversation, which might be why
+      // you are seeing it "display" if your UI logic was rendering it from history.
+      // However, if your issue is that the text is physically appearing in the UI chat list, 
+      // check if you are adding a ChatMessage for it somewhere. 
+      // Based on this code, we only add _messages to history.
+
       for (var msg in limitedMessages) {
           final String role = msg.isUser ? 'user' : 'model';
           if (msg.isUser && msg.imagePaths.isNotEmpty) {

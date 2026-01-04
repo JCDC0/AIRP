@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'dart:convert';
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
 import '../utils/constants.dart';
@@ -154,13 +155,14 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   bool _isProgrammaticUpdate = false; 
 
   
-    Set<String> _bookmarkedModels = {};
+      Set<String> _bookmarkedModels = {};
   
   // Custom Rules storage
-  final List<Map<String, dynamic>> _customRules = [];
+  List<Map<String, dynamic>> _customRules = [];
 
-  static const String kDefaultReasoningFix = "[SYSTEM PROMPT] If you are a model with reasoning or thinking capabilities, you MUST begin your response immediately with a <think> block and end your thinking with </think>.";
-  static const String kDefaultKaomojiFix = "[SYSTEM PROMPT] You should use kaomoji (e.g. OwO, ^_^) frequently in your dialogue to convey emotion.";
+    static const String kDefaultReasoningFix = "If you are a model with reasoning or thinking capabilities, you MUST begin your response immediately with a <think> block and end your thinking with </think>.";
+  static const String kDefaultKaomojiFix = "Use kaomoji for spoken character (e.g. OwO, ^_^) frequently in character dialogue to convey emotion for spoken characters only. (Except if the character is only you)";
+  static const String kCustomRulesKey = "custom_sys_prompt_rules";
 
   @override
   void initState() {
@@ -169,48 +171,106 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _localIpController = TextEditingController(text: widget.localIp);
     _titleController = TextEditingController(text: widget.title);
     _promptTitleController = TextEditingController(text: widget.promptTitle);
-                _openRouterModelController = TextEditingController(text: widget.openRouterModel);
+    _openRouterModelController = TextEditingController(text: widget.openRouterModel);
     _ruleLabelController = TextEditingController();
     _newRuleContentController = TextEditingController();
     
-    // --- SPLIT LOGIC ---
-    String fullSystemPrompt = widget.systemInstruction;
-    String advancedPart = "";
-    String mainPart = fullSystemPrompt;
-    
-    List<String> detectedAdvanced = [];
+    _advancedPromptController = TextEditingController();
+    _mainPromptController = TextEditingController();
 
-    // Check for our known "Advanced" blocks and extract them
-    if (mainPart.contains(kDefaultReasoningFix)) {
-       _isReasoningFixEnabled = true;
-       detectedAdvanced.add(kDefaultReasoningFix);
-       mainPart = mainPart.replaceFirst(kDefaultReasoningFix, "");
-    }
-
-    if (mainPart.contains(kDefaultKaomojiFix)) {
-       _isKaomojiFixEnabled = true;
-       detectedAdvanced.add(kDefaultKaomojiFix);
-       mainPart = mainPart.replaceFirst(kDefaultKaomojiFix, "");
-    }
-    
-    // Cleanup leftovers
-    mainPart = mainPart.trim();
-    advancedPart = detectedAdvanced.join("\n\n");
-
-        _advancedPromptController = TextEditingController(text: advancedPart);
-    _mainPromptController = TextEditingController(text: mainPart);
+    // Load bookmarks and then Load Rules & Parse
     _loadBookmarks();
+    _loadCustomRulesAndParse();
   }
 
+  /// Loads custom rules from SharedPreferences, then parses the incoming systemInstruction
+  /// to see which rules are currently active in the text.
+  Future<void> _loadCustomRulesAndParse() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? jsonString = prefs.getString(kCustomRulesKey);
+    
+    if (jsonString != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(jsonString);
+        _customRules = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      } catch (e) {
+        debugPrint("Error loading custom rules: $e");
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _parseSystemInstruction(widget.systemInstruction);
+      });
+    }
+  }
+
+  Future<void> _saveCustomRulesToPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    // We only save the definition (label/content), not the 'active' state, 
+    // because 'active' state is derived from the actual text in the system prompt.
+    // However, for UI convenience, we can save 'active' to remember the toggle state 
+    // if we want to default it on/off, but here we prioritize the text presence.
+    final String encoded = jsonEncode(_customRules);
+    await prefs.setString(kCustomRulesKey, encoded);
+  }
+
+    /// Parses the full instruction string to separate "Main" from "Advanced" components
+  void _parseSystemInstruction(String fullPrompt) {
+    String workingText = fullPrompt;
+    String advancedVisualText = "";
+
+    // 1. Detect Reasoning
+    if (workingText.contains(kDefaultReasoningFix.trim())) {
+       _isReasoningFixEnabled = true;
+       workingText = workingText.replaceFirst(kDefaultReasoningFix.trim(), "");
+       advancedVisualText += "${kDefaultReasoningFix.trim()}\n\n";
+    } else {
+       _isReasoningFixEnabled = false;
+    }
+
+    // 2. Detect Kaomoji
+    if (workingText.contains(kDefaultKaomojiFix.trim())) {
+       _isKaomojiFixEnabled = true;
+       workingText = workingText.replaceFirst(kDefaultKaomojiFix.trim(), "");
+       advancedVisualText += "${kDefaultKaomojiFix.trim()}\n\n";
+    } else {
+       _isKaomojiFixEnabled = false;
+    }
+
+        // 3. Detect Custom Rules
+    // We iterate through our known library of rules. If their content exists in the prompt,
+    // we extract it and mark the rule as active.
+    for (var rule in _customRules) {
+      final content = rule['content'] as String;
+      if (workingText.contains(content.trim())) {
+        rule['active'] = true;
+        // Remove *one* instance of it.
+        // We use replaceFirst to remove the content. We also trim to ensure whitespace doesn't mess it up.
+        workingText = workingText.replaceFirst(content.trim(), "");
+        advancedVisualText += "${content.trim()}\n\n";
+      } else {
+        rule['active'] = false;
+      }
+    }
+
+    // 4. Cleanup
+    // We aggressively trim to remove any leftover newlines from the "extraction" process
+    workingText = workingText.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    advancedVisualText = advancedVisualText.trim();
+
+    _mainPromptController.text = workingText;
+    _advancedPromptController.text = advancedVisualText;
+  }
   
   // Track switches
   bool _isReasoningFixEnabled = false;
   bool _isKaomojiFixEnabled = false;
   
-          void _handleSaveSettings() {
+  void _handleSaveSettings() {
     String finalPrompt;
     String advanced = _advancedPromptController.text.trim();
-    String main = _mainPromptController.text;
+    String main = _mainPromptController.text.trim(); // Ensure main is trimmed
     
     if (advanced.isNotEmpty && main.isNotEmpty) {
       finalPrompt = "$advanced\n\n$main";
@@ -219,7 +279,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     }
     
     widget.onSystemInstructionChanged(finalPrompt);
-        widget.onSaveSettings();
+    widget.onSaveSettings();
   }
   
   void _handleSavePreset() {
@@ -247,19 +307,19 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   }
 
   
-    void _onAdvancedSwitchChanged() {
+        void _onAdvancedSwitchChanged() {
     final List<String> activePrompts = [];
 
     if (_isReasoningFixEnabled) {
-      activePrompts.add(kDefaultReasoningFix);
+      activePrompts.add(kDefaultReasoningFix.trim());
     }
     if (_isKaomojiFixEnabled) {
-      activePrompts.add(kDefaultKaomojiFix);
+      activePrompts.add(kDefaultKaomojiFix.trim());
     }
 
     for (final rule in _customRules) {
       if (rule['active'] == true) {
-        activePrompts.add(rule['content']);
+        activePrompts.add((rule['content'] as String).trim());
       }
     }
     
@@ -268,14 +328,14 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     // Notify parent immediately so the FAB drops down
     // We construct what the final prompt WOULD be
     String advanced = _advancedPromptController.text.trim();
-    String main = _mainPromptController.text;
+    String main = _mainPromptController.text.trim();
     String finalPrompt = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main;
     
     widget.onSystemInstructionChanged(finalPrompt);
   }
 
 
-                void _addRuleFromInput() {
+    void _addRuleFromInput() {
     final text = _newRuleContentController.text.trim();
     if (text.isEmpty) return;
 
@@ -289,10 +349,98 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         'active': true,
         'label': label,
       });
+      
       _newRuleContentController.clear();
       _ruleLabelController.clear();
-      _onAdvancedSwitchChanged(); 
+      
+      _saveCustomRulesToPrefs();
+      _onAdvancedSwitchChanged();
     });
+  }
+
+  void _editCustomRule(int index) {
+    final rule = _customRules[index];
+    final labelController = TextEditingController(text: rule['label']);
+    final contentController = TextEditingController(text: rule['content']);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
+        title: const Text("Edit Rule", style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: labelController,
+              decoration: const InputDecoration(labelText: "Rule Name", filled: true, fillColor: Colors.black12),
+              style: const TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: contentController,
+              maxLines: 4,
+              decoration: const InputDecoration(labelText: "Rule Content", filled: true, fillColor: Colors.black12),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: const Text("Save", style: TextStyle(color: Colors.blueAccent)),
+            onPressed: () {
+              setState(() {
+                // If the rule was active, we need to handle the content change carefully
+                // But _onAdvancedSwitchChanged rebuilds the whole prompt from active rules, 
+                // so we just need to update the definition and trigger a rebuild.
+                
+                _customRules[index]['label'] = labelController.text.trim();
+                _customRules[index]['content'] = contentController.text.trim();
+                
+                _saveCustomRulesToPrefs();
+                // Re-evaluate the prompt with the new content (if it was active)
+                if (_customRules[index]['active'] == true) {
+                   _onAdvancedSwitchChanged();
+                }
+              });
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteCustomRule(int index) {
+    final rule = _customRules[index];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
+        title: const Text("Delete Rule?", style: TextStyle(color: Colors.redAccent)),
+        content: Text(
+          "Are you sure you want to delete '${rule['label']}'?\n\nThis cannot be undone.",
+          style: const TextStyle(color: Colors.white70)
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: const Text("DELETE", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            onPressed: () {
+              _deleteCustomRuleForever(index);
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _copyToClipboard() {
@@ -336,43 +484,14 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
 
 
-  void _deleteActiveRulesWithConfirmation() {
-    bool hasActive = _isReasoningFixEnabled || _isKaomojiFixEnabled || _customRules.any((r) => r['active'] == true);
-    if (!hasActive) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2C),
-        title: const Text("Delete Active Settings?", style: TextStyle(color: Colors.redAccent)),
-        content: const Text(
-          "This will disable standard overrides and PERMANENTLY DELETE any custom rules currently switched ON.\n\nAre you sure?",
-          style: TextStyle(color: Colors.white70)
-        ),
-        actions: [
-          TextButton(
-            child: const Text("Cancel"),
-            onPressed: () => Navigator.pop(context),
-          ),
-          TextButton(
-                      child: const Text("DELETE ACTIVE", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-            onPressed: () {
-              setState(() {
-                _isReasoningFixEnabled = false;
-                _isKaomojiFixEnabled = false;
-                _customRules.removeWhere((r) => r['active'] == true);
-                _onAdvancedSwitchChanged(); 
-                // Force parent to notice changes so the save button drops
-                widget.onSystemInstructionChanged(" FORCE_UPDATE "); 
-                // Then immediately set it back to the real value
-                _handleSaveSettings();
-              });
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-    );
+      void _deleteCustomRuleForever(int index) {
+      setState(() {
+        // If it was active, we should probably update the text too
+        bool wasActive = _customRules[index]['active'] == true;
+        _customRules.removeAt(index);
+        _saveCustomRulesToPrefs();
+        if (wasActive) _onAdvancedSwitchChanged();
+      });
   }
 
   Future<void> _loadBookmarks() async {
@@ -410,8 +529,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         if (widget.promptTitle != oldWidget.promptTitle && widget.promptTitle != _promptTitleController.text) {
       _promptTitleController.text = widget.promptTitle;
     }
-                                    if (widget.systemInstruction != oldWidget.systemInstruction) {
-                // If we triggered this update ourselves just to save, don't re-parse everything.
+    if (widget.systemInstruction != oldWidget.systemInstruction) {
+        // If we triggered this update ourselves just to save, don't re-parse everything.
         if (_isProgrammaticUpdate) return;
         
         String advanced = _advancedPromptController.text.trim();
@@ -419,40 +538,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         String currentCombined = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main;
 
         if (widget.systemInstruction != currentCombined) {
-             // External update -> Re-parse
-             String full = widget.systemInstruction;
-             String adv = "";
-             
-             // Extract knowns
-             bool rFix = full.contains(kDefaultReasoningFix);
-             if (rFix) {
-                full = full.replaceFirst(kDefaultReasoningFix, "");
-                adv += "$kDefaultReasoningFix\n\n";
-             }
-             
-             bool kFix = full.contains(kDefaultKaomojiFix);
-             if (kFix) {
-               full = full.replaceFirst(kDefaultKaomojiFix, "");
-               adv += "$kDefaultKaomojiFix\n\n";
-             }
-             
-             // Restore active status of custom rules if found in text
-             for (var rule in _customRules) {
-                if (full.contains(rule['content'])) {
-                   rule['active'] = true;
-                   full = full.replaceFirst(rule['content'], "");
-                   adv += "${rule['content']}\n\n";
-                }
-             }
-
-             full = full.trim();
-             adv = adv.trim();
-             
+             // External update -> Re-parse using the centralized logic
+             // This keeps our custom rules aware of what's in the text
              setState(() {
-                _isReasoningFixEnabled = rFix;
-                _isKaomojiFixEnabled = kFix;
-                _mainPromptController.text = full;
-                _advancedPromptController.text = adv;
+               _parseSystemInstruction(widget.systemInstruction);
              });
         }
     }
@@ -791,7 +880,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.16", 
+            const Text("v0.1.16.1", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -1096,7 +1185,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               controller: _promptTitleController,
               onChanged: widget.onPromptTitleChanged,
               decoration: InputDecoration(
-                labelText: "Prompt Title (e.g., 'World of Japan')",
+                labelText: "Prompt Title (e.g., 'World of mana and mechs')",
                 labelStyle: TextStyle(color: themeProvider.appThemeColor, fontSize: 12),
                 border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
                 enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
@@ -1235,20 +1324,38 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                        child: Divider(color: Colors.white10),
                      ),
-                   ..._customRules.map((rule) {
+                                                         ..._customRules.asMap().entries.map((entry) {
+                      final int index = entry.key;
+                      final Map<String, dynamic> rule = entry.value;
+                      
                       return ListTile(
                         dense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                         title: Text(rule['label'], style: const TextStyle(color: Colors.white70, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        trailing: Switch(
-                          value: rule['active'],
-                          activeColor: Colors.blueAccent,
-                          onChanged: (val) {
-                            setState(() {
-                               rule['active'] = val;
-                               _onAdvancedSwitchChanged();
-                            });
-                          },
+                        leading: IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 16),
+                          tooltip: "Edit Rule",
+                          onPressed: () => _editCustomRule(index),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white24, size: 16),
+                              onPressed: () => _confirmDeleteCustomRule(index),
+                              tooltip: "Delete Rule",
+                            ),
+                            Switch(
+                              value: rule['active'] == true,
+                              activeColor: Colors.blueAccent,
+                              onChanged: (val) {
+                                setState(() {
+                                   rule['active'] = val;
+                                   _onAdvancedSwitchChanged();
+                                });
+                              },
+                            ),
+                          ],
                         ),
                         onTap: () {
                            _advancedPromptController.text = rule['content'];
@@ -1256,15 +1363,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       );
                    }),
 
-                                                         const Divider(color: Colors.white10),
-                   ListTile(
-                     dense: true,
-                     visualDensity: VisualDensity.compact,
-                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                     leading: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent, size: 20),
-                     title: const Text("Clear Active Tweaks", style: TextStyle(color: Colors.redAccent, fontSize: 12)),
-                     onTap: _deleteActiveRulesWithConfirmation,
-                   ),
+                   // Removed "Clear Active Tweaks" button as requested
 
                                       // EDITABLE RAW PROMPT
                    const Divider(),
@@ -1302,7 +1401,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               ),
             ),
             
-                        const SizedBox(height: 10),
+            const SizedBox(height: 10),
             
             const Divider(),
 
