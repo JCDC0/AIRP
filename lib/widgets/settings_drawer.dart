@@ -995,7 +995,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               title: "Max Output Tokens",
               value: widget.maxOutputTokens.toDouble(),
               min: 256,
-              max: 8192,
+              max: 32768,
               activeColor: Colors.blueAccent,
               isInt: true,
               onChanged: (val) => widget.onMaxOutputTokensChanged(val.toInt()),
