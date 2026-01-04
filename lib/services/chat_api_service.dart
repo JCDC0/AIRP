@@ -176,8 +176,11 @@ class ChatApiService {
         return;
       }
 
-      // 5. Decode Stream (SSE Format)
-      // We assume standard "data: {...}" format used by OpenAI/OpenRouter/LocalAI
+    // 5. Decode Stream (SSE Format)
+    // We assume standard "data: {...}" format used by OpenAI/OpenRouter/LocalAI
+      bool hasEmittedThinkStart = false;
+      bool hasEmittedThinkEnd = false;
+
       await for (final line in streamedResponse.stream
           .transform(utf8.decoder)
           .transform(const LineSplitter())) {
@@ -191,19 +194,44 @@ class ChatApiService {
             final choices = json['choices'] as List;
             if (choices.isNotEmpty) {
               final delta = choices[0]['delta'];
-              // Some providers wrap content differently, but standard is delta['content']
-              if (delta != null && delta['content'] != null) {
-                yield delta['content'].toString();
+              
+              // Handle separate reasoning_content (common in DeepSeek R1 via OpenRouter)
+              final reasoningChunk = delta['reasoning_content'] ?? delta['reasoning'];
+              final contentChunk = delta['content'];
+
+              // 1. Yield Reasoning (wrapped in tags if not already)
+              if (reasoningChunk != null && reasoningChunk.toString().isNotEmpty) {
+                 if (!hasEmittedThinkStart) {
+                   yield "<think>\n";
+                   hasEmittedThinkStart = true;
+                 }
+                 yield reasoningChunk.toString();
               }
+
+              // 2. Yield Content
+              if (contentChunk != null) {
+                if (hasEmittedThinkStart && !hasEmittedThinkEnd) {
+                  yield "\n</think>\n";
+                  hasEmittedThinkEnd = true;
+                }
+                yield contentChunk.toString();
+              }
+              
               // Fallback for non-standard APIs that might use 'text'
-              else if (choices[0]['text'] != null) {
-                yield choices[0]['text'].toString();
+              if (delta == null && choices[0]['text'] != null) {
+                 // Legacy completion endpoint style
+                 yield choices[0]['text'].toString();
               }
             }
           } catch (e) {
             // Ignore parse errors on partial chunks
           }
         }
+      }
+      
+      // Cleanup: Ensure reasoning tag is closed if stream ends
+      if (hasEmittedThinkStart && !hasEmittedThinkEnd) {
+        yield "\n</think>\n";
       }
     } catch (e) {
       yield "\n\n**Connection Error:** $e";

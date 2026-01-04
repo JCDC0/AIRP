@@ -145,9 +145,19 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   late TextEditingController _titleController;
   late TextEditingController _promptTitleController;
   late TextEditingController _systemInstructionController;
-  late TextEditingController _openRouterModelController; 
+    late TextEditingController _openRouterModelController; 
+  late TextEditingController _advancedPromptController;
+  late TextEditingController _ruleLabelController;
+
+
   
-  Set<String> _bookmarkedModels = {};
+    Set<String> _bookmarkedModels = {};
+  
+  // Custom Rules storage
+  final List<Map<String, dynamic>> _customRules = [];
+
+  static const String kDefaultReasoningFix = "[SYSTEM PROMPT] If you are a model with reasoning or thinking capabilities, you MUST begin your response immediately with a <think> block and end your thinking with </think>.";
+  static const String kDefaultKaomojiFix = "[SYSTEM PROMPT] You should use kaomoji (e.g. OwO, ^_^) frequently in your dialogue to convey emotion.";
 
   @override
   void initState() {
@@ -156,9 +166,169 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _localIpController = TextEditingController(text: widget.localIp);
     _titleController = TextEditingController(text: widget.title);
     _promptTitleController = TextEditingController(text: widget.promptTitle);
-    _systemInstructionController = TextEditingController(text: widget.systemInstruction);
-    _openRouterModelController = TextEditingController(text: widget.openRouterModel);
+        _openRouterModelController = TextEditingController(text: widget.openRouterModel);
+    _ruleLabelController = TextEditingController();
+    
+    // --- SPLIT LOGIC ---
+    String fullSystemPrompt = widget.systemInstruction;
+    String advancedPart = "";
+    String mainPart = fullSystemPrompt;
+    
+    List<String> detectedAdvanced = [];
+
+    // Check for our known "Advanced" blocks and extract them
+    if (mainPart.contains(kDefaultReasoningFix)) {
+       _isReasoningFixEnabled = true;
+       detectedAdvanced.add(kDefaultReasoningFix);
+       mainPart = mainPart.replaceFirst(kDefaultReasoningFix, "");
+    }
+
+    if (mainPart.contains(kDefaultKaomojiFix)) {
+       _isKaomojiFixEnabled = true;
+       detectedAdvanced.add(kDefaultKaomojiFix);
+       mainPart = mainPart.replaceFirst(kDefaultKaomojiFix, "");
+    }
+    
+    // Cleanup leftovers
+    mainPart = mainPart.trim();
+    advancedPart = detectedAdvanced.join("\n\n");
+
+    _advancedPromptController = TextEditingController(text: advancedPart);
+    _systemInstructionController = TextEditingController(text: mainPart);
     _loadBookmarks();
+  }
+  
+  // Track switches
+  bool _isReasoningFixEnabled = false;
+  bool _isKaomojiFixEnabled = false;
+  
+    void _updateSystemInstruction() {
+    // Combine Advanced + Main
+    String finalPrompt;
+    String advanced = _advancedPromptController.text.trim();
+    String main = _systemInstructionController.text.trim();
+    
+    if (advanced.isNotEmpty && main.isNotEmpty) {
+      finalPrompt = "$advanced\n\n$main";
+    } else {
+      finalPrompt = advanced + main;
+    }
+    
+    widget.onSystemInstructionChanged(finalPrompt);
+  }
+  
+  void _onAdvancedSwitchChanged() {
+     String currentText = _advancedPromptController.text;
+     
+     // REASONING
+     if (_isReasoningFixEnabled) {
+       if (!currentText.contains(kDefaultReasoningFix)) {
+         currentText = currentText.isEmpty ? kDefaultReasoningFix : "$kDefaultReasoningFix\n\n$currentText";
+       }
+     } else {
+       currentText = currentText.replaceFirst(kDefaultReasoningFix, "").trim();
+     }
+     
+     // KAOMOJI
+     if (_isKaomojiFixEnabled) {
+       if (!currentText.contains(kDefaultKaomojiFix)) {
+         currentText = currentText.isEmpty ? kDefaultKaomojiFix : "$currentText\n\n$kDefaultKaomojiFix";
+       }
+     } else {
+       currentText = currentText.replaceFirst(kDefaultKaomojiFix, "").trim();
+     }
+
+     // DYNAMIC CUSTOM RULES
+     for (var rule in _customRules) {
+       String content = rule['content'];
+       bool isActive = rule['active'];
+       
+       if (isActive) {
+         if (!currentText.contains(content)) {
+            currentText = currentText.isEmpty ? content : "$currentText\n\n$content";
+         }
+       } else {
+         currentText = currentText.replaceFirst(content, "").trim();
+       }
+     }
+     
+     _advancedPromptController.text = currentText;
+     _updateSystemInstruction();
+  }
+
+    void _addRuleFromInput() {
+    final text = _systemInstructionController.text.trim();
+    if (text.isEmpty) return;
+
+    final String label = _ruleLabelController.text.trim().isNotEmpty 
+        ? _ruleLabelController.text.trim() 
+        : (text.length > 25 ? "${text.substring(0, 25)}..." : text);
+
+    setState(() {
+      _customRules.add({
+        'content': text,
+        'active': true,
+        'label': label,
+      });
+      _systemInstructionController.clear();
+      _ruleLabelController.clear();
+      _onAdvancedSwitchChanged(); 
+    });
+  }
+
+  void _copyToClipboard() {
+    final text = _systemInstructionController.text;
+    if (text.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: text));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Copied rule to Clipboard!"), duration: Duration(milliseconds: 600)),
+      );
+    }
+  }
+
+  Future<void> _pasteFromClipboard() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text != null) {
+      setState(() {
+        _systemInstructionController.text = data!.text!;
+        _updateSystemInstruction();
+      });
+    }
+  }
+
+  void _deleteActiveRulesWithConfirmation() {
+    bool hasActive = _isReasoningFixEnabled || _isKaomojiFixEnabled || _customRules.any((r) => r['active'] == true);
+    if (!hasActive) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
+        title: const Text("Delete Active Settings?", style: TextStyle(color: Colors.redAccent)),
+        content: const Text(
+          "This will disable standard overrides and PERMANENTLY DELETE any custom rules currently switched ON.\n\nAre you sure?",
+          style: TextStyle(color: Colors.white70)
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: const Text("DELETE ACTIVE", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            onPressed: () {
+              setState(() {
+                _isReasoningFixEnabled = false;
+                _isKaomojiFixEnabled = false;
+                _customRules.removeWhere((r) => r['active'] == true);
+                _onAdvancedSwitchChanged(); 
+              });
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadBookmarks() async {
@@ -196,8 +366,39 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     if (widget.promptTitle != oldWidget.promptTitle && widget.promptTitle != _promptTitleController.text) {
       _promptTitleController.text = widget.promptTitle;
     }
-    if (widget.systemInstruction != oldWidget.systemInstruction && widget.systemInstruction != _systemInstructionController.text) {
-      _systemInstructionController.text = widget.systemInstruction;
+                if (widget.systemInstruction != oldWidget.systemInstruction) {
+        String advanced = _advancedPromptController.text.trim();
+        String main = _systemInstructionController.text.trim();
+        String currentCombined = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main;
+
+        if (widget.systemInstruction != currentCombined) {
+             // External update -> Re-parse
+             String full = widget.systemInstruction;
+             String adv = "";
+             
+             // Extract knowns
+             bool rFix = full.contains(kDefaultReasoningFix);
+             if (rFix) {
+                full = full.replaceFirst(kDefaultReasoningFix, "");
+                adv += "$kDefaultReasoningFix\n\n";
+             }
+             
+             bool kFix = full.contains(kDefaultKaomojiFix);
+             if (kFix) {
+               full = full.replaceFirst(kDefaultKaomojiFix, "");
+               adv += "$kDefaultKaomojiFix\n\n";
+             }
+
+             full = full.trim();
+             adv = adv.trim();
+             
+             setState(() {
+                _isReasoningFixEnabled = rFix;
+                _isKaomojiFixEnabled = kFix;
+                _systemInstructionController.text = full;
+                _advancedPromptController.text = adv;
+             });
+        }
     }
     if (widget.openRouterModel != oldWidget.openRouterModel && widget.openRouterModel != _openRouterModelController.text) {
       _openRouterModelController.text = widget.openRouterModel;
@@ -211,7 +412,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _titleController.dispose();
     _promptTitleController.dispose();
     _systemInstructionController.dispose();
-    _openRouterModelController.dispose();
+        _openRouterModelController.dispose();
+    _advancedPromptController.dispose();
+    _ruleLabelController.dispose();
     super.dispose();
   }
 
@@ -529,7 +732,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.15.1", 
+            const Text("v0.1.16", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -776,7 +979,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
             const SizedBox(height: 30),
 
-            Text("System Prompt", style: TextStyle(fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+            Text("System Prompt", style: 
+            TextStyle(
+              fontWeight: FontWeight.bold, 
+              shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
             const SizedBox(height: 5),
             
             // 1. THE DROPDOWN & ACTIONS ROW
@@ -855,7 +1061,51 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
                 filled: true, fillColor: Colors.black26,
               ),
-              style: const TextStyle(fontSize: 13),
+                            style: const TextStyle(fontSize: 13),
+            ),
+            
+            // BUTTON ROW (Add, Copy, Paste, Delete)
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
+                          tooltip: "Add as Advanced Rule",
+                          onPressed: _addRuleFromInput,
+                        ),
+                        Container(width: 1, height: 20, color: Colors.white12),
+                        IconButton(
+                          icon: const Icon(Icons.copy, color: Colors.blueAccent),
+                          tooltip: "Copy Text",
+                          onPressed: _copyToClipboard,
+                        ),
+                        Container(width: 1, height: 20, color: Colors.white12),
+                        IconButton(
+                          icon: const Icon(Icons.paste, color: Colors.orangeAccent),
+                          tooltip: "Paste Text",
+                          onPressed: _pasteFromClipboard,
+                        ),
+                        Container(width: 1, height: 20, color: Colors.white12),
+                        IconButton(
+                          icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
+                          tooltip: "Delete Active Settings",
+                          onPressed: _deleteActiveRulesWithConfirmation,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
             
             const SizedBox(height: 8),
@@ -883,8 +1133,204 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 ),
               ],
             ),
-// --- CONTEXT HISTORY LIMIT ---
+
             const Divider(),
+
+            // --- ADVANCED SYSTEM PROMPT SECTION ---
+            Text("Advanced System Prompt", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+            const SizedBox(height: 5),
+
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12),
+              ),
+              child: ExpansionTile(
+                title: const Text("Tweaks & Overrides", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+                subtitle: Text(
+                  _isReasoningFixEnabled || _isKaomojiFixEnabled ? "Active: ${_isReasoningFixEnabled ? 'Thinking' : ''} ${_isKaomojiFixEnabled ? 'Kaomoji' : ''}" : "Configure hidden behavior...",
+                  style: const TextStyle(fontSize: 10, color: Colors.grey)
+                ),
+                collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+                children: [
+                   ListTile(
+                     dense: true,
+                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                     title: Text("Reasoning Fix", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                     trailing: Switch(
+                       value: _isReasoningFixEnabled,
+                       activeColor: themeProvider.appThemeColor,
+                       onChanged: (val) {
+                         setState(() => _isReasoningFixEnabled = val);
+                         _onAdvancedSwitchChanged();
+                       },
+                     ),
+                     onTap: () {
+                       _advancedPromptController.text = kDefaultReasoningFix;
+                     },
+                   ),
+                   ListTile(
+                     dense: true,
+                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                     title: Text("Kaomoji Mode", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                     trailing: Switch(
+                       value: _isKaomojiFixEnabled,
+                       activeColor: themeProvider.appThemeColor,
+                       onChanged: (val) {
+                         setState(() => _isKaomojiFixEnabled = val);
+                         _onAdvancedSwitchChanged();
+                       },
+                     ),
+                     onTap: () {
+                        _advancedPromptController.text = kDefaultKaomojiFix;
+                     },
+                   ),
+                   
+                   // Dynamic Rules List
+                   if (_customRules.isNotEmpty)
+                     const Padding(
+                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                       child: Divider(color: Colors.white10),
+                     ),
+                   ..._customRules.map((rule) {
+                      return ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        title: Text(rule['label'], style: const TextStyle(color: Colors.white70, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        trailing: Switch(
+                          value: rule['active'],
+                          activeColor: Colors.blueAccent,
+                          onChanged: (val) {
+                            setState(() {
+                               rule['active'] = val;
+                               _onAdvancedSwitchChanged();
+                            });
+                          },
+                        ),
+                        onTap: () {
+                           _advancedPromptController.text = rule['content'];
+                        },
+                      );
+                   }),
+
+                   // EDITABLE RAW PROMPT
+                   const Divider(),
+                   Padding(
+                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         const Text("Raw Advanced Instructions:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                         const SizedBox(height: 4),
+                         TextField(
+                           controller: _advancedPromptController,
+                           maxLines: 4,
+                           style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.white70),
+                           decoration: InputDecoration(
+                             filled: true, 
+                             fillColor: Colors.black45,
+                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+                             contentPadding: const EdgeInsets.all(8),
+                           ),
+                           onChanged: (val) {
+                             // Sync switches to text presence
+                             setState(() {
+                               _isReasoningFixEnabled = val.contains(kDefaultReasoningFix);
+                               _isKaomojiFixEnabled = val.contains(kDefaultKaomojiFix);
+                             });
+                             _updateSystemInstruction();
+                           },
+                         ),
+                       ],
+                     ),
+                   ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 10),
+
+                        // 4. PROMPT CONTENT FIELD (Main) - Titled "Main Roleplay Rules"
+            const Text("Main Roleplay Rules", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 4),
+            
+            // Subtitle / Label Input for Custom Rule
+            TextField(
+              controller: _ruleLabelController,
+              decoration: InputDecoration(
+                hintText: "Rule Name (e.g. 'Pirate Mode')",
+                hintStyle: const TextStyle(fontSize: 11, color: Colors.grey),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                filled: true, fillColor: Colors.black12,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+              style: const TextStyle(fontSize: 12, color: Colors.white),
+            ),
+            const SizedBox(height: 4),
+
+            TextField(
+              controller: _systemInstructionController,
+              onChanged: (val) => _updateSystemInstruction(),
+              maxLines: 3, 
+              decoration: InputDecoration(
+                hintText: "You Speak as a Pirate, using nautical terms...",
+                border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
+                enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
+                filled: true, fillColor: Colors.black26,
+              ),
+              style: const TextStyle(fontSize: 13),
+            ),
+            
+            const SizedBox(height: 8),
+
+            // BUTTON ROW (Add, Copy, Paste, Delete)
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
+                          tooltip: "Add as Advanced Rule",
+                          onPressed: _addRuleFromInput,
+                        ),
+                        Container(width: 1, height: 20, color: Colors.white12),
+                        IconButton(
+                          icon: const Icon(Icons.copy, color: Colors.blueAccent),
+                          tooltip: "Copy Text",
+                          onPressed: _copyToClipboard,
+                        ),
+                        Container(width: 1, height: 20, color: Colors.white12),
+                        IconButton(
+                          icon: const Icon(Icons.paste, color: Colors.orangeAccent),
+                          tooltip: "Paste Text",
+                          onPressed: _pasteFromClipboard,
+                        ),
+                        Container(width: 1, height: 20, color: Colors.white12),
+                        IconButton(
+                          icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
+                          tooltip: "Delete Active Settings",
+                          onPressed: _deleteActiveRulesWithConfirmation,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 8),
+
             _buildSliderSetting(
               title: "(Msg History) Limit",
               value: widget.historyLimit.toDouble(),

@@ -91,12 +91,18 @@ class MessageBubble extends StatelessWidget {
     final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha(128) : Colors.white10;
     final useBloom = themeProvider.enableBloom;
 
-    final codeStyle = TextStyle(
+        final codeStyle = TextStyle(
       color: textColor,
       backgroundColor: Colors.black26,
       shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
       fontFamily: 'monospace',
     );
+
+        // --- PARSE REASONING ---
+    final splitContent = _extractReasoning(msg.text);
+    final reasoningText = splitContent['reasoning'] as String;
+    final visibleText = splitContent['content'] as String;
+    final isReasoningDone = splitContent['isDone'] as bool;
 
     // Define the content once to avoid repetition
     final contentColumn = Column(
@@ -127,6 +133,17 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
         // --------------------------------------
+
+        // --- REASONING DROPDOWN ---
+        if (reasoningText.isNotEmpty)
+          ReasoningView(
+            reasoning: reasoningText, 
+            textColor: textColor, 
+            useBloom: useBloom,
+            isDone: isReasoningDone,
+          ),
+        // --------------------------------------
+
         if (msg.imagePaths.isNotEmpty)
           _buildAttachmentGrid(context, msg.imagePaths),
         if (msg.aiImage != null)
@@ -140,9 +157,9 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-                if (msg.text.isNotEmpty)
+        if (visibleText.isNotEmpty)
           MarkdownBody(
-            data: msg.text,
+            data: visibleText,
                         builders: {
               'code': CodeElementBuilder(context, codeStyle),
             },
@@ -413,8 +430,6 @@ class CodeElementBuilder extends MarkdownElementBuilder {
 }
 
 /// A custom painter to draw a bubble with a glowing border effect.
-/// This provides more control than a simple boxShadow, allowing the glow
-/// to emanate directly from the border line.
 class BorderGlowPainter extends CustomPainter {
   final Color backgroundColor;
   final Color borderColor;
@@ -439,7 +454,7 @@ class BorderGlowPainter extends CustomPainter {
       ..color = glowColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = glowStrokeWidth
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12.0); // Increased blur for "dreamy" look
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12.0);
 
     // Paint for the solid background fill
     final bgPaint = Paint()
@@ -455,21 +470,152 @@ class BorderGlowPainter extends CustomPainter {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
     final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
 
-    // Draw the glow first, so it's behind everything
     canvas.drawRRect(rrect, glowPaint);
-
-    // Draw the background fill on top of the glow
     canvas.drawRRect(rrect, bgPaint);
-
-    // Draw the crisp border on top of the background
     canvas.drawRRect(rrect.inflate(-strokeWidth / 2), borderPaint);
   }
 
-  @override
+    @override
   bool shouldRepaint(covariant BorderGlowPainter oldDelegate) {
     return oldDelegate.backgroundColor != backgroundColor ||
            oldDelegate.borderColor != borderColor ||
            oldDelegate.glowColor != glowColor;
   }
 }
+
+// --- REASONING HELPERS ---
+
+Map<String, dynamic> _extractReasoning(String text) {
+  // Matches <think> content </think> (handling unclosed tag for streaming)
+  final RegExp thinkRegex = RegExp(r'<think>(.*?)(?:</think>|$)', dotAll: true);
+  final match = thinkRegex.firstMatch(text);
+  
+  if (match != null) {
+    final reasoning = match.group(1)?.trim() ?? '';
+    // Check if the closing tag exists in the full match
+    final bool hasClosing = match.group(0)!.contains('</think>');
+    
+    // Remove the think block from the main text
+    final content = text.replaceFirst(match.group(0)!, '').trim();
+    return {
+      'reasoning': reasoning, 
+      'content': content,
+      'isDone': hasClosing
+    };
+  }
+  
+  // If no reasoning found, effectively "done" with reasoning (none exists)
+  return {'reasoning': '', 'content': text, 'isDone': true};
+}
+
+class ReasoningView extends StatefulWidget {
+  final String reasoning;
+  final Color textColor;
+  final bool useBloom;
+  final bool isDone;
+
+  const ReasoningView({
+    super.key,
+    required this.reasoning,
+    required this.textColor,
+    required this.useBloom,
+    required this.isDone,
+  });
+
+  @override
+  State<ReasoningView> createState() => _ReasoningViewState();
+}
+
+class _ReasoningViewState extends State<ReasoningView> {
+  bool _isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // If it's NOT done (streaming), expand it automatically.
+    // If it IS done (loaded from history), start collapsed.
+    _isExpanded = !widget.isDone;
+  }
+
+  @override
+  void didUpdateWidget(covariant ReasoningView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If it transitions from NOT done to DONE, collapse it.
+    if (!oldWidget.isDone && widget.isDone) {
+      setState(() {
+        _isExpanded = false;
+      });
+    }
+  }
+
+    @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header / Toggle
+          InkWell(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                 color: Colors.black12,
+                 borderRadius: BorderRadius.circular(4),
+                 border: Border.all(color: widget.textColor.withOpacity(0.1)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   Icon(
+                     _isExpanded ? Icons.visibility_off_outlined : Icons.psychology_outlined,
+                     size: 14, 
+                     color: widget.textColor.withOpacity(0.6)
+                   ),
+                   const SizedBox(width: 6),
+                   Text(
+                     _isExpanded ? "Hide Thought Process" : "Show Thought Process",
+                     style: TextStyle(
+                       fontSize: 11,
+                       fontWeight: FontWeight.bold,
+                       color: widget.textColor.withOpacity(0.6),
+                     ),
+                   ),
+                   const SizedBox(width: 4),
+                ],
+              ),
+            ),
+          ),
+          
+          // Content
+          if (_isExpanded)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.all(8),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(6),
+                border: Border(
+                  left: BorderSide(color: widget.textColor.withOpacity(0.3), width: 3)
+                ),
+              ),
+              child: Text(
+                widget.reasoning,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  color: widget.textColor.withOpacity(0.8),
+                  height: 1.4,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 
