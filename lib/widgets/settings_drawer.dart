@@ -1281,7 +1281,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                      title: Text("Reasoning Fix", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: 12)),
                      trailing: Switch(
                        value: _isReasoningFixEnabled,
-                       activeColor: themeProvider.appThemeColor,
+                       activeThumbColor: themeProvider.appThemeColor,
                        onChanged: (val) {
                          setState(() => _isReasoningFixEnabled = val);
                          _onAdvancedSwitchChanged();
@@ -1297,7 +1297,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                      title: Text("Kaomoji Mode", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: 12)),
                      trailing: Switch(
                        value: _isKaomojiFixEnabled,
-                       activeColor: themeProvider.appThemeColor,
+                       activeThumbColor: themeProvider.appThemeColor,
                        onChanged: (val) {
                          setState(() => _isKaomojiFixEnabled = val);
                          _onAdvancedSwitchChanged();
@@ -1337,7 +1337,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                             ),
                             Switch(
                               value: rule['active'] == true,
-                              activeColor: Colors.blueAccent,
+                              activeThumbColor: Colors.blueAccent,
                               onChanged: (val) {
                                 setState(() {
                                    rule['active'] = val;
@@ -1474,7 +1474,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               title: "(Msg History) Limit",
               value: widget.historyLimit.toDouble(),
               min: 2,
-              max: 1000,
+              max: 2000,
               divisions: 499,
               activeColor: Colors.greenAccent,
               isInt: true,
