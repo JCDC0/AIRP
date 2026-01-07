@@ -1737,11 +1737,12 @@ void _showEditDialog(int index) {
                   LinearProgressIndicator(color: themeProvider.appThemeColor, minHeight: 4),
                   Container(
                     padding: const EdgeInsets.all(4.0),
-                    color: const Color(0xFFFFFFFF).withAlpha((0.1 * 255).round()),
+                    color: const Color.fromARGB(255, 0, 0, 0).withAlpha((0.9 * 255).round()),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                      // 1. PREVIEW IMAGES AREA (Top Layer)
                         if (_pendingImages.isNotEmpty)
                           SizedBox(
                             height: 90,
@@ -1761,24 +1762,52 @@ void _showEditDialog(int index) {
                                       Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: isImage
-                                                ? Image.file(File(path),
-                                                    width: 60, height: 60, fit: BoxFit.cover)
-                                                : Container(
-                                                    width: 60,
-                                                    height: 60,
-                                                    color: Colors.white12,
+                                          GestureDetector(
+                                            onTap: isImage ? () {
+                                              // Preview logic re-using the zoomable viewer approach or a dialog
+                                              showDialog(
+                                                context: context,
+                                                builder: (_) => Dialog(
+                                                  backgroundColor: Colors.transparent,
+                                                  insetPadding: EdgeInsets.zero,
+                                                  child: Stack(
                                                     alignment: Alignment.center,
-                                                    child: Icon(
-                                                      ext == 'pdf'
-                                                          ? Icons.picture_as_pdf
-                                                          : Icons.insert_drive_file,
-                                                      color: Colors.white70,
-                                                      size: 28,
-                                                    ),
+                                                    children: [
+                                                      InteractiveViewer(
+                                                        maxScale: 5.0,
+                                                        child: Image.file(File(path)),
+                                                      ),
+                                                      Positioned(
+                                                        top: 40, right: 20,
+                                                        child: IconButton(
+                                                          icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                                                          onPressed: () => Navigator.pop(context),
+                                                        ),
+                                                      )
+                                                    ],
                                                   ),
+                                                )
+                                              );
+                                            } : null, // No preview for files yet, just images
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: isImage
+                                                  ? Image.file(File(path),
+                                                      width: 60, height: 60, fit: BoxFit.cover)
+                                                  : Container(
+                                                      width: 60,
+                                                      height: 60,
+                                                      color: Colors.white12,
+                                                      alignment: Alignment.center,
+                                                      child: Icon(
+                                                        ext == 'pdf'
+                                                            ? Icons.picture_as_pdf
+                                                            : Icons.insert_drive_file,
+                                                        color: Colors.white70,
+                                                        size: 28,
+                                                      ),
+                                                    ),
+                                            ),
                                           ),
                                           const SizedBox(height: 4),
                                           SizedBox(
@@ -1811,45 +1840,51 @@ void _showEditDialog(int index) {
                               },
                             ),
                           ),
+                        
+                        // 2. TOOLBAR ROW (Icons moved here)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 4.0),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.attach_file, color: themeProvider.appThemeColor),
+                                tooltip: "Add Attachment",
+                                onPressed: _isLoading ? null : _showAttachmentMenu,
+                              ),
+                              _buildFeatureSwitch(
+                                icon: Icons.image,
+                                isActive: _enableImageGen,
+                                activeColor: Colors.purpleAccent,
+                                onToggle: () {
+                                  setState(() {
+                                    _enableImageGen = !_enableImageGen;
+                                    if (_enableImageGen) _enableGrounding = false;
+                                  });
+                                  _showStatusPopup(_enableImageGen ? "Image Gen ON" : "Image Gen OFF");
+                                },
+                                themeProvider: themeProvider,
+                              ),
+                              _buildFeatureSwitch(
+                                icon: Icons.public,
+                                isActive: _enableGrounding,
+                                activeColor: Colors.blueAccent,
+                                onToggle: () {
+                                  setState(() {
+                                    _enableGrounding = !_enableGrounding;
+                                    if (_enableGrounding) _enableImageGen = false;
+                                  });
+                                  _showStatusPopup(_enableGrounding ? "Web Search ON" : "Web Search OFF");
+                                },
+                                themeProvider: themeProvider,
+                              ),
+                              const Spacer(), // Pushes icons to the left, keeping text field below separate
+                            ],
+                          ),
+                        ),
+
+                        // 3. INPUT FIELD ROW
                         Row(
                           children: [
-                                                        // ATTACHMENT BUTTON (Moved to top row logic conceptually, but physically here)
-                            IconButton(
-                              icon: Icon(Icons.attach_file, color: themeProvider.appThemeColor),
-                              tooltip: "Add Attachment",
-                              onPressed: _isLoading ? null : _showAttachmentMenu,
-                            ),
-                            
-                            // IMAGE GEN SWITCH
-                            _buildFeatureSwitch(
-                              icon: Icons.image,
-                              isActive: _enableImageGen,
-                              activeColor: Colors.purpleAccent,
-                              onToggle: () {
-                                setState(() {
-                                  _enableImageGen = !_enableImageGen;
-                                  if (_enableImageGen) _enableGrounding = false; // Mutually exclusive usually
-                                });
-                                _showStatusPopup(_enableImageGen ? "Image Gen ON" : "Image Gen OFF");
-                              },
-                              themeProvider: themeProvider,
-                            ),
-
-                            // WEB SEARCH SWITCH
-                            _buildFeatureSwitch(
-                              icon: Icons.public, // Web icon
-                              isActive: _enableGrounding,
-                              activeColor: Colors.blueAccent,
-                              onToggle: () {
-                                setState(() {
-                                  _enableGrounding = !_enableGrounding;
-                                  if (_enableGrounding) _enableImageGen = false;
-                                });
-                                _showStatusPopup(_enableGrounding ? "Web Search ON" : "Web Search OFF");
-                              },
-                              themeProvider: themeProvider,
-                            ),
-
                             Expanded(
                               child: TextField(
                                 controller: _textController,
