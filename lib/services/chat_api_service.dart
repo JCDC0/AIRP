@@ -98,19 +98,54 @@ class ChatApiService {
       });
     }
 
-    // Current Message with Images
+        // Current Message with Images
     if (imagePaths.isEmpty) {
       messagesPayload.add({"role": "user", "content": userMessage});
     } else {
       List<Map<String, dynamic>> contentParts = [];
-      if (userMessage.isNotEmpty) contentParts.add({"type": "text", "text": userMessage});
+      
+      // 1. Add User's main text first
+      if (userMessage.isNotEmpty) {
+        contentParts.add({"type": "text", "text": userMessage});
+      }
+
+      // 2. Process Attachments
       for (String path in imagePaths) {
-        final bytes = await File(path).readAsBytes();
-        final base64Img = base64Encode(bytes);
-        contentParts.add({
-          "type": "image_url", 
-          "image_url": {"url": "data:image/jpeg;base64,$base64Img"}
-        });
+        final String ext = path.split('.').last.toLowerCase();
+        
+        // --- Case A: Text-based files (Code, logs, etc.) ---
+        // Read as strings so the LLM can actually read due to unsuporrted file uploads
+        if (['txt', 'md', 'json', 'dart', 'js', 'py', 'html', 'css', 'csv', 'c', 'cpp', 'java', 'xml', 'yaml', 'yml'].contains(ext)) {
+          try {
+            final String fileContent = await File(path).readAsString();
+            contentParts.add({
+              "type": "text", 
+              "text": "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n"
+            });
+          } catch (e) {
+            // Skip unreadable files
+          }
+        } 
+        // --- Case B: Images (Vision) ---
+        else if (['png', 'jpg', 'jpeg', 'webp', 'gif'].contains(ext)) {
+          try {
+            final bytes = await File(path).readAsBytes();
+            final base64Img = base64Encode(bytes);
+            
+            // Determine correct MIME type
+            String mimeType = 'image/jpeg';
+            if (ext == 'png') mimeType = 'image/png';
+            if (ext == 'webp') mimeType = 'image/webp';
+            if (ext == 'gif') mimeType = 'image/gif';
+
+            contentParts.add({
+              "type": "image_url", 
+              "image_url": {"url": "data:$mimeType;base64,$base64Img"}
+            });
+          } catch (e) {
+            // Error reading image
+          }
+        }
       }
       messagesPayload.add({"role": "user", "content": contentParts});
     }
@@ -165,7 +200,7 @@ class ChatApiService {
       }
 
     // 5. Decode Stream (SSE Format)
-    // We assume standard "data: {...}" format used by OpenAI/OpenRouter/LocalAI
+    // Assume standard "data: {...}" format used by OpenAI/OpenRouter/LocalAI
       bool hasEmittedThinkStart = false;
       bool hasEmittedThinkEnd = false;
 
