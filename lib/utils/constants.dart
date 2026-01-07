@@ -98,8 +98,7 @@ String cleanModelName(String rawId) {
 // ----------------------------------------------------------------------
 const String kDefaultBackground = 'assets/default.jpg';
 
-const List<String> kAssetBackgrounds = [
-  'assets/bebe.jpg', 
+const List<String> kAssetBackgrounds = [ 
   'assets/67_horror.jpg',
   'assets/Backrooms_2.jpg',
   'assets/beach_morning.jpg',
@@ -114,7 +113,6 @@ const List<String> kAssetBackgrounds = [
   'assets/default.jpg',
   'assets/du_street.jpg',
   'assets/gym_pool.jpg',
-  'assets/halls.jpg',
   'assets/horror_dark.jpg',
   'assets/hoshinoBG.jpg',
   'assets/japan_river.jpg',
@@ -122,7 +120,10 @@ const List<String> kAssetBackgrounds = [
   'assets/kivotos.png',
   'assets/military_park.jpg',
   'assets/minecraft_lake.jpg',
-  'assets/sekiro.jpg',
+  'assets/nightsky.jpg',
+  'assets/starrysky.jpg',
+  'assets/soothingsea.jpg',
+  'assets/soothingsky.jpg',
   'assets/still_waters.jpg',
   'assets/trainer_office.jpg',
   'assets/turf.jpeg',

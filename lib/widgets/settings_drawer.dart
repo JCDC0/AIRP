@@ -876,7 +876,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.16.6", 
+            const Text("v0.1.16.7", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -1936,7 +1936,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       Text("Dimmer: ${(provider.backgroundOpacity * 100).toInt()}%", style: const TextStyle(fontSize: 12, color: Colors.grey)),
                       Slider(value: provider.backgroundOpacity, min: 0.0, max: 0.95, activeColor: provider.appThemeColor, inactiveColor: Colors.grey[800], onChanged: (val) => provider.setBackgroundOpacity(val),),
                     ]
-                                    ],
+                  ],
                 );
               },
             ),
