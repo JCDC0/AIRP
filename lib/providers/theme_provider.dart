@@ -24,11 +24,11 @@ class ThemeProvider extends ChangeNotifier {
   int _firefliesCount = 50;
 
 // Color settings
-  Color _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
+Color _userBubbleColor = const Color.fromARGB(255, 0, 70, 70).withAlpha((0.8 * 255).round());
   Color _userTextColor = Colors.white;
-  Color _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
+  Color _aiBubbleColor = const Color.fromARGB(255, 57, 0, 0).withAlpha((0.8 * 255).round());
   Color _aiTextColor = Colors.white;
-  Color _appThemeColor = Colors.cyanAccent; 
+  Color _appThemeColor = const Color.fromARGB(255, 255, 255, 255); 
 
   List<String> _customImagePaths = []; 
 
@@ -69,10 +69,12 @@ class ThemeProvider extends ChangeNotifier {
     const baseColor = Colors.white;
     final baseTheme = ThemeData.dark().textTheme.apply(bodyColor: baseColor, displayColor: baseColor);
     switch (_fontStyle) {
-case 'Google': 
+    case 'Google': 
       return GoogleFonts.openSansTextTheme(baseTheme);
     case 'Apple': 
       return GoogleFonts.interTextTheme(baseTheme);
+    case 'Claude':
+      return GoogleFonts.sourceSerif4TextTheme(baseTheme);
     case 'Roleplay': 
       return GoogleFonts.loraTextTheme(baseTheme);
     case 'Terminal': 
@@ -83,10 +85,26 @@ case 'Google':
       return GoogleFonts.orbitronTextTheme(baseTheme);
     case 'ModernAnime': 
       return GoogleFonts.quicksandTextTheme(baseTheme);
+    case 'AnimeSub':
+      return GoogleFonts.kosugiMaruTextTheme(baseTheme);
     case 'Gothic': 
       return GoogleFonts.crimsonProTextTheme(baseTheme);
     case 'Journal': 
       return GoogleFonts.caveatTextTheme(baseTheme);
+    case 'CleanThin':
+      return GoogleFonts.ralewayTextTheme(baseTheme);
+    case 'Stylized':
+      return GoogleFonts.playfairDisplayTextTheme(baseTheme);
+            case 'Fantasy':
+      return GoogleFonts.cinzelTextTheme(baseTheme);
+    case 'Typewriter':
+      return GoogleFonts.specialEliteTextTheme(baseTheme);
+    case 'AnimeAce':
+      return baseTheme.apply(fontFamily: 'Anime Ace');
+    case 'Acme':
+      return baseTheme.apply(fontFamily: 'Acme Secret Agent');
+    case 'Smack':
+      return baseTheme.apply(fontFamily: 'Smack Attack');
     default: 
       return baseTheme;
     }
@@ -262,7 +280,7 @@ case 'Google':
     Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _fontStyle = prefs.getString('app_font_style') ?? 'Default';
-        _backgroundImagePath = prefs.getString('app_bg_path');
+    _backgroundImagePath = prefs.getString('app_bg_path');
     _backgroundOpacity = prefs.getDouble('app_bg_opacity') ?? 0.7;
     _enableBloom = prefs.getBool('app_enable_bloom') ?? false;
     _enableMotes = prefs.getBool('app_enable_motes') ?? false;
