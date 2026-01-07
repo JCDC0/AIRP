@@ -7,8 +7,9 @@ class ChatSessionData {
   final String modelName;
   final int tokenCount;
   final String systemInstruction;
-  final String? backgroundImage;
+    final String? backgroundImage;
   final String provider;
+  final bool isBookmarked;
 
   ChatSessionData({
     required this.id,
@@ -19,6 +20,7 @@ class ChatSessionData {
     required this.systemInstruction,
     this.backgroundImage,
     this.provider = 'gemini',
+    this.isBookmarked = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -29,6 +31,7 @@ class ChatSessionData {
     'systemInstruction': systemInstruction,
     'backgroundImage': backgroundImage,
     'provider': provider,
+    'isBookmarked': isBookmarked,
     'messages': messages.map((m) => m.toJson()).toList(),
   };
 
@@ -43,6 +46,7 @@ class ChatSessionData {
     systemInstruction: json['systemInstruction'] ?? "",
     backgroundImage: json['backgroundImage'],
     provider: json['provider'] ?? 'gemini',
+    isBookmarked: json['isBookmarked'] ?? false,
   );
 }
 

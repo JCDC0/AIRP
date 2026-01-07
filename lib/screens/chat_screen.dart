@@ -333,7 +333,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       tokenCount: _tokenCount,
       systemInstruction: _systemInstructionController.text,
       backgroundImage: themeProvider.backgroundImagePath,
-      provider: providerStr,
+            provider: providerStr,
     );
 
     setState(() {
@@ -345,12 +345,41 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     await prefs.setString('airp_sessions', data);
   }
 
-  void _createNewSession() {
+  // BOOKMARK LOGIC
+  Future<void> _bookmarkSession(String sessionId, bool isBookmarked) async {
+    final index = _savedSessions.indexWhere((s) => s.id == sessionId);
+    if (index == -1) return;
+
+    final session = _savedSessions[index];
+    final updatedSession = ChatSessionData(
+      id: session.id,
+      title: session.title,
+      messages: session.messages,
+      modelName: session.modelName,
+      tokenCount: session.tokenCount,
+      systemInstruction: session.systemInstruction,
+      backgroundImage: session.backgroundImage,
+      provider: session.provider,
+      isBookmarked: isBookmarked,
+    );
+
+    setState(() {
+      _savedSessions[index] = updatedSession;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final String data = jsonEncode(_savedSessions.map((s) => s.toJson()).toList());
+    await prefs.setString('airp_sessions', data);
+  }
+
+    void _createNewSession() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     setState(() {
             _messages.clear();
       _tokenCount = 0;
       _currentSessionId = null; 
       _titleController.clear();
+      themeProvider.setBackgroundImage('assets/default.jpg');
     });
     _initializeModel();
   }
@@ -1362,12 +1391,13 @@ void _showEditDialog(int index) {
   // UI BUILDERS
   // ----------------------------------------------------------------------
 
-  Widget _buildLeftDrawer() {
+    Widget _buildLeftDrawer() {
     return ConversationDrawer(
       savedSessions: _savedSessions,
       currentSessionId: _currentSessionId,
       tokenCount: _tokenCount,
       onNewSession: _createNewSession,
+      onBookmarkSession: _bookmarkSession,
       onLoadSession: (session) {
         final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
         setState(() {
@@ -1377,8 +1407,10 @@ void _showEditDialog(int index) {
           _systemInstructionController.text = session.systemInstruction;
           _titleController.text = session.title;
 
-          if (session.backgroundImage != null) {
+                    if (session.backgroundImage != null) {
             themeProvider.setBackgroundImage(session.backgroundImage!);
+          } else {
+            themeProvider.setBackgroundImage('assets/default.jpg');
           }
 
           if (session.provider == 'openRouter') {
