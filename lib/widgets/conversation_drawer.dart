@@ -50,7 +50,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
     final recentSessions = filteredSessions.where((s) => !s.isBookmarked).toList();
 
     return Drawer(
-      width: 320, 
+      width: 380, 
       backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.3) : null,
       elevation: themeProvider.enableBloom ? 20 : 16,

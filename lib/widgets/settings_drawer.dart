@@ -273,21 +273,14 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     widget.onSaveSettings();
   }
   
-  void _handleSavePreset() {
-    // We only want to save the "main" prompt, not the advanced tweaks.
-    // The parent's onSavePrompt needs the latest data, which it gets from its own state.
-    // So, we update the parent's systemInstruction state with our main controller's text.
+    void _handleSavePreset() {
     setState(() {
       _isProgrammaticUpdate = true;
     });
     
-    // The content of a "Preset" should only be the main world prompt.
     widget.onSystemInstructionChanged(_mainPromptController.text);
-    
-    // Now we can call the parent's save function, which will use the updated instruction.
     widget.onSavePrompt();
 
-    // Reset the flag after the widget rebuilds so future external changes are handled correctly.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         setState(() {
@@ -295,6 +288,18 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         });
       }
     });
+  }
+
+  void _notifyChangeIfNeeded() {
+    if (!widget.hasUnsavedChanges) {
+        // Construct what the prompt currently looks like to satisfy the callback signature
+        // We match the logic in didUpdateWidget to avoid re-parsing and cursor jumps
+        String advanced = _advancedPromptController.text.trim();
+        String main = _mainPromptController.text; // Don't trim while typing
+        String finalPrompt = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main;
+        
+        widget.onSystemInstructionChanged(finalPrompt);
+    }
   }
 
   
@@ -455,12 +460,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     }
   }
 
-      Future<void> _pasteFromClipboard() async {
+            Future<void> _pasteFromClipboard() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null) {
       setState(() {
         _mainPromptController.text = data!.text!;
       });
+      _notifyChangeIfNeeded();
     }
   }
 
@@ -849,8 +855,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
-    return Drawer(
-      width: 320,
+      return Drawer(
+      width: 370, 
       backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.9) : null,
       elevation: themeProvider.enableBloom ? 30 : 16,
@@ -870,7 +876,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.16.5", 
+            const Text("v0.1.16.6", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -1188,18 +1194,35 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
                         const SizedBox(height: 5),
 
-            // 3. MAIN PROMPT CONTENT FIELD (Restored)
-            TextField(
-              controller: _mainPromptController,
-              // No onChanged to prevent lag - commit on save
-              maxLines: 5,
-              decoration: InputDecoration(
-                hintText: "Enter the roleplay rules here...",
-                border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
-                enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
-                filled: true, fillColor: Colors.black26,
+            // 3. MAIN PROMPT CONTENT FIELD
+            Focus(
+              onFocusChange: (hasFocus) {
+                 setState(() {}); 
+              },
+              child: Builder(
+                builder: (context) {
+                  final hasFocus = Focus.of(context).hasFocus;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                    height: hasFocus ? 300 : null,
+                    child: TextField(
+                      controller: _mainPromptController,
+                      onChanged: (_) => _notifyChangeIfNeeded(),
+                      maxLines: hasFocus ? null : 5,
+                      expands: hasFocus,
+                      textAlignVertical: TextAlignVertical.top,
+                      decoration: InputDecoration(
+                        hintText: "Enter the roleplay rules here...",
+                        border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
+                        enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
+                        filled: true, fillColor: Colors.black26,
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  );
+                }
               ),
-              style: const TextStyle(fontSize: 13),
             ),
             
             const SizedBox(height: 8),
@@ -1359,25 +1382,38 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                      child: Column(
                        crossAxisAlignment: CrossAxisAlignment.start,
                        children: [
-                         const Text("Raw Advanced Instructions:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                                  const Text("Raw Advanced Instructions:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
                          const SizedBox(height: 4),
-                         TextField(
-                           controller: _advancedPromptController,
-                           maxLines: 4,
-                           style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.white70),
-                           decoration: InputDecoration(
-                             filled: true, 
-                             fillColor: Colors.black45,
-                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-                             contentPadding: const EdgeInsets.all(8),
-                           ),
-                           onChanged: (val) {
-                             // Sync switches to text presence
-                             setState(() {
-                               _isReasoningFixEnabled = val.contains(kDefaultReasoningFix);
-                               _isKaomojiFixEnabled = val.contains(kDefaultKaomojiFix);
-                             });
-                           },
+                         Focus(
+                            onFocusChange: (hasFocus) => setState((){}),
+                            child: Builder(builder: (context) {
+                              final hasFocus = Focus.of(context).hasFocus;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                height: hasFocus ? 200 : null,
+                                child: TextField(
+                                 controller: _advancedPromptController,
+                                 maxLines: hasFocus ? null : 4,
+                                 expands: hasFocus,
+                                 textAlignVertical: TextAlignVertical.top,
+                                 style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.white70),
+                                 decoration: InputDecoration(
+                                   filled: true, 
+                                   fillColor: Colors.black45,
+                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+                                   contentPadding: const EdgeInsets.all(8),
+                                 ),
+                                 onChanged: (val) {
+                                   // Sync switches to text presence
+                                   setState(() {
+                                     _isReasoningFixEnabled = val.contains(kDefaultReasoningFix);
+                                     _isKaomojiFixEnabled = val.contains(kDefaultKaomojiFix);
+                                   });
+                                   _notifyChangeIfNeeded();
+                                 },
+                               ),
+                              );
+                            }),
                          ),
                          
                         
@@ -1395,21 +1431,36 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
             // --- NEW RULE CREATION SECTION ---
             const Text("Add a New Tweak/Rule", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70)),
             const SizedBox(height: 8),
-
-            // 1. New Rule Content TextField
-            TextField(
-              controller: _newRuleContentController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: "Enter new rule content here...\n(e.g., 'You are a pirate.')",
-                border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
-                enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
-                filled: true,
-                fillColor: Colors.black26,
-                contentPadding: const EdgeInsets.all(8),
+            Focus(
+                onFocusChange: (hasFocus) {
+                  setState(() {});
+                },
+                child: Builder(
+                  builder: (context) {
+                     final hasFocus = Focus.of(context).hasFocus;
+                     return AnimatedContainer(
+                       duration: const Duration(milliseconds: 300),
+                       curve: Curves.easeOut,
+                       height: hasFocus ? 250 : null,
+                       child: TextField(
+                        controller: _newRuleContentController,
+                        maxLines: hasFocus ? null : 4, 
+                        expands: hasFocus,
+                        textAlignVertical: TextAlignVertical.top,
+                        decoration: InputDecoration(
+                          hintText: "Enter new rule content here...\n(e.g., 'You are a pirate.')",
+                          border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
+                          enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.black26,
+                          contentPadding: const EdgeInsets.all(8),
+                        ),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                     );
+                  }
+                ),
               ),
-              style: const TextStyle(fontSize: 13),
-            ),
             const SizedBox(height: 8),
 
             // 2. Button bar for new rule content (Copy/Paste)
@@ -1596,7 +1647,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 activeThumbColor: Colors.redAccent, 
                 onChanged: widget.onDisableSafetyChanged,
               ),
-            const Divider(height: 0),
+            const Divider(height: 5),
             const SizedBox(height: 30),
             Text("Visuals & Atmosphere", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
             const Divider(height: 10),
@@ -1805,7 +1856,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white10),),
                       child: GridView.builder(
                         padding: const EdgeInsets.all(8),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8,),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 8, mainAxisSpacing: 8,),
                         itemCount: 1 + provider.customImagePaths.length + kAssetBackgrounds.length,
                        itemBuilder: (context, index) {
                           if (index == 0) {

@@ -1580,11 +1580,11 @@ void _showEditDialog(int index) {
           style: const TextStyle(fontWeight: FontWeight.bold)
         ),
         behavior: SnackBarBehavior.floating,
-        width: 200, // Small width to make it look like a popup
+        width: 200,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.black87,
         duration: const Duration(milliseconds: 800),
-        margin: const EdgeInsets.only(bottom: 80), // Lift it above the keyboard/input
+        margin: const EdgeInsets.only(bottom: 80),
       )
     );
   }
