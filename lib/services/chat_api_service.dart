@@ -320,12 +320,58 @@ class ChatApiService {
                 }
               }
           }
-          return fullText;
+                    return fullText;
         }
       } 
     } catch (e) {
       return "Grounding Error: $e";
     }
     return null;
+  }
+
+  // ==============================================================================
+  // 4. IMAGE GENERATION (DALL-E 3, Flux, etc.)
+  // ==============================================================================
+  static Future<String?> generateImage({
+    required String apiKey,
+    required String prompt,
+    String provider = 'openai', // or 'openrouter'
+  }) async {
+    // 1. Setup the specific Image Gen URL
+    // OpenAI: https://api.openai.com/v1/images/generations
+    // OpenRouter: https://openrouter.ai/api/v1/images/generations (check their docs for specific models)
+    
+    final url = Uri.parse(provider == 'openai' 
+        ? 'https://api.openai.com/v1/images/generations' 
+        : 'https://openrouter.ai/api/v1/images/generations');
+
+    // 2. The Payload is different from Chat!
+    final body = jsonEncode({
+      "model": provider == 'openai' ? "dall-e-3" : "stabilityai/stable-diffusion-xl-base-1.0", // Example models
+      "prompt": prompt,
+      "n": 1,
+      "size": "1024x1024"
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "Authorization": "Bearer $apiKey",
+          "Content-Type": "application/json",
+        },
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // They usually return a list of objects with a URL
+        return data['data'][0]['url']; 
+      } else {
+        return "Error: ${response.body}";
+      }
+    } catch (e) {
+      return "Connection Error: $e";
+    }
   }
 }

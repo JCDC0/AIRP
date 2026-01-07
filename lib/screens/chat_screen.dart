@@ -67,6 +67,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     String _selectedModel = 'models/gemini-flash-lite-latest';
   double _temperature = 1; 
   bool _enableGrounding = false;
+  bool _enableImageGen = false; // Add this new state variable
   bool _disableSafety = true;
   String _reasoningEffort = "none";
   
@@ -471,7 +472,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _scrollToBottom();
     _autoSaveCurrentSession();
 
-  // 2. Handle Grounding (Gemini Native Search)
+      // 2. Handle Grounding (Gemini Native Search)
     if (_enableGrounding && _currentProvider == AiProvider.gemini && imagesToSend.isEmpty) {
        try {
          final activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
@@ -495,6 +496,53 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
        } catch (e) {
          debugPrint("Grounding failed: $e");
        }
+    }
+
+    // 2.5 Handle Image Generation (New!)
+    if (_enableImageGen) {
+      try {
+        String activeKey = '';
+        String provider = 'openai';
+        
+        if (_currentProvider == AiProvider.openRouter) {
+          activeKey = _openRouterKey;
+          provider = 'openrouter';
+        } else if (_currentProvider == AiProvider.openAi) {
+          activeKey = _openAiKey;
+          provider = 'openai';
+        } else {
+           // Fallback or Error: Gemini doesn't support this endpoint style yet without Vertex
+           setState(() {
+             _messages.add(ChatMessage(text: "Image Gen currently only supported for OpenRouter/OpenAI in this mode.", isUser: false, modelName: "System"));
+             _isLoading = false;
+           });
+           return;
+        }
+
+        final imageUrl = await ChatApiService.generateImage(
+          apiKey: activeKey,
+          prompt: messageText,
+          provider: provider,
+        );
+
+        if (_isCancelled) return;
+
+        setState(() {
+          if (imageUrl != null && imageUrl.startsWith('http')) {
+             _messages.add(ChatMessage(text: imageUrl, isUser: false, modelName: "Image Gen"));
+          } else {
+             _messages.add(ChatMessage(text: "Image Gen Failed: $imageUrl", isUser: false, modelName: "System"));
+          }
+          _isLoading = false;
+        });
+        return;
+      } catch (e) {
+         setState(() {
+           _messages.add(ChatMessage(text: "Error generating image: $e", isUser: false, modelName: "System"));
+           _isLoading = false;
+         });
+         return;
+      }
     }
 
     // 3. Prepare AI Response Placeholder
@@ -1485,6 +1533,49 @@ void _showEditDialog(int index) {
     );
   }
 
+  // ----------------------------------------------------------------------
+  // HELPER WIDGETS FOR INPUT AREA
+  // ----------------------------------------------------------------------
+  
+  void _showStatusPopup(String message) {
+    // Show a small floating snackbar/toast above the input area
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message, 
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.bold)
+        ),
+        behavior: SnackBarBehavior.floating,
+        width: 200, // Small width to make it look like a popup
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.black87,
+        duration: const Duration(milliseconds: 800),
+        margin: const EdgeInsets.only(bottom: 80), // Lift it above the keyboard/input
+      )
+    );
+  }
+
+  Widget _buildFeatureSwitch({
+    required IconData icon, 
+    required bool isActive, 
+    required Color activeColor, 
+    required VoidCallback onToggle,
+    required ThemeProvider themeProvider,
+  }) {
+    return IconButton(
+      icon: Icon(
+        icon,
+        color: isActive ? activeColor : Colors.grey[600],
+        shadows: isActive && themeProvider.enableBloom 
+            ? [Shadow(color: activeColor, blurRadius: 8)] 
+            : [],
+      ),
+      onPressed: _isLoading ? null : onToggle,
+    );
+  }
+
 @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -1722,11 +1813,43 @@ void _showEditDialog(int index) {
                           ),
                         Row(
                           children: [
+                                                        // ATTACHMENT BUTTON (Moved to top row logic conceptually, but physically here)
                             IconButton(
                               icon: Icon(Icons.attach_file, color: themeProvider.appThemeColor),
                               tooltip: "Add Attachment",
                               onPressed: _isLoading ? null : _showAttachmentMenu,
                             ),
+                            
+                            // IMAGE GEN SWITCH
+                            _buildFeatureSwitch(
+                              icon: Icons.image,
+                              isActive: _enableImageGen,
+                              activeColor: Colors.purpleAccent,
+                              onToggle: () {
+                                setState(() {
+                                  _enableImageGen = !_enableImageGen;
+                                  if (_enableImageGen) _enableGrounding = false; // Mutually exclusive usually
+                                });
+                                _showStatusPopup(_enableImageGen ? "Image Gen ON" : "Image Gen OFF");
+                              },
+                              themeProvider: themeProvider,
+                            ),
+
+                            // WEB SEARCH SWITCH
+                            _buildFeatureSwitch(
+                              icon: Icons.public, // Web icon
+                              isActive: _enableGrounding,
+                              activeColor: Colors.blueAccent,
+                              onToggle: () {
+                                setState(() {
+                                  _enableGrounding = !_enableGrounding;
+                                  if (_enableGrounding) _enableImageGen = false;
+                                });
+                                _showStatusPopup(_enableGrounding ? "Web Search ON" : "Web Search OFF");
+                              },
+                              themeProvider: themeProvider,
+                            ),
+
                             Expanded(
                               child: TextField(
                                 controller: _textController,
@@ -1736,7 +1859,7 @@ void _showEditDialog(int index) {
                                 decoration: InputDecoration(
                                   hintText: _pendingImages.isNotEmpty
                                       ? 'Add a caption...'
-                                      : (_enableGrounding ? 'Search & Chat...' : 'Ready to chat...'),
+                                      : (_enableGrounding ? 'Search the web...' : (_enableImageGen ? 'Describe image...' : 'Ready to chat...')),
                                   hintStyle: TextStyle(color: Colors.grey[600]),
                                   border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
