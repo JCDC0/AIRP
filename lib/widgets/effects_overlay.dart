@@ -231,7 +231,7 @@ class _RainEffectState extends State<RainEffect> {
         speed: 1 + random.nextDouble() * 1.5,
         length: 0.05 + random.nextDouble() * 0.35,
         opacity: 0.01 + random.nextDouble() * 0.03,
-        strokeWidth: 0.5 + random.nextDouble() * 1.5,
+        strokeWidth: 0.25 + random.nextDouble() * 1.5,
       );
     });
   }

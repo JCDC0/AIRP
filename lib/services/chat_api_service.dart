@@ -75,7 +75,7 @@ class ChatApiService {
     double temperature = 1.0,
     double topP = 0.95,
     int topK = 40,
-    int maxTokens = 32768,
+    int maxTokens = 8192,
     bool enableGrounding = false, 
     String reasoningEffort = "none", 
     Map<String, String>? extraHeaders,
