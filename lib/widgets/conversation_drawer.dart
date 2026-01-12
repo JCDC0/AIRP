@@ -20,7 +20,7 @@ class ConversationDrawer extends StatefulWidget {
     required this.savedSessions,
     required this.currentSessionId,
     required this.tokenCount,
-    this.tokenLimitWarning = 190000,
+    this.tokenLimitWarning = 200000,
     required this.onNewSession,
     required this.onLoadSession,
     required this.onDeleteSession,
@@ -83,7 +83,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      "${widget.tokenCount} / 1M \n Limit: ~190k", 
+                      "${widget.tokenCount} / 1M \n Limit: ~200k", 
                       style: TextStyle(
                         color: tokenColor, 
                         fontWeight: FontWeight.bold, 
@@ -177,7 +177,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                   ),
                   const Divider(color: Colors.white10, height: 1),
                   const SizedBox(height: 8),
-                  ...bookmarkedSessions.map((session) => _buildSessionItem(context, session, themeProvider)).toList(),
+                  ...bookmarkedSessions.map((session) => _buildSessionItem(context, session, themeProvider)),
                   const SizedBox(height: 16),
                 ],
 
@@ -196,7 +196,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                   ),
                   const Divider(color: Colors.white10, height: 1),
                   const SizedBox(height: 8),
-                  ...recentSessions.map((session) => _buildSessionItem(context, session, themeProvider)).toList(),
+                  ...recentSessions.map((session) => _buildSessionItem(context, session, themeProvider)),
                 ],
               ],
             ),

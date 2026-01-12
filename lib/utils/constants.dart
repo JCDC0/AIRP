@@ -37,7 +37,6 @@ const Map<String, String> kModelDisplayNames = {
   'tngtech/deepseek-r1t2-chimera:free': '⭐DeepSeek R1T2 Chimera (OpenRouter Free)',
   'tngtech/tng-r1t-chimera:free': '⭐TNG R1T Chimera (OpenRouter Free)',
   'xiaomi/mimo-v2-flash:free': '⭐Mimo V2 Flash (OpenRouter Free)',
-  'z-ai/glm-4.5-air:free': '⭐GLM-4.5-AIR (OpenRouter Free)',
   // OpenRouter Models (Paid)
   'deepseek/deepseek-chat-v3-0324': '⭐⭐ ⚠️DeepSeek Chat V3 (OpenRouter Paid)',
   'tngtech/deepseek-r1t2-chimera': '⭐⭐ ⚠️DeepSeek R1T2 Chimera (OpenRouter Paid)',

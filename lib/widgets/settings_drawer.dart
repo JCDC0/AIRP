@@ -160,7 +160,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   // Custom Rules storage
   List<Map<String, dynamic>> _customRules = [];
 
-    static const String kDefaultReasoningFix = "If you are a model with reasoning or thinking capabilities, you MUST begin your response immediately with a <think> block and end your thinking with </think>.";
   static const String kDefaultKaomojiFix = "Use kaomoji for spoken character (e.g. OwO, ^_^) frequently in character dialogue to convey emotion for spoken characters only. (Except if the character is only you)";
   static const String kCustomRulesKey = "custom_sys_prompt_rules";
 
@@ -216,15 +215,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     String workingText = fullPrompt;
     String advancedVisualText = "";
 
-    // 1. Detect Reasoning
-    if (workingText.contains(kDefaultReasoningFix.trim())) {
-       _isReasoningFixEnabled = true;
-       workingText = workingText.replaceFirst(kDefaultReasoningFix.trim(), "");
-       advancedVisualText += "${kDefaultReasoningFix.trim()}\n\n";
-    } else {
-       _isReasoningFixEnabled = false;
-    }
-
     // 2. Detect Kaomoji
     if (workingText.contains(kDefaultKaomojiFix.trim())) {
        _isKaomojiFixEnabled = true;
@@ -255,7 +245,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   }
   
   // Track switches
-  bool _isReasoningFixEnabled = false;
   bool _isKaomojiFixEnabled = false;
   
   void _handleSaveSettings() {
@@ -306,9 +295,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         void _onAdvancedSwitchChanged() {
     final List<String> activePrompts = [];
 
-    if (_isReasoningFixEnabled) {
-      activePrompts.add(kDefaultReasoningFix.trim());
-    }
     if (_isKaomojiFixEnabled) {
       activePrompts.add(kDefaultKaomojiFix.trim());
     }
@@ -876,7 +862,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.16.8", 
+            const Text("v0.1.16.9", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -1292,28 +1278,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               child: ExpansionTile(
                 title: const Text("Tweaks & Overrides", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
                 subtitle: Text(
-                  _isReasoningFixEnabled || _isKaomojiFixEnabled ? "Active: ${_isReasoningFixEnabled ? 'Thinking' : ''} ${_isKaomojiFixEnabled ? 'Kaomoji' : ''}" : "Configure hidden behavior...",
+                  _isKaomojiFixEnabled ? "Active: Kaomoji" : "Configure hidden behavior...",
                   style: const TextStyle(fontSize: 10, color: Colors.grey)
                 ),
                 collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
                 shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
                 children: [
-                   ListTile(
-                     dense: true,
-                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                     title: Text("Reasoning Fix", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: 12)),
-                     trailing: Switch(
-                       value: _isReasoningFixEnabled,
-                       activeThumbColor: themeProvider.appThemeColor,
-                       onChanged: (val) {
-                         setState(() => _isReasoningFixEnabled = val);
-                         _onAdvancedSwitchChanged();
-                       },
-                     ),
-                     onTap: () {
-                       _advancedPromptController.text = kDefaultReasoningFix;
-                     },
-                   ),
                    ListTile(
                      dense: true,
                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1406,7 +1376,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                                  onChanged: (val) {
                                    // Sync switches to text presence
                                    setState(() {
-                                     _isReasoningFixEnabled = val.contains(kDefaultReasoningFix);
                                      _isKaomojiFixEnabled = val.contains(kDefaultKaomojiFix);
                                    });
                                    _notifyChangeIfNeeded();
@@ -1971,4 +1940,3 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     );
   }
 }
-

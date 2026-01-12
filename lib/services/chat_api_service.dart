@@ -161,13 +161,18 @@ class ChatApiService {
       "max_tokens": maxTokens,
     };
 
+    // Force OpenRouter to send reasoning in the dedicated field
+    if (baseUrl.contains("openrouter.ai")) {
+      bodyMap["include_reasoning"] = true;
+    }
+
     // Apply Reasoning Effort if supported
     if (reasoningEffort != "none") {
       // 1. OpenRouter Standard (often uses 'reasoning' block or provider-specific parameters)
       bodyMap["reasoning_effort"] = reasoningEffort; 
       }
 
-            if (enableGrounding) {
+    if (enableGrounding) {
       // OpenRouter specific parameter for web search
       if (baseUrl.contains("openrouter.ai")) {
         bodyMap["plugins"] = [{"id": "web"}];
@@ -232,7 +237,7 @@ class ChatApiService {
               }
 
               // 2. Yield Content
-              if (contentChunk != null) {
+              if (contentChunk != null && contentChunk.toString().isNotEmpty) {
                 if (hasEmittedThinkStart && !hasEmittedThinkEnd) {
                   yield "\n</think>\n";
                   hasEmittedThinkEnd = true;

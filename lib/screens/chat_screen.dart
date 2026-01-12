@@ -204,7 +204,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _topP = prefs.getDouble('airp_top_p') ?? 0.95;
       _topK = prefs.getInt('airp_top_k') ?? 40;
       _maxOutputTokens = prefs.getInt('airp_max_output') ?? 32768;
-            _historyLimit = prefs.getInt('airp_history_limit') ?? 500;
+      _historyLimit = prefs.getInt('airp_history_limit') ?? 500;
       _temperature = prefs.getDouble('airp_temperature') ?? 1.0;
       _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
       
@@ -276,10 +276,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     await prefs.setString('airp_key_nanogpt', _nanoGptKey);
     await prefs.setString('airp_model_arliai', _arliAiModel);
     await prefs.setString('airp_model_nanogpt', _nanoGptModel); 
-        await prefs.setDouble('airp_top_p', _topP);
+    await prefs.setDouble('airp_top_p', _topP);
     await prefs.setInt('airp_top_k', _topK);
     await prefs.setInt('airp_max_output', _maxOutputTokens);
-        await prefs.setInt('airp_history_limit', _historyLimit);
+    await prefs.setInt('airp_history_limit', _historyLimit);
     await prefs.setDouble('airp_temperature', _temperature);
     await prefs.setString('airp_reasoning_effort', _reasoningEffort);
     await prefs.setString('airp_default_system_instruction', _systemInstructionController.text);
@@ -433,11 +433,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             ]
           : [];
 
+      // Auto-inject reasoning tags for Gemini if reasoning is requested
+      // This fixes the missing bubble for Gemini without breaking OpenRouter
+      String finalSystemInstruction = _systemInstructionController.text;
+      if (_currentProvider == AiProvider.gemini && (_reasoningEffort != "none" || _selectedModel.contains("thinking"))) {
+         finalSystemInstruction += "\n\n[SYSTEM: You are a reasoning model. You MUST enclose your internal thought process in <think> and </think> tags before your final response.";
+         if (_reasoningEffort != "none") {
+            finalSystemInstruction += " Reasoning Effort: $_reasoningEffort.";
+         }
+         finalSystemInstruction += "]";
+      }
+
       _model = GenerativeModel(
         model: _selectedModel,
         apiKey: activeKey, // The SDK handles empty keys by throwing errors later usually
-        systemInstruction: _systemInstructionController.text.isNotEmpty
-            ? Content.system(_systemInstructionController.text)
+        systemInstruction: finalSystemInstruction.isNotEmpty
+            ? Content.system(finalSystemInstruction)
             : null,
           generationConfig: GenerationConfig(
             temperature: _temperature,
@@ -640,7 +651,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           topP: _topP,
           topK: _topK,
           maxTokens: _maxOutputTokens,
-                    enableGrounding: _enableGrounding,
+          enableGrounding: _enableGrounding,
           reasoningEffort: _reasoningEffort,
           extraHeaders: headers,
         );
@@ -1470,7 +1481,7 @@ void _showEditDialog(int index) {
       topK: _topK,
       maxOutputTokens: _maxOutputTokens,
       historyLimit: _historyLimit,
-            enableGrounding: _enableGrounding,
+      enableGrounding: _enableGrounding,
       disableSafety: _disableSafety,
       hasUnsavedChanges: _hasUnsavedChanges,
       reasoningEffort: _reasoningEffort,
