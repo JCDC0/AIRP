@@ -16,6 +16,7 @@ import '../services/chat_api_service.dart';
 import '../widgets/conversation_drawer.dart';
 import '../widgets/settings_drawer.dart';
 import '../widgets/effects_overlay.dart';
+import '../utils/constants.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -1622,12 +1623,15 @@ void _showEditDialog(int index) {
 @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final tokenColor = _tokenCount > 1000000 ? Colors.redAccent : themeProvider.appThemeColor;
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       resizeToAvoidBottomInset: true, 
       drawer: _buildLeftDrawer(),
       endDrawer: _buildSettingsDrawer(),
       appBar: AppBar(
+        toolbarHeight: 75, // Increased height to fit the new lines! OwO
         backgroundColor: themeProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha((0 * 255).round())
           : const Color.fromARGB(255, 0, 0, 0),
@@ -1673,29 +1677,58 @@ void _showEditDialog(int index) {
               child: Row(children: [Icon(Icons.lock, color: Colors.grey), SizedBox(width: 8), Text('AIRP - OpenAI (Soon)')]),
             ),
           ],
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Flexible(
-                child: Text(
-                  'AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" 
-                      : _currentProvider == AiProvider.openRouter ? "OpenRouter" 
-                      : _currentProvider == AiProvider.arliAi ? "ArliAI"
-                      : _currentProvider == AiProvider.nanoGpt ? "NanoGPT"
-                      : _currentProvider == AiProvider.local ? "Local" 
-                      : "OpenAI"}',
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    color: themeProvider.appThemeColor,
-                    fontWeight: FontWeight.bold,
-                    shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] : [],
-                  ),
+              // 1. Token Counter (Top Line)
+              Text(
+                "Context: $_tokenCount / 1,048,576",
+                style: TextStyle(
+                  color: tokenColor.withOpacity(0.8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 6)] : [],
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor),
+              // 2. Provider Selector (Middle Line)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'AIRP - ${_currentProvider == AiProvider.gemini ? "Gemini" 
+                          : _currentProvider == AiProvider.openRouter ? "OpenRouter" 
+                          : _currentProvider == AiProvider.arliAi ? "ArliAI"
+                          : _currentProvider == AiProvider.nanoGpt ? "NanoGPT"
+                          : _currentProvider == AiProvider.local ? "Local" 
+                          : "OpenAI"}',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] : [],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor, size: 18),
+                ],
+              ),
+              // 3. Model Name (Subtitle/Bottom Line)
+              Text(
+                cleanModelName(_selectedModel),
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 11,
+                  letterSpacing: 0.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),

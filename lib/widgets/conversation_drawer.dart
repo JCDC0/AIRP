@@ -36,9 +36,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final tokenColor = widget.tokenCount > widget.tokenLimitWarning ? Colors.redAccent : Colors.greenAccent;
-    
+    final themeProvider = Provider.of<ThemeProvider>(context);    
     // Filter sessions based on search query
     final filteredSessions = widget.savedSessions.where((session) {
       final titleLower = session.title.toLowerCase();
@@ -57,7 +55,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 50, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 50, 16, 0),
             color: Colors.black26,
             width: double.infinity,
             child: Column(
@@ -72,31 +70,9 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                     shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
                   )
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.token, 
-                      color: tokenColor, 
-                      size: 16,
-                      shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 8)] : [],
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      "${widget.tokenCount} / 1M \n Limit: ~200k", 
-                      style: TextStyle(
-                        color: tokenColor, 
-                        fontWeight: FontWeight.bold, 
-                        fontSize: 12,
-                        shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 8)] : [],
-                      )
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
-          
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             dense: true,
@@ -159,11 +135,11 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             child: filteredSessions.isEmpty 
             ? const Center(child: Text("No chats found", style: TextStyle(color: Colors.grey)))
             : ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               children: [
                 if (bookmarkedSessions.isNotEmpty) ...[
                    Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                     child: Text(
                       "Starred",
                       style: TextStyle(
@@ -176,21 +152,21 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                     ),
                   ),
                   const Divider(color: Colors.white10, height: 1),
-                  const SizedBox(height: 8),
                   ...bookmarkedSessions.map((session) => _buildSessionItem(context, session, themeProvider)),
                   const SizedBox(height: 16),
                 ],
 
                 if (recentSessions.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                     child: Text(
                       "Recent",
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: themeProvider.appThemeColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                         letterSpacing: 1.2,
+                        shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 6)] : [],
                       ),
                     ),
                   ),

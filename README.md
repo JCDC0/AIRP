@@ -21,7 +21,7 @@
 *   **Multimodal Support**: Send images to compatible models.
 *   **File Attachment Support**: Attach PDFs and text-based files (txt, md, dart, etc.) to your messages for AI analysis.
 *   **Google Search Grounding**: Toggle real-time web search integration for Gemini models.
-*   **Token Counting**: Live token usage estimation to track context limits.
+*   **Token Counting**: Persistent, real-time context usage display in the app header to track limits.
 *   **Enhanced Zoom Controls**: Pinch-to-zoom the conversation for better readability. An animated reset button appears for easy navigation.
 
 ## Getting Started
@@ -101,6 +101,12 @@ Connect to an LLM running on your own computer or home server.
 ---
 
 ## Interface & Controls
+
+### Top Bar & Status
+The header area is interactive and displays vital session info:
+*   **Context Monitor**: Real-time token usage is pinned to the top (e.g., `Context: 2048 / 1,048,576`) so you never lose track of your remaining memory.
+*   **Provider Switcher**: Tap the main title ("AIRP - Provider") to instantly toggle between Gemini, OpenRouter, Local, etc.
+*   **Current Model**: The active model's name is displayed in the subtitle.
 
 ### Conversation Management (Left Drawer)
 Slide from the **left** edge of the screen or tap the **Menu** icon to access your history.
