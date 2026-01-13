@@ -79,6 +79,7 @@ class ChatApiService {
     bool enableGrounding = false, 
     String reasoningEffort = "none", 
     Map<String, String>? extraHeaders,
+    bool includeUsage = false,
   }) async* {
     
     final cleanKey = apiKey.trim();
@@ -161,6 +162,10 @@ class ChatApiService {
       "max_tokens": maxTokens,
     };
 
+    if (includeUsage) {
+      bodyMap["stream_options"] = {"include_usage": true};
+    }
+
     // Force OpenRouter to send reasoning in the dedicated field
     if (baseUrl.contains("openrouter.ai")) {
       bodyMap["include_reasoning"] = true;
@@ -219,6 +224,16 @@ class ChatApiService {
 
           try {
             final json = jsonDecode(dataStr);
+
+            // Handle Usage (Standard OpenAI 'stream_options: {include_usage: true}')
+            if (json['usage'] != null) {
+              final usage = json['usage'];
+              final prompt = usage['prompt_tokens'] ?? 0;
+              final completion = usage['completion_tokens'] ?? 0;
+              final total = usage['total_tokens'] ?? 0;
+              yield "\n\n`Usage: $prompt in + $completion out = $total total`";
+            }
+
             final choices = json['choices'] as List;
             if (choices.isNotEmpty) {
               final delta = choices[0]['delta'];

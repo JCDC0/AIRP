@@ -65,10 +65,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
   String _nanoGptModel = 'gpt-4o';
 
-    String _selectedModel = 'models/gemini-flash-lite-latest';
+  String _selectedModel = 'models/gemini-flash-lite-latest';
   double _temperature = 1; 
   bool _enableGrounding = false;
-  bool _enableImageGen = false; // Add this new state variable
+  bool _enableImageGen = false; 
+  bool _enableUsage = false;
   bool _disableSafety = true;
   String _reasoningEffort = "none";
   
@@ -207,6 +208,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _maxOutputTokens = prefs.getInt('airp_max_output') ?? 32768;
       _historyLimit = prefs.getInt('airp_history_limit') ?? 500;
       _temperature = prefs.getDouble('airp_temperature') ?? 1.0;
+      _enableUsage = prefs.getBool('airp_enable_usage') ?? false;
       _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
       
       // Load Default System Instruction if current is empty
@@ -282,6 +284,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     await prefs.setInt('airp_max_output', _maxOutputTokens);
     await prefs.setInt('airp_history_limit', _historyLimit);
     await prefs.setDouble('airp_temperature', _temperature);
+    await prefs.setBool('airp_enable_usage', _enableUsage);
     await prefs.setString('airp_reasoning_effort', _reasoningEffort);
     await prefs.setString('airp_default_system_instruction', _systemInstructionController.text);
 
@@ -655,6 +658,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           enableGrounding: _enableGrounding,
           reasoningEffort: _reasoningEffort,
           extraHeaders: headers,
+          includeUsage: _enableUsage,
         );
       }
 
@@ -1460,6 +1464,7 @@ void _showEditDialog(int index) {
 
   Widget _buildSettingsDrawer() {
     return SettingsDrawer(
+      key: ValueKey(_currentProvider.name),
       currentProvider: _currentProvider,
       apiKey: _apiKeyController.text,
       localIp: _localIpController.text,
@@ -1484,6 +1489,7 @@ void _showEditDialog(int index) {
       historyLimit: _historyLimit,
       enableGrounding: _enableGrounding,
       disableSafety: _disableSafety,
+      enableUsage: _enableUsage,
       hasUnsavedChanges: _hasUnsavedChanges,
       reasoningEffort: _reasoningEffort,
       savedSystemPrompts: _savedSystemPrompts,
@@ -1551,6 +1557,7 @@ void _showEditDialog(int index) {
       onHistoryLimitChanged: (val) => setState(() { _historyLimit = val; _hasUnsavedChanges = true; }),
       onEnableGroundingChanged: (val) => setState(() { _enableGrounding = val; _hasUnsavedChanges = true; }),
       onDisableSafetyChanged: (val) => setState(() { _disableSafety = val; _hasUnsavedChanges = true; }),
+      onEnableUsageChanged: (val) => setState(() { _enableUsage = val; _hasUnsavedChanges = true; }),
       onReasoningEffortChanged: (val) => setState(() { _reasoningEffort = val; _hasUnsavedChanges = true; }),
       onPromptTitleChanged: (val) {
         setState(() {
@@ -1631,7 +1638,7 @@ void _showEditDialog(int index) {
       drawer: _buildLeftDrawer(),
       endDrawer: _buildSettingsDrawer(),
       appBar: AppBar(
-        toolbarHeight: 75, // Increased height to fit the new lines! OwO
+        toolbarHeight: 75,
         backgroundColor: themeProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha((0 * 255).round())
           : const Color.fromARGB(255, 0, 0, 0),
@@ -1917,7 +1924,7 @@ void _showEditDialog(int index) {
                             ),
                           ),
                         
-                        // 2. TOOLBAR ROW (Icons moved here)
+                        // 2. TOOLBAR ROW
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 4.0),
                           child: Row(
@@ -1940,6 +1947,17 @@ void _showEditDialog(int index) {
                                 },
                                 themeProvider: themeProvider,
                               ),
+                              if (_currentProvider == AiProvider.openRouter)
+                                _buildFeatureSwitch(
+                                  icon: Icons.data_usage,
+                                  isActive: _enableUsage,
+                                  activeColor: Colors.tealAccent,
+                                  onToggle: () {
+                                    setState(() => _enableUsage = !_enableUsage);
+                                    _showStatusPopup(_enableUsage ? "Usage Stats ON" : "Usage Stats OFF");
+                                  },
+                                  themeProvider: themeProvider,
+                                ),
                               _buildFeatureSwitch(
                                 icon: Icons.public,
                                 isActive: _enableGrounding,

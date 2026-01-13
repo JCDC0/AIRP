@@ -43,6 +43,7 @@ class SettingsDrawer extends StatefulWidget {
   final int historyLimit;
   final bool enableGrounding;
   final bool disableSafety;
+  final bool enableUsage;
   final bool hasUnsavedChanges;
   final String reasoningEffort;
 
@@ -70,6 +71,7 @@ class SettingsDrawer extends StatefulWidget {
   final Function(int) onHistoryLimitChanged;
   final Function(bool) onEnableGroundingChanged;
   final Function(bool) onDisableSafetyChanged;
+  final Function(bool) onEnableUsageChanged;
   final Function(String) onReasoningEffortChanged;
   
   final Function(String) onPromptTitleChanged;
@@ -106,6 +108,7 @@ class SettingsDrawer extends StatefulWidget {
     required this.historyLimit,
     required this.enableGrounding,
     required this.disableSafety,
+    required this.enableUsage,
     required this.hasUnsavedChanges,
     required this.reasoningEffort,
     required this.savedSystemPrompts,
@@ -127,6 +130,7 @@ class SettingsDrawer extends StatefulWidget {
     required this.onHistoryLimitChanged,
     required this.onEnableGroundingChanged,
     required this.onDisableSafetyChanged,
+    required this.onEnableUsageChanged,
     required this.onReasoningEffortChanged,
     required this.onPromptTitleChanged,
     required this.onSystemInstructionChanged,
@@ -862,7 +866,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.16.10", 
+            const Text("v0.1.16.11", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -1244,7 +1248,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                                            foregroundColor: themeProvider.appThemeColor, 
+                      foregroundColor: themeProvider.appThemeColor, 
                       side: BorderSide(color: themeProvider.appThemeColor),
                       padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
                     ),
@@ -1262,7 +1266,44 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 ),
               ],
             ),
+            // --- GROUNDING SWITCH ---
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text("Grounding / Web Search", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+              subtitle: Text(
+                widget.currentProvider == AiProvider.gemini ? "Uses Google Search (Native)" 
+                : widget.currentProvider == AiProvider.openRouter ? "Uses OpenRouter Web Plugin"
+                : "Not available on this provider",
+                style: const TextStyle(fontSize: 10, color: Colors.grey)
+              ),
+              value: widget.enableGrounding,
+              activeThumbColor: Colors.greenAccent,
+              onChanged: (widget.currentProvider == AiProvider.gemini || widget.currentProvider == AiProvider.openRouter || widget.currentProvider == AiProvider.arliAi || widget.currentProvider == AiProvider.nanoGpt)
+                  ? widget.onEnableGroundingChanged
+                  : null, 
+            ),
 
+            // --- SAFETY FILTERS (Conditional Visibility) ---
+            if (widget.currentProvider == AiProvider.gemini)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text("Disable Safety Filters", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])), 
+                subtitle: const Text("Applies to Gemini Only", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                value: widget.disableSafety, 
+                activeThumbColor: Colors.redAccent, 
+                onChanged: widget.onDisableSafetyChanged,
+              ),
+
+            // --- USAGE STATS (OpenRouter Only) ---
+            if (widget.currentProvider == AiProvider.openRouter)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text("Request Usage Stats", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+                subtitle: const Text("Appends token usage info to response", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                value: widget.enableUsage,
+                activeThumbColor: Colors.tealAccent,
+                onChanged: widget.onEnableUsageChanged,
+              ),
             const Divider(),
 
             // --- ADVANCED SYSTEM PROMPT SECTION ---
@@ -1506,23 +1547,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
             ),
             const Divider(),
 
-            // --- GROUNDING SWITCH ---
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text("Grounding / Web Search", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-              subtitle: Text(
-                widget.currentProvider == AiProvider.gemini ? "Uses Google Search (Native)" 
-                : widget.currentProvider == AiProvider.openRouter ? "Uses OpenRouter Web Plugin"
-                : "Not available on this provider",
-                style: const TextStyle(fontSize: 10, color: Colors.grey)
-              ),
-              value: widget.enableGrounding,
-              activeThumbColor: Colors.greenAccent,
-              onChanged: (widget.currentProvider == AiProvider.gemini || widget.currentProvider == AiProvider.openRouter || widget.currentProvider == AiProvider.arliAi || widget.currentProvider == AiProvider.nanoGpt)
-                  ? widget.onEnableGroundingChanged
-                  : null, 
-            ),
-
             // --- REASONING MODE ---
             const SizedBox(height: 10),
              Text("Reasoning / Thinking Effort", style: TextStyle(fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
@@ -1559,7 +1583,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
             ),
             const Divider(),
-            const SizedBox(height: 20),
             
             // --- TEMPERATURE ---
             _buildSliderSetting(
@@ -1605,17 +1628,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               isInt: true,
               onChanged: (val) => widget.onMaxOutputTokensChanged(val.toInt()),
             ),
-
-            // --- SAFETY FILTERS (Conditional Visibility) ---
-            if (widget.currentProvider == AiProvider.gemini)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text("Disable Safety Filters", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])), 
-                subtitle: const Text("Applies to Gemini Only", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                value: widget.disableSafety, 
-                activeThumbColor: Colors.redAccent, 
-                onChanged: widget.onDisableSafetyChanged,
-              ),
             const Divider(height: 5),
             const SizedBox(height: 30),
             Text("Visuals & Atmosphere", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
