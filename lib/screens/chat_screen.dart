@@ -235,7 +235,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _saveSettings() async {
+  Future<void> _saveSettings({bool showConfirmation = true}) async {
     final cleanKey = _apiKeyController.text.trim();
     final cleanModel = _openRouterModelController.text.trim();
     final cleanIp = _localIpController.text.trim();
@@ -297,15 +297,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Settings Saved & Model Updated"),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.lightBlue,
-        duration: Duration(milliseconds: 1500),
-      )
-    );
+    
+    if (showConfirmation) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Settings Saved & Model Updated"),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.lightBlue,
+          duration: Duration(milliseconds: 1500),
+        )
+      );
+    }
   }
 
   Future<void> _autoSaveCurrentSession() async {
@@ -1126,7 +1129,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     });
   }
 
-    // ----------------------------------------------------------------------
+  // ----------------------------------------------------------------------
   // REGENERATE FUNCTION
   // ----------------------------------------------------------------------
     Future<void> _regenerateResponse(int index) async {
@@ -1145,9 +1148,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           _textController.text = userMsg.text;
           _pendingImages.clear();
           _pendingImages.addAll(userMsg.imagePaths);
-          _isLoading = true; // Set loading before async call
+          _isLoading = true;
         } else {
-          // Fallback: just delete this orphan AI message
           _messages.removeAt(index);
         }
       } else {
@@ -1161,10 +1163,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _isLoading = true;
       }
     });
-
-    // FIX: Re-initialize model to clear internal history of deleted messages
     await _initializeModel();
-    
     // Send message directly (no need for post frame callback if we awaited init)
     _sendMessage();
   }
@@ -1235,7 +1234,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     _buildMenuIcon(
                       icon: Icons.copy, 
                       label: "Copy", 
-                      color: themeProvider.appThemeColor, // Changed to Theme Color
+                      color: themeProvider.appThemeColor,
                       useBloom: useBloom,
                       onTap: () {
                         Navigator.pop(context);
@@ -1616,11 +1615,10 @@ void _showEditDialog(int index) {
           style: const TextStyle(fontWeight: FontWeight.bold)
         ),
         behavior: SnackBarBehavior.floating,
-        width: 200,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.black87,
         duration: const Duration(milliseconds: 800),
-        margin: const EdgeInsets.only(bottom: 80),
+        margin: const EdgeInsets.only(bottom: 80, left: 60, right: 60),
       )
     );
   }
@@ -1960,8 +1958,13 @@ void _showEditDialog(int index) {
                                     _enableImageGen = !_enableImageGen;
                                     if (_enableImageGen) _enableGrounding = false;
                                   });
-                                  await _saveSettings(); // Auto-save
-                                  _showStatusPopup(_enableImageGen ? "Image Gen ON" : "Image Gen OFF");
+                                  try {
+                                    await _saveSettings(showConfirmation: false);
+                                    _showStatusPopup(_enableImageGen ? "Image Gen ON" : "Image Gen OFF");
+                                  } catch (e) {
+                                    debugPrint("Auto-save error: $e");
+                                    _showStatusPopup("Error saving settings");
+                                  }
                                 },
                                 themeProvider: themeProvider,
                               ),
@@ -1974,8 +1977,13 @@ void _showEditDialog(int index) {
                                     setState(() {
                                       _enableUsage = !_enableUsage;
                                     });
-                                    await _saveSettings(); // Auto-save
-                                    _showStatusPopup(_enableUsage ? "Usage Stats ON" : "Usage Stats OFF");
+                                    try {
+                                      await _saveSettings(showConfirmation: false);
+                                      _showStatusPopup(_enableUsage ? "Usage Stats ON" : "Usage Stats OFF");
+                                    } catch (e) {
+                                      debugPrint("Auto-save error: $e");
+                                      _showStatusPopup("Error saving settings");
+                                    }
                                   },
                                   themeProvider: themeProvider,
                                 ),
@@ -1988,12 +1996,17 @@ void _showEditDialog(int index) {
                                     _enableGrounding = !_enableGrounding;
                                     if (_enableGrounding) _enableImageGen = false;
                                   });
-                                  await _saveSettings(); // Auto-save
-                                  _showStatusPopup(_enableGrounding ? "Web Search ON" : "Web Search OFF");
+                                  try {
+                                    await _saveSettings(showConfirmation: false);
+                                    _showStatusPopup(_enableGrounding ? "Web Search ON" : "Web Search OFF");
+                                  } catch (e) {
+                                    debugPrint("Auto-save error: $e");
+                                    _showStatusPopup("Error saving settings");
+                                  }
                                 },
                                 themeProvider: themeProvider,
                               ),
-                              const Spacer(), // Pushes icons to the left, keeping text field below separate
+                              const Spacer(),
                             ],
                           ),
                         ),
