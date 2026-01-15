@@ -167,6 +167,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   late TextEditingController _newRuleContentController;
 
   bool _isProgrammaticUpdate = false; 
+  bool _systemPromptChanged = false; // Track if system prompt has been modified 
 
   
       Set<String> _bookmarkedModels = {};
@@ -224,6 +225,25 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     await prefs.setString(kCustomRulesKey, encoded);
   }
 
+  Future<void> _loadBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _bookmarkedModels = prefs.getStringList('bookmarked_models')?.toSet() ?? {};
+    });
+  }
+
+  Future<void> _toggleBookmark(String modelId) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      if (_bookmarkedModels.contains(modelId)) {
+        _bookmarkedModels.remove(modelId);
+      } else {
+        _bookmarkedModels.add(modelId);
+      }
+    });
+    await prefs.setStringList('bookmarked_models', _bookmarkedModels.toList());
+  }
+
     /// Parses the full instruction string to separate "Main" from "Advanced" components
   void _parseSystemInstruction(String fullPrompt) {
     String workingText = fullPrompt;
@@ -274,6 +294,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     
     widget.onSystemInstructionChanged(finalPrompt);
     widget.onSaveSettings();
+    _systemPromptChanged = false; // Reset change flag after save
   }
   
     void _handleSavePreset() {
@@ -288,25 +309,33 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       if (mounted) {
         setState(() {
           _isProgrammaticUpdate = false;
+          _systemPromptChanged = false; // Reset change flag after preset save
         });
       }
     });
   }
 
   void _notifyChangeIfNeeded() {
-    if (!widget.hasUnsavedChanges) {
-        // Construct what the prompt currently looks like to satisfy the callback signature
-        // We match the logic in didUpdateWidget to avoid re-parsing and cursor jumps
+    // Only check for changes if we haven't already detected a change
+    if (!_systemPromptChanged) {
+        // Construct what the prompt currently looks like
         String advanced = _advancedPromptController.text.trim();
         String main = _mainPromptController.text; // Don't trim while typing
-        String finalPrompt = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main;
+        String finalPrompt = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main; 
         
-        widget.onSystemInstructionChanged(finalPrompt);
+        // Get the current system instruction to compare
+        String currentInstruction = widget.systemInstruction;
+        
+        // Only notify if there's an actual change
+        if (finalPrompt != currentInstruction) {
+            _systemPromptChanged = true; // Mark that a change has been detected
+            widget.onSystemInstructionChanged(finalPrompt);
+        }
     }
+    // After first change is detected, stop checking until reset
   }
 
-  
-        void _onAdvancedSwitchChanged() {
+  void _onAdvancedSwitchChanged() {
     final List<String> activePrompts = [];
 
     if (_isKaomojiFixEnabled) {
@@ -330,8 +359,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     widget.onSystemInstructionChanged(finalPrompt);
   }
 
-
-    void _addRuleFromInput() {
+  void _addRuleFromInput() {
     final text = _newRuleContentController.text.trim();
     if (text.isEmpty) return;
 
@@ -489,27 +517,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         if (wasActive) _onAdvancedSwitchChanged();
       });
   }
-
-  Future<void> _loadBookmarks() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _bookmarkedModels = prefs.getStringList('bookmarked_models')?.toSet() ?? {};
-    });
-  }
-
-  Future<void> _toggleBookmark(String modelId) async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      if (_bookmarkedModels.contains(modelId)) {
-        _bookmarkedModels.remove(modelId);
-      } else {
-        _bookmarkedModels.add(modelId);
-      }
-    });
-    await prefs.setStringList('bookmarked_models', _bookmarkedModels.toList());
-  }
-
-
   @override
   void didUpdateWidget(SettingsDrawer oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -538,6 +545,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
              // This keeps our custom rules aware of what's in the text
              setState(() {
                _parseSystemInstruction(widget.systemInstruction);
+               _systemPromptChanged = false; // Reset change flag when external update occurs
              });
         }
     }
@@ -876,7 +884,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.17", 
+            const Text("v0.1.17.1", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
