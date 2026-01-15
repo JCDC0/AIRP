@@ -81,6 +81,11 @@ class SettingsDrawer extends StatefulWidget {
   final Function(String, String) onLoadPrompt;
   
   final VoidCallback onSaveSettings;
+  final VoidCallback onSaveAdvancedPromptAutoSave;
+  final Function(bool) onEnableGroundingChangedAutoSave;
+  final Function(bool) onDisableSafetyChangedAutoSave;
+  final Function(bool) onEnableUsageChangedAutoSave;
+  final Function(String) onReasoningEffortChangedAutoSave;
 
   const SettingsDrawer({
     super.key,
@@ -138,6 +143,11 @@ class SettingsDrawer extends StatefulWidget {
     required this.onDeletePrompt,
     required this.onLoadPrompt,
     required this.onSaveSettings,
+    required this.onSaveAdvancedPromptAutoSave,
+    required this.onEnableGroundingChangedAutoSave,
+    required this.onDisableSafetyChangedAutoSave,
+    required this.onEnableUsageChangedAutoSave,
+    required this.onReasoningEffortChangedAutoSave,
   });
 
   @override
@@ -866,7 +876,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.1.16.11", 
+            const Text("v0.1.16.12", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -1279,8 +1289,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               value: widget.enableGrounding,
               activeThumbColor: Colors.greenAccent,
               onChanged: (widget.currentProvider == AiProvider.gemini || widget.currentProvider == AiProvider.openRouter || widget.currentProvider == AiProvider.arliAi || widget.currentProvider == AiProvider.nanoGpt)
-                  ? widget.onEnableGroundingChanged
-                  : null, 
+                  ? widget.onEnableGroundingChangedAutoSave
+                  : null,
             ),
 
             // --- SAFETY FILTERS (Conditional Visibility) ---
@@ -1291,7 +1301,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 subtitle: const Text("Applies to Gemini Only", style: TextStyle(fontSize: 10, color: Colors.grey)),
                 value: widget.disableSafety, 
                 activeThumbColor: Colors.redAccent, 
-                onChanged: widget.onDisableSafetyChanged,
+                onChanged: widget.onDisableSafetyChangedAutoSave,
               ),
 
             // --- USAGE STATS (OpenRouter Only) ---
@@ -1302,7 +1312,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 subtitle: const Text("Appends token usage info to response", style: TextStyle(fontSize: 10, color: Colors.grey)),
                 value: widget.enableUsage,
                 activeThumbColor: Colors.tealAccent,
-                onChanged: widget.onEnableUsageChanged,
+                onChanged: widget.onEnableUsageChangedAutoSave,
               ),
             const Divider(),
 
@@ -1335,6 +1345,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                        onChanged: (val) {
                          setState(() => _isKaomojiFixEnabled = val);
                          _onAdvancedSwitchChanged();
+                         widget.onSaveAdvancedPromptAutoSave();
                        },
                      ),
                      onTap: () {
@@ -1377,6 +1388,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                                    rule['active'] = val;
                                    _onAdvancedSwitchChanged();
                                 });
+                                widget.onSaveAdvancedPromptAutoSave();
                               },
                             ),
                           ],
@@ -1391,10 +1403,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                    Padding(
                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                      child: Column(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                                                  const Text("Raw Advanced Instructions:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
-                         const SizedBox(height: 4),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                        const Text("Raw Advanced Instructions:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
                          Focus(
                             onFocusChange: (hasFocus) => setState((){}),
                             child: Builder(builder: (context) {
@@ -1571,8 +1583,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     DropdownMenuItem(value: "medium", child: Text("Medium")),
                     DropdownMenuItem(value: "high", child: Text("High / Deep Think")),
                   ],
-                  onChanged: (val) {
-                     if (val != null) widget.onReasoningEffortChanged(val);
+                  onChanged: (val) async {
+                     if (val != null) await widget.onReasoningEffortChangedAutoSave(val);
                   },
                 ),
               ),

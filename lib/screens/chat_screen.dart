@@ -1559,6 +1559,22 @@ void _showEditDialog(int index) {
       onDisableSafetyChanged: (val) => setState(() { _disableSafety = val; _hasUnsavedChanges = true; }),
       onEnableUsageChanged: (val) => setState(() { _enableUsage = val; _hasUnsavedChanges = true; }),
       onReasoningEffortChanged: (val) => setState(() { _reasoningEffort = val; _hasUnsavedChanges = true; }),
+      onEnableGroundingChangedAutoSave: (val) async {
+        setState(() { _enableGrounding = val; });
+        await _saveSettings();
+      },
+      onDisableSafetyChangedAutoSave: (val) async {
+        setState(() { _disableSafety = val; });
+        await _saveSettings();
+      },
+      onEnableUsageChangedAutoSave: (val) async {
+        setState(() { _enableUsage = val; });
+        await _saveSettings();
+      },
+      onReasoningEffortChangedAutoSave: (val) async {
+        setState(() { _reasoningEffort = val; });
+        await _saveSettings();
+      },
       onPromptTitleChanged: (val) {
         setState(() {
           _promptTitleController.text = val;
@@ -1581,6 +1597,7 @@ void _showEditDialog(int index) {
         });
       },
       onSaveSettings: _saveSettings,
+      onSaveAdvancedPromptAutoSave: _saveSettings,
     );
   }
 
@@ -1938,11 +1955,12 @@ void _showEditDialog(int index) {
                                 icon: Icons.image,
                                 isActive: _enableImageGen,
                                 activeColor: Colors.purpleAccent,
-                                onToggle: () {
+                                onToggle: () async {
                                   setState(() {
                                     _enableImageGen = !_enableImageGen;
                                     if (_enableImageGen) _enableGrounding = false;
                                   });
+                                  await _saveSettings(); // Auto-save
                                   _showStatusPopup(_enableImageGen ? "Image Gen ON" : "Image Gen OFF");
                                 },
                                 themeProvider: themeProvider,
@@ -1952,8 +1970,11 @@ void _showEditDialog(int index) {
                                   icon: Icons.data_usage,
                                   isActive: _enableUsage,
                                   activeColor: Colors.tealAccent,
-                                  onToggle: () {
-                                    setState(() => _enableUsage = !_enableUsage);
+                                  onToggle: () async {
+                                    setState(() {
+                                      _enableUsage = !_enableUsage;
+                                    });
+                                    await _saveSettings(); // Auto-save
                                     _showStatusPopup(_enableUsage ? "Usage Stats ON" : "Usage Stats OFF");
                                   },
                                   themeProvider: themeProvider,
@@ -1962,11 +1983,12 @@ void _showEditDialog(int index) {
                                 icon: Icons.public,
                                 isActive: _enableGrounding,
                                 activeColor: Colors.blueAccent,
-                                onToggle: () {
+                                onToggle: () async {
                                   setState(() {
                                     _enableGrounding = !_enableGrounding;
                                     if (_enableGrounding) _enableImageGen = false;
                                   });
+                                  await _saveSettings(); // Auto-save
                                   _showStatusPopup(_enableGrounding ? "Web Search ON" : "Web Search OFF");
                                 },
                                 themeProvider: themeProvider,
