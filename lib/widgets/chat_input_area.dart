@@ -286,6 +286,57 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           },
                           themeProvider: themeProvider,
                         ),
+                        // REASONING BUTTON
+                        Builder(
+                          builder: (context) {
+                            Color? reasoningColor;
+                            bool isActive = chatProvider.reasoningEffort != 'none';
+                            
+                            if (chatProvider.reasoningEffort == 'low') {
+                              reasoningColor = Colors.grey[600];
+                            } else if (chatProvider.reasoningEffort == 'medium') {
+                              reasoningColor = Colors.grey[400];
+                            } else if (chatProvider.reasoningEffort == 'high') {
+                              reasoningColor = Colors.white;
+                            }
+
+                            return _buildCircularButton(
+                              icon: Icons.psychology,
+                              color: isActive ? reasoningColor : Colors.grey[400],
+                              isActive: isActive,
+                              tooltip: "Reasoning Effort: ${chatProvider.reasoningEffort}",
+                              onPressed: isLoading ? null : () async {
+                                String nextState;
+                                String statusMsg;
+                                switch (chatProvider.reasoningEffort) {
+                                  case 'none':
+                                    nextState = 'low';
+                                    statusMsg = "Reasoning: LOW";
+                                    break;
+                                  case 'low':
+                                    nextState = 'medium';
+                                    statusMsg = "Reasoning: MEDIUM";
+                                    break;
+                                  case 'medium':
+                                    nextState = 'high';
+                                    statusMsg = "Reasoning: HIGH";
+                                    break;
+                                  case 'high':
+                                    nextState = 'none';
+                                    statusMsg = "Reasoning: OFF";
+                                    break;
+                                  default:
+                                    nextState = 'low';
+                                    statusMsg = "Reasoning: LOW";
+                                }
+                                chatProvider.setReasoningEffort(nextState);
+                                await chatProvider.saveSettings(showConfirmation: false);
+                                _showStatusPopup(statusMsg);
+                              },
+                              themeProvider: themeProvider,
+                            );
+                          }
+                        ),
                       ],
                     ),
 
