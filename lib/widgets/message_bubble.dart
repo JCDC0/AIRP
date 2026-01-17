@@ -179,6 +179,30 @@ class MessageBubble extends StatelessWidget {
               h3: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
             ),
           ),
+
+        // --- USAGE STATS DISPLAY ---
+        if (msg.usage != null && !msg.isUser)
+          Padding(
+            padding: const EdgeInsets.only(top: 6.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: useBloom ? [const BoxShadow(color: Color.fromARGB(26, 255, 255, 255), blurRadius: 4)] : [],
+              ),
+              child: Text(
+                "Usage: ${msg.usage!['prompt_tokens'] ?? 0} in + ${msg.usage!['completion_tokens'] ?? 0} out = ${msg.usage!['total_tokens'] ?? 0} total",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: textColor.withOpacity(0.7),
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
+                ),
+              ),
+            ),
+          ),
       ],
     );
 

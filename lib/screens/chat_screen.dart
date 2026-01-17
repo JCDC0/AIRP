@@ -670,14 +670,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _geminiSubscription = responseStream.listen(
         (chunk) {
           if (_isCancelled) return;
-          fullText += chunk;
-          setState(() {
-            _messages.last = ChatMessage(
-              text: fullText,
-              isUser: false,
-              modelName: _selectedModel
-            );
-          });
+          if (chunk.startsWith('[[USAGE:')) {
+            // Parse usage data
+            final usageStr = chunk.substring(8, chunk.length - 2);
+            final usage = jsonDecode(usageStr) as Map<String, dynamic>;
+            setState(() {
+              _messages.last = _messages.last.copyWith(usage: usage);
+            });
+          } else {
+            fullText += chunk;
+            setState(() {
+              _messages.last = ChatMessage(
+                text: fullText,
+                isUser: false,
+                modelName: _selectedModel,
+                usage: _messages.last.usage
+              );
+            });
+          }
            // Auto-scroll logic
           if (_scrollController.hasClients && _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
              _scrollToBottom();

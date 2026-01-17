@@ -56,6 +56,7 @@ class ChatMessage {
   final List<String> imagePaths;
   final String? aiImage;
   final String? modelName;
+  final Map<String, dynamic>? usage;
 
   ChatMessage({
     required this.text,
@@ -63,6 +64,7 @@ class ChatMessage {
     this.imagePaths = const [],
     this.aiImage,
     this.modelName,
+    this.usage,
   });
 
   Map<String, dynamic> toJson() => {
@@ -71,6 +73,7 @@ class ChatMessage {
     'imagePaths': imagePaths,
     'aiImage': aiImage,
     'modelName': modelName,
+    'usage': usage,
   };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -79,7 +82,26 @@ class ChatMessage {
     imagePaths: List<String>.from(json['imagePaths'] ?? []),
     aiImage: json['aiImage'],
     modelName: json['modelName'],
+    usage: json['usage'],
   );
+
+  ChatMessage copyWith({
+    String? text,
+    bool? isUser,
+    List<String>? imagePaths,
+    String? aiImage,
+    String? modelName,
+    Map<String, dynamic>? usage,
+  }) {
+    return ChatMessage(
+      text: text ?? this.text,
+      isUser: isUser ?? this.isUser,
+      imagePaths: imagePaths ?? this.imagePaths,
+      aiImage: aiImage ?? this.aiImage,
+      modelName: modelName ?? this.modelName,
+      usage: usage ?? this.usage,
+    );
+  }
 }
 
 class SystemPromptData {

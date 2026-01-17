@@ -226,12 +226,9 @@ class ChatApiService {
             final json = jsonDecode(dataStr);
 
             // Handle Usage (Standard OpenAI 'stream_options: {include_usage: true}')
-            if (json['usage'] != null) {
+            if (includeUsage && json['usage'] != null) {
               final usage = json['usage'];
-              final prompt = usage['prompt_tokens'] ?? 0;
-              final completion = usage['completion_tokens'] ?? 0;
-              final total = usage['total_tokens'] ?? 0;
-              yield "\n\n`Usage: $prompt in + $completion out = $total total`";
+              yield "[[USAGE:${jsonEncode(usage)}]]";
             }
 
             final choices = json['choices'] as List;
