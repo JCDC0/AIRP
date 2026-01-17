@@ -51,7 +51,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _apiKeyController = TextEditingController(text: _getApiKey(chatProvider));
     _localIpController = TextEditingController(text: chatProvider.localIp);
     _titleController = TextEditingController(text: chatProvider.currentTitle);
-    _promptTitleController = TextEditingController(); // We don't persist prompt title in provider currently, just the list
+    _promptTitleController = TextEditingController(); 
     _openRouterModelController = TextEditingController(text: chatProvider.openRouterModel);
     _ruleLabelController = TextEditingController();
     _newRuleContentController = TextEditingController();
@@ -408,7 +408,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.2", 
+            const Text("v0.2.1", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -1227,9 +1227,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     DropdownMenuItem(value: 'Stylized', child: Text("Vogue (Playfair Display)")),
                     DropdownMenuItem(value: 'Fantasy', child: Text("MMORPG (Cinzel)")),
                     DropdownMenuItem(value: 'Typewriter', child: Text("Detective (Special Elite)")),
-                    DropdownMenuItem(value: 'AnimeAce', child: Text("Manga (Anime Ace)")),
-                    DropdownMenuItem(value: 'Acme', child: Text("Agent (Acme Secret Agent)")),
-                    DropdownMenuItem(value: 'Smack', child: Text("Action (Smack Attack)")),
                   ],
                   onChanged: (String? newValue) { if (newValue != null) themeProvider.setFont(newValue); },
                 ),

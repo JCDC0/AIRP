@@ -166,23 +166,54 @@ class _ChatInputAreaState extends State<ChatInputArea> {
     );
   }
 
+  Widget _buildCircularButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    Color? color,
+    Color backgroundColor = const Color(0x99000000),
+    String? tooltip,
+    bool isActive = false,
+    ThemeProvider? themeProvider,
+  }) {
+    final bool useBloom = themeProvider?.enableBloom ?? false;
+
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+        boxShadow: isActive && useBloom && color != null
+            ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 8, spreadRadius: 1)]
+            : [],
+        border: isActive ? Border.all(color: color ?? Colors.white, width: 1.5) : null,
+      ),
+      child: IconButton(
+        icon: Icon(icon),
+        color: color ?? Colors.white,
+        tooltip: tooltip,
+        onPressed: onPressed,
+        iconSize: 20,
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+        padding: EdgeInsets.zero,
+        style: IconButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      ),
+    );
+  }
+
   Widget _buildFeatureSwitch({
-    required IconData icon, 
-    required bool isActive, 
-    required Color activeColor, 
+    required IconData icon,
+    required bool isActive,
+    required Color activeColor,
     required VoidCallback onToggle,
     required ThemeProvider themeProvider,
     required bool isLoading,
   }) {
-    return IconButton(
-      icon: Icon(
-        icon,
-        color: isActive ? activeColor : Colors.grey[600],
-        shadows: isActive && themeProvider.enableBloom 
-            ? [Shadow(color: activeColor, blurRadius: 8)] 
-            : [],
-      ),
+    return _buildCircularButton(
+      icon: icon,
       onPressed: isLoading ? null : onToggle,
+      color: isActive ? activeColor : Colors.grey[400],
+      isActive: isActive,
+      themeProvider: themeProvider,
     );
   }
 
@@ -199,165 +230,166 @@ class _ChatInputAreaState extends State<ChatInputArea> {
           if (isLoading)
             LinearProgressIndicator(color: themeProvider.appThemeColor, minHeight: 4),
           Container(
-            padding: const EdgeInsets.all(4.0),
-            color: const Color.fromARGB(255, 0, 0, 0).withAlpha((0.9 * 255).round()),
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            color: Colors.transparent,
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. PREVIEW IMAGES AREA
-                if (_pendingImages.isNotEmpty)
-                  SizedBox(
-                    height: 90,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _pendingImages.length,
-                      itemBuilder: (context, index) {
-                        final path = _pendingImages[index];
-                        final filename = path.split('/').last;
-                        final ext = path.split('.').last.toLowerCase();
-                        final isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic'].contains(ext);
-
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
-                          child: Stack(
-                            children: [
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: isImage ? () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (_) => Dialog(
-                                          backgroundColor: Colors.transparent,
-                                          insetPadding: EdgeInsets.zero,
-                                          child: Stack(
-                                            alignment: Alignment.center,
-                                            children: [
-                                              InteractiveViewer(
-                                                maxScale: 5.0,
-                                                child: Image.file(File(path)),
-                                              ),
-                                              Positioned(
-                                                top: 40, right: 20,
-                                                child: IconButton(
-                                                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                                                  onPressed: () => Navigator.pop(context),
-                                                ),
-                                              )
-                                            ],
-                                          ),
-                                        )
-                                      );
-                                    } : null,
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: isImage
-                                          ? Image.file(File(path),
-                                              width: 60, height: 60, fit: BoxFit.cover)
-                                          : Container(
-                                              width: 60,
-                                              height: 60,
-                                              color: Colors.white12,
-                                              alignment: Alignment.center,
-                                              child: Icon(
-                                                ext == 'pdf'
-                                                    ? Icons.picture_as_pdf
-                                                    : Icons.insert_drive_file,
-                                                color: Colors.white70,
-                                                size: 28,
-                                              ),
-                                            ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  SizedBox(
-                                    width: 60,
-                                    child: Text(
-                                      filename,
-                                      style: const TextStyle(
-                                          color: Colors.white70, fontSize: 9),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: InkWell(
-                                  onTap: () => setState(() => _pendingImages.removeAt(index)),
-                                  child: const CircleAvatar(
-                                      radius: 10,
-                                      backgroundColor: Colors.red,
-                                      child: Icon(Icons.close, size: 12, color: Colors.white)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                
-                // 2. TOOLBAR ROW
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 4.0),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.attach_file, color: themeProvider.appThemeColor),
-                        tooltip: "Add Attachment",
-                        onPressed: isLoading ? null : _showAttachmentMenu,
-                      ),
-                      _buildFeatureSwitch(
-                        icon: Icons.image,
-                        isActive: chatProvider.enableImageGen,
-                        activeColor: Colors.purpleAccent,
-                        isLoading: isLoading,
-                        onToggle: () async {
-                          chatProvider.setEnableImageGen(!chatProvider.enableImageGen);
-                          await chatProvider.saveSettings(showConfirmation: false);
-                          _showStatusPopup(chatProvider.enableImageGen ? "Image Gen ON" : "Image Gen OFF");
-                        },
-                        themeProvider: themeProvider,
-                      ),
-                      if (chatProvider.currentProvider == AiProvider.openRouter)
+                // ROW 1: Icons + Attachments
+                Row(
+                  children: [
+                    // 1. ICONS ROW
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildCircularButton(
+                          icon: Icons.attach_file,
+                          color: themeProvider.appThemeColor,
+                          tooltip: "Add Attachment",
+                          onPressed: isLoading ? null : _showAttachmentMenu,
+                          themeProvider: themeProvider,
+                        ),
                         _buildFeatureSwitch(
-                          icon: Icons.data_usage,
-                          isActive: chatProvider.enableUsage,
-                          activeColor: Colors.tealAccent,
+                          icon: Icons.image,
+                          isActive: chatProvider.enableImageGen,
+                          activeColor: Colors.purpleAccent,
                           isLoading: isLoading,
                           onToggle: () async {
-                            chatProvider.setEnableUsage(!chatProvider.enableUsage);
+                            chatProvider.setEnableImageGen(!chatProvider.enableImageGen);
                             await chatProvider.saveSettings(showConfirmation: false);
-                            _showStatusPopup(chatProvider.enableUsage ? "Usage Stats ON" : "Usage Stats OFF");
+                            _showStatusPopup(chatProvider.enableImageGen ? "Image Gen ON" : "Image Gen OFF");
                           },
                           themeProvider: themeProvider,
                         ),
-                      _buildFeatureSwitch(
-                        icon: Icons.public,
-                        isActive: chatProvider.enableGrounding,
-                        activeColor: Colors.blueAccent,
-                        isLoading: isLoading,
-                        onToggle: () async {
-                          chatProvider.setEnableGrounding(!chatProvider.enableGrounding);
-                          await chatProvider.saveSettings(showConfirmation: false);
-                          _showStatusPopup(chatProvider.enableGrounding ? "Web Search ON" : "Web Search OFF");
-                        },
-                        themeProvider: themeProvider,
+                        if (chatProvider.currentProvider == AiProvider.openRouter)
+                          _buildFeatureSwitch(
+                            icon: Icons.data_usage,
+                            isActive: chatProvider.enableUsage,
+                            activeColor: Colors.tealAccent,
+                            isLoading: isLoading,
+                            onToggle: () async {
+                              chatProvider.setEnableUsage(!chatProvider.enableUsage);
+                              await chatProvider.saveSettings(showConfirmation: false);
+                              _showStatusPopup(chatProvider.enableUsage ? "Usage Stats ON" : "Usage Stats OFF");
+                            },
+                            themeProvider: themeProvider,
+                          ),
+                        _buildFeatureSwitch(
+                          icon: Icons.public,
+                          isActive: chatProvider.enableGrounding,
+                          activeColor: Colors.blueAccent,
+                          isLoading: isLoading,
+                          onToggle: () async {
+                            chatProvider.setEnableGrounding(!chatProvider.enableGrounding);
+                            await chatProvider.saveSettings(showConfirmation: false);
+                            _showStatusPopup(chatProvider.enableGrounding ? "Web Search ON" : "Web Search OFF");
+                          },
+                          themeProvider: themeProvider,
+                        ),
+                      ],
+                    ),
+
+                    // 2. ATTACHMENTS LIST (Scrollable)
+                    if (_pendingImages.isNotEmpty) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 50,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _pendingImages.length,
+                            itemBuilder: (context, index) {
+                              final path = _pendingImages[index];
+                              final ext = path.split('.').last.toLowerCase();
+                              final isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic'].contains(ext);
+
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6.0),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: isImage
+                                          ? () {
+                                              showDialog(
+                                                  context: context,
+                                                  builder: (_) => Dialog(
+                                                        backgroundColor: Colors.transparent,
+                                                        insetPadding: EdgeInsets.zero,
+                                                        child: Stack(
+                                                          alignment: Alignment.center,
+                                                          children: [
+                                                            InteractiveViewer(
+                                                              maxScale: 5.0,
+                                                              child: Image.file(File(path)),
+                                                            ),
+                                                            Positioned(
+                                                              top: 40,
+                                                              right: 20,
+                                                              child: IconButton(
+                                                                icon: const Icon(Icons.close,
+                                                                    color: Colors.white, size: 30),
+                                                                onPressed: () => Navigator.pop(context),
+                                                              ),
+                                                            )
+                                                          ],
+                                                        ),
+                                                      ));
+                                            }
+                                          : null,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: isImage
+                                            ? Image.file(File(path),
+                                                width: 50, height: 50, fit: BoxFit.cover)
+                                            : Container(
+                                                width: 50,
+                                                height: 50,
+                                                color: Colors.white12,
+                                                alignment: Alignment.center,
+                                                child: Icon(
+                                                  ext == 'pdf'
+                                                      ? Icons.picture_as_pdf
+                                                      : Icons.insert_drive_file,
+                                                  color: Colors.white70,
+                                                  size: 24,
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: -4,
+                                      top: -4,
+                                      child: InkWell(
+                                        onTap: () => setState(() => _pendingImages.removeAt(index)),
+                                        child: Container(
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          padding: const EdgeInsets.all(2),
+                                          child: const Icon(Icons.close, size: 10, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
-                      const Spacer(),
                     ],
-                  ),
+                  ],
                 ),
 
-                // 3. INPUT FIELD ROW
+                const SizedBox(height: 12),
+
+                // ROW 2: Input + Send Button
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    // 3. INPUT FIELD
                     Expanded(
                       child: TextField(
                         controller: _textController,
@@ -367,26 +399,32 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                         decoration: InputDecoration(
                           hintText: _pendingImages.isNotEmpty
                               ? 'Add a caption...'
-                              : (chatProvider.enableGrounding ? 'Search the web...' : (chatProvider.enableImageGen ? 'Describe image...' : 'Ready to chat...')),
-                          hintStyle: TextStyle(color: Colors.grey[600]),
+                              : (chatProvider.enableGrounding
+                                  ? 'Search web...'
+                                  : (chatProvider.enableImageGen ? 'Describe image...' : 'Message...')),
+                          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                           filled: true,
-                          fillColor: const Color.fromARGB(255, 0, 0, 0),
+                          fillColor: const Color(0x99000000),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          isDense: true,
                         ),
                         onSubmitted: isLoading ? null : (_) => _sendMessage(),
                       ),
                     ),
                     const SizedBox(width: 8),
+                    
+                    // 4. SEND BUTTON
                     IconButton.filled(
                       style: IconButton.styleFrom(
                           backgroundColor: isLoading
                               ? themeProvider.appThemeColor.withOpacity(0.2)
-                              : (chatProvider.enableGrounding ? Colors.green : themeProvider.appThemeColor)),
+                              : (chatProvider.enableGrounding ? Colors.green : themeProvider.appThemeColor),
+                          fixedSize: const Size(40, 40)),
                       onPressed: isLoading ? chatProvider.cancelGeneration : _sendMessage,
                       icon: Icon(isLoading ? Icons.stop_circle_outlined : Icons.send,
-                          color: isLoading ? themeProvider.appThemeColor : Colors.black),
+                          color: isLoading ? themeProvider.appThemeColor : Colors.black, size: 20),
                     ),
                   ],
                 ),

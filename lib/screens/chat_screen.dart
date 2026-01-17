@@ -71,34 +71,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       appBar: const ChatAppBar(),
       body: Stack(
         children: [
-          // 1. ZOOMABLE CONTENT (Chat History + Background)
-          // Note: ChatMessagesList handles the InteractiveViewer internally now?
-          // Wait, in my extraction I put InteractiveViewer inside ChatMessagesList.
-          // But EffectsOverlay needs to be *inside* the zoomable area if we want effects to zoom?
-          // In the original code:
-          /*
-          InteractiveViewer(
-            child: Stack(
-              children: [
-                Image...,
-                Container(color...),
-                EffectsOverlay...,
-                SafeArea(Column(ListView...))
-              ]
-            )
-          )
-          */
-          // My ChatMessagesList extraction included InteractiveViewer and the Background/Effects?
-          // Let's check ChatMessagesList content.
-          // It has InteractiveViewer -> Stack -> [Image, Container, SafeArea(ListView)].
-          // It missed EffectsOverlay! I need to add EffectsOverlay to ChatMessagesList or pass it in.
-          // Or I can wrap ChatMessagesList with EffectsOverlay in ChatScreen?
-          // No, EffectsOverlay was *under* the text but *over* the background.
-          
-          // I should probably update ChatMessagesList to include EffectsOverlay.
-          // But EffectsOverlay depends on ThemeProvider, which ChatMessagesList has access to.
-          // So I will update ChatMessagesList to include EffectsOverlay.
-          
           ChatMessagesList(
             scrollController: _scrollController,
             transformationController: _transformationController,

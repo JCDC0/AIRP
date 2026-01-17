@@ -268,9 +268,7 @@ class ChatApiService {
           }
         }
       }
-      
-      // Cleanup: Ensure reasoning tag is closed if stream ends
-      if (hasEmittedThinkStart && !hasEmittedThinkEnd) {
+            if (hasEmittedThinkStart && !hasEmittedThinkEnd) {
         yield "\n</think>\n";
       }
     } catch (e) {
@@ -354,15 +352,12 @@ class ChatApiService {
     required String prompt,
     String provider = 'openai', // or 'openrouter'
   }) async {
-    // 1. Setup the specific Image Gen URL
     // OpenAI: https://api.openai.com/v1/images/generations
     // OpenRouter: https://openrouter.ai/api/v1/images/generations (check their docs for specific models)
     
     final url = Uri.parse(provider == 'openai' 
         ? 'https://api.openai.com/v1/images/generations' 
         : 'https://openrouter.ai/api/v1/images/generations');
-
-    // 2. The Payload is different from Chat!
     final body = jsonEncode({
       "model": provider == 'openai' ? "dall-e-3" : "stabilityai/stable-diffusion-xl-base-1.0", // Example models
       "prompt": prompt,
@@ -382,7 +377,6 @@ class ChatApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // They usually return a list of objects with a URL
         return data['data'][0]['url']; 
       } else {
         return "Error: ${response.body}";

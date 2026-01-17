@@ -9,6 +9,7 @@ class ModelSelector extends StatelessWidget {
   final String selectedModel;
   final Function(String) onSelected;
   final String placeholder;
+  final bool isCompact;
 
   const ModelSelector({
     super.key,
@@ -16,6 +17,7 @@ class ModelSelector extends StatelessWidget {
     required this.selectedModel,
     required this.onSelected,
     required this.placeholder,
+    this.isCompact = false,
   });
 
   @override
@@ -29,7 +31,7 @@ class ModelSelector extends StatelessWidget {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: isCompact ? 6 : 12),
         decoration: BoxDecoration(
           color: Colors.black26,
           borderRadius: BorderRadius.circular(8),
@@ -152,13 +154,6 @@ class ModelSelector extends StatelessWidget {
                                       ),
                                       onPressed: () async {
                                         await chatProvider.toggleModelBookmark(modelId);
-                                        // No need to setDialogState manually as Provider will trigger rebuild? 
-                                        // Actually, AlertDialog is in a separate route, so it might not rebuild automatically unless we use Consumer or setDialogState.
-                                        // But we are using Provider.of<ChatProvider>(context) inside StatefulBuilder's builder?
-                                        // No, we are using it inside the builder, but `setDialogState` is needed to trigger rebuild of the *dialog content* if we rely on local state.
-                                        // But here we rely on provider state.
-                                        // `StatefulBuilder` only rebuilds when `setDialogState` is called.
-                                        // So we should call `setDialogState(() {})` to force rebuild of the list.
                                         setDialogState(() {});
                                       },
                                     ),

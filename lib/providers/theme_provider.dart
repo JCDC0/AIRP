@@ -99,12 +99,6 @@ Color _userBubbleColor = const Color.fromARGB(255, 0, 70, 70).withAlpha((0.8 * 2
       return GoogleFonts.cinzelTextTheme(baseTheme);
     case 'Typewriter':
       return GoogleFonts.specialEliteTextTheme(baseTheme);
-    case 'AnimeAce':
-      return baseTheme.apply(fontFamily: 'Anime Ace');
-    case 'Acme':
-      return baseTheme.apply(fontFamily: 'Acme Secret Agent');
-    case 'Smack':
-      return baseTheme.apply(fontFamily: 'Smack Attack');
     default: 
       return baseTheme;
     }

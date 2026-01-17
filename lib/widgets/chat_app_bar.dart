@@ -4,12 +4,13 @@ import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../models/chat_models.dart';
 import '../utils/constants.dart';
+import 'model_selector.dart';
 
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   const ChatAppBar({super.key});
 
   @override
-  Size get preferredSize => const Size.fromHeight(75);
+  Size get preferredSize => const Size.fromHeight(85);
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +19,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     final tokenColor = chatProvider.tokenCount > 1000000 ? Colors.redAccent : themeProvider.appThemeColor;
 
     return AppBar(
-      toolbarHeight: 75,
+      toolbarHeight: 40,
       backgroundColor: themeProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha((0 * 255).round())
           : const Color.fromARGB(255, 0, 0, 0),
@@ -80,11 +81,11 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
               children: [
                 Flexible(
                   child: Text(
-                    'AIRP - ${chatProvider.currentProvider == AiProvider.gemini ? "Gemini" 
-                        : chatProvider.currentProvider == AiProvider.openRouter ? "OpenRouter" 
+                    'AIRP - ${chatProvider.currentProvider == AiProvider.gemini ? "Gemini"
+                        : chatProvider.currentProvider == AiProvider.openRouter ? "OpenRouter"
                         : chatProvider.currentProvider == AiProvider.arliAi ? "ArliAI"
                         : chatProvider.currentProvider == AiProvider.nanoGpt ? "NanoGPT"
-                        : chatProvider.currentProvider == AiProvider.local ? "Local" 
+                        : chatProvider.currentProvider == AiProvider.local ? "Local"
                         : "OpenAI"}',
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -101,17 +102,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor, size: 18),
               ],
             ),
-            // 3. Model Name (Subtitle/Bottom Line)
-            Text(
-              cleanModelName(chatProvider.selectedModel),
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 11,
-                letterSpacing: 0.5,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
           ],
         ),
       ),
@@ -119,6 +109,79 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         Builder(builder: (c) => IconButton(icon: const Icon(Icons.settings), onPressed: () => Scaffold.of(c).openEndDrawer())),
       ],
+      
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(40),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          child: _buildModelSelector(context, chatProvider, themeProvider),
+        ),
+      ),
     );
+  }
+
+  Widget _buildModelSelector(BuildContext context, ChatProvider chatProvider, ThemeProvider themeProvider) {
+    switch (chatProvider.currentProvider) {
+      case AiProvider.gemini:
+        return ModelSelector(
+          modelsList: chatProvider.geminiModelsList,
+          selectedModel: chatProvider.selectedGeminiModel,
+          onSelected: chatProvider.setModel,
+          placeholder: "Select Gemini Model",
+          isCompact: true,
+        );
+      case AiProvider.openRouter:
+        return ModelSelector(
+          modelsList: chatProvider.openRouterModelsList,
+          selectedModel: chatProvider.openRouterModel,
+          onSelected: chatProvider.setModel,
+          placeholder: "Select OpenRouter Model",
+          isCompact: true,
+        );
+      case AiProvider.arliAi:
+        return ModelSelector(
+          modelsList: chatProvider.arliAiModelsList,
+          selectedModel: chatProvider.arliAiModel,
+          onSelected: chatProvider.setModel,
+          placeholder: "Select ArliAI Model",
+          isCompact: true,
+        );
+      case AiProvider.nanoGpt:
+        return ModelSelector(
+          modelsList: chatProvider.nanoGptModelsList,
+          selectedModel: chatProvider.nanoGptModel,
+          onSelected: chatProvider.setModel,
+          placeholder: "Select NanoGPT Model",
+          isCompact: true,
+        );
+      case AiProvider.local:
+      case AiProvider.openAi:
+      default:
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black26,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12),
+            boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : [],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  chatProvider.currentProvider == AiProvider.local
+                      ? (chatProvider.localModelName.isNotEmpty ? chatProvider.localModelName : "Local Model")
+                      : "Model Selection Unavailable",
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (chatProvider.currentProvider == AiProvider.local)
+                 const Icon(Icons.computer, color: Colors.white70, size: 16),
+            ],
+          ),
+        );
+    }
   }
 }
