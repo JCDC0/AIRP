@@ -3,29 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
+import '../providers/chat_provider.dart';
 import '../utils/constants.dart';
 
 class ConversationDrawer extends StatefulWidget {
-  final List<ChatSessionData> savedSessions;
-  final String? currentSessionId;
-  final int tokenCount;
-  final int tokenLimitWarning;
-  final VoidCallback onNewSession;
-  final Function(ChatSessionData) onLoadSession;
-  final Function(String) onDeleteSession;
-  final Function(String, bool) onBookmarkSession;
-
-  const ConversationDrawer({
-    super.key,
-    required this.savedSessions,
-    required this.currentSessionId,
-    required this.tokenCount,
-    this.tokenLimitWarning = 200000,
-    required this.onNewSession,
-    required this.onLoadSession,
-    required this.onDeleteSession,
-    required this.onBookmarkSession,
-  });
+  const ConversationDrawer({super.key});
 
   @override
   State<ConversationDrawer> createState() => _ConversationDrawerState();
@@ -36,9 +18,11 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);    
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final chatProvider = Provider.of<ChatProvider>(context);
+    
     // Filter sessions based on search query
-    final filteredSessions = widget.savedSessions.where((session) {
+    final filteredSessions = chatProvider.savedSessions.where((session) {
       final titleLower = session.title.toLowerCase();
       final queryLower = _searchQuery.toLowerCase();
       return titleLower.contains(queryLower);
@@ -91,7 +75,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             ),
             subtitle: const Text("Hold Chat to delete", style: TextStyle(color: Colors.orangeAccent, fontSize: 10)),
             onTap: () {
-              widget.onNewSession();
+              chatProvider.createNewSession();
               Navigator.pop(context);
             },
           ),
@@ -152,7 +136,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                     ),
                   ),
                   const Divider(color: Colors.white10, height: 1),
-                  ...bookmarkedSessions.map((session) => _buildSessionItem(context, session, themeProvider)),
+                  ...bookmarkedSessions.map((session) => _buildSessionItem(context, session, themeProvider, chatProvider)),
                   const SizedBox(height: 16),
                 ],
 
@@ -172,7 +156,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                   ),
                   const Divider(color: Colors.white10, height: 1),
                   const SizedBox(height: 8),
-                  ...recentSessions.map((session) => _buildSessionItem(context, session, themeProvider)),
+                  ...recentSessions.map((session) => _buildSessionItem(context, session, themeProvider, chatProvider)),
                 ],
               ],
             ),
@@ -182,11 +166,11 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
     );
   }
 
-  Widget _buildSessionItem(BuildContext context, ChatSessionData session, ThemeProvider themeProvider) {
-    final bool isActive = session.id == widget.currentSessionId;
+  Widget _buildSessionItem(BuildContext context, ChatSessionData session, ThemeProvider themeProvider, ChatProvider chatProvider) {
+    final bool isActive = session.id == chatProvider.currentSessionId;
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 2), // Reduced margin even further
+      margin: const EdgeInsets.only(bottom: 2), 
       decoration: BoxDecoration(
         color: isActive ? themeProvider.appThemeColor.withAlpha((0.05 * 255).round()) : Colors.transparent,
         border: isActive 
@@ -198,17 +182,17 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             : [],
       ),
       child: ListTile(
-        dense: true, // Compresses the tile vertically
-        visualDensity: const VisualDensity(horizontal: 0, vertical: -4), // Further compression
+        dense: true, 
+        visualDensity: const VisualDensity(horizontal: 0, vertical: -4), 
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0), // Minimal padding
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0), 
         splashColor: themeProvider.appThemeColor.withAlpha((0.1 * 255).round()),
         
-        // LEADING: Bookmark Icon instead of history/check
+        // LEADING: Bookmark Icon
         leading: GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
-            widget.onBookmarkSession(session.id, !session.isBookmarked);
+            chatProvider.bookmarkSession(session.id, !session.isBookmarked);
           },
           child: Icon(
             session.isBookmarked ? Icons.star : Icons.star_border,
@@ -236,7 +220,15 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
           style: TextStyle(fontSize: 10, color: Colors.grey[600])
         ),
         onTap: () {
-          widget.onLoadSession(session);
+          chatProvider.loadSession(session);
+          
+          // Also update background if present
+          if (session.backgroundImage != null) {
+            themeProvider.setBackgroundImage(session.backgroundImage!);
+          } else {
+            themeProvider.setBackgroundImage('assets/default.jpg');
+          }
+
           Navigator.pop(context);
         },
         
@@ -264,7 +256,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                   icon: const Icon(Icons.delete_forever, color: Colors.white),
                   label: const Text("DELETE"),
                   onPressed: () {
-                    widget.onDeleteSession(session.id);
+                    chatProvider.deleteSession(session.id);
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Conversation Deleted"), backgroundColor: Colors.redAccent)
