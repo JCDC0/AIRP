@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/conversation_drawer.dart';
 import '../widgets/settings_drawer.dart';
@@ -18,6 +19,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   final TransformationController _transformationController = TransformationController();
   bool _isZoomed = false;
+  String? _previousSessionId;
 
   @override
   void initState() {
@@ -62,6 +64,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final chatProvider = Provider.of<ChatProvider>(context);
+
+    // Auto-scroll to bottom when session changes
+    if (chatProvider.currentSessionId != _previousSessionId) {
+      _previousSessionId = chatProvider.currentSessionId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
+      });
+    }
     
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 0, 0, 0),

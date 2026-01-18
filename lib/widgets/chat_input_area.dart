@@ -136,6 +136,18 @@ class _ChatInputAreaState extends State<ChatInputArea> {
     _scrollToBottom();
   }
 
+  void _scrollToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          widget.scrollController.position.minScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.scrollController.hasClients) {
@@ -170,7 +182,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
     required IconData icon,
     required VoidCallback? onPressed,
     Color? color,
-    Color backgroundColor = const Color(0x99000000),
+    Color backgroundColor = Colors.black,
     String? tooltip,
     bool isActive = false,
     ThemeProvider? themeProvider,
@@ -235,203 +247,217 @@ class _ChatInputAreaState extends State<ChatInputArea> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ROW 1: Icons + Attachments
-                Row(
-                  children: [
-                    // 1. ICONS ROW
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildCircularButton(
-                          icon: Icons.attach_file,
-                          color: themeProvider.appThemeColor,
-                          tooltip: "Add Attachment",
-                          onPressed: isLoading ? null : _showAttachmentMenu,
-                          themeProvider: themeProvider,
-                        ),
+                // ROW 0: ATTACHMENTS LIST (Scrollable) - Moved to top
+                if (_pendingImages.isNotEmpty) ...[
+                  SizedBox(
+                    height: 50,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _pendingImages.length,
+                      itemBuilder: (context, index) {
+                        final path = _pendingImages[index];
+                        final ext = path.split('.').last.toLowerCase();
+                        final isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic'].contains(ext);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6.0),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              GestureDetector(
+                                onTap: isImage
+                                    ? () {
+                                        showDialog(
+                                            context: context,
+                                            builder: (_) => Dialog(
+                                                  backgroundColor: Colors.transparent,
+                                                  insetPadding: EdgeInsets.zero,
+                                                  child: Stack(
+                                                    alignment: Alignment.center,
+                                                    children: [
+                                                      InteractiveViewer(
+                                                        maxScale: 5.0,
+                                                        child: Image.file(File(path)),
+                                                      ),
+                                                      Positioned(
+                                                        top: 40,
+                                                        right: 20,
+                                                        child: IconButton(
+                                                          icon: const Icon(Icons.close,
+                                                              color: Colors.white, size: 30),
+                                                          onPressed: () => Navigator.pop(context),
+                                                        ),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ));
+                                      }
+                                    : null,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: isImage
+                                      ? Image.file(File(path),
+                                          width: 50, height: 50, fit: BoxFit.cover)
+                                      : Container(
+                                          width: 50,
+                                          height: 50,
+                                          color: Colors.white12,
+                                          alignment: Alignment.center,
+                                          child: Icon(
+                                            ext == 'pdf'
+                                                ? Icons.picture_as_pdf
+                                                : Icons.insert_drive_file,
+                                            color: Colors.white70,
+                                            size: 24,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              Positioned(
+                                right: -4,
+                                top: -4,
+                                child: InkWell(
+                                  onTap: () => setState(() => _pendingImages.removeAt(index)),
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    padding: const EdgeInsets.all(2),
+                                    child: const Icon(Icons.close, size: 10, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // ROW 1: Icons + Scroll Buttons
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildCircularButton(
+                        icon: Icons.attach_file,
+                        color: themeProvider.appThemeColor,
+                        tooltip: "Add Attachment",
+                        onPressed: isLoading ? null : _showAttachmentMenu,
+                        themeProvider: themeProvider,
+                      ),
+                      _buildFeatureSwitch(
+                        icon: Icons.image,
+                        isActive: chatProvider.enableImageGen,
+                        activeColor: Colors.purpleAccent,
+                        isLoading: isLoading,
+                        onToggle: () async {
+                          chatProvider.setEnableImageGen(!chatProvider.enableImageGen);
+                          await chatProvider.saveSettings(showConfirmation: false);
+                          _showStatusPopup(chatProvider.enableImageGen ? "Image Gen ON" : "Image Gen OFF");
+                        },
+                        themeProvider: themeProvider,
+                      ),
+                      if (chatProvider.currentProvider == AiProvider.openRouter)
                         _buildFeatureSwitch(
-                          icon: Icons.image,
-                          isActive: chatProvider.enableImageGen,
-                          activeColor: Colors.purpleAccent,
+                          icon: Icons.data_usage,
+                          isActive: chatProvider.enableUsage,
+                          activeColor: Colors.tealAccent,
                           isLoading: isLoading,
                           onToggle: () async {
-                            chatProvider.setEnableImageGen(!chatProvider.enableImageGen);
+                            chatProvider.setEnableUsage(!chatProvider.enableUsage);
                             await chatProvider.saveSettings(showConfirmation: false);
-                            _showStatusPopup(chatProvider.enableImageGen ? "Image Gen ON" : "Image Gen OFF");
+                            _showStatusPopup(chatProvider.enableUsage ? "Usage Stats ON" : "Usage Stats OFF");
                           },
                           themeProvider: themeProvider,
                         ),
-                        if (chatProvider.currentProvider == AiProvider.openRouter)
-                          _buildFeatureSwitch(
-                            icon: Icons.data_usage,
-                            isActive: chatProvider.enableUsage,
-                            activeColor: Colors.tealAccent,
-                            isLoading: isLoading,
-                            onToggle: () async {
-                              chatProvider.setEnableUsage(!chatProvider.enableUsage);
+                      _buildFeatureSwitch(
+                        icon: Icons.public,
+                        isActive: chatProvider.enableGrounding,
+                        activeColor: Colors.blueAccent,
+                        isLoading: isLoading,
+                        onToggle: () async {
+                          chatProvider.setEnableGrounding(!chatProvider.enableGrounding);
+                          await chatProvider.saveSettings(showConfirmation: false);
+                          _showStatusPopup(chatProvider.enableGrounding ? "Web Search ON" : "Web Search OFF");
+                        },
+                        themeProvider: themeProvider,
+                      ),
+                      // REASONING BUTTON
+                      Builder(
+                        builder: (context) {
+                          Color? reasoningColor;
+                          bool isActive = chatProvider.reasoningEffort != 'none';
+                          
+                          if (chatProvider.reasoningEffort == 'low') {
+                            reasoningColor = Colors.grey[600];
+                          } else if (chatProvider.reasoningEffort == 'medium') {
+                            reasoningColor = Colors.grey[400];
+                          } else if (chatProvider.reasoningEffort == 'high') {
+                            reasoningColor = Colors.white;
+                          }
+
+                          return _buildCircularButton(
+                            icon: Icons.psychology,
+                            color: isActive ? reasoningColor : Colors.grey[400],
+                            isActive: isActive,
+                            tooltip: "Reasoning Effort: ${chatProvider.reasoningEffort}",
+                            onPressed: isLoading ? null : () async {
+                              String nextState;
+                              String statusMsg;
+                              switch (chatProvider.reasoningEffort) {
+                                case 'none':
+                                  nextState = 'low';
+                                  statusMsg = "Reasoning: LOW";
+                                  break;
+                                case 'low':
+                                  nextState = 'medium';
+                                  statusMsg = "Reasoning: MEDIUM";
+                                  break;
+                                case 'medium':
+                                  nextState = 'high';
+                                  statusMsg = "Reasoning: HIGH";
+                                  break;
+                                case 'high':
+                                  nextState = 'none';
+                                  statusMsg = "Reasoning: OFF";
+                                  break;
+                                default:
+                                  nextState = 'low';
+                                  statusMsg = "Reasoning: LOW";
+                              }
+                              chatProvider.setReasoningEffort(nextState);
                               await chatProvider.saveSettings(showConfirmation: false);
-                              _showStatusPopup(chatProvider.enableUsage ? "Usage Stats ON" : "Usage Stats OFF");
+                              _showStatusPopup(statusMsg);
                             },
                             themeProvider: themeProvider,
-                          ),
-                        _buildFeatureSwitch(
-                          icon: Icons.public,
-                          isActive: chatProvider.enableGrounding,
-                          activeColor: Colors.blueAccent,
-                          isLoading: isLoading,
-                          onToggle: () async {
-                            chatProvider.setEnableGrounding(!chatProvider.enableGrounding);
-                            await chatProvider.saveSettings(showConfirmation: false);
-                            _showStatusPopup(chatProvider.enableGrounding ? "Web Search ON" : "Web Search OFF");
-                          },
-                          themeProvider: themeProvider,
-                        ),
-                        // REASONING BUTTON
-                        Builder(
-                          builder: (context) {
-                            Color? reasoningColor;
-                            bool isActive = chatProvider.reasoningEffort != 'none';
-                            
-                            if (chatProvider.reasoningEffort == 'low') {
-                              reasoningColor = Colors.grey[600];
-                            } else if (chatProvider.reasoningEffort == 'medium') {
-                              reasoningColor = Colors.grey[400];
-                            } else if (chatProvider.reasoningEffort == 'high') {
-                              reasoningColor = Colors.white;
-                            }
+                          );
+                        }
+                      ),
 
-                            return _buildCircularButton(
-                              icon: Icons.psychology,
-                              color: isActive ? reasoningColor : Colors.grey[400],
-                              isActive: isActive,
-                              tooltip: "Reasoning Effort: ${chatProvider.reasoningEffort}",
-                              onPressed: isLoading ? null : () async {
-                                String nextState;
-                                String statusMsg;
-                                switch (chatProvider.reasoningEffort) {
-                                  case 'none':
-                                    nextState = 'low';
-                                    statusMsg = "Reasoning: LOW";
-                                    break;
-                                  case 'low':
-                                    nextState = 'medium';
-                                    statusMsg = "Reasoning: MEDIUM";
-                                    break;
-                                  case 'medium':
-                                    nextState = 'high';
-                                    statusMsg = "Reasoning: HIGH";
-                                    break;
-                                  case 'high':
-                                    nextState = 'none';
-                                    statusMsg = "Reasoning: OFF";
-                                    break;
-                                  default:
-                                    nextState = 'low';
-                                    statusMsg = "Reasoning: LOW";
-                                }
-                                chatProvider.setReasoningEffort(nextState);
-                                await chatProvider.saveSettings(showConfirmation: false);
-                                _showStatusPopup(statusMsg);
-                              },
-                              themeProvider: themeProvider,
-                            );
-                          }
-                        ),
-                      ],
-                    ),
-
-                    // 2. ATTACHMENTS LIST (Scrollable)
-                    if (_pendingImages.isNotEmpty) ...[
+                      // SCROLL BUTTONS
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: SizedBox(
-                          height: 50,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _pendingImages.length,
-                            itemBuilder: (context, index) {
-                              final path = _pendingImages[index];
-                              final ext = path.split('.').last.toLowerCase();
-                              final isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic'].contains(ext);
-
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6.0),
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: isImage
-                                          ? () {
-                                              showDialog(
-                                                  context: context,
-                                                  builder: (_) => Dialog(
-                                                        backgroundColor: Colors.transparent,
-                                                        insetPadding: EdgeInsets.zero,
-                                                        child: Stack(
-                                                          alignment: Alignment.center,
-                                                          children: [
-                                                            InteractiveViewer(
-                                                              maxScale: 5.0,
-                                                              child: Image.file(File(path)),
-                                                            ),
-                                                            Positioned(
-                                                              top: 40,
-                                                              right: 20,
-                                                              child: IconButton(
-                                                                icon: const Icon(Icons.close,
-                                                                    color: Colors.white, size: 30),
-                                                                onPressed: () => Navigator.pop(context),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ));
-                                            }
-                                          : null,
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: isImage
-                                            ? Image.file(File(path),
-                                                width: 50, height: 50, fit: BoxFit.cover)
-                                            : Container(
-                                                width: 50,
-                                                height: 50,
-                                                color: Colors.white12,
-                                                alignment: Alignment.center,
-                                                child: Icon(
-                                                  ext == 'pdf'
-                                                      ? Icons.picture_as_pdf
-                                                      : Icons.insert_drive_file,
-                                                  color: Colors.white70,
-                                                  size: 24,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      right: -4,
-                                      top: -4,
-                                      child: InkWell(
-                                        onTap: () => setState(() => _pendingImages.removeAt(index)),
-                                        child: Container(
-                                          decoration: const BoxDecoration(
-                                            color: Colors.red,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          padding: const EdgeInsets.all(2),
-                                          child: const Icon(Icons.close, size: 10, color: Colors.white),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                      Container(width: 1, height: 24, color: Colors.grey[800]),
+                      const SizedBox(width: 12),
+                      
+                      _buildCircularButton(
+                        icon: Icons.vertical_align_top,
+                        tooltip: "Scroll to Top",
+                        onPressed: _scrollToTop,
+                        themeProvider: themeProvider,
+                      ),
+                      _buildCircularButton(
+                        icon: Icons.vertical_align_bottom,
+                        tooltip: "Scroll to Bottom",
+                        onPressed: _scrollToBottom,
+                        themeProvider: themeProvider,
                       ),
                     ],
-                  ],
+                  ),
                 ),
 
                 const SizedBox(height: 12),
@@ -457,7 +483,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                           filled: true,
-                          fillColor: const Color(0x99000000),
+                          fillColor: Colors.black,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           isDense: true,
                         ),
