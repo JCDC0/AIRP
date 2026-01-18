@@ -7,7 +7,8 @@ import '../providers/chat_provider.dart';
 import '../utils/constants.dart';
 
 class ConversationDrawer extends StatefulWidget {
-  const ConversationDrawer({super.key});
+  final VoidCallback? onClose;
+  const ConversationDrawer({super.key, this.onClose});
 
   @override
   State<ConversationDrawer> createState() => _ConversationDrawerState();
@@ -31,13 +32,15 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
     final bookmarkedSessions = filteredSessions.where((s) => s.isBookmarked).toList();
     final recentSessions = filteredSessions.where((s) => !s.isBookmarked).toList();
 
-    return Drawer(
-      width: 360, 
-      backgroundColor: const Color.fromARGB(255, 0, 0, 0),
-      shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.3) : null,
+    return Material(
       elevation: themeProvider.enableBloom ? 20 : 16,
-      child: Column(
-        children: [
+      shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.3) : null,
+      color: const Color.fromARGB(255, 0, 0, 0),
+      child: SizedBox(
+        width: 340,
+        height: double.infinity,
+        child: Column(
+          children: [
           Container(
             padding: const EdgeInsets.fromLTRB(16, 50, 16, 0),
             color: Colors.black26,
@@ -76,7 +79,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             subtitle: const Text("Hold Chat to delete", style: TextStyle(color: Colors.orangeAccent, fontSize: 10)),
             onTap: () {
               chatProvider.createNewSession();
-              Navigator.pop(context);
+              widget.onClose?.call();
             },
           ),
 
@@ -161,7 +164,8 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
               ],
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -229,7 +233,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             themeProvider.setBackgroundImage('assets/default.jpg');
           }
 
-          Navigator.pop(context);
+          widget.onClose?.call();
         },
         
         onLongPress: () {

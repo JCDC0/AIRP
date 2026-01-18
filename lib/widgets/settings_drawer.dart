@@ -387,16 +387,18 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
 
-    return Drawer(
-      width: 370, 
-      backgroundColor: const Color.fromARGB(255, 0, 0, 0),
-      shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.9) : null,
+    return Material(
       elevation: themeProvider.enableBloom ? 30 : 16,
-      child: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
+      shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.9) : null,
+      color: const Color.fromARGB(255, 0, 0, 0),
+      child: SizedBox(
+        width: 370,
+        height: double.infinity,
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 40),
@@ -408,7 +410,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.2.3", 
+            const Text("v0.2.4", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -1503,6 +1505,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
           ),
         ],
       ),
+    ),
     );
   }
 }

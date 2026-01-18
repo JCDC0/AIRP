@@ -7,7 +7,14 @@ import '../utils/constants.dart';
 import 'model_selector.dart';
 
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const ChatAppBar({super.key});
+  final VoidCallback? onOpenDrawer;
+  final VoidCallback? onOpenEndDrawer;
+
+  const ChatAppBar({
+    super.key,
+    this.onOpenDrawer,
+    this.onOpenEndDrawer,
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(85);
@@ -23,7 +30,10 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: themeProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha((0 * 255).round())
           : const Color.fromARGB(255, 0, 0, 0),
-      leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
+      leading: IconButton(
+        icon: const Icon(Icons.menu),
+        onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
+      ),
       
       title: PopupMenuButton<AiProvider>(
         initialValue: chatProvider.currentProvider,
@@ -107,7 +117,10 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
 
       actions: [
-        Builder(builder: (c) => IconButton(icon: const Icon(Icons.settings), onPressed: () => Scaffold.of(c).openEndDrawer())),
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: onOpenEndDrawer ?? () => Scaffold.of(context).openEndDrawer(),
+        ),
       ],
       
       bottom: PreferredSize(
