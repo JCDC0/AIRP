@@ -33,7 +33,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   String? _lastSyncedLocalIp;
   String? _lastSyncedTitle;
   String? _lastSyncedOpenRouterModel;
-  String? _lastSyncedSystemInstruction;
   
   @override
   void initState() {
@@ -54,7 +53,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _lastSyncedLocalIp = _localIpController.text;
     _lastSyncedTitle = _titleController.text;
     _lastSyncedOpenRouterModel = _openRouterModelController.text;
-    _lastSyncedSystemInstruction = chatProvider.systemInstruction;
 
     // Add listeners to detect changes
     _apiKeyController.addListener(_checkForChanges);
@@ -111,7 +109,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _lastSyncedLocalIp = _localIpController.text;
     _lastSyncedTitle = _titleController.text;
     _lastSyncedOpenRouterModel = _openRouterModelController.text;
-    _lastSyncedSystemInstruction = finalPrompt;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
