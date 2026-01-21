@@ -8,8 +8,9 @@
 
 ## Key Features
 
-*   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, ArliAI, NanoGPT, or Local.
-*   **Dynamic Model Lists**: Fetch the latest available models directly from the API providers.
+*   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, OpenAI, HuggingFace, ArliAI, NanoGPT, or Local.
+*   **Dynamic Model Lists**: Fetch the latest available models directly from all API providers.
+*   **Model Counters**: Real-time display of available models for each provider in the Settings Drawer and Chat Header.
 *   **Intelligent Model Selector**: A powerful, searchable dialog for managing large model lists. Features a **Bookmarking System** to pin your favorites to the top and smart sorting that prioritizes your bookmarks and featured models.
 *   **Searchable History**: Quickly find past conversations using the integrated search bar.
 *   **Developer Friendly**: Full Markdown support with **syntax highlighting** for code blocks and one-click code copying.
@@ -50,6 +51,19 @@
 
 ---
 
+## Development Notes
+
+### Modular Settings Structure
+The settings interface has been refactored into modular components located in `lib/widgets/settings_panels/`. This allows for easier maintenance and expansion of specific settings categories:
+
+*   `api_settings_panel.dart`: API key management and provider selection.
+*   `model_settings_panel.dart`: Model selection and list management.
+*   `system_prompt_panel.dart`: System prompt and advanced tweak configuration.
+*   `generation_settings_panel.dart`: LLM parameters (Temperature, Top P, etc.).
+*   `visual_settings_panel.dart`: Theme, background, and effect customization.
+
+---
+
 ## Configuration & API Keys
 
 This app follows a **BYOK (Bring Your Own Key)** architecture. Keys are stored locally on your device.
@@ -68,21 +82,35 @@ This app follows a **BYOK (Bring Your Own Key)** architecture. Keys are stored l
 4.  Paste your key.
 5.  **Important:** Click the **Floating Save Button**.
 
-### 3. ArliAI
+### 3. OpenAI
+1.  Obtain an API key from [OpenAI Platform](https://platform.openai.com/).
+2.  Select **AIRP - OpenAI** from the top dropdown.
+3.  Open the **Settings Drawer**.
+4.  Paste your key.
+5.  **Important:** Click the **Floating Save Button**.
+
+### 4. HuggingFace (Serverless Inference)
+1.  Obtain an Access Token from [HuggingFace Settings](https://huggingface.co/settings/tokens).
+2.  Select **AIRP - HuggingFace** from the top dropdown.
+3.  Open the **Settings Drawer**.
+4.  Paste your token.
+5.  **Important:** Click the **Floating Save Button**.
+
+### 5. ArliAI
 1.  Obtain an API key from [ArliAI](https://arliai.com/).
 2.  Select **AIRP - ArliAI** from the top dropdown.
 3.  Open the **Settings Drawer**.
 4.  Paste your key.
 5.  **Important:** Click the **Floating Save Button**.
 
-### 4. NanoGPT
+### 6. NanoGPT
 1.  Obtain an API key from [NanoGPT](https://nano-gpt.com/).
 2.  Select **AIRP - NanoGPT** from the top dropdown.
 3.  Open the **Settings Drawer**.
 4.  Paste your key.
 5.  **Important:** Click the **Floating Save Button**.
 
-### 5. Local Network AI (LM Studio / Ollama)
+### 7. Local Network AI (LM Studio / Ollama)
 Connect to an LLM running on your own computer or home server.
 
 1.  **Prepare your Server**:
@@ -132,7 +160,7 @@ Slide from the **right** edge or tap the **Settings** icon.
 
 1.  Ensure you have entered your API Key and saved.
 2.  Locate the **Model Selection** section.
-3.  Press the **Refresh Model List** button. The app will fetch the specific list of models available for your API key.
+3.  Press the **Refresh Model List** button. The app will fetch the specific list of models available for your API key. A counter will display the total number of models found (e.g., "150 Models").
 4.  **Tap the Selector**: This opens the new **Model Manager Dialog**.
     *   **Search**: Type in the top bar to filter instantly (e.g., "flash", "llama").
     *   **Bookmark**: Tap the bookmark icon on the right of any model to pin it to the top of the list forever.

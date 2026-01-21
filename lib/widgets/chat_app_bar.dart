@@ -187,7 +187,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           isCompact: true,
         );
       case AiProvider.local:
-      default:
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
