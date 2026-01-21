@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../models/chat_models.dart';
-import '../utils/constants.dart';
 import 'model_selector.dart';
 
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -65,10 +64,13 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.local,
             child: Row(children: [Icon(Icons.laptop_mac, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - Local')]),
           ),
-          const PopupMenuItem<AiProvider>(
+          PopupMenuItem<AiProvider>(
             value: AiProvider.openAi,
-            enabled: false,
-            child: Row(children: [Icon(Icons.lock, color: Colors.grey), SizedBox(width: 8), Text('AIRP - OpenAI (Soon)')]),
+            child: Row(children: [Icon(Icons.auto_awesome_mosaic, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - OpenAI')]),
+          ),
+          PopupMenuItem<AiProvider>(
+            value: AiProvider.huggingFace,
+            child: Row(children: [Icon(Icons.emoji_emotions, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - HuggingFace')]),
           ),
         ],
         child: Column(
@@ -96,7 +98,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                         : chatProvider.currentProvider == AiProvider.arliAi ? "ArliAI"
                         : chatProvider.currentProvider == AiProvider.nanoGpt ? "NanoGPT"
                         : chatProvider.currentProvider == AiProvider.local ? "Local"
-                        : "OpenAI"}',
+                        : chatProvider.currentProvider == AiProvider.openAi ? "OpenAI"
+                        : "HuggingFace"} ${_getModelCount(chatProvider) > 0 ? "(${_getModelCount(chatProvider)})" : ""}',
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                     softWrap: false,
@@ -167,8 +170,23 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           placeholder: "Select NanoGPT Model",
           isCompact: true,
         );
-      case AiProvider.local:
       case AiProvider.openAi:
+        return ModelSelector(
+          modelsList: chatProvider.openAiModelsList,
+          selectedModel: chatProvider.openAiModel,
+          onSelected: chatProvider.setModel,
+          placeholder: "Select OpenAI Model",
+          isCompact: true,
+        );
+      case AiProvider.huggingFace:
+        return ModelSelector(
+          modelsList: chatProvider.huggingFaceModelsList,
+          selectedModel: chatProvider.huggingFaceModel,
+          onSelected: chatProvider.setModel,
+          placeholder: "Select HuggingFace Model",
+          isCompact: true,
+        );
+      case AiProvider.local:
       default:
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -195,6 +213,18 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
         );
+    }
+  }
+
+  int _getModelCount(ChatProvider provider) {
+    switch (provider.currentProvider) {
+      case AiProvider.gemini: return provider.geminiModelsList.length;
+      case AiProvider.openRouter: return provider.openRouterModelsList.length;
+      case AiProvider.arliAi: return provider.arliAiModelsList.length;
+      case AiProvider.nanoGpt: return provider.nanoGptModelsList.length;
+      case AiProvider.openAi: return provider.openAiModelsList.length;
+      case AiProvider.huggingFace: return provider.huggingFaceModelsList.length;
+      default: return 0;
     }
   }
 }

@@ -26,22 +26,30 @@ class ChatProvider extends ChangeNotifier {
   List<String> _openRouterModelsList = [];
   List<String> _arliAiModelsList = [];
   List<String> _nanoGptModelsList = [];
+  List<String> _openAiModelsList = [];
+  List<String> _huggingFaceModelsList = [];
 
   List<String> get geminiModelsList => _geminiModelsList;
   List<String> get openRouterModelsList => _openRouterModelsList;
   List<String> get arliAiModelsList => _arliAiModelsList;
   List<String> get nanoGptModelsList => _nanoGptModelsList;
+  List<String> get openAiModelsList => _openAiModelsList;
+  List<String> get huggingFaceModelsList => _huggingFaceModelsList;
 
   // Loading States for Models
   bool _isLoadingGeminiModels = false;
   bool _isLoadingOpenRouterModels = false;
   bool _isLoadingArliAiModels = false;
   bool _isLoadingNanoGptModels = false;
+  bool _isLoadingOpenAiModels = false;
+  bool _isLoadingHuggingFaceModels = false;
 
   bool get isLoadingGeminiModels => _isLoadingGeminiModels;
   bool get isLoadingOpenRouterModels => _isLoadingOpenRouterModels;
   bool get isLoadingArliAiModels => _isLoadingArliAiModels;
   bool get isLoadingNanoGptModels => _isLoadingNanoGptModels;
+  bool get isLoadingOpenAiModels => _isLoadingOpenAiModels;
+  bool get isLoadingHuggingFaceModels => _isLoadingHuggingFaceModels;
 
   // Keys & Config
   AiProvider _currentProvider = AiProvider.gemini;
@@ -50,6 +58,7 @@ class ChatProvider extends ChangeNotifier {
   String _openAiKey = '';
   String _arliAiKey = '';
   String _nanoGptKey = '';
+  String _huggingFaceKey = '';
   String _localIp = 'http://192.168.1.15:1234/v1';
   String _localModelName = 'local-model';
 
@@ -59,6 +68,7 @@ class ChatProvider extends ChangeNotifier {
   String get openAiKey => _openAiKey;
   String get arliAiKey => _arliAiKey;
   String get nanoGptKey => _nanoGptKey;
+  String get huggingFaceKey => _huggingFaceKey;
   String get localIp => _localIp;
   String get localModelName => _localModelName;
 
@@ -67,12 +77,16 @@ class ChatProvider extends ChangeNotifier {
   String _openRouterModel = 'z-ai/glm-4.5-air:free';
   String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
   String _nanoGptModel = 'gpt-4o';
+  String _openAiModel = 'gpt-4o';
+  String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
   String _selectedModel = 'models/gemini-flash-lite-latest';
 
   String get selectedGeminiModel => _selectedGeminiModel;
   String get openRouterModel => _openRouterModel;
   String get arliAiModel => _arliAiModel;
   String get nanoGptModel => _nanoGptModel;
+  String get openAiModel => _openAiModel;
+  String get huggingFaceModel => _huggingFaceModel;
   String get selectedModel => _selectedModel;
 
   // Generation Settings
@@ -191,6 +205,7 @@ class ChatProvider extends ChangeNotifier {
     _openAiKey = prefs.getString('airp_key_openai') ?? '';
     _arliAiKey = prefs.getString('airp_key_arliai') ?? '';
     _nanoGptKey = prefs.getString('airp_key_nanogpt') ?? '';
+    _huggingFaceKey = prefs.getString('airp_key_huggingface') ?? '';
     _localIp = prefs.getString('airp_local_ip') ?? 'http://192.168.1.15:1234/v1';
 
     // Load Provider
@@ -200,6 +215,7 @@ class ChatProvider extends ChangeNotifier {
     else if (providerString == 'local') _currentProvider = AiProvider.local;
     else if (providerString == 'arliAi') _currentProvider = AiProvider.arliAi;
     else if (providerString == 'nanoGpt') _currentProvider = AiProvider.nanoGpt;
+    else if (providerString == 'huggingFace') _currentProvider = AiProvider.huggingFace;
     else _currentProvider = AiProvider.gemini;
 
     // Load Lists
@@ -207,18 +223,24 @@ class ChatProvider extends ChangeNotifier {
     _openRouterModelsList = prefs.getStringList('airp_list_openrouter') ?? [];
     _arliAiModelsList = prefs.getStringList('airp_list_arliai') ?? [];
     _nanoGptModelsList = prefs.getStringList('airp_list_nanogpt') ?? [];
+    _openAiModelsList = prefs.getStringList('airp_list_openai') ?? [];
+    _huggingFaceModelsList = prefs.getStringList('airp_list_huggingface') ?? [];
 
     // Load Selected Models
     _selectedGeminiModel = prefs.getString('airp_model_gemini') ?? 'models/gemini-flash-lite-latest';
     _openRouterModel = prefs.getString('airp_model_openrouter') ?? 'z-ai/glm-4.5-air:free';
     _arliAiModel = prefs.getString('airp_model_arliai') ?? 'Mistral-Nemo-12B-Instruct-v1';
     _nanoGptModel = prefs.getString('airp_model_nanogpt') ?? 'gpt-4o';
+    _openAiModel = prefs.getString('airp_model_openai') ?? 'gpt-4o';
+    _huggingFaceModel = prefs.getString('airp_model_huggingface') ?? 'meta-llama/Meta-Llama-3-8B-Instruct';
 
     // Determine current selected model
     if (_currentProvider == AiProvider.openRouter) _selectedModel = _openRouterModel;
     else if (_currentProvider == AiProvider.gemini) _selectedModel = _selectedGeminiModel;
     else if (_currentProvider == AiProvider.arliAi) _selectedModel = _arliAiModel;
     else if (_currentProvider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
+    else if (_currentProvider == AiProvider.openAi) _selectedModel = _openAiModel;
+    else if (_currentProvider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
     else if (_currentProvider == AiProvider.local) _selectedModel = "Local Network AI";
 
     // Load Other Settings
@@ -248,6 +270,8 @@ class ChatProvider extends ChangeNotifier {
     else if (provider == AiProvider.openRouter) _selectedModel = _openRouterModel;
     else if (provider == AiProvider.arliAi) _selectedModel = _arliAiModel;
     else if (provider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
+    else if (provider == AiProvider.openAi) _selectedModel = _openAiModel;
+    else if (provider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
     else if (provider == AiProvider.local) _selectedModel = "Local Network AI";
     
     notifyListeners();
@@ -262,6 +286,7 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.openAi: _openAiKey = key; break;
       case AiProvider.arliAi: _arliAiKey = key; break;
       case AiProvider.nanoGpt: _nanoGptKey = key; break;
+      case AiProvider.huggingFace: _huggingFaceKey = key; break;
       case AiProvider.local: break;
     }
     notifyListeners();
@@ -300,6 +325,12 @@ class ChatProvider extends ChangeNotifier {
     } else if (_currentProvider == AiProvider.nanoGpt) {
       _nanoGptModel = model;
       _selectedModel = model;
+    } else if (_currentProvider == AiProvider.openAi) {
+      _openAiModel = model;
+      _selectedModel = model;
+    } else if (_currentProvider == AiProvider.huggingFace) {
+      _huggingFaceModel = model;
+      _selectedModel = model;
     }
     notifyListeners();
   }
@@ -309,10 +340,10 @@ class ChatProvider extends ChangeNotifier {
   void setTopK(int val) { _topK = val; notifyListeners(); }
   void setMaxOutputTokens(int val) { _maxOutputTokens = val; notifyListeners(); }
   void setHistoryLimit(int val) { _historyLimit = val; notifyListeners(); }
-  void setEnableGrounding(bool val) { 
-    _enableGrounding = val; 
+  void setEnableGrounding(bool val) {
+    _enableGrounding = val;
     if (val) _enableImageGen = false;
-    notifyListeners(); 
+    notifyListeners();
   }
   void setEnableImageGen(bool val) {
     _enableImageGen = val;
@@ -334,8 +365,11 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString('airp_model_openrouter', _openRouterModel);
     await prefs.setString('airp_key_arliai', _arliAiKey);
     await prefs.setString('airp_key_nanogpt', _nanoGptKey);
+    await prefs.setString('airp_key_huggingface', _huggingFaceKey);
     await prefs.setString('airp_model_arliai', _arliAiModel);
     await prefs.setString('airp_model_nanogpt', _nanoGptModel);
+    await prefs.setString('airp_model_openai', _openAiModel);
+    await prefs.setString('airp_model_huggingface', _huggingFaceModel);
     await prefs.setDouble('airp_top_p', _topP);
     await prefs.setInt('airp_top_k', _topK);
     await prefs.setInt('airp_max_output', _maxOutputTokens);
@@ -366,9 +400,12 @@ class ChatProvider extends ChangeNotifier {
       activeKey = _openRouterKey;
     } else if (_currentProvider == AiProvider.openAi) {
       activeKey = _openAiKey;
+    } else if (_currentProvider == AiProvider.huggingFace) {
+      activeKey = _huggingFaceKey;
     }
 
-    if (activeKey.isEmpty && _currentProvider != AiProvider.local) {
+    if (activeKey.isEmpty && _currentProvider != AiProvider.local && _currentProvider != AiProvider.huggingFace) {
+      // HuggingFace can work without a key for some models, but rate limited.
       debugPrint("Warning: No API Key found for ${_currentProvider.name}");
     }
 
@@ -559,6 +596,14 @@ class ChatProvider extends ChangeNotifier {
         } else if (_currentProvider == AiProvider.nanoGpt) {
           baseUrl = "https://nano-gpt.com/api/v1/chat/completions";
           apiKey = _nanoGptKey;
+        } else if (_currentProvider == AiProvider.openAi) {
+          baseUrl = "https://api.openai.com/v1/chat/completions";
+          apiKey = _openAiKey;
+        } else if (_currentProvider == AiProvider.huggingFace) {
+          // HuggingFace Serverless Inference API (OpenAI Compatible)
+          // URL: https://api-inference.huggingface.co/models/{model_id}/v1/chat/completions
+          baseUrl = "https://api-inference.huggingface.co/models/$_selectedModel/v1/chat/completions";
+          apiKey = _huggingFaceKey;
         } else if (_currentProvider == AiProvider.local) {
           baseUrl = _localIp.trim();
           if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
@@ -950,6 +995,74 @@ class ChatProvider extends ChangeNotifier {
       debugPrint("Fetch Error: $e");
     } finally {
       _isLoadingNanoGptModels = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchOpenAiModels() async {
+    if (_openAiKey.isEmpty) return;
+    _isLoadingOpenAiModels = true;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse("https://api.openai.com/v1/models"),
+        headers: {"Authorization": "Bearer ${_openAiKey.trim()}"},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> dataList = data['data'] ?? [];
+        final List<String> fetchedIds = dataList.map<String>((e) => e['id'].toString()).toList();
+        fetchedIds.sort();
+
+        _openAiModelsList = fetchedIds;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('airp_list_openai', fetchedIds);
+        
+        if (!_openAiModelsList.contains(_openAiModel) && _openAiModelsList.isNotEmpty) {
+            _openAiModel = _openAiModelsList.first;
+            if (_currentProvider == AiProvider.openAi) _selectedModel = _openAiModel;
+        }
+      }
+    } catch (e) {
+      debugPrint("Fetch Error: $e");
+    } finally {
+      _isLoadingOpenAiModels = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchHuggingFaceModels() async {
+    // HuggingFace doesn't strictly require a key for public models, but it helps with rate limits.
+    _isLoadingHuggingFaceModels = true;
+    notifyListeners();
+
+    try {
+      // Fetch top 100 text-generation models sorted by downloads
+      final response = await http.get(
+        Uri.parse("https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100"),
+        headers: _huggingFaceKey.isNotEmpty ? {"Authorization": "Bearer ${_huggingFaceKey.trim()}"} : {},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> dataList = jsonDecode(response.body);
+        final List<String> fetchedIds = dataList.map<String>((e) => e['id'].toString()).toList();
+        fetchedIds.sort();
+
+        _huggingFaceModelsList = fetchedIds;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('airp_list_huggingface', fetchedIds);
+        
+        if (!_huggingFaceModelsList.contains(_huggingFaceModel) && _huggingFaceModelsList.isNotEmpty) {
+            _huggingFaceModel = _huggingFaceModelsList.first;
+            if (_currentProvider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
+        }
+      }
+    } catch (e) {
+      debugPrint("Fetch Error: $e");
+    } finally {
+      _isLoadingHuggingFaceModels = false;
       notifyListeners();
     }
   }

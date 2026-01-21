@@ -69,6 +69,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       case AiProvider.openAi: return provider.openAiKey;
       case AiProvider.arliAi: return provider.arliAiKey;
       case AiProvider.nanoGpt: return provider.nanoGptKey;
+      case AiProvider.huggingFace: return provider.huggingFaceKey;
       case AiProvider.local: return "";
     }
   }
@@ -368,6 +369,18 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     }
   }
 
+  int _getModelCount(ChatProvider provider) {
+    switch (provider.currentProvider) {
+      case AiProvider.gemini: return provider.geminiModelsList.length;
+      case AiProvider.openRouter: return provider.openRouterModelsList.length;
+      case AiProvider.arliAi: return provider.arliAiModelsList.length;
+      case AiProvider.nanoGpt: return provider.nanoGptModelsList.length;
+      case AiProvider.openAi: return provider.openAiModelsList.length;
+      case AiProvider.huggingFace: return provider.huggingFaceModelsList.length;
+      default: return 0;
+    }
+  }
+
   @override
   void dispose() {
     _apiKeyController.dispose();
@@ -382,10 +395,55 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     super.dispose();
   }
 
+  void _syncControllers(ChatProvider chatProvider) {
+    // 1. Sync API Key
+    final correctKey = _getApiKey(chatProvider);
+    if (_apiKeyController.text != correctKey) {
+      // Only update if values mismatch (e.g. provider switch or async load)
+      // This prevents cursor jumping if the values are already in sync during typing
+      _apiKeyController.value = _apiKeyController.value.copyWith(
+        text: correctKey,
+        selection: TextSelection.collapsed(offset: correctKey.length),
+        composing: TextRange.empty,
+      );
+    }
+
+    // 2. Sync Local IP
+    if (_localIpController.text != chatProvider.localIp) {
+      _localIpController.value = _localIpController.value.copyWith(
+        text: chatProvider.localIp,
+        selection: TextSelection.collapsed(offset: chatProvider.localIp.length),
+        composing: TextRange.empty,
+      );
+    }
+
+    // 3. Sync Title
+    if (_titleController.text != chatProvider.currentTitle) {
+      _titleController.value = _titleController.value.copyWith(
+        text: chatProvider.currentTitle,
+        selection: TextSelection.collapsed(offset: chatProvider.currentTitle.length),
+        composing: TextRange.empty,
+      );
+    }
+
+    // 4. Sync OpenRouter Model
+    if (chatProvider.currentProvider == AiProvider.openRouter) {
+      if (_openRouterModelController.text != chatProvider.openRouterModel) {
+        _openRouterModelController.value = _openRouterModelController.value.copyWith(
+          text: chatProvider.openRouterModel,
+          selection: TextSelection.collapsed(offset: chatProvider.openRouterModel.length),
+          composing: TextRange.empty,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    
+    _syncControllers(chatProvider);
 
     return Material(
       elevation: themeProvider.enableBloom ? 30 : 16,
@@ -410,7 +468,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
               )
             ),
-            const Text("v0.2.4", 
+            const Text("v0.3", 
               style: TextStyle(
                 fontSize: 16, 
                 fontWeight: FontWeight.bold, 
@@ -496,7 +554,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
             ),
             const SizedBox(height: 20),
 
-            Text("Model Selection", style: TextStyle(fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+            Text("Model Selection ${_getModelCount(chatProvider) > 0 ? "(${_getModelCount(chatProvider)})" : ""}", style: TextStyle(fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
             const SizedBox(height: 5),
 
             // ============================================
@@ -640,12 +698,78 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  icon: chatProvider.isLoadingNanoGptModels 
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                  icon: chatProvider.isLoadingNanoGptModels
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.cloud_sync, size: 16),
                   label: Text(chatProvider.isLoadingNanoGptModels ? "Fetching..." : "Refresh Model List"),
                   onPressed: chatProvider.isLoadingNanoGptModels ? null : chatProvider.fetchNanoGptModels,
                   style: OutlinedButton.styleFrom(foregroundColor: Colors.yellowAccent),
+                ),
+              ),
+            ],
+
+            // ============================================
+            // OPENAI UI
+            // ============================================
+            if (chatProvider.currentProvider == AiProvider.openAi) ...[
+              if (chatProvider.openAiModelsList.isNotEmpty)
+                ModelSelector(
+                  modelsList: chatProvider.openAiModelsList,
+                  selectedModel: chatProvider.openAiModel,
+                  onSelected: chatProvider.setModel,
+                  placeholder: "Select OpenAI Model",
+                )
+              else
+                TextField(
+                  controller: TextEditingController(text: chatProvider.openAiModel),
+                  decoration: const InputDecoration(hintText: "gpt-4o", border: OutlineInputBorder(), isDense: true),
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (val) { chatProvider.setModel(val.trim()); },
+                ),
+
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: chatProvider.isLoadingOpenAiModels
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.cloud_sync, size: 16),
+                  label: Text(chatProvider.isLoadingOpenAiModels ? "Fetching..." : "Refresh Model List"),
+                  onPressed: chatProvider.isLoadingOpenAiModels ? null : chatProvider.fetchOpenAiModels,
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.greenAccent),
+                ),
+              ),
+            ],
+
+            // ============================================
+            // HUGGINGFACE UI
+            // ============================================
+            if (chatProvider.currentProvider == AiProvider.huggingFace) ...[
+              if (chatProvider.huggingFaceModelsList.isNotEmpty)
+                ModelSelector(
+                  modelsList: chatProvider.huggingFaceModelsList,
+                  selectedModel: chatProvider.huggingFaceModel,
+                  onSelected: chatProvider.setModel,
+                  placeholder: "Select HuggingFace Model",
+                )
+              else
+                TextField(
+                  controller: TextEditingController(text: chatProvider.huggingFaceModel),
+                  decoration: const InputDecoration(hintText: "meta-llama/Meta-Llama-3-8B-Instruct", border: OutlineInputBorder(), isDense: true),
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (val) { chatProvider.setModel(val.trim()); },
+                ),
+
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: chatProvider.isLoadingHuggingFaceModels
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.cloud_sync, size: 16),
+                  label: Text(chatProvider.isLoadingHuggingFaceModels ? "Fetching..." : "Refresh Top Models"),
+                  onPressed: chatProvider.isLoadingHuggingFaceModels ? null : chatProvider.fetchHuggingFaceModels,
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.amberAccent),
                 ),
               ),
             ],
