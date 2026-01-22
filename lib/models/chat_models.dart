@@ -41,7 +41,7 @@ class ChatSessionData {
     messages: (json['messages'] as List?)
         ?.map((m) => ChatMessage.fromJson(m))
         .toList() ?? [],
-    modelName: json['modelName'] ?? 'models/gemini-flash-lite-latest',
+    modelName: json['modelName'] ?? 'models/gemini-3-flash-preview',
     tokenCount: json['tokenCount'] ?? 0,
     systemInstruction: json['systemInstruction'] ?? "",
     backgroundImage: json['backgroundImage'],
@@ -57,6 +57,7 @@ class ChatMessage {
   final String? aiImage;
   final String? modelName;
   final Map<String, dynamic>? usage;
+  final String? thoughtSignature;
 
   ChatMessage({
     required this.text,
@@ -65,6 +66,7 @@ class ChatMessage {
     this.aiImage,
     this.modelName,
     this.usage,
+    this.thoughtSignature,
   });
 
   Map<String, dynamic> toJson() => {
@@ -74,6 +76,7 @@ class ChatMessage {
     'aiImage': aiImage,
     'modelName': modelName,
     'usage': usage,
+    'thoughtSignature': thoughtSignature,
   };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -83,6 +86,7 @@ class ChatMessage {
     aiImage: json['aiImage'],
     modelName: json['modelName'],
     usage: json['usage'],
+    thoughtSignature: json['thoughtSignature'],
   );
 
   ChatMessage copyWith({
@@ -92,6 +96,7 @@ class ChatMessage {
     String? aiImage,
     String? modelName,
     Map<String, dynamic>? usage,
+    String? thoughtSignature,
   }) {
     return ChatMessage(
       text: text ?? this.text,
@@ -100,6 +105,7 @@ class ChatMessage {
       aiImage: aiImage ?? this.aiImage,
       modelName: modelName ?? this.modelName,
       usage: usage ?? this.usage,
+      thoughtSignature: thoughtSignature ?? this.thoughtSignature,
     );
   }
 }

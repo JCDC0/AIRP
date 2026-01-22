@@ -73,13 +73,13 @@ class ChatProvider extends ChangeNotifier {
   String get localModelName => _localModelName;
 
   // Selected Models
-  String _selectedGeminiModel = 'models/gemini-flash-lite-latest';
+  String _selectedGeminiModel = 'models/gemini-3-flash-preview';
   String _openRouterModel = 'z-ai/glm-4.5-air:free';
   String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
   String _nanoGptModel = 'gpt-4o';
   String _openAiModel = 'gpt-4o';
   String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
-  String _selectedModel = 'models/gemini-flash-lite-latest';
+  String _selectedModel = 'models/gemini-3-flash-preview';
 
   String get selectedGeminiModel => _selectedGeminiModel;
   String get openRouterModel => _openRouterModel;
@@ -210,8 +210,9 @@ class ChatProvider extends ChangeNotifier {
 
     // Load Provider
     final providerString = prefs.getString('airp_provider') ?? 'gemini';
-    if (providerString == 'openRouter') _currentProvider = AiProvider.openRouter;
-    else if (providerString == 'openAi') _currentProvider = AiProvider.openAi;
+    if (providerString == 'openRouter') {
+      _currentProvider = AiProvider.openRouter;
+    } else if (providerString == 'openAi') _currentProvider = AiProvider.openAi;
     else if (providerString == 'local') _currentProvider = AiProvider.local;
     else if (providerString == 'arliAi') _currentProvider = AiProvider.arliAi;
     else if (providerString == 'nanoGpt') _currentProvider = AiProvider.nanoGpt;
@@ -227,7 +228,7 @@ class ChatProvider extends ChangeNotifier {
     _huggingFaceModelsList = prefs.getStringList('airp_list_huggingface') ?? [];
 
     // Load Selected Models
-    _selectedGeminiModel = prefs.getString('airp_model_gemini') ?? 'models/gemini-flash-lite-latest';
+    _selectedGeminiModel = prefs.getString('airp_model_gemini') ?? 'models/gemini-3-flash-preview';
     _openRouterModel = prefs.getString('airp_model_openrouter') ?? 'z-ai/glm-4.5-air:free';
     _arliAiModel = prefs.getString('airp_model_arliai') ?? 'Mistral-Nemo-12B-Instruct-v1';
     _nanoGptModel = prefs.getString('airp_model_nanogpt') ?? 'gpt-4o';
@@ -235,8 +236,9 @@ class ChatProvider extends ChangeNotifier {
     _huggingFaceModel = prefs.getString('airp_model_huggingface') ?? 'meta-llama/Meta-Llama-3-8B-Instruct';
 
     // Determine current selected model
-    if (_currentProvider == AiProvider.openRouter) _selectedModel = _openRouterModel;
-    else if (_currentProvider == AiProvider.gemini) _selectedModel = _selectedGeminiModel;
+    if (_currentProvider == AiProvider.openRouter) {
+      _selectedModel = _openRouterModel;
+    } else if (_currentProvider == AiProvider.gemini) _selectedModel = _selectedGeminiModel;
     else if (_currentProvider == AiProvider.arliAi) _selectedModel = _arliAiModel;
     else if (_currentProvider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
     else if (_currentProvider == AiProvider.openAi) _selectedModel = _openAiModel;
@@ -266,8 +268,9 @@ class ChatProvider extends ChangeNotifier {
 
   void setProvider(AiProvider provider) {
     _currentProvider = provider;
-    if (provider == AiProvider.gemini) _selectedModel = _selectedGeminiModel;
-    else if (provider == AiProvider.openRouter) _selectedModel = _openRouterModel;
+    if (provider == AiProvider.gemini) {
+      _selectedModel = _selectedGeminiModel;
+    } else if (provider == AiProvider.openRouter) _selectedModel = _openRouterModel;
     else if (provider == AiProvider.arliAi) _selectedModel = _arliAiModel;
     else if (provider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
     else if (provider == AiProvider.openAi) _selectedModel = _openAiModel;
@@ -496,21 +499,44 @@ class ChatProvider extends ChangeNotifier {
     if (_enableGrounding && _currentProvider == AiProvider.gemini && imagesToSend.isEmpty) {
        try {
          final activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
-         final groundedText = await ChatApiService.performGeminiGrounding(
-            apiKey: activeKey, 
-            model: _selectedModel, 
-            history: _messages.sublist(0, _messages.length - 1), 
-            userMessage: messageText, 
+         
+         // Get previous thought signature if available
+         String? previousSignature;
+         if (_messages.isNotEmpty) {
+            for (int i = _messages.length - 1; i >= 0; i--) {
+               if (!_messages[i].isUser && _messages[i].thoughtSignature != null) {
+                  previousSignature = _messages[i].thoughtSignature;
+                  break;
+               }
+            }
+         }
+
+         final result = await ChatApiService.performGeminiGrounding(
+            apiKey: activeKey,
+            model: _selectedModel,
+            history: _messages.sublist(0, _messages.length - 1),
+            userMessage: messageText,
             systemInstruction: _systemInstruction,
-            disableSafety: _disableSafety
+            disableSafety: _disableSafety,
+            thoughtSignature: previousSignature,
          );
          
-         if (_isCancelled) return; 
+         if (_isCancelled) return;
          
-         _messages.add(ChatMessage(text: groundedText ?? "Error", isUser: false, modelName: _selectedModel));
+         if (result != null) {
+             _messages.add(ChatMessage(
+                text: result['text'] ?? "Error",
+                isUser: false,
+                modelName: _selectedModel,
+                thoughtSignature: result['thoughtSignature']
+             ));
+         } else {
+             _messages.add(ChatMessage(text: "Grounding Error", isUser: false, modelName: _selectedModel));
+         }
+
          _isLoading = false;
          notifyListeners();
-         return; 
+         return;
        } catch (e) {
          debugPrint("Grounding failed: $e");
        }
@@ -641,13 +667,18 @@ class ChatProvider extends ChangeNotifier {
             final usage = jsonDecode(usageStr) as Map<String, dynamic>;
             _messages.last = _messages.last.copyWith(usage: usage);
             notifyListeners();
+          } else if (chunk.startsWith('[[THOUGHT_SIG:')) {
+             final sig = chunk.substring(14, chunk.length - 2);
+             _messages.last = _messages.last.copyWith(thoughtSignature: sig);
+             notifyListeners();
           } else {
             fullText += chunk;
             _messages.last = ChatMessage(
               text: fullText,
               isUser: false,
               modelName: _selectedModel,
-              usage: _messages.last.usage
+              usage: _messages.last.usage,
+              thoughtSignature: _messages.last.thoughtSignature
             );
             notifyListeners();
           }
@@ -754,8 +785,9 @@ class ChatProvider extends ChangeNotifier {
     _currentSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
 
     String providerStr = 'gemini';
-    if (_currentProvider == AiProvider.openRouter) providerStr = 'openRouter';
-    else if (_currentProvider == AiProvider.local) providerStr = 'local';
+    if (_currentProvider == AiProvider.openRouter) {
+      providerStr = 'openRouter';
+    } else if (_currentProvider == AiProvider.local) providerStr = 'local';
     else if (_currentProvider == AiProvider.openAi) providerStr = 'openAi';
 
     final sessionData = ChatSessionData(

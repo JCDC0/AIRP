@@ -79,9 +79,9 @@ class ModelSettingsPanel extends StatelessWidget {
               onSelected: chatProvider.setModel,
               placeholder: "Select Gemini Model",
             )
-          else
+            else
             TextField(
-              decoration: const InputDecoration(hintText: "models/gemini-flash-lite-latest", border: OutlineInputBorder(), isDense: true),
+              decoration: const InputDecoration(hintText: "models/gemini-3-flash-preview", border: OutlineInputBorder(), isDense: true),
               onChanged: chatProvider.setModel,
               controller: TextEditingController(text: chatProvider.selectedGeminiModel),
             ),

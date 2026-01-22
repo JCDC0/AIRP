@@ -52,9 +52,51 @@ class ChatApiService {
     // 2. Stream
     final stream = chatSession.sendMessageStream(userContent);
 
-    await for (final response in stream) {
-      if (response.text != null) {
-        yield response.text!;
+    // NOTE: Gemini 3 models will require explicit handling of "thought signatures"
+    // when performing function calls. We defensively attempt to extract a thought
+    // signature from each streamed response (if present) and emit it as a
+    // special token `[[THOUGHT_SIG:<value>]]`. The UI/provider layer can capture
+    // this token and return the signature back to Gemini when invoking functions.
+    //
+    // This extraction is intentionally defensive: we treat `response` as `dynamic`
+    // and try multiple strategies (direct field, `toJson()` map) so that this
+    // change won't break existing behavior if the underlying response type
+    // doesn't include a signature field.
+    await for (final dynamic response in stream) {
+      try {
+        if (response.text != null) {
+          yield response.text!;
+        }
+
+        // Attempt to pull a thought signature (if the response exposes one).
+        String? tryExtractSignature(dynamic r) {
+          try {
+            if (r == null) return null;
+            // If already a Map-like structure
+            if (r is Map) {
+              return r['thought_signature']?.toString() ?? r['thoughtSignature']?.toString();
+            }
+            // Try direct field access (may throw/noSuchMethod if absent)
+            try {
+              final sig = r.thoughtSignature;
+              if (sig != null) return sig.toString();
+            } catch (_) {}
+            // Try toJson() if available
+            try {
+              final json = r.toJson();
+              if (json is Map) return json['thought_signature']?.toString() ?? json['thoughtSignature']?.toString();
+            } catch (_) {}
+          } catch (_) {}
+          return null;
+        }
+
+        final sig = tryExtractSignature(response);
+        if (sig != null && sig.isNotEmpty) {
+          yield '[[THOUGHT_SIG:${sig}]]';
+        }
+      } catch (e) {
+        // Ignore any unexpected errors while attempting to extract signatures
+        // and continue streaming the textual content.
       }
     }
   }
@@ -281,13 +323,14 @@ class ChatApiService {
   // ==============================================================================
   // 3. GEMINI GROUNDING (Separate because it's unique)
   // ==============================================================================
-  static Future<String?> performGeminiGrounding({
+  static Future<Map<String, dynamic>?> performGeminiGrounding({
     required String apiKey,
     required String model,
     required List<ChatMessage> history,
     required String userMessage,
     required String systemInstruction,
     bool disableSafety = true,
+    String? thoughtSignature,
   }) async {
     final modelId = model.replaceAll('models/', '');
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$apiKey');
@@ -301,7 +344,7 @@ class ChatApiService {
     }
     contents.add({"role": "user", "parts": [{"text": userMessage}]});
 
-    final body = jsonEncode({
+    final Map<String, dynamic> bodyMap = {
       "contents": contents,
       "tools": [ { "google_search": {} } ],
       "system_instruction": systemInstruction.isNotEmpty ? {
@@ -313,7 +356,14 @@ class ChatApiService {
           {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
           {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
       ] : []
-    });
+    };
+
+    // Pass back thought signature if available (Required for Gemini 3+)
+    if (thoughtSignature != null && thoughtSignature.isNotEmpty) {
+      bodyMap["thought_signature"] = thoughtSignature;
+    }
+
+    final body = jsonEncode(bodyMap);
 
     try {
       final response = await http.post(url, headers: {'Content-Type': 'application/json'}, body: body);
@@ -335,11 +385,23 @@ class ChatApiService {
                 }
               }
           }
-                    return fullText;
+
+          // Extract new thought signature if present
+          String? newSignature;
+          if (data['thought_signature'] != null) {
+            newSignature = data['thought_signature'];
+          } else if (candidate['thought_signature'] != null) {
+            newSignature = candidate['thought_signature'];
+          }
+
+          return {
+            "text": fullText,
+            "thoughtSignature": newSignature
+          };
         }
-      } 
+      }
     } catch (e) {
-      return "Grounding Error: $e";
+      return {"text": "Grounding Error: $e"};
     }
     return null;
   }
