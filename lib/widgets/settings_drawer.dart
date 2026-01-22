@@ -217,7 +217,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.9) : null,
       color: const Color.fromARGB(255, 0, 0, 0),
       child: SizedBox(
-        width: 370,
+        width: 340,
         height: double.infinity,
         child: Stack(
           children: [
