@@ -21,14 +21,13 @@ class SettingsHeader extends StatelessWidget {
             shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
           )
         ),
-        const Text("v0.3.3.1", 
+        const Text("v0.3.4", 
           style: TextStyle(
             fontSize: 16, 
             fontWeight: FontWeight.bold, 
             color: Colors.grey
             )),
         const Divider(),
-        const SizedBox(height: 10),
       ],
     );
   }

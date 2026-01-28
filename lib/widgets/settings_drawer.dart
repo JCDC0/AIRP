@@ -11,7 +11,8 @@ import 'settings_panels/generation_settings_panel.dart';
 import 'settings_panels/visual_settings_panel.dart';
 
 class SettingsDrawer extends StatefulWidget {
-  const SettingsDrawer({super.key});
+  final int resetVersion;
+  const SettingsDrawer({super.key, this.resetVersion = 0});
 
   @override
   State<SettingsDrawer> createState() => _SettingsDrawerState();
@@ -228,33 +229,76 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 children: [
                   const SettingsHeader(),
                   
-                  ApiSettingsPanel(
-                    apiKeyController: _apiKeyController,
-                    localIpController: _localIpController,
+                  ExpansionTile(
+                    key: Key('api_settings_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    leading: Icon(Icons.link, color: themeProvider.appThemeColor),
+                    title: Text("API & Connectivity", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    collapsedIconColor: themeProvider.appThemeColor,
+                    iconColor: themeProvider.appThemeColor,
+                    children: [
+                      ApiSettingsPanel(
+                        apiKeyController: _apiKeyController,
+                        localIpController: _localIpController,
+                      ),
+                    ],
+                  ),
+
+                  ExpansionTile(
+                    key: Key('model_settings_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    leading: Icon(Icons.smart_toy, color: themeProvider.appThemeColor),
+                    title: Text("Model Configuration", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    collapsedIconColor: themeProvider.appThemeColor,
+                    iconColor: themeProvider.appThemeColor,
+                    children: [
+                      ModelSettingsPanel(
+                        titleController: _titleController,
+                        openRouterModelController: _openRouterModelController,
+                      ),
+                    ],
                   ),
                   
-                  const SizedBox(height: 20),
-                  
-                  ModelSettingsPanel(
-                    titleController: _titleController,
-                    openRouterModelController: _openRouterModelController,
+                  ExpansionTile(
+                    key: Key('system_prompt_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    leading: Icon(Icons.description, color: themeProvider.appThemeColor),
+                    title: Text("System Prompt", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    collapsedIconColor: themeProvider.appThemeColor,
+                    iconColor: themeProvider.appThemeColor,
+                    children: [
+                      SystemPromptPanel(
+                        mainPromptController: _mainPromptController,
+                        advancedPromptController: _advancedPromptController,
+                        promptTitleController: _promptTitleController,
+                        onPromptChanged: _checkForChanges,
+                      ),
+                    ],
                   ),
                   
-                  const SizedBox(height: 30),
-                  
-                  SystemPromptPanel(
-                    mainPromptController: _mainPromptController,
-                    advancedPromptController: _advancedPromptController,
-                    promptTitleController: _promptTitleController,
-                    onPromptChanged: _checkForChanges,
+                  ExpansionTile(
+                    key: Key('generation_settings_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    leading: Icon(Icons.tune, color: themeProvider.appThemeColor),
+                    title: Text("Generation Parameters", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    collapsedIconColor: themeProvider.appThemeColor,
+                    iconColor: themeProvider.appThemeColor,
+                    children: [
+                      const GenerationSettingsPanel(),
+                    ],
                   ),
                   
-                  const SizedBox(height: 10),
-                  const Divider(),
-                  
-                  const GenerationSettingsPanel(),
-                  
-                  const VisualSettingsPanel(),
+                  ExpansionTile(
+                    key: Key('visual_settings_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    leading: Icon(Icons.palette, color: themeProvider.appThemeColor),
+                    title: Text("Visuals & Atmosphere", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    collapsedIconColor: themeProvider.appThemeColor,
+                    iconColor: themeProvider.appThemeColor,
+                    children: [
+                      const VisualSettingsPanel(),
+                    ],
+                  ),
                   
                   // Extra space for FAB
                   const SizedBox(height: 80),

@@ -284,6 +284,7 @@ class ModelSettingsPanel extends StatelessWidget {
             ),
           ),
         ],
+                const SizedBox(height: 16),
       ],
     );
   }

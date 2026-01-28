@@ -92,7 +92,7 @@ class ChatApiService {
 
         final sig = tryExtractSignature(response);
         if (sig != null && sig.isNotEmpty) {
-          yield '[[THOUGHT_SIG:${sig}]]';
+          yield '[[THOUGHT_SIG:$sig]]';
         }
       } catch (e) {
         // Ignore any unexpected errors while attempting to extract signatures

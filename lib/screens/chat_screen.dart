@@ -27,6 +27,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   bool _isZoomed = false;
   String? _previousSessionId;
+  int _settingsDrawerVersion = 0;
 
   @override
   void initState() {
@@ -74,6 +75,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   void _toggleEndDrawer() {
     if (_endDrawerController.isDismissed) {
+      setState(() {
+        _settingsDrawerVersion++;
+      });
       _endDrawerController.forward();
     } else {
       _endDrawerController.reverse();
@@ -260,9 +264,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           child: GestureDetector(
             onHorizontalDragUpdate: _handleEndDrawerDragUpdate,
             onHorizontalDragEnd: _handleEndDrawerDragEnd,
-            child: const Align(
+            child: Align(
               alignment: Alignment.centerRight,
-              child: SettingsDrawer(),
+              child: SettingsDrawer(resetVersion: _settingsDrawerVersion),
             ),
           ),
         ),
