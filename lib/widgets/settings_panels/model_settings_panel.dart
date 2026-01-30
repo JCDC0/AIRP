@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
 import 'provider_model_selector.dart';
 
@@ -34,14 +35,16 @@ class ModelSettingsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Conversation Title", 
+        Text("Conversation Title",
           style: TextStyle(
-            fontWeight: FontWeight.bold, 
+            fontWeight: FontWeight.bold,
             color: themeProvider.appThemeColor,
+            fontSize: scaleProvider.systemFontSize,
             shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
           )
         ),
@@ -55,10 +58,10 @@ class ModelSettingsPanel extends StatelessWidget {
           ),
           child: TextField(
             controller: titleController,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize),
             decoration: InputDecoration(
               hintText: "Type a title...",
-              hintStyle: const TextStyle(color: Colors.white24),
+              hintStyle: TextStyle(color: Colors.white24, fontSize: scaleProvider.systemFontSize),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               suffixIcon: Icon(Icons.edit, size: 16, color: themeProvider.appThemeColor),
@@ -68,7 +71,7 @@ class ModelSettingsPanel extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-        Text("Model Selection ${_getModelCount(chatProvider) > 0 ? "(${_getModelCount(chatProvider)})" : ""}", style: TextStyle(fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+        Text("Model Selection ${_getModelCount(chatProvider) > 0 ? "(${_getModelCount(chatProvider)})" : ""}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
         const SizedBox(height: 5),
 
         // ============================================
@@ -110,13 +113,15 @@ class ModelSettingsPanel extends StatelessWidget {
            TextField(
              onChanged: chatProvider.setLocalModelName,
              controller: TextEditingController(text: chatProvider.localModelName),
-             decoration: const InputDecoration(
+             decoration: InputDecoration(
                hintText: "local-model",
+               hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
                labelText: "Target Model ID (Optional)",
-               border: OutlineInputBorder(), 
+               labelStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
+               border: const OutlineInputBorder(),
                isDense: true
              ),
-             style: const TextStyle(fontSize: 13),
+             style: TextStyle(fontSize: scaleProvider.systemFontSize),
            ),
         ],
 

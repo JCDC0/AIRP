@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/scale_provider.dart';
 import '../utils/constants.dart';
 
 class ModelSelector extends StatelessWidget {
@@ -44,7 +45,7 @@ class ModelSelector extends StatelessWidget {
             Expanded(
               child: Text(
                 modelsList.contains(selectedModel) ? cleanModelName(selectedModel) : (selectedModel.isNotEmpty ? cleanModelName(selectedModel) : placeholder),
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: TextStyle(color: Colors.white, fontSize: Provider.of<ScaleProvider>(context).systemFontSize),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -56,6 +57,7 @@ class ModelSelector extends StatelessWidget {
   }
 
   void _showModelPickerDialog(BuildContext context, ThemeProvider themeProvider) {
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (context) {
@@ -86,7 +88,7 @@ class ModelSelector extends StatelessWidget {
 
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1E1E),
-              title: Text("Select Model", style: TextStyle(color: themeProvider.appThemeColor)),
+              title: Text("Select Model", style: TextStyle(color: themeProvider.appThemeColor, fontSize: scaleProvider.systemFontSize)),
               content: SizedBox(
                 width: double.maxFinite,
                 child: Column(
@@ -106,12 +108,12 @@ class ModelSelector extends StatelessWidget {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: Colors.white, fontSize: scaleProvider.systemFontSize),
                     ),
                     const SizedBox(height: 10),
                     Expanded(
                       child: filteredModels.isEmpty
-                          ? const Center(child: Text("No models found", style: TextStyle(color: Colors.grey)))
+                          ? Center(child: Text("No models found", style: TextStyle(color: Colors.grey, fontSize: scaleProvider.systemFontSize)))
                           : ListView.builder(
                               itemCount: filteredModels.length,
                               itemBuilder: (context, index) {
@@ -133,9 +135,10 @@ class ModelSelector extends StatelessWidget {
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: isBookmarked ? FontWeight.bold : FontWeight.normal,
+                                        fontSize: Provider.of<ScaleProvider>(context, listen: false).systemFontSize,
                                       ),
                                     ),
-                                    subtitle: Text(modelId, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                    subtitle: Text(modelId, style: TextStyle(fontSize: Provider.of<ScaleProvider>(context, listen: false).systemFontSize - 2, color: Colors.grey)),
                                     trailing: IconButton(
                                       icon: Icon(
                                         isBookmarked ? Icons.bookmark : Icons.bookmark_border,
@@ -160,7 +163,7 @@ class ModelSelector extends StatelessWidget {
               ),
               actions: [
                 TextButton(
-                  child: const Text("Close"),
+                  child: Text("Close", style: TextStyle(fontSize: scaleProvider.systemFontSize)),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],

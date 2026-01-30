@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/scale_provider.dart';
 import 'settings_panels/settings_header.dart';
 import 'settings_panels/api_settings_panel.dart';
 import 'settings_panels/model_settings_panel.dart';
 import 'settings_panels/system_prompt_panel.dart';
 import 'settings_panels/generation_settings_panel.dart';
 import 'settings_panels/visual_settings_panel.dart';
+import 'settings_panels/scale_settings_panel.dart';
 
 class SettingsDrawer extends StatefulWidget {
   final int resetVersion;
@@ -235,6 +237,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final scaleProvider = Provider.of<ScaleProvider>(context);
     
     _syncControllers(chatProvider);
 
@@ -243,7 +246,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.9) : null,
       color: const Color.fromARGB(255, 0, 0, 0),
       child: SizedBox(
-        width: 340,
+        width: scaleProvider.drawerWidth + (scaleProvider.systemFontSize - 12) * 10,
         height: double.infinity,
         child: Stack(
           children: [
@@ -257,7 +260,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('api_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("API & Connectivity", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    title: Text("API & Connectivity", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [
@@ -271,7 +274,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('model_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("Model Configuration", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    title: Text("Model Configuration", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [
@@ -286,7 +289,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('system_prompt_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("System Prompt", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    title: Text("System Prompt", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [
@@ -302,18 +305,47 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('generation_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("Generation Parameters", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    title: Text("Generation Parameters", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [
                       const GenerationSettingsPanel(),
                     ],
                   ),
+
+                  ExpansionTile(
+                    key: Key('scale_settings_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    onExpansionChanged: (expanded) {
+                      if (expanded) {
+                        scaleProvider.markSettingsAsSeen();
+                      }
+                    },
+                    title: Text(
+                      "Layout & Scaling",
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                        shadows: scaleProvider.shouldGlow
+                            ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 15, offset: const Offset(0, 0))]
+                            : null,
+                      )
+                    ),
+                    collapsedIconColor: themeProvider.appThemeColor,
+                    iconColor: themeProvider.appThemeColor,
+                    leading: scaleProvider.shouldGlow
+                        ? Icon(Icons.new_releases, color: themeProvider.appThemeColor, shadows: [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)])
+                        : null,
+                    children: [
+                      const ScaleSettingsPanel(),
+                    ],
+                  ),
                   
                   ExpansionTile(
                     key: Key('visual_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("Visuals & Atmosphere", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
+                    title: Text("Visuals & Atmosphere", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [

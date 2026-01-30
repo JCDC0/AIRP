@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/scale_provider.dart';
 import '../utils/constants.dart';
 
 class ConversationDrawer extends StatefulWidget {
@@ -21,6 +22,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final scaleProvider = Provider.of<ScaleProvider>(context);
     
     // Filter sessions based on search query
     final filteredSessions = chatProvider.savedSessions.where((session) {
@@ -37,7 +39,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
       shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.3) : null,
       color: const Color.fromARGB(255, 0, 0, 0),
       child: SizedBox(
-        width: 340,
+        width: scaleProvider.drawerWidth,
         height: double.infinity,
         child: Column(
           children: [
@@ -49,10 +51,10 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Conversations List", 
+                  "Conversations List",
                   style: TextStyle(
-                    fontSize: 24, 
-                    fontWeight: FontWeight.bold, 
+                    fontSize: scaleProvider.systemFontSize + 8,
+                    fontWeight: FontWeight.bold,
                     color: themeProvider.appThemeColor,
                     shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
                   )
@@ -64,19 +66,19 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             dense: true,
             leading: Icon(
-              Icons.add_circle_outline, 
+              Icons.add_circle_outline,
               color: Colors.greenAccent,
               shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.greenAccent, blurRadius: 8)] : [],
             ),
             title: Text(
-              "New Conversation", 
+              "New Conversation",
               style: TextStyle(
                 color: Colors.green,
-                fontSize: 14,
+                fontSize: scaleProvider.systemFontSize,
                 shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.green, blurRadius: 8)] : [],
               )
             ),
-            subtitle: const Text("Hold Chat to delete", style: TextStyle(color: Colors.orangeAccent, fontSize: 10)),
+            subtitle: Text("Hold Chat to delete", style: TextStyle(color: Colors.orangeAccent, fontSize: scaleProvider.systemFontSize - 2)),
             onTap: () {
               chatProvider.createNewSession();
               widget.onClose?.call();
@@ -93,13 +95,13 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                 boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 6)] : [],
               ),
               child: TextField(
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: TextStyle(color: Colors.white, fontSize: scaleProvider.systemFontSize),
                 decoration: InputDecoration(
                   hintText: "Find conversation...",
-                  hintStyle: const TextStyle(color: Colors.white38),
+                  hintStyle: TextStyle(color: Colors.white38, fontSize: scaleProvider.systemFontSize - 1),
                   prefixIcon: Icon(
-                    Icons.search, 
-                    color: themeProvider.appThemeColor, 
+                    Icons.search,
+                    color: themeProvider.appThemeColor,
                     size: 18,
                     shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 6)] : [],
                   ),
@@ -119,8 +121,8 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
           const Divider(color: Colors.grey),
           
           Expanded(
-            child: filteredSessions.isEmpty 
-            ? const Center(child: Text("No chats found", style: TextStyle(color: Colors.grey)))
+            child: filteredSessions.isEmpty
+            ? Center(child: Text("No chats found", style: TextStyle(color: Colors.grey, fontSize: scaleProvider.systemFontSize)))
             : ListView(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               children: [
@@ -132,14 +134,14 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                       style: TextStyle(
                         color: themeProvider.appThemeColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: scaleProvider.systemFontSize,
                         letterSpacing: 1.2,
                         shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 6)] : [],
                       ),
                     ),
                   ),
                   const Divider(color: Colors.white10, height: 1),
-                  ...bookmarkedSessions.map((session) => _buildSessionItem(context, session, themeProvider, chatProvider)),
+                  ...bookmarkedSessions.map((session) => _buildSessionItem(context, session, themeProvider, chatProvider, scaleProvider)),
                   const SizedBox(height: 16),
                 ],
 
@@ -151,7 +153,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                       style: TextStyle(
                         color: themeProvider.appThemeColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: scaleProvider.systemFontSize,
                         letterSpacing: 1.2,
                         shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 6)] : [],
                       ),
@@ -159,7 +161,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
                   ),
                   const Divider(color: Colors.white10, height: 1),
                   const SizedBox(height: 8),
-                  ...recentSessions.map((session) => _buildSessionItem(context, session, themeProvider, chatProvider)),
+                  ...recentSessions.map((session) => _buildSessionItem(context, session, themeProvider, chatProvider, scaleProvider)),
                 ],
               ],
             ),
@@ -170,7 +172,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
     );
   }
 
-  Widget _buildSessionItem(BuildContext context, ChatSessionData session, ThemeProvider themeProvider, ChatProvider chatProvider) {
+  Widget _buildSessionItem(BuildContext context, ChatSessionData session, ThemeProvider themeProvider, ChatProvider chatProvider, ScaleProvider scaleProvider) {
     final bool isActive = session.id == chatProvider.currentSessionId;
     
     return Container(
@@ -208,20 +210,21 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
         ),
 
         title: Text(
-          session.title, 
-          maxLines: 1, 
-          overflow: TextOverflow.ellipsis, 
+          session.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: isActive ? themeProvider.appThemeColor : Colors.grey[300], 
+            color: isActive ? themeProvider.appThemeColor : Colors.grey[300],
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            shadows: (isActive && themeProvider.enableBloom) 
-                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] 
+            fontSize: scaleProvider.systemFontSize + 1,
+            shadows: (isActive && themeProvider.enableBloom)
+                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)]
                 : [],
           )
         ),
         subtitle: Text(
-          cleanModelName(session.modelName), 
-          style: TextStyle(fontSize: 10, color: Colors.grey[600])
+          cleanModelName(session.modelName),
+          style: TextStyle(fontSize: scaleProvider.systemFontSize - 2, color: Colors.grey[600])
         ),
         onTap: () {
           chatProvider.loadSession(session);

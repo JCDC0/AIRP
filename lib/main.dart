@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/scale_provider.dart';
 import 'screens/chat_screen.dart';
 
 void main() {
@@ -10,6 +11,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => ScaleProvider()),
       ],
       child: const GeminiChatApp(),
     ),
@@ -30,7 +32,7 @@ class GeminiChatApp extends StatelessWidget {
         brightness: Brightness.dark,
         textTheme: themeProvider.currentTextTheme,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.cyanAccent,
+          seedColor: themeProvider.appThemeColor,
           brightness: Brightness.dark,
         ),
         useMaterial3: true,

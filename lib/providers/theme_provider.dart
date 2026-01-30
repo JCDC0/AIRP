@@ -24,11 +24,11 @@ class ThemeProvider extends ChangeNotifier {
   int _firefliesCount = 50;
 
 // Color settings
-Color _userBubbleColor = const Color.fromARGB(255, 0, 70, 70).withAlpha((0.8 * 255).round());
-  Color _userTextColor = Colors.white;
-  Color _aiBubbleColor = const Color.fromARGB(255, 57, 0, 0).withAlpha((0.8 * 255).round());
-  Color _aiTextColor = Colors.white;
-  Color _appThemeColor = const Color.fromARGB(255, 255, 255, 255); 
+  Color _userBubbleColor = AppColors.defaultUserBubble;
+  Color _userTextColor = AppColors.defaultUserText;
+  Color _aiBubbleColor = AppColors.defaultAiBubble;
+  Color _aiTextColor = AppColors.defaultAiText;
+  Color _appThemeColor = AppColors.defaultAppTheme;
 
   List<String> _customImagePaths = []; 
 
@@ -186,11 +186,11 @@ Color _userBubbleColor = const Color.fromARGB(255, 0, 70, 70).withAlpha((0.8 * 2
   }
 
   Future<void> resetToDefaults() async {
-    _userBubbleColor = const Color.fromARGB(255, 0, 70, 70).withAlpha((0.8 * 255).round());
-    _userTextColor = Colors.white;
-    _aiBubbleColor = const Color.fromARGB(255, 57, 0, 0).withAlpha((0.8 * 255).round());
-    _aiTextColor = Colors.white;
-    _appThemeColor = const Color.fromARGB(255, 255, 255, 255);
+    _userBubbleColor = AppColors.defaultUserBubble;
+    _userTextColor = AppColors.defaultUserText;
+    _aiBubbleColor = AppColors.defaultAiBubble;
+    _aiTextColor = AppColors.defaultAiText;
+    _appThemeColor = AppColors.defaultAppTheme;
     _enableBloom = false;
     _enableMotes = false;
     _enableRain = false;
@@ -272,8 +272,8 @@ Color _userBubbleColor = const Color.fromARGB(255, 0, 70, 70).withAlpha((0.8 * 2
   }
   
     Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    _fontStyle = prefs.getString('app_font_style') ?? 'Default';
+      final prefs = await SharedPreferences.getInstance();
+      _fontStyle = prefs.getString('app_font_style') ?? 'Default';
     _backgroundImagePath = prefs.getString('app_bg_path');
     _backgroundOpacity = prefs.getDouble('app_bg_opacity') ?? 0.7;
     _enableBloom = prefs.getBool('app_enable_bloom') ?? false;
@@ -288,27 +288,19 @@ Color _userBubbleColor = const Color.fromARGB(255, 0, 70, 70).withAlpha((0.8 * 2
     _firefliesCount = prefs.getInt('vfx_fireflies_count') ?? 50;
 
     final int? themeInt = prefs.getInt('color_app_theme');
-    _appThemeColor = themeInt != null ? Color(themeInt) : Colors.cyanAccent;
+    _appThemeColor = themeInt != null ? Color(themeInt) : AppColors.defaultAppTheme;
 
     final int? userBubbleInt = prefs.getInt('color_user_bubble');
-    if (userBubbleInt != null) {
-      _userBubbleColor = Color(userBubbleInt);
-    } else {
-      _userBubbleColor = Colors.cyanAccent.withAlpha((0.2 * 255).round());
-    }
+    _userBubbleColor = userBubbleInt != null ? Color(userBubbleInt) : AppColors.defaultUserBubble;
 
     final int? userTextInt = prefs.getInt('color_user_text');
-    _userTextColor = userTextInt != null ? Color(userTextInt) : Colors.white;
+    _userTextColor = userTextInt != null ? Color(userTextInt) : AppColors.defaultUserText;
 
     final int? aiBubbleInt = prefs.getInt('color_ai_bubble');
-    if (aiBubbleInt != null) {
-      _aiBubbleColor = Color(aiBubbleInt);
-    } else {
-      _aiBubbleColor = const Color(0xFF2C2C2C).withAlpha((0.8 * 255).round());
-    }
+    _aiBubbleColor = aiBubbleInt != null ? Color(aiBubbleInt) : AppColors.defaultAiBubble;
 
     final int? aiTextInt = prefs.getInt('color_ai_text');
-    _aiTextColor = aiTextInt != null ? Color(aiTextInt) : Colors.white;
+    _aiTextColor = aiTextInt != null ? Color(aiTextInt) : AppColors.defaultAiText;
     
     notifyListeners();
   }

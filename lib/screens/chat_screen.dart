@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/scale_provider.dart';
 import '../widgets/conversation_drawer.dart';
 import '../widgets/settings_drawer.dart';
 import '../widgets/chat_app_bar.dart';
@@ -33,6 +34,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _transformationController.addListener(_onZoomChange);
+
+    // Initialize Scale Provider (First Run)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ScaleProvider>(context, listen: false).initializeDeviceType(context);
+    });
 
     // Initialize Drawer Controllers
     _drawerController = AnimationController(

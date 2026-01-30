@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 // ----------------------------------------------------------------------
 // GLOBAL HELPERS & CONSTANTS
 // ----------------------------------------------------------------------
@@ -31,6 +33,14 @@ String cleanModelName(String rawId) {
   name = name.replaceAll(' .', '.');
 
   return name;
+}
+
+class AppColors {
+  static const Color defaultAppTheme = Colors.white;
+  static const Color defaultUserBubble = Color.fromARGB(204, 0, 70, 70); // 0.8 opacity
+  static const Color defaultUserText = Colors.white;
+  static const Color defaultAiBubble = Color.fromARGB(204, 44, 44, 44); // 0.8 opacity
+  static const Color defaultAiText = Colors.white;
 }
 
 // ----------------------------------------------------------------------
@@ -105,7 +115,6 @@ const List<String> kAssetBackgrounds = [
   'assets/starrysky.jpg',
   'assets/soothingsea.jpg',
   'assets/soothingsky.jpg',
-  'assets/still_waters.jpg',
   'assets/trainer_office.jpg',
   'assets/turf.jpeg',
 ];

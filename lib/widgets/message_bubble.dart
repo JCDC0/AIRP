@@ -3,10 +3,12 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:markdown/markdown.dart' as md;
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
-import '../utils/constants.dart'; 
+import '../providers/scale_provider.dart';
+import '../utils/constants.dart';
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage msg;
@@ -86,6 +88,7 @@ class MessageBubble extends StatelessWidget {
 
     @override
     Widget build(BuildContext context) {
+      final scaleProvider = Provider.of<ScaleProvider>(context);
       final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
       final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
       final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha(128) : Colors.white10;
@@ -96,11 +99,11 @@ class MessageBubble extends StatelessWidget {
         bubble = ValueListenableBuilder<String>(
           valueListenable: msg.contentNotifier!,
           builder: (context, value, child) {
-            return _buildBubble(context, value, bubbleColor, borderColor, textColor, useBloom);
+            return _buildBubble(context, value, bubbleColor, borderColor, textColor, useBloom, scaleProvider);
           },
         );
       } else {
-        bubble = _buildBubble(context, msg.text, bubbleColor, borderColor, textColor, useBloom);
+        bubble = _buildBubble(context, msg.text, bubbleColor, borderColor, textColor, useBloom, scaleProvider);
       }
   
       return Align(
@@ -119,18 +122,18 @@ class MessageBubble extends StatelessWidget {
               children: [
                 // 1. REGENERATE (Leftmost for AI)
                  if (onRegenerate != null)
-                   _buildIconBtn(Icons.refresh, "Regenerate", onRegenerate!, textColor, 25),
+                   _buildIconBtn(Icons.refresh, "Regenerate", onRegenerate!, textColor, 25 * scaleProvider.iconScale),
 
                  // 2. COPY
                  if (onCopy != null)
-                   _buildIconBtn(Icons.copy_rounded, "Copy", onCopy!, textColor, 25),
+                   _buildIconBtn(Icons.copy_rounded, "Copy", onCopy!, textColor, 25 * scaleProvider.iconScale),
 
                  // 3. EDIT (User Only usually)
                  if (onEdit != null)
-                   _buildIconBtn(Icons.edit_outlined, "Edit", onEdit!, textColor, 25),
+                   _buildIconBtn(Icons.edit_outlined, "Edit", onEdit!, textColor, 25 * scaleProvider.iconScale),
                  // 4. DELETE
                  if (onDelete != null)
-                   _buildIconBtn(Icons.delete_outline, "Delete", onDelete!, textColor, 25),
+                   _buildIconBtn(Icons.delete_outline, "Delete", onDelete!, textColor, 25 * scaleProvider.iconScale),
               ],
             ),
           ),
@@ -156,12 +159,13 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-    Widget _buildBubble(BuildContext context, String text, Color bubbleColor, Color borderColor, Color textColor, bool useBloom) {
+    Widget _buildBubble(BuildContext context, String text, Color bubbleColor, Color borderColor, Color textColor, bool useBloom, ScaleProvider scaleProvider) {
       final codeStyle = TextStyle(
         color: textColor,
         backgroundColor: Colors.black26,
         shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
         fontFamily: 'monospace',
+        fontSize: scaleProvider.chatFontSize - 2,
       );
   
       // --- PARSE REASONING ---
@@ -189,7 +193,7 @@ class MessageBubble extends StatelessWidget {
                 child: Text(
                   cleanModelName(msg.modelName!),
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: scaleProvider.chatFontSize - 4,
                     color: textColor.withOpacity(0.7),
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
@@ -232,17 +236,19 @@ class MessageBubble extends StatelessWidget {
                 codeblockDecoration: const BoxDecoration(color: Colors.transparent),
                 p: TextStyle(
                   color: textColor,
+                  fontSize: scaleProvider.chatFontSize,
                   shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 15)] : [],
                 ),
                 a: TextStyle(
                   color: Colors.blueAccent,
+                  fontSize: scaleProvider.chatFontSize,
                   decoration: TextDecoration.underline,
                   shadows: useBloom ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)] : [],
                 ),
                 code: codeStyle,
-                h1: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-                h2: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-                h3: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+                h1: TextStyle(color: textColor, fontSize: scaleProvider.chatFontSize + 8, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+                h2: TextStyle(color: textColor, fontSize: scaleProvider.chatFontSize + 6, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+                h3: TextStyle(color: textColor, fontSize: scaleProvider.chatFontSize + 4, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
               ),
             ),
   
@@ -260,7 +266,7 @@ class MessageBubble extends StatelessWidget {
                 child: Text(
                   "Usage: ${msg.usage!['prompt_tokens'] ?? 0} in + ${msg.usage!['completion_tokens'] ?? 0} out = ${msg.usage!['total_tokens'] ?? 0} total",
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: scaleProvider.chatFontSize - 4,
                     color: textColor.withOpacity(0.7),
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',

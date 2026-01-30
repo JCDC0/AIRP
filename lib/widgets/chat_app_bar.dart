@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/scale_provider.dart';
 import '../models/chat_models.dart';
 import 'model_selector.dart';
 
@@ -16,21 +17,41 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize => const Size.fromHeight(85);
+  Size get preferredSize => const Size.fromHeight(150);
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final scaleProvider = Provider.of<ScaleProvider>(context);
     final tokenColor = chatProvider.tokenCount > 1000000 ? Colors.redAccent : themeProvider.appThemeColor;
+    
+    final String providerName = chatProvider.currentProvider == AiProvider.gemini ? "Gemini"
+        : chatProvider.currentProvider == AiProvider.openRouter ? "OpenRouter"
+        : chatProvider.currentProvider == AiProvider.arliAi ? "ArliAI"
+        : chatProvider.currentProvider == AiProvider.nanoGpt ? "NanoGPT"
+        : chatProvider.currentProvider == AiProvider.local ? "Local"
+        : chatProvider.currentProvider == AiProvider.openAi ? "OpenAI"
+        : chatProvider.currentProvider == AiProvider.groq ? "Groq"
+        : "HuggingFace";
+    
+    // Scale toolbar height with systemFontSize to prevent text clipping
+    final double baseToolbarHeight = 60;
+    final double extraToolbarHeight = (scaleProvider.systemFontSize - 12) * 2.0;
+    final double scaledToolbarHeight = baseToolbarHeight + extraToolbarHeight;
+    
+    // Scale bottom section height with systemFontSize
+    final double baseBottomHeight = 40;
+    final double extraBottomHeight = (scaleProvider.systemFontSize - 12) * 1.5;
+    final double scaledBottomHeight = baseBottomHeight + extraBottomHeight;
 
     return AppBar(
-      toolbarHeight: 40,
+      toolbarHeight: scaledToolbarHeight,
       backgroundColor: themeProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha((0 * 255).round())
           : const Color.fromARGB(255, 0, 0, 0),
       leading: IconButton(
-        icon: const Icon(Icons.menu),
+        icon: Icon(Icons.menu, size: scaleProvider.iconScale * 24),
         onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
       ),
       
@@ -45,103 +66,115 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         },
         itemBuilder: (BuildContext context) => <PopupMenuEntry<AiProvider>>[
           PopupMenuItem<AiProvider>(
+            height: scaleProvider.systemFontSize * 2.5,
             value: AiProvider.gemini,
-            child: Row(children: [Icon(Icons.auto_awesome, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - Gemini')]),
+            child: Row(children: [Icon(Icons.auto_awesome, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - Gemini', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
           ),
           PopupMenuItem<AiProvider>(
+            height: scaleProvider.systemFontSize * 2.5,
             value: AiProvider.openRouter,
-            child: Row(children: [Icon(Icons.router, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - OpenRouter')]),
+            child: Row(children: [Icon(Icons.router, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - OpenRouter', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
           ),
           PopupMenuItem<AiProvider>(
+            height: scaleProvider.systemFontSize * 2.5,
             value: AiProvider.arliAi,
-            child: Row(children: [Icon(Icons.alternate_email, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - ArliAI')]),
+            child: Row(children: [Icon(Icons.alternate_email, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - ArliAI', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
           ),
           PopupMenuItem<AiProvider>(
+            height: scaleProvider.systemFontSize * 2.5,
             value: AiProvider.nanoGpt,
-            child: Row(children: [Icon(Icons.bolt, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - NanoGPT')]),
+            child: Row(children: [Icon(Icons.bolt, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - NanoGPT', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
           ),
           PopupMenuItem<AiProvider>(
+            height: scaleProvider.systemFontSize * 2.5,
             value: AiProvider.local,
-            child: Row(children: [Icon(Icons.laptop_mac, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - Local')]),
+            child: Row(children: [Icon(Icons.laptop_mac, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - Local', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
           ),
           PopupMenuItem<AiProvider>(
+            height: scaleProvider.systemFontSize * 2.5,
             value: AiProvider.openAi,
-            child: Row(children: [Icon(Icons.auto_awesome_mosaic, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - OpenAI')]),
+            child: Row(children: [Icon(Icons.auto_awesome_mosaic, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - OpenAI', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
           ),
           PopupMenuItem<AiProvider>(
+            height: scaleProvider.systemFontSize * 2.5,
             value: AiProvider.huggingFace,
-            child: Row(children: [Icon(Icons.emoji_emotions, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - HuggingFace')]),
+            child: Row(children: [Icon(Icons.emoji_emotions, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - HuggingFace', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
           ),
           PopupMenuItem<AiProvider>(
+            height: scaleProvider.systemFontSize * 2.5,
             value: AiProvider.groq,
-            child: Row(children: [Icon(Icons.speed, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - Groq')]),
+            child: Row(children: [Icon(Icons.speed, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - Groq', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
           ),
         ],
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 1. Token Counter (Top Line)
-            Text(
-              "Context: ${chatProvider.tokenCount} / 1,048,576",
-              style: TextStyle(
-                color: tokenColor.withOpacity(0.8),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 6)] : [],
-              ),
+        child: SizedBox(
+          width: 300 + (scaleProvider.systemFontSize) * 10,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: scaleProvider.systemFontSize * 1.2,
+              bottom: scaleProvider.systemFontSize * 0.6,
+              left: 8.0,
+              right: 8.0,
             ),
-            // 2. Provider Selector (Middle Line)
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Flexible(
-                  child: Text(
-                    'AIRP - ${chatProvider.currentProvider == AiProvider.gemini ? "Gemini"
-                        : chatProvider.currentProvider == AiProvider.openRouter ? "OpenRouter"
-                        : chatProvider.currentProvider == AiProvider.arliAi ? "ArliAI"
-                        : chatProvider.currentProvider == AiProvider.nanoGpt ? "NanoGPT"
-                        : chatProvider.currentProvider == AiProvider.local ? "Local"
-                        : chatProvider.currentProvider == AiProvider.openAi ? "OpenAI"
-                        : chatProvider.currentProvider == AiProvider.groq ? "Groq"
-                        : "HuggingFace"}',
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    softWrap: false,
-                    style: TextStyle(
-                      color: themeProvider.appThemeColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] : [],
-                    ),
+                // 1. Token Counter (Top Line)
+                Text(
+                  "Context: ${chatProvider.tokenCount} / 1,048,576",
+                  style: TextStyle(
+                    color: tokenColor.withOpacity(0.8),
+                    fontSize: scaleProvider.systemFontSize - 2,
+                    fontWeight: FontWeight.w600,
+                    shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 6)] : [],
                   ),
                 ),
-                const SizedBox(width: 4),
-                Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor, size: 18),
+                SizedBox(height: scaleProvider.systemFontSize * 0.3),
+                // 2. Provider Selector (Middle Line)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'AIRP - $providerName',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize + 4,
+                        shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] : [],
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor, size: 18),
+                  ],
+                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
 
       actions: [
         IconButton(
-          icon: const Icon(Icons.settings),
+          icon: Icon(Icons.settings, size: scaleProvider.iconScale * 24),
           onPressed: onOpenEndDrawer ?? () => Scaffold.of(context).openEndDrawer(),
         ),
       ],
       
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(40),
-        child: Padding(
+        preferredSize: Size.fromHeight(scaledBottomHeight),
+        child: Container(
+          height: scaledBottomHeight,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-          child: _buildModelSelector(context, chatProvider, themeProvider),
+          child: _buildModelSelector(context, chatProvider, themeProvider, scaleProvider),
         ),
       ),
     );
   }
 
-  Widget _buildModelSelector(BuildContext context, ChatProvider chatProvider, ThemeProvider themeProvider) {
+  Widget _buildModelSelector(BuildContext context, ChatProvider chatProvider, ThemeProvider themeProvider, ScaleProvider scaleProvider) {
     late Widget selector;
     switch (chatProvider.currentProvider) {
       case AiProvider.gemini:
@@ -223,36 +256,36 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 child: Text(
                   chatProvider.currentProvider == AiProvider.local
                       ? (chatProvider.localModelName.isNotEmpty ? chatProvider.localModelName : "Local Model")
-                      : "Model Selection Unavailable",
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  overflow: TextOverflow.ellipsis,
+                          : "Model Selection Unavailable",
+                      style: TextStyle(color: Colors.white, fontSize: scaleProvider.systemFontSize + 1),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (chatProvider.currentProvider == AiProvider.local)
+                     const Icon(Icons.computer, color: Colors.white70, size: 16),
+                ],
+              ),
+            );
+            break;
+        }
+    
+        final int count = _getModelCount(chatProvider);
+        if (count > 0) {
+          return Row(
+            children: [
+              Expanded(child: selector),
+              const SizedBox(width: 8),
+              Text(
+                "($count)",
+                style: TextStyle(
+                  color: themeProvider.appThemeColor,
+                  fontSize: scaleProvider.systemFontSize,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              if (chatProvider.currentProvider == AiProvider.local)
-                 const Icon(Icons.computer, color: Colors.white70, size: 16),
             ],
-          ),
-        );
-        break;
-    }
-
-    final int count = _getModelCount(chatProvider);
-    if (count > 0) {
-      return Row(
-        children: [
-          Expanded(child: selector),
-          const SizedBox(width: 8),
-          Text(
-            "($count)",
-            style: TextStyle(
-              color: themeProvider.appThemeColor,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      );
-    }
+          );
+        }
     return selector;
   }
 

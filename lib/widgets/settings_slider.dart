@@ -9,6 +9,7 @@ class SettingsSlider extends StatelessWidget {
   final Color activeColor;
   final Function(double) onChanged;
   final bool isInt;
+  final double fontSize;
 
   const SettingsSlider({
     super.key,
@@ -20,6 +21,7 @@ class SettingsSlider extends StatelessWidget {
     required this.activeColor,
     required this.onChanged,
     this.isInt = false,
+    this.fontSize = 12.0,
   });
 
   @override
@@ -30,7 +32,7 @@ class SettingsSlider extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(title, style: TextStyle(fontSize: fontSize, color: Colors.grey)),
             SizedBox(
               width: 60,
               height: 30,
@@ -38,7 +40,7 @@ class SettingsSlider extends StatelessWidget {
                 controller: TextEditingController(
                     text: isInt ? value.toInt().toString() : value.toStringAsFixed(2)),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(fontSize: 12, color: Colors.white),
+                style: TextStyle(fontSize: fontSize, color: Colors.white),
                 textAlign: TextAlign.center,
                 decoration: InputDecoration(
                   contentPadding: EdgeInsets.zero,

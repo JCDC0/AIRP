@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/scale_provider.dart';
 import '../models/chat_models.dart';
 
 class ChatInputArea extends StatefulWidget {
@@ -186,28 +187,41 @@ class _ChatInputAreaState extends State<ChatInputArea> {
     String? tooltip,
     bool isActive = false,
     ThemeProvider? themeProvider,
+    ScaleProvider? scaleProvider,
   }) {
     final bool useBloom = themeProvider?.enableBloom ?? false;
+    final double iconScale = scaleProvider?.iconScale ?? 1.0;
+    final double containerSize = 40 * iconScale;
 
     return Container(
+      width: containerSize,
+      height: containerSize,
       margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
         color: backgroundColor,
         shape: BoxShape.circle,
         boxShadow: isActive && useBloom && color != null
-            ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 8, spreadRadius: 1)]
+            ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 8 * iconScale, spreadRadius: 1 * iconScale)]
             : [],
-        border: isActive ? Border.all(color: color ?? Colors.white, width: 1.5) : null,
+        border: isActive ? Border.all(color: color ?? Colors.white, width: 1.5 * iconScale) : null,
       ),
       child: IconButton(
         icon: Icon(icon),
         color: color ?? Colors.white,
         tooltip: tooltip,
         onPressed: onPressed,
-        iconSize: 20,
-        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+        iconSize: 20 * iconScale,
+        constraints: BoxConstraints(
+          minWidth: containerSize,
+          minHeight: containerSize,
+          maxWidth: containerSize,
+          maxHeight: containerSize,
+        ),
         padding: EdgeInsets.zero,
-        style: IconButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+        style: IconButton.styleFrom(
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: EdgeInsets.zero,
+        ),
       ),
     );
   }
@@ -218,6 +232,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
     required Color activeColor,
     required VoidCallback onToggle,
     required ThemeProvider themeProvider,
+    required ScaleProvider scaleProvider,
     required bool isLoading,
   }) {
     return _buildCircularButton(
@@ -226,6 +241,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
       color: isActive ? activeColor : Colors.grey[400],
       isActive: isActive,
       themeProvider: themeProvider,
+      scaleProvider: scaleProvider,
     );
   }
 
@@ -233,6 +249,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final scaleProvider = Provider.of<ScaleProvider>(context);
     final bool isLoading = chatProvider.isLoading;
 
     return SafeArea(
@@ -349,6 +366,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                         tooltip: "Add Attachment",
                         onPressed: isLoading ? null : _showAttachmentMenu,
                         themeProvider: themeProvider,
+                        scaleProvider: scaleProvider,
                       ),
                       _buildFeatureSwitch(
                         icon: Icons.image,
@@ -361,6 +379,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           _showStatusPopup(chatProvider.enableImageGen ? "Image Gen ON" : "Image Gen OFF");
                         },
                         themeProvider: themeProvider,
+                        scaleProvider: scaleProvider,
                       ),
                       if (chatProvider.currentProvider == AiProvider.openRouter)
                         _buildFeatureSwitch(
@@ -374,6 +393,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                             _showStatusPopup(chatProvider.enableUsage ? "Usage Stats ON" : "Usage Stats OFF");
                           },
                           themeProvider: themeProvider,
+                          scaleProvider: scaleProvider,
                         ),
                       _buildFeatureSwitch(
                         icon: Icons.public,
@@ -386,6 +406,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           _showStatusPopup(chatProvider.enableGrounding ? "Web Search ON" : "Web Search OFF");
                         },
                         themeProvider: themeProvider,
+                        scaleProvider: scaleProvider,
                       ),
                       // REASONING BUTTON
                       Builder(
@@ -435,6 +456,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                               _showStatusPopup(statusMsg);
                             },
                             themeProvider: themeProvider,
+                            scaleProvider: scaleProvider,
                           );
                         }
                       ),
@@ -449,12 +471,14 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                         tooltip: "Scroll to Top",
                         onPressed: _scrollToTop,
                         themeProvider: themeProvider,
+                        scaleProvider: scaleProvider,
                       ),
                       _buildCircularButton(
                         icon: Icons.vertical_align_bottom,
                         tooltip: "Scroll to Bottom",
                         onPressed: _scrollToBottom,
                         themeProvider: themeProvider,
+                        scaleProvider: scaleProvider,
                       ),
                     ],
                   ),
@@ -471,15 +495,15 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                       child: TextField(
                         controller: _textController,
                         minLines: 1,
-                        maxLines: 6,
-                        style: const TextStyle(color: Colors.white),
+                        maxLines: scaleProvider.inputAreaScale.toInt(),
+                        style: TextStyle(color: Colors.white, fontSize: scaleProvider.chatFontSize),
                         decoration: InputDecoration(
                           hintText: _pendingImages.isNotEmpty
                               ? 'Add a caption...'
                               : (chatProvider.enableGrounding
                                   ? 'Search web...'
                                   : (chatProvider.enableImageGen ? 'Describe image...' : 'Message...')),
-                          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                          hintStyle: TextStyle(color: Colors.grey[500], fontSize: scaleProvider.chatFontSize),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                           filled: true,
@@ -487,7 +511,6 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           isDense: true,
                         ),
-                        onSubmitted: isLoading ? null : (_) => _sendMessage(),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -498,10 +521,10 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           backgroundColor: isLoading
                               ? themeProvider.appThemeColor.withOpacity(0.2)
                               : (chatProvider.enableGrounding ? Colors.green : themeProvider.appThemeColor),
-                          fixedSize: const Size(40, 40)),
+                          fixedSize: Size(40 * scaleProvider.iconScale, 40 * scaleProvider.iconScale)),
                       onPressed: isLoading ? chatProvider.cancelGeneration : _sendMessage,
                       icon: Icon(isLoading ? Icons.stop_circle_outlined : Icons.send,
-                          color: isLoading ? themeProvider.appThemeColor : Colors.black, size: 20),
+                          color: isLoading ? themeProvider.appThemeColor : Colors.black, size: 20 * scaleProvider.iconScale),
                     ),
                   ],
                 ),

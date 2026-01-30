@@ -1,4 +1,4 @@
-# AIRP - Chat Client
+# AIRP - Roleplay Chatbot
 
 **AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models and the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more). It features a robust system prompt library, deep visual customization, and a persistent local history with search capabilities.
 
@@ -25,6 +25,17 @@
 *   **Google Search Grounding**: Toggle real-time web search integration for Gemini models.
 *   **Token Counting**: Persistent, real-time context usage display in the app header to track limits.
 *   **Enhanced Zoom Controls**: Pinch-to-zoom the conversation for better readability. An animated reset button appears for easy navigation.
+*   **Scalability & Multi-Device Support**: Optimized for Phones, Tablets, and Desktops/Laptops with intelligent auto-detection on first install.
+*   **Web & Computer Capability**: Moving towards integrated web browsing and broader computer-use capabilities.
+
+## Scalability & Multi-Device Support
+
+AIRP is designed to be your companion across all your devices. Whether you are on a mobile phone, a large tablet, or a desktop computer, the interface adapts to provide the best experience.
+
+*   **Auto-Detection**: On first install, AIRP detects your device type and applies optimized scaling presets.
+*   **Scale Settings**: Located in the Settings Drawer, the new **Scale Settings** panel allows for granular control:
+    *   **Presets**: Quickly switch between **Phone**, **Tablet**, and **Desktop** layouts.
+    *   **Granular Controls**: Manually adjust Font Sizes, Icon Sizes, Drawer Widths, and the Chat Input Area height to perfectly fit your screen and preferences.
 
 ## Getting Started
 
@@ -51,9 +62,6 @@
     ```
 
 ---
-
-## Development Notes
-
 ### Modular Settings Structure
 The settings interface has been refactored into modular components located in `lib/widgets/settings_panels/`. This allows for easier maintenance and expansion of specific settings categories:
 
@@ -62,6 +70,7 @@ The settings interface has been refactored into modular components located in `l
 *   `system_prompt_panel.dart`: System prompt and advanced tweak configuration.
 *   `generation_settings_panel.dart`: LLM parameters (Temperature, Top P, etc.).
 *   `visual_settings_panel.dart`: Theme, background, and effect customization.
+*   `scale_settings_panel.dart`: Multi-device scaling and UI dimension controls.
 
 ---
 

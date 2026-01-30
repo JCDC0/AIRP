@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
 
 class SystemPromptPanel extends StatefulWidget {
@@ -163,6 +164,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   }
 
   void _editCustomRule(int index) {
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
     final rule = _customRules[index];
     final labelController = TextEditingController(text: rule['label']);
     final contentController = TextEditingController(text: rule['content']);
@@ -171,31 +173,31 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2C),
-        title: const Text("Edit Rule", style: TextStyle(color: Colors.white)),
+        title: Text("Edit Rule", style: TextStyle(color: Colors.white, fontSize: scaleProvider.systemFontSize)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: labelController,
               decoration: const InputDecoration(labelText: "Rule Name", filled: true, fillColor: Colors.black12),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white, fontSize: scaleProvider.systemFontSize * 0.8),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: contentController,
               maxLines: 4,
               decoration: const InputDecoration(labelText: "Rule Content", filled: true, fillColor: Colors.black12),
-              style: const TextStyle(color: Colors.white, fontSize: 12),
+              style: TextStyle(color: Colors.white, fontSize: scaleProvider.systemFontSize * 0.8),
             ),
           ],
         ),
         actions: [
           TextButton(
-            child: const Text("Cancel"),
+            child: Text("Cancel", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8)),
             onPressed: () => Navigator.pop(context),
           ),
           TextButton(
-            child: const Text("Save", style: TextStyle(color: Colors.blueAccent)),
+            child: Text("Save", style: TextStyle(color: Colors.blueAccent, fontSize: scaleProvider.systemFontSize * 0.8)),
             onPressed: () {
               setState(() {
                 _customRules[index]['label'] = labelController.text.trim();
@@ -215,23 +217,24 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   }
 
   void _confirmDeleteCustomRule(int index) {
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
     final rule = _customRules[index];
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2C),
-        title: const Text("Delete Rule?", style: TextStyle(color: Colors.redAccent)),
+        title: Text("Delete Rule?", style: TextStyle(color: Colors.redAccent, fontSize: scaleProvider.systemFontSize)),
         content: Text(
           "Are you sure you want to delete '${rule['label']}'?\n\nThis cannot be undone.",
-          style: const TextStyle(color: Colors.white70)
+          style: TextStyle(color: Colors.white70, fontSize: scaleProvider.systemFontSize * 0.8)
         ),
         actions: [
           TextButton(
-            child: const Text("Cancel"),
+            child: Text("Cancel", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8)),
             onPressed: () => Navigator.pop(context),
           ),
           TextButton(
-            child: const Text("DELETE", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            child: Text("DELETE", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize * 0.8)),
             onPressed: () {
               _deleteCustomRuleForever(index);
               Navigator.pop(context);
@@ -297,16 +300,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // We don't need to set _systemPromptChanged = false here because the parent handles the save state usually,
-        // but here we are just saving a preset.
-        // The original code did: setState(() { _systemPromptChanged = false; });
-        // But that variable is in the parent.
-        // However, saving a preset doesn't necessarily mean we saved the *current* settings to the chat provider's persistence.
-        // But the original code did reset the changed flag.
-        // We can't easily reset the parent's flag from here unless we have a callback for it.
-        // But `onPromptChanged` sets it to true.
-        // Maybe we need `onPresetSaved`?
-        // For now, let's just show the snackbar.
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Saved '${widget.promptTitleController.text}' to Library!")));
       }
     });
@@ -316,6 +309,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,6 +317,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         const SizedBox(height: 30),
         Text("System Prompt", style: 
         TextStyle(
+          fontSize: scaleProvider.systemFontSize,
           fontWeight: FontWeight.bold, 
           shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
         const SizedBox(height: 5),
@@ -339,23 +334,23 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               isExpanded: true,
-              hint: const Text("Select from Library...", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              hint: Text("Select from Library...", style: TextStyle(color: Colors.grey, fontSize: scaleProvider.systemFontSize * 0.8)),
               dropdownColor: const Color(0xFF2C2C2C),
               icon: Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor),
               value: null, 
               items: [
-                const DropdownMenuItem<String>(
+                DropdownMenuItem<String>(
                   value: "CREATE_NEW",
                   child: Row(children: [
                     Icon(Icons.add, color: Colors.greenAccent, size: 16),
                     SizedBox(width: 8),
-                    Text("Create New", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                    Text("Create New", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
                   ]),
                 ),
                 ...chatProvider.savedSystemPrompts.map((prompt) {
                   return DropdownMenuItem<String>(
                     value: prompt.title,
-                    child: Text(prompt.title, overflow: TextOverflow.ellipsis),
+                    child: Text(prompt.title, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: scaleProvider.systemFontSize)),
                   );
                 }),
               ],
@@ -382,14 +377,14 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           controller: widget.promptTitleController,
           decoration: InputDecoration(
             labelText: "Prompt Title (e.g., 'World of mana and mechs')",
-            labelStyle: TextStyle(color: themeProvider.appThemeColor, fontSize: 12),
+            labelStyle: TextStyle(color: themeProvider.appThemeColor, fontSize: scaleProvider.systemFontSize * 0.8),
             border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
             enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
             filled: true, fillColor: Colors.black12,
             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             isDense: true,
           ),
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: scaleProvider.systemFontSize, fontWeight: FontWeight.bold),
         ),
 
         const SizedBox(height: 5),
@@ -409,16 +404,17 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                 child: TextField(
                   controller: widget.mainPromptController,
                   onChanged: (_) => widget.onPromptChanged(),
-                  maxLines: hasFocus ? null : 5,
+                  maxLines: hasFocus ? null : scaleProvider.inputAreaScale.toInt(),
                   expands: hasFocus,
                   textAlignVertical: TextAlignVertical.top,
                   decoration: InputDecoration(
                     hintText: "Enter the roleplay rules here...",
+                    hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
                     border: OutlineInputBorder(borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide()),
                     enabledBorder: themeProvider.enableBloom ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5))) : const OutlineInputBorder(),
                     filled: true, fillColor: Colors.black26,
                   ),
-                  style: const TextStyle(fontSize: 13),
+                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
                 ),
               );
             }
@@ -437,13 +433,13 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
-                icon: const Icon(Icons.copy, color: Colors.blueAccent),
+                icon: Icon(Icons.copy, color: Colors.blueAccent, size: scaleProvider.systemFontSize * 1.5),
                 tooltip: "Copy Text",
                 onPressed: _copyToClipboard,
               ),
               Container(width: 1, height: 20, color: Colors.white12),
               IconButton(
-                icon: const Icon(Icons.paste, color: Colors.orangeAccent),
+                icon: Icon(Icons.paste, color: Colors.orangeAccent, size: scaleProvider.systemFontSize * 1.5),
                 tooltip: "Paste Text",
                 onPressed: _pasteFromClipboard,
               ),
@@ -461,16 +457,17 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                   foregroundColor: themeProvider.appThemeColor, 
                   side: BorderSide(color: themeProvider.appThemeColor),
                   padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+                  textStyle: TextStyle(fontSize: scaleProvider.systemFontSize * 1),
                 ),
                 onPressed: _handleSavePreset,
-                icon: const Icon(Icons.save, size: 16),
-                label: const Text("Save Preset"),
+                icon: Icon(Icons.save, size: scaleProvider.systemFontSize * 1.25),
+                label: Text("Save Preset"),
               ),
             ),
             const SizedBox(width: 10),
             IconButton.filled(
               style: IconButton.styleFrom(backgroundColor: Colors.redAccent.withAlpha((0.2 * 255).round())),
-              icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+              icon: Icon(Icons.delete, color: Colors.redAccent, size: scaleProvider.systemFontSize * 1.2),
               tooltip: "Delete Preset",
               onPressed: () {
                 chatProvider.deletePromptFromLibrary(widget.promptTitleController.text);
@@ -483,12 +480,12 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         // --- GROUNDING SWITCH ---
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text("Grounding / Web Search", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+          title: Text("Grounding / Web Search", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
           subtitle: Text(
             chatProvider.currentProvider == AiProvider.gemini ? "Uses Google Search (Native)" 
             : chatProvider.currentProvider == AiProvider.openRouter ? "Uses OpenRouter Web Plugin"
             : "Not available on this provider",
-            style: const TextStyle(fontSize: 10, color: Colors.grey)
+            style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)
           ),
           value: chatProvider.enableGrounding,
           activeThumbColor: Colors.greenAccent,
@@ -504,8 +501,8 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         if (chatProvider.currentProvider == AiProvider.gemini)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text("Disable Safety Filters", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])), 
-            subtitle: const Text("Applies to Gemini Only", style: TextStyle(fontSize: 10, color: Colors.grey)),
+            title: Text("Disable Safety Filters", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])), 
+            subtitle: Text("Applies to Gemini Only", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)),
             value: chatProvider.disableSafety, 
             activeThumbColor: Colors.redAccent, 
             onChanged: (val) {
@@ -518,8 +515,8 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         if (chatProvider.currentProvider == AiProvider.openRouter)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text("Request Usage Stats", style: TextStyle(shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-            subtitle: const Text("Appends token usage info to response", style: TextStyle(fontSize: 10, color: Colors.grey)),
+            title: Text("Request Usage Stats", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+            subtitle: Text("Appends token usage info to response", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)),
             value: chatProvider.enableUsage,
             activeThumbColor: Colors.tealAccent,
             onChanged: (val) {
@@ -540,10 +537,10 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12),
           ),
           child: ExpansionTile(
-            title: const Text("Tweaks & Overrides", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+            title: Text("Tweaks & Overrides", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, fontWeight: FontWeight.bold, color: Colors.white)),
             subtitle: Text(
               _isKaomojiFixEnabled ? "Active: Kaomoji" : "Configure hidden behavior...",
-              style: const TextStyle(fontSize: 10, color: Colors.grey)
+              style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.6, color: Colors.grey)
             ),
             collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
@@ -551,7 +548,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                ListTile(
                  dense: true,
                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                 title: Text("Kaomoji Mode", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                 title: Text("Kaomoji Mode", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize * 0.8)),
                  trailing: Switch(
                    value: _isKaomojiFixEnabled,
                    activeThumbColor: themeProvider.appThemeColor,
@@ -579,7 +576,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                   return ListTile(
                     dense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    title: Text(rule['label'], style: const TextStyle(color: Colors.white70, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    title: Text(rule['label'], style: TextStyle(color: Colors.white70, fontSize: scaleProvider.systemFontSize * 0.8), maxLines: 1, overflow: TextOverflow.ellipsis),
                     leading: IconButton(
                       icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 16),
                       tooltip: "Edit Rule",
@@ -618,7 +615,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                    const Text("Raw Advanced Instructions:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                    Text("Raw Advanced Instructions:", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.7, color: Colors.grey, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                      Focus(
                         onFocusChange: (hasFocus) => setState((){}),
@@ -632,7 +629,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                              maxLines: hasFocus ? null : 4,
                              expands: hasFocus,
                              textAlignVertical: TextAlignVertical.top,
-                             style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.white70),
+                             style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, fontFamily: 'monospace', color: Colors.white70),
                              decoration: InputDecoration(
                                filled: true, 
                                fillColor: Colors.black45,
@@ -664,7 +661,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         const Divider(),
 
         // --- NEW RULE CREATION SECTION ---
-        const Text("Add a New Tweak/Rule", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70)),
+        Text("Add a New Tweak/Rule", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70, fontSize: scaleProvider.systemFontSize)),
         const SizedBox(height: 8),
         Focus(
             onFocusChange: (hasFocus) {
@@ -690,7 +687,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                       fillColor: Colors.black26,
                       contentPadding: const EdgeInsets.all(8),
                     ),
-                    style: const TextStyle(fontSize: 13),
+                    style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
                   ),
                  );
               }
@@ -709,13 +706,13 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
-                icon: const Icon(Icons.copy, color: Colors.blueAccent),
+                icon: Icon(Icons.copy, color: Colors.blueAccent, size: scaleProvider.systemFontSize * 1.5),
                 tooltip: "Copy Rule Content",
                 onPressed: _copyRuleContentToClipboard,
               ),
               Container(width: 1, height: 20, color: Colors.white12),
               IconButton(
-                icon: const Icon(Icons.paste, color: Colors.orangeAccent),
+                icon: Icon(Icons.paste, color: Colors.orangeAccent, size: scaleProvider.systemFontSize * 1.5),
                 tooltip: "Paste Rule Content",
                 onPressed: _pasteRuleContentFromClipboard,
               ),
@@ -732,20 +729,20 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                 controller: _ruleLabelController,
                 decoration: InputDecoration(
                   hintText: "Name your new rule...",
-                  hintStyle: const TextStyle(fontSize: 11, color: Colors.grey),
+                  hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize * 0.7, color: Colors.grey),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   filled: true,
                   fillColor: Colors.black12,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                 ),
-                style: const TextStyle(fontSize: 12, color: Colors.white),
+                style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.white),
               ),
             ),
             const SizedBox(width: 8),
             IconButton.filled(
               style: IconButton.styleFrom(backgroundColor: Colors.greenAccent.withAlpha(40)),
-              icon: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
+              icon: Icon(Icons.add_circle_outline, color: Colors.greenAccent, size: scaleProvider.systemFontSize * 0.8),
               tooltip: "Add as new Tweak/Rule",
               onPressed: _addRuleFromInput,
             ),

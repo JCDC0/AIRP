@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
 
 class ApiSettingsPanel extends StatelessWidget {
@@ -18,14 +19,16 @@ class ApiSettingsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("API Key (BYOK)", 
+        Text("API Key (BYOK)",
           style: TextStyle(
-            fontWeight: FontWeight.bold, 
+            fontWeight: FontWeight.bold,
             color: themeProvider.appThemeColor,
+            fontSize: scaleProvider.systemFontSize,
             shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
           )
         ),
@@ -45,24 +48,24 @@ class ApiSettingsPanel extends StatelessWidget {
                 : const OutlineInputBorder(),
               filled: true, isDense: true,
             ),
-            style: const TextStyle(fontSize: 12),
+            style: TextStyle(fontSize: scaleProvider.systemFontSize - 2),
           ),
           const SizedBox(height: 20),
         ] else ...[
           TextField(
             controller: localIpController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: "http://192.168.1.X:1234/v1",
               labelText: "Local Server Address",
-              labelStyle: TextStyle(color: Colors.greenAccent),
-              border: OutlineInputBorder(),
+              labelStyle: TextStyle(color: Colors.greenAccent, fontSize: scaleProvider.systemFontSize),
+              border: const OutlineInputBorder(),
               filled: true, isDense: true
             ),
-            style: const TextStyle(fontSize: 12),
+            style: TextStyle(fontSize: scaleProvider.systemFontSize - 2),
           ),
-          const Padding(
-            padding: EdgeInsets.only(top: 4, left: 4),
-            child: Text("Ensure your local AI is listening on Network (0.0.0.0)", style: TextStyle(fontSize: 10, color: Colors.grey)),
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text("Ensure your local AI is listening on Network (0.0.0.0)", style: TextStyle(fontSize: scaleProvider.systemFontSize - 4, color: Colors.grey)),
           ),
           const SizedBox(height: 20),
         ],

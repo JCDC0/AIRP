@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/scale_provider.dart';
 import '../settings_slider.dart';
 
 class GenerationSettingsPanel extends StatelessWidget {
@@ -11,6 +12,7 @@ class GenerationSettingsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -23,20 +25,21 @@ class GenerationSettingsPanel extends StatelessWidget {
           divisions: 499,
           activeColor: Colors.greenAccent,
           isInt: true,
+          fontSize: scaleProvider.systemFontSize,
           onChanged: (val) {
             chatProvider.setHistoryLimit(val.toInt());
             chatProvider.saveSettings();
           },
         ),
-        const Text(
+        Text(
           "Note: Lower this if you get 'Context Window Exceeded' errors.",
-          style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
+          style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey, fontStyle: FontStyle.italic),
         ),
         const Divider(),
 
         // --- REASONING MODE ---
         const SizedBox(height: 10),
-         Text("Reasoning / Thinking Effort", style: TextStyle(fontWeight: FontWeight.bold, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+         Text("Reasoning / Thinking Effort", style: TextStyle(fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
         const SizedBox(height: 5),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -52,11 +55,11 @@ class GenerationSettingsPanel extends StatelessWidget {
               value: chatProvider.reasoningEffort,
               dropdownColor: const Color(0xFF2C2C2C),
               icon: Icon(Icons.psychology, color: themeProvider.appThemeColor),
-              items: const [
-                DropdownMenuItem(value: "none", child: Text("Disabled (None)")),
-                DropdownMenuItem(value: "low", child: Text("Low / Minimal")),
-                DropdownMenuItem(value: "medium", child: Text("Medium")),
-                DropdownMenuItem(value: "high", child: Text("High / Deep Think")),
+              items: [
+                DropdownMenuItem(value: "none", child: Text("Disabled (None)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: "low", child: Text("Low / Minimal", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: "medium", child: Text("Medium", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: "high", child: Text("High / Deep Think", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
               ],
               onChanged: (val) {
                  if (val != null) {
@@ -68,9 +71,9 @@ class GenerationSettingsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        const Text(
+        Text(
           "Controls the depth of thought (Thinking Models Only).",
-          style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
+          style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey, fontStyle: FontStyle.italic),
         ),
         const Divider(),
         
@@ -82,6 +85,7 @@ class GenerationSettingsPanel extends StatelessWidget {
           max: 2.0,
           divisions: 40,
           activeColor: Colors.redAccent,
+          fontSize: scaleProvider.systemFontSize,
           onChanged: (val) {
             chatProvider.setTemperature(val);
             chatProvider.saveSettings();
@@ -96,6 +100,7 @@ class GenerationSettingsPanel extends StatelessWidget {
           max: 1.0,
           divisions: 20,
           activeColor: Colors.purpleAccent,
+          fontSize: scaleProvider.systemFontSize,
           onChanged: (val) {
             chatProvider.setTopP(val);
             chatProvider.saveSettings();
@@ -111,6 +116,7 @@ class GenerationSettingsPanel extends StatelessWidget {
           divisions: 99,
           activeColor: Colors.orangeAccent,
           isInt: true,
+          fontSize: scaleProvider.systemFontSize,
           onChanged: (val) {
             chatProvider.setTopK(val.toInt());
             chatProvider.saveSettings();
@@ -125,6 +131,7 @@ class GenerationSettingsPanel extends StatelessWidget {
           max: 32768,
           activeColor: Colors.blueAccent,
           isInt: true,
+          fontSize: scaleProvider.systemFontSize,
           onChanged: (val) {
             chatProvider.setMaxOutputTokens(val.toInt());
             chatProvider.saveSettings();

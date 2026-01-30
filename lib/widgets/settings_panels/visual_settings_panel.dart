@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/scale_provider.dart';
 import '../../utils/constants.dart';
 import '../settings_color_picker.dart';
 import '../settings_slider.dart';
@@ -15,37 +16,39 @@ class VisualSettingsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
+    final scaleProvider = Provider.of<ScaleProvider>(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 30),
-        Text("Visuals & Atmosphere", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
+        Text("Visuals & Atmosphere", style: TextStyle(fontSize: scaleProvider.systemFontSize + 10, fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
         const Divider(height: 10),
         
-        Text("Global Interface Font", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
+        Text("Global Interface Font", style: TextStyle(fontSize: scaleProvider.systemFontSize, fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8), border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12), boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : []),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               isExpanded: true, value: themeProvider.fontStyle, dropdownColor: const Color(0xFF2C2C2C), icon: Icon(Icons.text_fields, color: themeProvider.appThemeColor),
-              items: const [
-                DropdownMenuItem(value: 'Default', child: Text("Default (System)")),
-                DropdownMenuItem(value: 'Google', child: Text("Google Sans (Open Sans)")),
-                DropdownMenuItem(value: 'Apple', child: Text("Apple SF (Inter)")),
-                DropdownMenuItem(value: 'Claude', child: Text("Assistant (Source Serif 4)")),
-                DropdownMenuItem(value: 'Roleplay', child: Text("Storybook (Lora)")),
-                DropdownMenuItem(value: 'Terminal', child: Text("Hacker (Space Mono)")),
-                DropdownMenuItem(value: 'Manuscript', child: Text("Ancient Tome (EB Garamond)")),
-                DropdownMenuItem(value: 'Cyber', child: Text("Neon HUD (Orbitron)")),
-                DropdownMenuItem(value: 'ModernAnime', child: Text("Light Novel (Quicksand)")),
-                DropdownMenuItem(value: 'AnimeSub', child: Text("Subtitles (Kosugi Maru)")),
-                DropdownMenuItem(value: 'Gothic', child: Text("Victorian (Crimson Text)")),
-                DropdownMenuItem(value: 'Journal', child: Text("Handwritten (Caveat)")),
-                DropdownMenuItem(value: 'CleanThin', child: Text("Minimalist (Raleway)")),
-                DropdownMenuItem(value: 'Stylized', child: Text("Vogue (Playfair Display)")),
-                DropdownMenuItem(value: 'Fantasy', child: Text("MMORPG (Cinzel)")),
-                DropdownMenuItem(value: 'Typewriter', child: Text("Detective (Special Elite)")),
+              items: [
+                DropdownMenuItem(value: 'Default', child: Text("Default (System)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Google', child: Text("Google Sans (Open Sans)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Apple', child: Text("Apple SF (Inter)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Claude', child: Text("Assistant (Source Serif 4)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Roleplay', child: Text("Storybook (Lora)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Terminal', child: Text("Hacker (Space Mono)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Manuscript', child: Text("Ancient Tome (EB Garamond)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Cyber', child: Text("Neon HUD (Orbitron)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'ModernAnime', child: Text("Light Novel (Quicksand)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'AnimeSub', child: Text("Subtitles (Kosugi Maru)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Gothic', child: Text("Victorian (Crimson Text)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Journal', child: Text("Handwritten (Caveat)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'CleanThin', child: Text("Minimalist (Raleway)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Stylized', child: Text("Vogue (Playfair Display)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Fantasy', child: Text("MMORPG (Cinzel)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                DropdownMenuItem(value: 'Typewriter', child: Text("Detective (Special Elite)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
               ],
               onChanged: (String? newValue) { if (newValue != null) themeProvider.setFont(newValue); },
             ),
@@ -53,7 +56,7 @@ class VisualSettingsPanel extends StatelessWidget {
         ),
 
         const Divider(),
-        Text("Chat Customization", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
+        Text("Chat Customization", style: TextStyle(fontSize: scaleProvider.systemFontSize, fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [])),
         Column(
           children: [
             const SizedBox(height: 15),
@@ -75,9 +78,9 @@ class VisualSettingsPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
                 children: [
-                  const Text("User Opacity:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("User Opacity:", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)),
                   const Spacer(),
-                  Text("${(themeProvider.userBubbleColor.a * 100).toInt()}%", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor)),
+                  Text("${(themeProvider.userBubbleColor.a * 100).toInt()}%", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, fontSize: scaleProvider.systemFontSize * 0.8)),
                 ],
               ),
             ),
@@ -95,9 +98,9 @@ class VisualSettingsPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
                 children: [
-                  const Text("AI Opacity:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("AI Opacity:", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)),
                   const Spacer(),
-                  Text("${(themeProvider.aiBubbleColor.a * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text("${(themeProvider.aiBubbleColor.a * 100).toInt()}%", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, fontSize: scaleProvider.systemFontSize * 0.8)),
                 ],
               ),
             ),
@@ -116,7 +119,7 @@ class VisualSettingsPanel extends StatelessWidget {
               child: TextButton.icon(
                 style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
                 icon: const Icon(Icons.refresh, size: 16),
-                label: const Text("Reset to Defaults", style: TextStyle(fontSize: 12)),
+                label: Text("Reset to Defaults", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8)),
                 onPressed: () {
                   showDialog(
                     context: context,
@@ -146,34 +149,34 @@ class VisualSettingsPanel extends StatelessWidget {
           children: [
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text("Enable Bloom (Glow)", style: TextStyle(fontSize: 14, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-              subtitle: const Text("Adds a dreamy glow effect", style: TextStyle(fontSize: 10, color: Colors.grey)),
+              title: Text("Enable Bloom (Glow)", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+              subtitle: Text("Adds a dreamy glow effect", style: TextStyle(fontSize: scaleProvider.systemFontSize - 2, color: Colors.grey)),
               value: themeProvider.enableBloom,
               activeThumbColor: themeProvider.appThemeColor,
               onChanged: (val) => themeProvider.toggleBloom(val),
             ),
             const Divider(),
-            Text("Environmental Effects", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor.withOpacity(0.8), shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+            Text("Environmental Effects", style: TextStyle(fontSize: scaleProvider.systemFontSize, fontWeight: FontWeight.bold, color: themeProvider.appThemeColor.withOpacity(0.8), shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text("Floating Dust Motes", style: TextStyle(fontSize: 14, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-              subtitle: const Text("Subtle, glowing particles", style: TextStyle(fontSize: 10, color: Colors.grey)),
+              title: Text("Floating Dust Motes", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+              subtitle: Text("Subtle, glowing particles", style: TextStyle(fontSize: scaleProvider.systemFontSize - 2, color: Colors.grey)),
               value: themeProvider.enableMotes,
               activeThumbColor: themeProvider.appThemeColor,
               onChanged: (val) => themeProvider.toggleMotes(val),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text("Gentle Rain", style: TextStyle(fontSize: 14, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-              subtitle: const Text("A calming, rainy mood", style: TextStyle(fontSize: 10, color: Colors.grey)),
+              title: Text("Gentle Rain", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+              subtitle: Text("A calming, rainy mood", style: TextStyle(fontSize: scaleProvider.systemFontSize - 2, color: Colors.grey)),
               value: themeProvider.enableRain,
               activeThumbColor: themeProvider.appThemeColor,
               onChanged: (val) => themeProvider.toggleRain(val),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text("Glowing Fireflies", style: TextStyle(fontSize: 14, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-              subtitle: const Text("Blinking lights for a cozy vibe", style: TextStyle(fontSize: 10, color: Colors.grey)),
+              title: Text("Glowing Fireflies", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
+              subtitle: Text("Blinking lights for a cozy vibe", style: TextStyle(fontSize: scaleProvider.systemFontSize - 2, color: Colors.grey)),
               value: themeProvider.enableFireflies,
               activeThumbColor: themeProvider.appThemeColor,
               onChanged: (val) => themeProvider.toggleFireflies(val),
@@ -188,6 +191,7 @@ class VisualSettingsPanel extends StatelessWidget {
                   max: 150,
                   isInt: true,
                   activeColor: themeProvider.appThemeColor,
+                  fontSize: scaleProvider.systemFontSize * 0.8,
                   onChanged: (val) => themeProvider.setMotesDensity(val.toInt())),
             if (themeProvider.enableRain)
               SettingsSlider(
@@ -197,6 +201,7 @@ class VisualSettingsPanel extends StatelessWidget {
                   max: 200,
                   isInt: true,
                   activeColor: themeProvider.appThemeColor,
+                  fontSize: scaleProvider.systemFontSize * 0.8,
                   onChanged: (val) => themeProvider.setRainIntensity(val.toInt())),
             if (themeProvider.enableFireflies)
               SettingsSlider(
@@ -206,6 +211,7 @@ class VisualSettingsPanel extends StatelessWidget {
                   max: 100,
                   isInt: true,
                   activeColor: themeProvider.appThemeColor,
+                  fontSize: scaleProvider.systemFontSize * 0.8,
                   onChanged: (val) => themeProvider.setFirefliesCount(val.toInt())),
 
             const SizedBox(height: 10),
@@ -240,7 +246,7 @@ class VisualSettingsPanel extends StatelessWidget {
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center, 
-                          children: [Icon(Icons.add_photo_alternate, color: themeProvider.appThemeColor), Text("Add", style: TextStyle(fontSize: 10, color: themeProvider.appThemeColor))],
+                          children: [Icon(Icons.add_photo_alternate, color: themeProvider.appThemeColor), Text("Add", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.7, color: themeProvider.appThemeColor))],
                         ),
                       ),
                     );
@@ -299,7 +305,7 @@ class VisualSettingsPanel extends StatelessWidget {
             ),
             if (themeProvider.backgroundImagePath != null) ...[
               const SizedBox(height: 5),
-              Text("Dimmer: ${(themeProvider.backgroundOpacity * 100).toInt()}%", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text("Dimmer: ${(themeProvider.backgroundOpacity * 100).toInt()}%", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)),
               Slider(value: themeProvider.backgroundOpacity, min: 0.0, max: 0.95, activeColor: themeProvider.appThemeColor, inactiveColor: Colors.grey[800], onChanged: (val) => themeProvider.setBackgroundOpacity(val),),
             ]
           ],
