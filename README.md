@@ -6,22 +6,13 @@
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white)
 
-## Recent Updates (v0.4)
-
-*   **Performance Overhaul**: Optimized the streaming engine to eliminate UI lag. The app now updates only the active message bubble during generation, resulting in silky-smooth performance even on lower-end devices.
-*   **Stability Fixes**: Addressed critical null-safety issues in the API service to prevent crashes during empty or malformed responses.
-*   **Refactored Architecture**: Centralized model fetching logic and constants, significantly reducing code duplication and improving maintainability.
-*   **UI Polish**:
-    *   **Cleaner Model Selector**: Simplified the model list layout for better readability and space efficiency.
-    *   **Header Redesign**: Moved the model count indicator to the model selector for a cleaner look.
-    *   **Unified Settings**: Refactored settings panels to use shared components.
-
 ## Key Features
 
-*   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, OpenAI, HuggingFace, ArliAI, NanoGPT, or Local.
+*   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, OpenAI, HuggingFace, ArliAI, NanoGPT, Groq, or Local.
+*   **High-Performance Streaming**: Optimized streaming engine eliminates UI lag by updating only the active message bubble, ensuring silky-smooth performance even on lower-end devices.
 *   **Dynamic Model Lists**: Fetch the latest available models directly from all API providers.
-*   **Model Counters**: Real-time display of available models for each provider in the Settings Drawer and Chat Header.
-*   **Intelligent Model Selector**: A powerful, searchable dialog for managing large model lists. Features a **Bookmarking System** to pin your favorites to the top and smart sorting that prioritizes your bookmarks and featured models.
+*   **Model Counters**: Real-time display of available models for each provider, now conveniently located next to the model selector in the Chat Header.
+*   **Intelligent Model Selector**: A powerful, searchable dialog for managing large model lists. Features a clean, space-efficient layout and a **Bookmarking System** to pin your favorites to the top.
 *   **Searchable History**: Quickly find past conversations using the integrated search bar.
 *   **Developer Friendly**: Full Markdown support with **syntax highlighting** for code blocks and one-click code copying.
 *   **Message Management**: Edit, copy, delete, or regenerate specific messages within a chat.
@@ -120,7 +111,14 @@ This app follows a **BYOK (Bring Your Own Key)** architecture. Keys are stored l
 4.  Paste your key.
 5.  **Important:** Click the **Floating Save Button**.
 
-### 7. Local Network AI (LM Studio / Ollama)
+### 7. Groq
+1.  Obtain an API key from [Groq Console](https://console.groq.com/).
+2.  Select **AIRP - Groq** from the top dropdown.
+3.  Open the **Settings Drawer**.
+4.  Paste your key.
+5.  **Important:** Click the **Floating Save Button**.
+
+### 8. Local Network AI (LM Studio / Ollama)
 Connect to an LLM running on your own computer or home server.
 
 1.  **Prepare your Server**:
