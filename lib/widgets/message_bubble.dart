@@ -85,168 +85,33 @@ class MessageBubble extends StatelessWidget {
   }
 
     @override
-  Widget build(BuildContext context) {
-        final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
-    final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
-    final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha(128) : Colors.white10;
-    final useBloom = themeProvider.enableBloom;
-
-        final codeStyle = TextStyle(
-      color: textColor,
-      backgroundColor: Colors.black26,
-      shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
-      fontFamily: 'monospace',
-    );
-
-        // --- PARSE REASONING ---
-    final splitContent = _extractReasoning(msg.text);
-    final reasoningText = splitContent['reasoning'] as String;
-    final visibleText = splitContent['content'] as String;
-    final isReasoningDone = splitContent['isDone'] as bool;
-
-    // Define the content once to avoid repetition
-    final contentColumn = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // --- MODEL NAME DISPLAY ADDED HERE ---
-        if (!msg.isUser && msg.modelName != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6.0),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(4),
-                boxShadow: useBloom ? [const BoxShadow(color: Color.fromARGB(26, 255, 255, 255), blurRadius: 4)] : [],
-              ),
-              child: Text(
-                cleanModelName(msg.modelName!),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: textColor.withOpacity(0.7),
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
-                ),
-              ),
-            ),
-          ),
-
-        // --- REASONING DROPDOWN ---
-        if (reasoningText.isNotEmpty)
-          ReasoningView(
-            reasoning: reasoningText, 
-            textColor: textColor, 
-            useBloom: useBloom,
-            isDone: isReasoningDone,
-          ),
-
-        if (msg.imagePaths.isNotEmpty)
-          _buildAttachmentGrid(context, msg.imagePaths),
-        if (msg.aiImage != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: GestureDetector(
-              onTap: () => _showImageZoom(context, MemoryImage(base64Decode(msg.aiImage!))),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(base64Decode(msg.aiImage!), width: 250, fit: BoxFit.contain),
-              ),
-            ),
-          ),
-        if (visibleText.isNotEmpty)
-          MarkdownBody(
-            data: visibleText,
-                        builders: {
-              'code': CodeElementBuilder(context, codeStyle),
-            },
-            styleSheet: MarkdownStyleSheet(
-              codeblockPadding: EdgeInsets.zero,
-              codeblockDecoration: const BoxDecoration(color: Colors.transparent),
-              p: TextStyle(
-                color: textColor,
-                shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 15)] : [],
-              ),
-              a: TextStyle(
-                color: Colors.blueAccent,
-                decoration: TextDecoration.underline,
-                shadows: useBloom ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)] : [],
-              ),
-              code: codeStyle,
-              h1: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-              h2: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-              h3: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-            ),
-          ),
-
-        // --- USAGE STATS DISPLAY ---
-        if (msg.usage != null && !msg.isUser)
-          Padding(
-            padding: const EdgeInsets.only(top: 6.0),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(4),
-                boxShadow: useBloom ? [const BoxShadow(color: Color.fromARGB(26, 255, 255, 255), blurRadius: 4)] : [],
-              ),
-              child: Text(
-                "Usage: ${msg.usage!['prompt_tokens'] ?? 0} in + ${msg.usage!['completion_tokens'] ?? 0} out = ${msg.usage!['total_tokens'] ?? 0} total",
-                style: TextStyle(
-                  fontSize: 10,
-                  color: textColor.withOpacity(0.7),
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-
-        // Use the CustomPaint for the glowing border, or a simple Container if bloom is off
-    final bubbleWidget = useBloom
-      ? Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          child: CustomPaint(
-            painter: BorderGlowPainter(
-              backgroundColor: bubbleColor,
-              borderColor: borderColor,
-              glowColor: (msg.isUser ? bubbleColor : Colors.white).withOpacity(0.15),
-              radius: 12.0,
-              strokeWidth: 2.0,
-              glowStrokeWidth: 10.0,
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-              child: contentColumn,
-            ),
-          ),
-        )
-      : Container(
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          padding: const EdgeInsets.all(12),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-          decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor),
-          ),
-          child: contentColumn,
+    Widget build(BuildContext context) {
+      final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
+      final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
+      final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha(128) : Colors.white10;
+      final useBloom = themeProvider.enableBloom;
+  
+      Widget bubble;
+      if (msg.contentNotifier != null) {
+        bubble = ValueListenableBuilder<String>(
+          valueListenable: msg.contentNotifier!,
+          builder: (context, value, child) {
+            return _buildBubble(context, value, bubbleColor, borderColor, textColor, useBloom);
+          },
         );
-
-        return Align(
-      alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onLongPress: onLongPress,
-            child: bubbleWidget,
-          ),
+      } else {
+        bubble = _buildBubble(context, msg.text, bubbleColor, borderColor, textColor, useBloom);
+      }
+  
+      return Align(
+        alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onLongPress: onLongPress,
+              child: bubble,
+            ),
           Padding(
             padding: const EdgeInsets.only(top: 4, bottom: 8, left: 4, right: 4),
             child: Row(
@@ -291,6 +156,155 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+    Widget _buildBubble(BuildContext context, String text, Color bubbleColor, Color borderColor, Color textColor, bool useBloom) {
+      final codeStyle = TextStyle(
+        color: textColor,
+        backgroundColor: Colors.black26,
+        shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
+        fontFamily: 'monospace',
+      );
+  
+      // --- PARSE REASONING ---
+      final splitContent = _extractReasoning(text);
+      final reasoningText = splitContent['reasoning'] as String;
+      final visibleText = splitContent['content'] as String;
+      final isReasoningDone = splitContent['isDone'] as bool;
+  
+      // Define the content once to avoid repetition
+      final contentColumn = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // --- MODEL NAME DISPLAY ADDED HERE ---
+          if (!msg.isUser && msg.modelName != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: useBloom ? [const BoxShadow(color: Color.fromARGB(26, 255, 255, 255), blurRadius: 4)] : [],
+                ),
+                child: Text(
+                  cleanModelName(msg.modelName!),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: textColor.withOpacity(0.7),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                    shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
+                  ),
+                ),
+              ),
+            ),
+  
+          // --- REASONING DROPDOWN ---
+          if (reasoningText.isNotEmpty)
+            ReasoningView(
+              reasoning: reasoningText,
+              textColor: textColor,
+              useBloom: useBloom,
+              isDone: isReasoningDone,
+            ),
+  
+          if (msg.imagePaths.isNotEmpty)
+            _buildAttachmentGrid(context, msg.imagePaths),
+          if (msg.aiImage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: GestureDetector(
+                onTap: () => _showImageZoom(context, MemoryImage(base64Decode(msg.aiImage!))),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(base64Decode(msg.aiImage!), width: 250, fit: BoxFit.contain),
+                ),
+              ),
+            ),
+          if (visibleText.isNotEmpty)
+            MarkdownBody(
+              data: visibleText,
+              builders: {
+                'code': CodeElementBuilder(context, codeStyle),
+              },
+              styleSheet: MarkdownStyleSheet(
+                codeblockPadding: EdgeInsets.zero,
+                codeblockDecoration: const BoxDecoration(color: Colors.transparent),
+                p: TextStyle(
+                  color: textColor,
+                  shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 15)] : [],
+                ),
+                a: TextStyle(
+                  color: Colors.blueAccent,
+                  decoration: TextDecoration.underline,
+                  shadows: useBloom ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)] : [],
+                ),
+                code: codeStyle,
+                h1: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+                h2: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+                h3: TextStyle(color: textColor, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
+              ),
+            ),
+  
+          // --- USAGE STATS DISPLAY ---
+          if (msg.usage != null && !msg.isUser)
+            Padding(
+              padding: const EdgeInsets.only(top: 6.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: useBloom ? [const BoxShadow(color: Color.fromARGB(26, 255, 255, 255), blurRadius: 4)] : [],
+                ),
+                child: Text(
+                  "Usage: ${msg.usage!['prompt_tokens'] ?? 0} in + ${msg.usage!['completion_tokens'] ?? 0} out = ${msg.usage!['total_tokens'] ?? 0} total",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: textColor.withOpacity(0.7),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                    shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+  
+      // Use the CustomPaint for the glowing border, or a simple Container if bloom is off
+      return useBloom
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              child: CustomPaint(
+                painter: BorderGlowPainter(
+                  backgroundColor: bubbleColor,
+                  borderColor: borderColor,
+                  glowColor: (msg.isUser ? bubbleColor : Colors.white).withOpacity(0.15),
+                  radius: 12.0,
+                  strokeWidth: 2.0,
+                  glowStrokeWidth: 10.0,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+                  child: contentColumn,
+                ),
+              ),
+            )
+          : Container(
+              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              padding: const EdgeInsets.all(12),
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+              decoration: BoxDecoration(
+                color: bubbleColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: contentColumn,
+            );
+    }
+  
     Widget _buildAttachmentGrid(BuildContext context, List<String> paths) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),

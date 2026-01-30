@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../models/chat_models.dart';
-import '../model_selector.dart';
+import 'provider_model_selector.dart';
 
 class ModelSettingsPanel extends StatelessWidget {
   final TextEditingController titleController;
@@ -74,70 +74,34 @@ class ModelSettingsPanel extends StatelessWidget {
         // ============================================
         // GEMINI UI
         // ============================================
-        if (chatProvider.currentProvider == AiProvider.gemini) ...[
-          if (chatProvider.geminiModelsList.isNotEmpty)
-            ModelSelector(
-              modelsList: chatProvider.geminiModelsList,
-              selectedModel: chatProvider.selectedGeminiModel,
-              onSelected: chatProvider.setModel,
-              placeholder: "Select Gemini Model",
-            )
-            else
-            TextField(
-              decoration: const InputDecoration(hintText: "models/gemini-3-flash-preview", border: OutlineInputBorder(), isDense: true),
-              onChanged: chatProvider.setModel,
-              controller: TextEditingController(text: chatProvider.selectedGeminiModel),
-            ),
-
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: chatProvider.isLoadingGeminiModels 
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                : const Icon(Icons.cloud_sync, size: 16),
-              label: Text(chatProvider.isLoadingGeminiModels ? "Fetching..." : "Refresh Model List"),
-              onPressed: chatProvider.isLoadingGeminiModels ? null : chatProvider.fetchGeminiModels,
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.blueAccent),
-            ),
-          ),
-        ]
+        if (chatProvider.currentProvider == AiProvider.gemini)
+          ProviderModelSelector(
+            modelsList: chatProvider.geminiModelsList,
+            selectedModel: chatProvider.selectedGeminiModel,
+            onSelected: chatProvider.setModel,
+            placeholder: "models/gemini-3-flash-preview",
+            isLoading: chatProvider.isLoadingGeminiModels,
+            onRefresh: chatProvider.fetchGeminiModels,
+            refreshButtonColor: Colors.blueAccent,
+          )
 
         // ============================================
         // OPENROUTER UI
         // ============================================
-        else if (chatProvider.currentProvider == AiProvider.openRouter) ...[
-          if (chatProvider.openRouterModelsList.isNotEmpty)
-            ModelSelector(
-              modelsList: chatProvider.openRouterModelsList,
-              selectedModel: chatProvider.openRouterModel,
-              onSelected: (val) {
-                chatProvider.setModel(val);
-                openRouterModelController.text = val;
-              },
-              placeholder: "Select OpenRouter Model",
-            )
-          else
-            TextField(
-              controller: openRouterModelController,
-              decoration: const InputDecoration(hintText: "vendor/model-name", border: OutlineInputBorder(), isDense: true),
-              style: const TextStyle(fontSize: 13),
-              // onChanged: (val) { chatProvider.setModel(val.trim()); }, // Removed for Save button logic
-            ),
-
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: chatProvider.isLoadingOpenRouterModels 
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                : const Icon(Icons.cloud_sync, size: 16),
-              label: Text(chatProvider.isLoadingOpenRouterModels ? "Fetching..." : "Refresh Model List"),
-              onPressed: chatProvider.isLoadingOpenRouterModels ? null : chatProvider.fetchOpenRouterModels,
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.purpleAccent),
-            ),
+        else if (chatProvider.currentProvider == AiProvider.openRouter)
+          ProviderModelSelector(
+            modelsList: chatProvider.openRouterModelsList,
+            selectedModel: chatProvider.openRouterModel,
+            onSelected: (val) {
+              chatProvider.setModel(val);
+              openRouterModelController.text = val;
+            },
+            placeholder: "vendor/model-name",
+            isLoading: chatProvider.isLoadingOpenRouterModels,
+            onRefresh: chatProvider.fetchOpenRouterModels,
+            refreshButtonColor: Colors.purpleAccent,
+            controller: openRouterModelController,
           ),
-        ],
         // -------------------------------------------
         // LOCAL UI
         // -------------------------------------------
@@ -159,170 +123,76 @@ class ModelSettingsPanel extends StatelessWidget {
         // ============================================
         // ARLI AI UI
         // ============================================
-        if (chatProvider.currentProvider == AiProvider.arliAi) ...[
-          if (chatProvider.arliAiModelsList.isNotEmpty)
-            ModelSelector(
-              modelsList: chatProvider.arliAiModelsList,
-              selectedModel: chatProvider.arliAiModel,
-              onSelected: chatProvider.setModel,
-              placeholder: "Select ArliAI Model",
-            )
-          else
-            TextField(
-              controller: TextEditingController(text: chatProvider.arliAiModel),
-              decoration: const InputDecoration(hintText: "Gemma-3-27B-Big-Tiger-v3", border: OutlineInputBorder(), isDense: true),
-              style: const TextStyle(fontSize: 13),
-              onChanged: (val) { chatProvider.setModel(val.trim()); },
-            ),
-
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: chatProvider.isLoadingArliAiModels 
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                : const Icon(Icons.cloud_sync, size: 16),
-              label: Text(chatProvider.isLoadingArliAiModels ? "Fetching..." : "Refresh Model List"),
-              onPressed: chatProvider.isLoadingArliAiModels ? null : chatProvider.fetchArliAiModels,
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.orangeAccent),
-            ),
+        if (chatProvider.currentProvider == AiProvider.arliAi)
+          ProviderModelSelector(
+            modelsList: chatProvider.arliAiModelsList,
+            selectedModel: chatProvider.arliAiModel,
+            onSelected: chatProvider.setModel,
+            placeholder: "Gemma-3-27B-Big-Tiger-v3",
+            isLoading: chatProvider.isLoadingArliAiModels,
+            onRefresh: chatProvider.fetchArliAiModels,
+            refreshButtonColor: Colors.orangeAccent,
           ),
-        ],
 
         // ============================================
         // NANOGPT UI
         // ============================================
-        if (chatProvider.currentProvider == AiProvider.nanoGpt) ...[
-          if (chatProvider.nanoGptModelsList.isNotEmpty)
-            ModelSelector(
-              modelsList: chatProvider.nanoGptModelsList,
-              selectedModel: chatProvider.nanoGptModel,
-              onSelected: chatProvider.setModel,
-              placeholder: "Select NanoGPT Model",
-            )
-          else
-            TextField(
-              controller: TextEditingController(text: chatProvider.nanoGptModel),
-              decoration: const InputDecoration(hintText: "aion-labs/aion-rp-llama-3.1-8b", border: OutlineInputBorder(), isDense: true),
-              style: const TextStyle(fontSize: 13),
-              onChanged: (val) { chatProvider.setModel(val.trim()); },
-            ),
-
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: chatProvider.isLoadingNanoGptModels
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.cloud_sync, size: 16),
-              label: Text(chatProvider.isLoadingNanoGptModels ? "Fetching..." : "Refresh Model List"),
-              onPressed: chatProvider.isLoadingNanoGptModels ? null : chatProvider.fetchNanoGptModels,
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.yellowAccent),
-            ),
+        if (chatProvider.currentProvider == AiProvider.nanoGpt)
+          ProviderModelSelector(
+            modelsList: chatProvider.nanoGptModelsList,
+            selectedModel: chatProvider.nanoGptModel,
+            onSelected: chatProvider.setModel,
+            placeholder: "aion-labs/aion-rp-llama-3.1-8b",
+            isLoading: chatProvider.isLoadingNanoGptModels,
+            onRefresh: chatProvider.fetchNanoGptModels,
+            refreshButtonColor: Colors.yellowAccent,
           ),
-        ],
 
         // ============================================
         // OPENAI UI
         // ============================================
-        if (chatProvider.currentProvider == AiProvider.openAi) ...[
-          if (chatProvider.openAiModelsList.isNotEmpty)
-            ModelSelector(
-              modelsList: chatProvider.openAiModelsList,
-              selectedModel: chatProvider.openAiModel,
-              onSelected: chatProvider.setModel,
-              placeholder: "Select OpenAI Model",
-            )
-          else
-            TextField(
-              controller: TextEditingController(text: chatProvider.openAiModel),
-              decoration: const InputDecoration(hintText: "gpt-4o", border: OutlineInputBorder(), isDense: true),
-              style: const TextStyle(fontSize: 13),
-              onChanged: (val) { chatProvider.setModel(val.trim()); },
-            ),
-
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: chatProvider.isLoadingOpenAiModels
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.cloud_sync, size: 16),
-              label: Text(chatProvider.isLoadingOpenAiModels ? "Fetching..." : "Refresh Model List"),
-              onPressed: chatProvider.isLoadingOpenAiModels ? null : chatProvider.fetchOpenAiModels,
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.greenAccent),
-            ),
+        if (chatProvider.currentProvider == AiProvider.openAi)
+          ProviderModelSelector(
+            modelsList: chatProvider.openAiModelsList,
+            selectedModel: chatProvider.openAiModel,
+            onSelected: chatProvider.setModel,
+            placeholder: "gpt-4o",
+            isLoading: chatProvider.isLoadingOpenAiModels,
+            onRefresh: chatProvider.fetchOpenAiModels,
+            refreshButtonColor: Colors.greenAccent,
           ),
-        ],
 
         // ============================================
         // HUGGINGFACE UI
         // ============================================
-        if (chatProvider.currentProvider == AiProvider.huggingFace) ...[
-          if (chatProvider.huggingFaceModelsList.isNotEmpty)
-            ModelSelector(
-              modelsList: chatProvider.huggingFaceModelsList,
-              selectedModel: chatProvider.huggingFaceModel,
-              onSelected: chatProvider.setModel,
-              placeholder: "Select HuggingFace Model",
-            )
-          else
-            TextField(
-              controller: TextEditingController(text: chatProvider.huggingFaceModel),
-              decoration: const InputDecoration(hintText: "meta-llama/Meta-Llama-3-8B-Instruct", border: OutlineInputBorder(), isDense: true),
-              style: const TextStyle(fontSize: 13),
-              onChanged: (val) { chatProvider.setModel(val.trim()); },
-            ),
-
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: chatProvider.isLoadingHuggingFaceModels
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.cloud_sync, size: 16),
-              label: Text(chatProvider.isLoadingHuggingFaceModels ? "Fetching..." : "Refresh Top Models"),
-              onPressed: chatProvider.isLoadingHuggingFaceModels ? null : chatProvider.fetchHuggingFaceModels,
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.amberAccent),
-            ),
+        if (chatProvider.currentProvider == AiProvider.huggingFace)
+          ProviderModelSelector(
+            modelsList: chatProvider.huggingFaceModelsList,
+            selectedModel: chatProvider.huggingFaceModel,
+            onSelected: chatProvider.setModel,
+            placeholder: "meta-llama/Meta-Llama-3-8B-Instruct",
+            isLoading: chatProvider.isLoadingHuggingFaceModels,
+            onRefresh: chatProvider.fetchHuggingFaceModels,
+            refreshButtonColor: Colors.amberAccent,
           ),
-        ],
 
         // ============================================
         // GROQ UI
         // ============================================
-        if (chatProvider.currentProvider == AiProvider.groq) ...[
-          if (chatProvider.groqModelsList.isNotEmpty)
-            ModelSelector(
-              modelsList: chatProvider.groqModelsList,
-              selectedModel: chatProvider.groqModel,
-              onSelected: (val) {
-                chatProvider.setModel(val);
-                groqModelController.text = val;
-              },
-              placeholder: "Select Groq Model",
-            )
-          else
-            TextField(
-              controller: groqModelController,
-              decoration: const InputDecoration(hintText: "llama3-8b-8192", border: OutlineInputBorder(), isDense: true),
-              style: const TextStyle(fontSize: 13),
-              // onChanged: (val) { chatProvider.setModel(val.trim()); }, // Removed for Save button logic
-            ),
-
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: chatProvider.isLoadingGroqModels
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.cloud_sync, size: 16),
-              label: Text(chatProvider.isLoadingGroqModels ? "Fetching..." : "Refresh Model List"),
-              onPressed: chatProvider.isLoadingGroqModels ? null : chatProvider.fetchGroqModels,
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.deepOrangeAccent),
-            ),
+        if (chatProvider.currentProvider == AiProvider.groq)
+          ProviderModelSelector(
+            modelsList: chatProvider.groqModelsList,
+            selectedModel: chatProvider.groqModel,
+            onSelected: (val) {
+              chatProvider.setModel(val);
+              groqModelController.text = val;
+            },
+            placeholder: "llama3-8b-8192",
+            isLoading: chatProvider.isLoadingGroqModels,
+            onRefresh: chatProvider.fetchGroqModels,
+            refreshButtonColor: Colors.deepOrangeAccent,
+            controller: groqModelController,
           ),
-        ],
                 const SizedBox(height: 16),
       ],
     );

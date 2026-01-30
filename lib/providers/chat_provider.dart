@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import '../models/chat_models.dart';
 import '../services/chat_api_service.dart';
+import '../utils/constants.dart';
 
 class ChatProvider extends ChangeNotifier {
   // ----------------------------------------------------------------------
@@ -208,55 +208,56 @@ class ChatProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     
     // Load Keys
-    _geminiKey = prefs.getString('airp_key_gemini') ?? '';
-    _openRouterKey = prefs.getString('airp_key_openrouter') ?? '';
-    _openAiKey = prefs.getString('airp_key_openai') ?? '';
-    _arliAiKey = prefs.getString('airp_key_arliai') ?? '';
-    _nanoGptKey = prefs.getString('airp_key_nanogpt') ?? '';
-    _huggingFaceKey = prefs.getString('airp_key_huggingface') ?? '';
-    _groqKey = prefs.getString('airp_key_groq') ?? '';
+    _geminiKey = prefs.getString(ApiConstants.prefKeyGemini) ?? '';
+    _openRouterKey = prefs.getString(ApiConstants.prefKeyOpenRouter) ?? '';
+    _openAiKey = prefs.getString(ApiConstants.prefKeyOpenAi) ?? '';
+    _arliAiKey = prefs.getString(ApiConstants.prefKeyArliAi) ?? '';
+    _nanoGptKey = prefs.getString(ApiConstants.prefKeyNanoGpt) ?? '';
+    _huggingFaceKey = prefs.getString(ApiConstants.prefKeyHuggingFace) ?? '';
+    _groqKey = prefs.getString(ApiConstants.prefKeyGroq) ?? '';
     _localIp = prefs.getString('airp_local_ip') ?? 'http://192.168.1.15:1234/v1';
 
     // Load Provider
     final providerString = prefs.getString('airp_provider') ?? 'gemini';
     if (providerString == 'openRouter') {
       _currentProvider = AiProvider.openRouter;
-    } else if (providerString == 'openAi') _currentProvider = AiProvider.openAi;
-    else if (providerString == 'local') _currentProvider = AiProvider.local;
-    else if (providerString == 'arliAi') _currentProvider = AiProvider.arliAi;
-    else if (providerString == 'nanoGpt') _currentProvider = AiProvider.nanoGpt;
-    else if (providerString == 'huggingFace') _currentProvider = AiProvider.huggingFace;
-    else if (providerString == 'groq') _currentProvider = AiProvider.groq;
-    else _currentProvider = AiProvider.gemini;
+    } else if (providerString == 'openAi') {
+      _currentProvider = AiProvider.openAi;
+    } else if (providerString == 'local') {
+      _currentProvider = AiProvider.local;
+    } else if (providerString == 'arliAi') {
+      _currentProvider = AiProvider.arliAi;
+    } else if (providerString == 'nanoGpt') {
+      _currentProvider = AiProvider.nanoGpt;
+    } else if (providerString == 'huggingFace') {
+      _currentProvider = AiProvider.huggingFace;
+    } else if (providerString == 'groq') {
+      _currentProvider = AiProvider.groq;
+    } else {
+      _currentProvider = AiProvider.gemini;
+    }
 
     // Load Lists
-    _geminiModelsList = prefs.getStringList('airp_list_gemini') ?? [];
-    _openRouterModelsList = prefs.getStringList('airp_list_openrouter') ?? [];
-    _arliAiModelsList = prefs.getStringList('airp_list_arliai') ?? [];
-    _nanoGptModelsList = prefs.getStringList('airp_list_nanogpt') ?? [];
-    _openAiModelsList = prefs.getStringList('airp_list_openai') ?? [];
-    _huggingFaceModelsList = prefs.getStringList('airp_list_huggingface') ?? [];
-    _groqModelsList = prefs.getStringList('airp_list_groq') ?? [];
+    _geminiModelsList = prefs.getStringList(ApiConstants.prefListGemini) ?? [];
+    _openRouterModelsList = prefs.getStringList(ApiConstants.prefListOpenRouter) ?? [];
+    _arliAiModelsList = prefs.getStringList(ApiConstants.prefListArliAi) ?? [];
+    _nanoGptModelsList = prefs.getStringList(ApiConstants.prefListNanoGpt) ?? [];
+    _openAiModelsList = prefs.getStringList(ApiConstants.prefListOpenAi) ?? [];
+    _huggingFaceModelsList = prefs.getStringList(ApiConstants.prefListHuggingFace) ?? [];
+    _groqModelsList = prefs.getStringList(ApiConstants.prefListGroq) ?? [];
 
     // Load Selected Models
-    _selectedGeminiModel = prefs.getString('airp_model_gemini') ?? 'models/gemini-3-flash-preview';
-    _openRouterModel = prefs.getString('airp_model_openrouter') ?? 'z-ai/glm-4.5-air:free';
-    _arliAiModel = prefs.getString('airp_model_arliai') ?? 'Mistral-Nemo-12B-Instruct-v1';
-    _nanoGptModel = prefs.getString('airp_model_nanogpt') ?? 'gpt-4o';
-    _openAiModel = prefs.getString('airp_model_openai') ?? 'gpt-4o';
-    _huggingFaceModel = prefs.getString('airp_model_huggingface') ?? 'meta-llama/Meta-Llama-3-8B-Instruct';
-    _groqModel = prefs.getString('airp_model_groq') ?? 'llama3-8b-8192';
+    _selectedGeminiModel = prefs.getString(ApiConstants.prefModelGemini) ?? 'models/gemini-3-flash-preview';
+    _openRouterModel = prefs.getString(ApiConstants.prefModelOpenRouter) ?? 'z-ai/glm-4.5-air:free';
+    _arliAiModel = prefs.getString(ApiConstants.prefModelArliAi) ?? 'Mistral-Nemo-12B-Instruct-v1';
+    _nanoGptModel = prefs.getString(ApiConstants.prefModelNanoGpt) ?? 'gpt-4o';
+    _openAiModel = prefs.getString(ApiConstants.prefModelOpenAi) ?? 'gpt-4o';
+    _huggingFaceModel = prefs.getString(ApiConstants.prefModelHuggingFace) ?? 'meta-llama/Meta-Llama-3-8B-Instruct';
+    _groqModel = prefs.getString(ApiConstants.prefModelGroq) ?? 'llama3-8b-8192';
 
     // Determine current selected model
-    if (_currentProvider == AiProvider.openRouter) {
-      _selectedModel = _openRouterModel;
-    } else if (_currentProvider == AiProvider.gemini) _selectedModel = _selectedGeminiModel;
-    else if (_currentProvider == AiProvider.arliAi) _selectedModel = _arliAiModel;
-    else if (_currentProvider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
-    else if (_currentProvider == AiProvider.openAi) _selectedModel = _openAiModel;
-    else if (_currentProvider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
-    else if (_currentProvider == AiProvider.groq) _selectedModel = _groqModel;
-    else if (_currentProvider == AiProvider.local) _selectedModel = "Local Network AI";
+    // Determine current selected model
+    _selectedModel = _getProviderModel(_currentProvider);
 
     // Load Other Settings
     _topP = prefs.getDouble('airp_top_p') ?? 0.95;
@@ -281,15 +282,7 @@ class ChatProvider extends ChangeNotifier {
 
   void setProvider(AiProvider provider) {
     _currentProvider = provider;
-    if (provider == AiProvider.gemini) {
-      _selectedModel = _selectedGeminiModel;
-    } else if (provider == AiProvider.openRouter) _selectedModel = _openRouterModel;
-    else if (provider == AiProvider.arliAi) _selectedModel = _arliAiModel;
-    else if (provider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
-    else if (provider == AiProvider.openAi) _selectedModel = _openAiModel;
-    else if (provider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
-    else if (provider == AiProvider.groq) _selectedModel = _groqModel;
-    else if (provider == AiProvider.local) _selectedModel = "Local Network AI";
+    _selectedModel = _getProviderModel(provider);
     
     notifyListeners();
     saveSettings(showConfirmation: false);
@@ -297,16 +290,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void setApiKey(String key) {
-    switch (_currentProvider) {
-      case AiProvider.gemini: _geminiKey = key; break;
-      case AiProvider.openRouter: _openRouterKey = key; break;
-      case AiProvider.openAi: _openAiKey = key; break;
-      case AiProvider.arliAi: _arliAiKey = key; break;
-      case AiProvider.nanoGpt: _nanoGptKey = key; break;
-      case AiProvider.huggingFace: _huggingFaceKey = key; break;
-      case AiProvider.groq: _groqKey = key; break;
-      case AiProvider.local: break;
-    }
+    _setProviderKey(_currentProvider, key);
     notifyListeners();
   }
 
@@ -331,29 +315,65 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void setModel(String model) {
-    if (_currentProvider == AiProvider.gemini) {
-      _selectedGeminiModel = model;
-      _selectedModel = model;
-    } else if (_currentProvider == AiProvider.openRouter) {
-      _openRouterModel = model;
-      _selectedModel = model;
-    } else if (_currentProvider == AiProvider.arliAi) {
-      _arliAiModel = model;
-      _selectedModel = model;
-    } else if (_currentProvider == AiProvider.nanoGpt) {
-      _nanoGptModel = model;
-      _selectedModel = model;
-    } else if (_currentProvider == AiProvider.openAi) {
-      _openAiModel = model;
-      _selectedModel = model;
-    } else if (_currentProvider == AiProvider.huggingFace) {
-      _huggingFaceModel = model;
-      _selectedModel = model;
-    } else if (_currentProvider == AiProvider.groq) {
-      _groqModel = model;
-      _selectedModel = model;
-    }
+    _setProviderModel(_currentProvider, model);
+    _selectedModel = model;
     notifyListeners();
+  }
+
+  // ----------------------------------------------------------------------
+  // HELPER METHODS
+  // ----------------------------------------------------------------------
+
+  String _getProviderModel(AiProvider provider) {
+    switch (provider) {
+      case AiProvider.gemini: return _selectedGeminiModel;
+      case AiProvider.openRouter: return _openRouterModel;
+      case AiProvider.arliAi: return _arliAiModel;
+      case AiProvider.nanoGpt: return _nanoGptModel;
+      case AiProvider.openAi: return _openAiModel;
+      case AiProvider.huggingFace: return _huggingFaceModel;
+      case AiProvider.groq: return _groqModel;
+      case AiProvider.local: return "Local Network AI";
+    }
+  }
+
+  void _setProviderModel(AiProvider provider, String model) {
+    switch (provider) {
+      case AiProvider.gemini: _selectedGeminiModel = model; break;
+      case AiProvider.openRouter: _openRouterModel = model; break;
+      case AiProvider.arliAi: _arliAiModel = model; break;
+      case AiProvider.nanoGpt: _nanoGptModel = model; break;
+      case AiProvider.openAi: _openAiModel = model; break;
+      case AiProvider.huggingFace: _huggingFaceModel = model; break;
+      case AiProvider.groq: _groqModel = model; break;
+      case AiProvider.local: break;
+    }
+  }
+
+  String _getProviderKey(AiProvider provider) {
+    switch (provider) {
+      case AiProvider.gemini: return _geminiKey;
+      case AiProvider.openRouter: return _openRouterKey;
+      case AiProvider.openAi: return _openAiKey;
+      case AiProvider.arliAi: return _arliAiKey;
+      case AiProvider.nanoGpt: return _nanoGptKey;
+      case AiProvider.huggingFace: return _huggingFaceKey;
+      case AiProvider.groq: return _groqKey;
+      case AiProvider.local: return "local-key";
+    }
+  }
+
+  void _setProviderKey(AiProvider provider, String key) {
+    switch (provider) {
+      case AiProvider.gemini: _geminiKey = key; break;
+      case AiProvider.openRouter: _openRouterKey = key; break;
+      case AiProvider.openAi: _openAiKey = key; break;
+      case AiProvider.arliAi: _arliAiKey = key; break;
+      case AiProvider.nanoGpt: _nanoGptKey = key; break;
+      case AiProvider.huggingFace: _huggingFaceKey = key; break;
+      case AiProvider.groq: _groqKey = key; break;
+      case AiProvider.local: break;
+    }
   }
 
   void setTemperature(double val) { _temperature = val; notifyListeners(); }
@@ -377,22 +397,22 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> saveSettings({bool showConfirmation = true}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('airp_key_gemini', _geminiKey);
-    await prefs.setString('airp_key_openrouter', _openRouterKey);
-    await prefs.setString('airp_key_openai', _openAiKey);
+    await prefs.setString(ApiConstants.prefKeyGemini, _geminiKey);
+    await prefs.setString(ApiConstants.prefKeyOpenRouter, _openRouterKey);
+    await prefs.setString(ApiConstants.prefKeyOpenAi, _openAiKey);
     await prefs.setString('airp_local_ip', _localIp);
     await prefs.setString('airp_provider', _currentProvider.name);
-    await prefs.setString('airp_model_gemini', _selectedGeminiModel);
-    await prefs.setString('airp_model_openrouter', _openRouterModel);
-    await prefs.setString('airp_key_arliai', _arliAiKey);
-    await prefs.setString('airp_key_nanogpt', _nanoGptKey);
-    await prefs.setString('airp_key_huggingface', _huggingFaceKey);
-    await prefs.setString('airp_key_groq', _groqKey);
-    await prefs.setString('airp_model_arliai', _arliAiModel);
-    await prefs.setString('airp_model_nanogpt', _nanoGptModel);
-    await prefs.setString('airp_model_openai', _openAiModel);
-    await prefs.setString('airp_model_huggingface', _huggingFaceModel);
-    await prefs.setString('airp_model_groq', _groqModel);
+    await prefs.setString(ApiConstants.prefModelGemini, _selectedGeminiModel);
+    await prefs.setString(ApiConstants.prefModelOpenRouter, _openRouterModel);
+    await prefs.setString(ApiConstants.prefKeyArliAi, _arliAiKey);
+    await prefs.setString(ApiConstants.prefKeyNanoGpt, _nanoGptKey);
+    await prefs.setString(ApiConstants.prefKeyHuggingFace, _huggingFaceKey);
+    await prefs.setString(ApiConstants.prefKeyGroq, _groqKey);
+    await prefs.setString(ApiConstants.prefModelArliAi, _arliAiModel);
+    await prefs.setString(ApiConstants.prefModelNanoGpt, _nanoGptModel);
+    await prefs.setString(ApiConstants.prefModelOpenAi, _openAiModel);
+    await prefs.setString(ApiConstants.prefModelHuggingFace, _huggingFaceModel);
+    await prefs.setString(ApiConstants.prefModelGroq, _groqModel);
     await prefs.setDouble('airp_top_p', _topP);
     await prefs.setInt('airp_top_k', _topK);
     await prefs.setInt('airp_max_output', _maxOutputTokens);
@@ -416,17 +436,9 @@ class ChatProvider extends ChangeNotifier {
   // ----------------------------------------------------------------------
 
   Future<void> initializeModel() async {
-    String activeKey = '';
-    if (_currentProvider == AiProvider.gemini) {
-      activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
-    } else if (_currentProvider == AiProvider.openRouter) {
-      activeKey = _openRouterKey;
-    } else if (_currentProvider == AiProvider.openAi) {
-      activeKey = _openAiKey;
-    } else if (_currentProvider == AiProvider.huggingFace) {
-      activeKey = _huggingFaceKey;
-    } else if (_currentProvider == AiProvider.groq) {
-      activeKey = _groqKey;
+    String activeKey = _getProviderKey(_currentProvider);
+    if (_currentProvider == AiProvider.gemini && activeKey.isEmpty) {
+      activeKey = _defaultApiKey;
     }
 
     if (activeKey.isEmpty && _currentProvider != AiProvider.local && _currentProvider != AiProvider.huggingFace) {
@@ -608,7 +620,8 @@ class ChatProvider extends ChangeNotifier {
     }
 
     // 4. Standard Chat Response
-    _messages.add(ChatMessage(text: "", isUser: false, modelName: _selectedModel));
+    final contentNotifier = ValueNotifier<String>("");
+    _messages.add(ChatMessage(text: "", isUser: false, modelName: _selectedModel, contentNotifier: contentNotifier));
     notifyListeners();
 
     Stream<String>? responseStream;
@@ -698,14 +711,8 @@ class ChatProvider extends ChangeNotifier {
              notifyListeners();
           } else {
             fullText += chunk;
-            _messages.last = ChatMessage(
-              text: fullText,
-              isUser: false,
-              modelName: _selectedModel,
-              usage: _messages.last.usage,
-              thoughtSignature: _messages.last.thoughtSignature
-            );
-            notifyListeners();
+            _messages.last.contentNotifier?.value = fullText;
+            _messages.last = _messages.last.copyWith(text: fullText);
           }
         },
         onError: (e) {
@@ -812,9 +819,13 @@ class ChatProvider extends ChangeNotifier {
     String providerStr = 'gemini';
     if (_currentProvider == AiProvider.openRouter) {
       providerStr = 'openRouter';
-    } else if (_currentProvider == AiProvider.local) providerStr = 'local';
-    else if (_currentProvider == AiProvider.openAi) providerStr = 'openAi';
-    else if (_currentProvider == AiProvider.groq) providerStr = 'groq';
+    } else if (_currentProvider == AiProvider.local) {
+      providerStr = 'local';
+    } else if (_currentProvider == AiProvider.openAi) {
+      providerStr = 'openAi';
+    } else if (_currentProvider == AiProvider.groq) {
+      providerStr = 'groq';
+    }
 
     final sessionData = ChatSessionData(
       id: _currentSessionId!,
@@ -930,234 +941,174 @@ class ChatProvider extends ChangeNotifier {
   // LOGIC: MODEL FETCHING
   // ----------------------------------------------------------------------
 
-  Future<void> fetchGeminiModels() async {
-    if (_geminiKey.isEmpty) return;
-    _isLoadingGeminiModels = true;
+  Future<void> _fetchProviderModels({
+    required String apiKey,
+    required String url,
+    required String prefKey,
+    required List<String> Function(dynamic) parser,
+    required void Function(List<String>) updateList,
+    required void Function(bool) updateLoading,
+    Map<String, String>? headers,
+    String? currentModel,
+    void Function(String)? updateSelectedModel,
+  }) async {
+    if (apiKey.isEmpty && headers == null) return;
+    
+    updateLoading(true);
     notifyListeners();
 
     try {
-      final url = Uri.parse("https://generativelanguage.googleapis.com/v1beta/models?key=$_geminiKey");
-      final response = await http.get(url);
+      final models = await ChatApiService.fetchModels(
+        url: url,
+        headers: headers ?? (apiKey.isNotEmpty ? {"Authorization": "Bearer $apiKey"} : null),
+        parser: parser,
+      );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> models = data['models'];
+      updateList(models);
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(prefKey, models);
 
-        final List<String> fetchedIds = models
+      if (currentModel != null && updateSelectedModel != null) {
+         if (!models.contains(currentModel) && models.isNotEmpty) {
+            updateSelectedModel(models.first);
+         }
+      }
+
+    } catch (e) {
+      debugPrint("Fetch Error: $e");
+    } finally {
+      updateLoading(false);
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchGeminiModels() async {
+    await _fetchProviderModels(
+      apiKey: _geminiKey,
+      url: "${ApiConstants.geminiBaseUrl}?key=$_geminiKey",
+      prefKey: ApiConstants.prefListGemini,
+      parser: (json) {
+        final List<dynamic> models = json['models'];
+        return models
             .where((m) {
               final methods = List<String>.from(m['supportedGenerationMethods'] ?? []);
               return methods.contains('generateContent');
             })
-            .map<String>((m) => m['name'].toString()) 
+            .map<String>((m) => m['name'].toString())
             .toList();
-
-        fetchedIds.sort(); 
-        _geminiModelsList = fetchedIds;
-        
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setStringList('airp_list_gemini', fetchedIds);
-        
-        if (!_geminiModelsList.contains(_selectedGeminiModel) && _geminiModelsList.isNotEmpty) {
-             _selectedGeminiModel = _geminiModelsList.first;
-        }
-      }
-    } catch (e) {
-      debugPrint("Fetch Error: $e");
-    } finally {
-      _isLoadingGeminiModels = false;
-      notifyListeners();
-    }
+      },
+      updateList: (list) => _geminiModelsList = list,
+      updateLoading: (val) => _isLoadingGeminiModels = val,
+      currentModel: _selectedGeminiModel,
+      updateSelectedModel: (val) => _selectedGeminiModel = val,
+      headers: {}, // Gemini uses key in URL
+    );
   }
 
   Future<void> fetchOpenRouterModels() async {
-    _isLoadingOpenRouterModels = true;
-    notifyListeners();
-
-    try {
-      final response = await http.get(
-        Uri.parse("https://openrouter.ai/api/v1/models"),
-        headers: {"HTTP-Referer": "https://airp-chat.com", "X-Title": "AIRP Chat"},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> dataList = data['data'];
-        final List<String> fetchedIds = dataList.map<String>((e) => e['id'].toString()).toList();
-        fetchedIds.sort();
-
-        _openRouterModelsList = fetchedIds;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setStringList('airp_list_openrouter', fetchedIds);
-      }
-    } catch (e) {
-      debugPrint("Fetch Error: $e");
-    } finally {
-      _isLoadingOpenRouterModels = false;
-      notifyListeners();
-    }
+    await _fetchProviderModels(
+      apiKey: "",
+      url: ApiConstants.openRouterBaseUrl,
+      prefKey: ApiConstants.prefListOpenRouter,
+      parser: (json) {
+        final List<dynamic> dataList = json['data'];
+        return dataList.map<String>((e) => e['id'].toString()).toList();
+      },
+      updateList: (list) => _openRouterModelsList = list,
+      updateLoading: (val) => _isLoadingOpenRouterModels = val,
+      headers: {"HTTP-Referer": "https://airp-chat.com", "X-Title": "AIRP Chat"},
+    );
   }
 
   Future<void> fetchArliAiModels() async {
-    if (_arliAiKey.isEmpty) return;
-    _isLoadingArliAiModels = true;
-    notifyListeners();
-
-    try {
-      final response = await http.get(
-        Uri.parse("https://api.arliai.com/v1/models"),
-        headers: {"Authorization": "Bearer ${_arliAiKey.trim()}"},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> dataList = data['data'];
-        final List<String> fetchedIds = dataList.map<String>((e) => e['id'].toString()).toList();
-        fetchedIds.sort();
-
-        _arliAiModelsList = fetchedIds;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setStringList('airp_list_arliai', fetchedIds);
-      }
-    } catch (e) {
-      debugPrint("Fetch Error: $e");
-    } finally {
-      _isLoadingArliAiModels = false;
-      notifyListeners();
-    }
+    await _fetchProviderModels(
+      apiKey: _arliAiKey,
+      url: ApiConstants.arliAiBaseUrl,
+      prefKey: ApiConstants.prefListArliAi,
+      parser: (json) {
+        final List<dynamic> dataList = json['data'];
+        return dataList.map<String>((e) => e['id'].toString()).toList();
+      },
+      updateList: (list) => _arliAiModelsList = list,
+      updateLoading: (val) => _isLoadingArliAiModels = val,
+    );
   }
 
   Future<void> fetchNanoGptModels() async {
-    if (_nanoGptKey.isEmpty) return;
-    _isLoadingNanoGptModels = true;
-    notifyListeners();
-
-    try {
-      final response = await http.get(
-        Uri.parse("https://nano-gpt.com/api/v1/models"),
-        headers: {"Authorization": "Bearer ${_nanoGptKey.trim()}"},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> dataList = data['data'] ?? [];
-        final List<String> fetchedIds = dataList.map<String>((e) => e['id'].toString()).toList();
-        fetchedIds.sort();
-
-        _nanoGptModelsList = fetchedIds;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setStringList('airp_list_nanogpt', fetchedIds);
-        
-        if (!_nanoGptModelsList.contains(_nanoGptModel) && _nanoGptModelsList.isNotEmpty) {
-            _nanoGptModel = _nanoGptModelsList.first;
-            if (_currentProvider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
-        }
-      }
-    } catch (e) {
-      debugPrint("Fetch Error: $e");
-    } finally {
-      _isLoadingNanoGptModels = false;
-      notifyListeners();
-    }
+    await _fetchProviderModels(
+      apiKey: _nanoGptKey,
+      url: ApiConstants.nanoGptBaseUrl,
+      prefKey: ApiConstants.prefListNanoGpt,
+      parser: (json) {
+        final List<dynamic> dataList = json['data'] ?? [];
+        return dataList.map<String>((e) => e['id'].toString()).toList();
+      },
+      updateList: (list) => _nanoGptModelsList = list,
+      updateLoading: (val) => _isLoadingNanoGptModels = val,
+      currentModel: _nanoGptModel,
+      updateSelectedModel: (val) {
+        _nanoGptModel = val;
+        if (_currentProvider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
+      },
+    );
   }
 
   Future<void> fetchOpenAiModels() async {
-    if (_openAiKey.isEmpty) return;
-    _isLoadingOpenAiModels = true;
-    notifyListeners();
-
-    try {
-      final response = await http.get(
-        Uri.parse("https://api.openai.com/v1/models"),
-        headers: {"Authorization": "Bearer ${_openAiKey.trim()}"},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> dataList = data['data'] ?? [];
-        final List<String> fetchedIds = dataList.map<String>((e) => e['id'].toString()).toList();
-        fetchedIds.sort();
-
-        _openAiModelsList = fetchedIds;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setStringList('airp_list_openai', fetchedIds);
-        
-        if (!_openAiModelsList.contains(_openAiModel) && _openAiModelsList.isNotEmpty) {
-            _openAiModel = _openAiModelsList.first;
-            if (_currentProvider == AiProvider.openAi) _selectedModel = _openAiModel;
-        }
-      }
-    } catch (e) {
-      debugPrint("Fetch Error: $e");
-    } finally {
-      _isLoadingOpenAiModels = false;
-      notifyListeners();
-    }
+    await _fetchProviderModels(
+      apiKey: _openAiKey,
+      url: ApiConstants.openAiBaseUrl,
+      prefKey: ApiConstants.prefListOpenAi,
+      parser: (json) {
+        final List<dynamic> dataList = json['data'] ?? [];
+        return dataList.map<String>((e) => e['id'].toString()).toList();
+      },
+      updateList: (list) => _openAiModelsList = list,
+      updateLoading: (val) => _isLoadingOpenAiModels = val,
+      currentModel: _openAiModel,
+      updateSelectedModel: (val) {
+        _openAiModel = val;
+        if (_currentProvider == AiProvider.openAi) _selectedModel = _openAiModel;
+      },
+    );
   }
 
   Future<void> fetchHuggingFaceModels() async {
-    _isLoadingHuggingFaceModels = true;
-    notifyListeners();
-
-    try {
-      final response = await http.get(
-        Uri.parse("https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100"),
-        headers: _huggingFaceKey.isNotEmpty ? {"Authorization": "Bearer ${_huggingFaceKey.trim()}"} : {},
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> dataList = jsonDecode(response.body);
-        final List<String> fetchedIds = dataList.map<String>((e) => e['id'].toString()).toList();
-        fetchedIds.sort();
-
-        _huggingFaceModelsList = fetchedIds;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setStringList('airp_list_huggingface', fetchedIds);
-        
-        if (!_huggingFaceModelsList.contains(_huggingFaceModel) && _huggingFaceModelsList.isNotEmpty) {
-            _huggingFaceModel = _huggingFaceModelsList.first;
-            if (_currentProvider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
-        }
-      }
-    } catch (e) {
-      debugPrint("Fetch Error: $e");
-    } finally {
-      _isLoadingHuggingFaceModels = false;
-      notifyListeners();
-    }
+    await _fetchProviderModels(
+      apiKey: _huggingFaceKey,
+      url: ApiConstants.huggingFaceBaseUrl,
+      prefKey: ApiConstants.prefListHuggingFace,
+      parser: (json) {
+        final List<dynamic> dataList = json;
+        return dataList.map<String>((e) => e['id'].toString()).toList();
+      },
+      updateList: (list) => _huggingFaceModelsList = list,
+      updateLoading: (val) => _isLoadingHuggingFaceModels = val,
+      currentModel: _huggingFaceModel,
+      updateSelectedModel: (val) {
+        _huggingFaceModel = val;
+        if (_currentProvider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
+      },
+    );
   }
 
   Future<void> fetchGroqModels() async {
-    if (_groqKey.isEmpty) return;
-    _isLoadingGroqModels = true;
-    notifyListeners();
-
-    try {
-      final response = await http.get(
-        Uri.parse("https://api.groq.com/openai/v1/models"),
-        headers: {"Authorization": "Bearer ${_groqKey.trim()}"},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> dataList = data['data'] ?? [];
-        final List<String> fetchedIds = dataList.map<String>((e) => e['id'].toString()).toList();
-        fetchedIds.sort();
-
-        _groqModelsList = fetchedIds;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setStringList('airp_list_groq', fetchedIds);
-        
-        if (!_groqModelsList.contains(_groqModel) && _groqModelsList.isNotEmpty) {
-            _groqModel = _groqModelsList.first;
-            if (_currentProvider == AiProvider.groq) _selectedModel = _groqModel;
-        }
-      }
-    } catch (e) {
-      debugPrint("Fetch Error: $e");
-    } finally {
-      _isLoadingGroqModels = false;
-      notifyListeners();
-    }
+    await _fetchProviderModels(
+      apiKey: _groqKey,
+      url: ApiConstants.groqBaseUrl,
+      prefKey: ApiConstants.prefListGroq,
+      parser: (json) {
+        final List<dynamic> dataList = json['data'] ?? [];
+        return dataList.map<String>((e) => e['id'].toString()).toList();
+      },
+      updateList: (list) => _groqModelsList = list,
+      updateLoading: (val) => _isLoadingGroqModels = val,
+      currentModel: _groqModel,
+      updateSelectedModel: (val) {
+        _groqModel = val;
+        if (_currentProvider == AiProvider.groq) _selectedModel = _groqModel;
+      },
+    );
   }
 
   // ----------------------------------------------------------------------

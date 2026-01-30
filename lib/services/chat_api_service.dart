@@ -63,8 +63,13 @@ class ChatApiService {
     // doesn't include a signature field.
     await for (final dynamic response in stream) {
       try {
-        if (response.text != null) {
-          yield response.text!;
+        String? text;
+        try {
+          text = response.text;
+        } catch (_) {}
+
+        if (text != null) {
+          yield text;
         }
 
         // Attempt to pull a thought signature (if the response exposes one).
@@ -444,6 +449,30 @@ class ChatApiService {
       }
     } catch (e) {
       return "Connection Error: $e";
+    }
+  }
+
+  // ==============================================================================
+  // 5. GENERIC MODEL FETCHING
+  // ==============================================================================
+  static Future<List<String>> fetchModels({
+    required String url,
+    Map<String, String>? headers,
+    required List<String> Function(dynamic json) parser,
+  }) async {
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<String> models = parser(data);
+        models.sort();
+        return models;
+      } else {
+        throw Exception('Failed to fetch models: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching models: $e');
     }
   }
 }

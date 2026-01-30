@@ -104,7 +104,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                         : chatProvider.currentProvider == AiProvider.local ? "Local"
                         : chatProvider.currentProvider == AiProvider.openAi ? "OpenAI"
                         : chatProvider.currentProvider == AiProvider.groq ? "Groq"
-                        : "HuggingFace"} ${_getModelCount(chatProvider) > 0 ? "(${_getModelCount(chatProvider)})" : ""}',
+                        : "HuggingFace"}',
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                     softWrap: false,
@@ -142,65 +142,73 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Widget _buildModelSelector(BuildContext context, ChatProvider chatProvider, ThemeProvider themeProvider) {
+    late Widget selector;
     switch (chatProvider.currentProvider) {
       case AiProvider.gemini:
-        return ModelSelector(
+        selector = ModelSelector(
           modelsList: chatProvider.geminiModelsList,
           selectedModel: chatProvider.selectedGeminiModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select Gemini Model",
           isCompact: true,
         );
+        break;
       case AiProvider.openRouter:
-        return ModelSelector(
+        selector = ModelSelector(
           modelsList: chatProvider.openRouterModelsList,
           selectedModel: chatProvider.openRouterModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select OpenRouter Model",
           isCompact: true,
         );
+        break;
       case AiProvider.arliAi:
-        return ModelSelector(
+        selector = ModelSelector(
           modelsList: chatProvider.arliAiModelsList,
           selectedModel: chatProvider.arliAiModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select ArliAI Model",
           isCompact: true,
         );
+        break;
       case AiProvider.nanoGpt:
-        return ModelSelector(
+        selector = ModelSelector(
           modelsList: chatProvider.nanoGptModelsList,
           selectedModel: chatProvider.nanoGptModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select NanoGPT Model",
           isCompact: true,
         );
+        break;
       case AiProvider.openAi:
-        return ModelSelector(
+        selector = ModelSelector(
           modelsList: chatProvider.openAiModelsList,
           selectedModel: chatProvider.openAiModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select OpenAI Model",
           isCompact: true,
         );
+        break;
       case AiProvider.huggingFace:
-        return ModelSelector(
+        selector = ModelSelector(
           modelsList: chatProvider.huggingFaceModelsList,
           selectedModel: chatProvider.huggingFaceModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select HuggingFace Model",
           isCompact: true,
         );
+        break;
       case AiProvider.groq:
-        return ModelSelector(
+        selector = ModelSelector(
           modelsList: chatProvider.groqModelsList,
           selectedModel: chatProvider.groqModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select Groq Model",
           isCompact: true,
         );
+        break;
       case AiProvider.local:
-        return Container(
+        selector = Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: Colors.black26,
@@ -225,7 +233,27 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
         );
+        break;
     }
+
+    final int count = _getModelCount(chatProvider);
+    if (count > 0) {
+      return Row(
+        children: [
+          Expanded(child: selector),
+          const SizedBox(width: 8),
+          Text(
+            "($count)",
+            style: TextStyle(
+              color: themeProvider.appThemeColor,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      );
+    }
+    return selector;
   }
 
   int _getModelCount(ChatProvider provider) {

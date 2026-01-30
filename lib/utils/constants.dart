@@ -1,14 +1,7 @@
 // ----------------------------------------------------------------------
 // GLOBAL HELPERS & CONSTANTS
 // ----------------------------------------------------------------------
-const Map<String, String> kModelDisplayNames = {};
-
 String cleanModelName(String rawId) {
-  // 1. Check if we have a manual override (The Dictionary)
-  if (kModelDisplayNames.containsKey(rawId)) {
-    return kModelDisplayNames[rawId]!;
-  }
-
   // Quick local check
   if (rawId.contains("local")) return "Local / Home AI";
 
@@ -38,6 +31,47 @@ String cleanModelName(String rawId) {
   name = name.replaceAll(' .', '.');
 
   return name;
+}
+
+// ----------------------------------------------------------------------
+// API CONSTANTS
+// ----------------------------------------------------------------------
+class ApiConstants {
+  // Base URLs
+  static const String geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
+  static const String openRouterBaseUrl = "https://openrouter.ai/api/v1/models";
+  static const String arliAiBaseUrl = "https://api.arliai.com/v1/models";
+  static const String nanoGptBaseUrl = "https://nano-gpt.com/api/v1/models";
+  static const String openAiBaseUrl = "https://api.openai.com/v1/models";
+  static const String huggingFaceBaseUrl = "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100";
+  static const String groqBaseUrl = "https://api.groq.com/openai/v1/models";
+
+  // Preference Keys (Lists)
+  static const String prefListGemini = 'airp_list_gemini';
+  static const String prefListOpenRouter = 'airp_list_openrouter';
+  static const String prefListArliAi = 'airp_list_arliai';
+  static const String prefListNanoGpt = 'airp_list_nanogpt';
+  static const String prefListOpenAi = 'airp_list_openai';
+  static const String prefListHuggingFace = 'airp_list_huggingface';
+  static const String prefListGroq = 'airp_list_groq';
+
+  // Preference Keys (API Keys)
+  static const String prefKeyGemini = 'airp_key_gemini';
+  static const String prefKeyOpenRouter = 'airp_key_openrouter';
+  static const String prefKeyOpenAi = 'airp_key_openai';
+  static const String prefKeyArliAi = 'airp_key_arliai';
+  static const String prefKeyNanoGpt = 'airp_key_nanogpt';
+  static const String prefKeyHuggingFace = 'airp_key_huggingface';
+  static const String prefKeyGroq = 'airp_key_groq';
+
+  // Preference Keys (Selected Models)
+  static const String prefModelGemini = 'airp_model_gemini';
+  static const String prefModelOpenRouter = 'airp_model_openrouter';
+  static const String prefModelArliAi = 'airp_model_arliai';
+  static const String prefModelNanoGpt = 'airp_model_nanogpt';
+  static const String prefModelOpenAi = 'airp_model_openai';
+  static const String prefModelHuggingFace = 'airp_model_huggingface';
+  static const String prefModelGroq = 'airp_model_groq';
 }
 
 // ----------------------------------------------------------------------

@@ -80,13 +80,7 @@ class ModelSelector extends StatelessWidget {
               if (aBookmarked && !bBookmarked) return -1;
               if (!aBookmarked && bBookmarked) return 1;
 
-              // 2. Constants (Starred) second
-              final bool aInConstants = kModelDisplayNames.containsKey(a);
-              final bool bInConstants = kModelDisplayNames.containsKey(b);
-              if (aInConstants && !bInConstants) return -1;
-              if (!aInConstants && bInConstants) return 1;
-
-              // 3. Alphabetical
+              // 2. Alphabetical
               return cleanModelName(a).compareTo(cleanModelName(b));
             });
 
@@ -124,8 +118,6 @@ class ModelSelector extends StatelessWidget {
                                 final modelId = filteredModels[index];
                                 final isSelected = modelId == selectedModel;
                                 final isBookmarked = bookmarkedModels.contains(modelId);
-                                final isFeatured = kModelDisplayNames.containsKey(modelId);
-
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 4),
                                   decoration: BoxDecoration(
@@ -144,9 +136,6 @@ class ModelSelector extends StatelessWidget {
                                       ),
                                     ),
                                     subtitle: Text(modelId, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                                    leading: isBookmarked
-                                        ? const Icon(Icons.bookmark, color: Colors.amber, size: 20)
-                                        : (isFeatured ? const Icon(Icons.star, color: Colors.yellowAccent, size: 16) : const Icon(Icons.circle_outlined, color: Colors.grey, size: 12)),
                                     trailing: IconButton(
                                       icon: Icon(
                                         isBookmarked ? Icons.bookmark : Icons.bookmark_border,

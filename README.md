@@ -6,6 +6,16 @@
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white)
 
+## Recent Updates (v0.4)
+
+*   **Performance Overhaul**: Optimized the streaming engine to eliminate UI lag. The app now updates only the active message bubble during generation, resulting in silky-smooth performance even on lower-end devices.
+*   **Stability Fixes**: Addressed critical null-safety issues in the API service to prevent crashes during empty or malformed responses.
+*   **Refactored Architecture**: Centralized model fetching logic and constants, significantly reducing code duplication and improving maintainability.
+*   **UI Polish**:
+    *   **Cleaner Model Selector**: Simplified the model list layout for better readability and space efficiency.
+    *   **Header Redesign**: Moved the model count indicator to the model selector for a cleaner look.
+    *   **Unified Settings**: Refactored settings panels to use shared components.
+
 ## Key Features
 
 *   **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, OpenAI, HuggingFace, ArliAI, NanoGPT, or Local.

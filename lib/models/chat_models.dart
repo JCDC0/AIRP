@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 enum AiProvider { gemini, openRouter, openAi, local, arliAi, nanoGpt, huggingFace, groq }
 
 class ChatSessionData {
@@ -58,6 +60,7 @@ class ChatMessage {
   final String? modelName;
   final Map<String, dynamic>? usage;
   final String? thoughtSignature;
+  final ValueNotifier<String>? contentNotifier;
 
   ChatMessage({
     required this.text,
@@ -67,6 +70,7 @@ class ChatMessage {
     this.modelName,
     this.usage,
     this.thoughtSignature,
+    this.contentNotifier,
   });
 
   Map<String, dynamic> toJson() => {
@@ -97,6 +101,7 @@ class ChatMessage {
     String? modelName,
     Map<String, dynamic>? usage,
     String? thoughtSignature,
+    ValueNotifier<String>? contentNotifier,
   }) {
     return ChatMessage(
       text: text ?? this.text,
@@ -106,6 +111,7 @@ class ChatMessage {
       modelName: modelName ?? this.modelName,
       usage: usage ?? this.usage,
       thoughtSignature: thoughtSignature ?? this.thoughtSignature,
+      contentNotifier: contentNotifier ?? this.contentNotifier,
     );
   }
 }
