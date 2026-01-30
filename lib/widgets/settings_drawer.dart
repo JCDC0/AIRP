@@ -248,7 +248,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         child: Stack(
           children: [
             SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -257,7 +257,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('api_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    leading: Icon(Icons.link, color: themeProvider.appThemeColor),
                     title: Text("API & Connectivity", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
@@ -272,7 +271,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('model_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    leading: Icon(Icons.smart_toy, color: themeProvider.appThemeColor),
                     title: Text("Model Configuration", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
@@ -288,7 +286,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('system_prompt_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    leading: Icon(Icons.description, color: themeProvider.appThemeColor),
                     title: Text("System Prompt", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
@@ -305,7 +302,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('generation_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    leading: Icon(Icons.tune, color: themeProvider.appThemeColor),
                     title: Text("Generation Parameters", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
@@ -317,7 +313,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('visual_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    leading: Icon(Icons.palette, color: themeProvider.appThemeColor),
                     title: Text("Visuals & Atmosphere", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold)),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
