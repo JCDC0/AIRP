@@ -34,7 +34,6 @@ class ApiSettingsPanel extends StatelessWidget {
         if (chatProvider.currentProvider != AiProvider.local) ...[
           TextField(
             controller: apiKeyController,
-            // onChanged: Removed to allow "Save" button logic in parent
             obscureText: true,
             decoration: InputDecoration(
               hintText: "Paste AI Studio Key...",
@@ -52,7 +51,6 @@ class ApiSettingsPanel extends StatelessWidget {
         ] else ...[
           TextField(
             controller: localIpController,
-            // onChanged: Removed to allow "Save" button logic in parent
             decoration: const InputDecoration(
               hintText: "http://192.168.1.X:1234/v1",
               labelText: "Local Server Address",

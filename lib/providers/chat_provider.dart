@@ -28,6 +28,7 @@ class ChatProvider extends ChangeNotifier {
   List<String> _nanoGptModelsList = [];
   List<String> _openAiModelsList = [];
   List<String> _huggingFaceModelsList = [];
+  List<String> _groqModelsList = [];
 
   List<String> get geminiModelsList => _geminiModelsList;
   List<String> get openRouterModelsList => _openRouterModelsList;
@@ -35,6 +36,7 @@ class ChatProvider extends ChangeNotifier {
   List<String> get nanoGptModelsList => _nanoGptModelsList;
   List<String> get openAiModelsList => _openAiModelsList;
   List<String> get huggingFaceModelsList => _huggingFaceModelsList;
+  List<String> get groqModelsList => _groqModelsList;
 
   // Loading States for Models
   bool _isLoadingGeminiModels = false;
@@ -43,6 +45,7 @@ class ChatProvider extends ChangeNotifier {
   bool _isLoadingNanoGptModels = false;
   bool _isLoadingOpenAiModels = false;
   bool _isLoadingHuggingFaceModels = false;
+  bool _isLoadingGroqModels = false;
 
   bool get isLoadingGeminiModels => _isLoadingGeminiModels;
   bool get isLoadingOpenRouterModels => _isLoadingOpenRouterModels;
@@ -50,6 +53,7 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingNanoGptModels => _isLoadingNanoGptModels;
   bool get isLoadingOpenAiModels => _isLoadingOpenAiModels;
   bool get isLoadingHuggingFaceModels => _isLoadingHuggingFaceModels;
+  bool get isLoadingGroqModels => _isLoadingGroqModels;
 
   // Keys & Config
   AiProvider _currentProvider = AiProvider.gemini;
@@ -59,6 +63,7 @@ class ChatProvider extends ChangeNotifier {
   String _arliAiKey = '';
   String _nanoGptKey = '';
   String _huggingFaceKey = '';
+  String _groqKey = '';
   String _localIp = 'http://192.168.1.15:1234/v1';
   String _localModelName = 'local-model';
 
@@ -69,6 +74,7 @@ class ChatProvider extends ChangeNotifier {
   String get arliAiKey => _arliAiKey;
   String get nanoGptKey => _nanoGptKey;
   String get huggingFaceKey => _huggingFaceKey;
+  String get groqKey => _groqKey;
   String get localIp => _localIp;
   String get localModelName => _localModelName;
 
@@ -79,6 +85,7 @@ class ChatProvider extends ChangeNotifier {
   String _nanoGptModel = 'gpt-4o';
   String _openAiModel = 'gpt-4o';
   String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
+  String _groqModel = 'llama3-8b-8192';
   String _selectedModel = 'models/gemini-3-flash-preview';
 
   String get selectedGeminiModel => _selectedGeminiModel;
@@ -87,6 +94,7 @@ class ChatProvider extends ChangeNotifier {
   String get nanoGptModel => _nanoGptModel;
   String get openAiModel => _openAiModel;
   String get huggingFaceModel => _huggingFaceModel;
+  String get groqModel => _groqModel;
   String get selectedModel => _selectedModel;
 
   // Generation Settings
@@ -206,6 +214,7 @@ class ChatProvider extends ChangeNotifier {
     _arliAiKey = prefs.getString('airp_key_arliai') ?? '';
     _nanoGptKey = prefs.getString('airp_key_nanogpt') ?? '';
     _huggingFaceKey = prefs.getString('airp_key_huggingface') ?? '';
+    _groqKey = prefs.getString('airp_key_groq') ?? '';
     _localIp = prefs.getString('airp_local_ip') ?? 'http://192.168.1.15:1234/v1';
 
     // Load Provider
@@ -217,6 +226,7 @@ class ChatProvider extends ChangeNotifier {
     else if (providerString == 'arliAi') _currentProvider = AiProvider.arliAi;
     else if (providerString == 'nanoGpt') _currentProvider = AiProvider.nanoGpt;
     else if (providerString == 'huggingFace') _currentProvider = AiProvider.huggingFace;
+    else if (providerString == 'groq') _currentProvider = AiProvider.groq;
     else _currentProvider = AiProvider.gemini;
 
     // Load Lists
@@ -226,6 +236,7 @@ class ChatProvider extends ChangeNotifier {
     _nanoGptModelsList = prefs.getStringList('airp_list_nanogpt') ?? [];
     _openAiModelsList = prefs.getStringList('airp_list_openai') ?? [];
     _huggingFaceModelsList = prefs.getStringList('airp_list_huggingface') ?? [];
+    _groqModelsList = prefs.getStringList('airp_list_groq') ?? [];
 
     // Load Selected Models
     _selectedGeminiModel = prefs.getString('airp_model_gemini') ?? 'models/gemini-3-flash-preview';
@@ -234,6 +245,7 @@ class ChatProvider extends ChangeNotifier {
     _nanoGptModel = prefs.getString('airp_model_nanogpt') ?? 'gpt-4o';
     _openAiModel = prefs.getString('airp_model_openai') ?? 'gpt-4o';
     _huggingFaceModel = prefs.getString('airp_model_huggingface') ?? 'meta-llama/Meta-Llama-3-8B-Instruct';
+    _groqModel = prefs.getString('airp_model_groq') ?? 'llama3-8b-8192';
 
     // Determine current selected model
     if (_currentProvider == AiProvider.openRouter) {
@@ -243,6 +255,7 @@ class ChatProvider extends ChangeNotifier {
     else if (_currentProvider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
     else if (_currentProvider == AiProvider.openAi) _selectedModel = _openAiModel;
     else if (_currentProvider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
+    else if (_currentProvider == AiProvider.groq) _selectedModel = _groqModel;
     else if (_currentProvider == AiProvider.local) _selectedModel = "Local Network AI";
 
     // Load Other Settings
@@ -275,6 +288,7 @@ class ChatProvider extends ChangeNotifier {
     else if (provider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
     else if (provider == AiProvider.openAi) _selectedModel = _openAiModel;
     else if (provider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
+    else if (provider == AiProvider.groq) _selectedModel = _groqModel;
     else if (provider == AiProvider.local) _selectedModel = "Local Network AI";
     
     notifyListeners();
@@ -290,6 +304,7 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.arliAi: _arliAiKey = key; break;
       case AiProvider.nanoGpt: _nanoGptKey = key; break;
       case AiProvider.huggingFace: _huggingFaceKey = key; break;
+      case AiProvider.groq: _groqKey = key; break;
       case AiProvider.local: break;
     }
     notifyListeners();
@@ -334,6 +349,9 @@ class ChatProvider extends ChangeNotifier {
     } else if (_currentProvider == AiProvider.huggingFace) {
       _huggingFaceModel = model;
       _selectedModel = model;
+    } else if (_currentProvider == AiProvider.groq) {
+      _groqModel = model;
+      _selectedModel = model;
     }
     notifyListeners();
   }
@@ -369,10 +387,12 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString('airp_key_arliai', _arliAiKey);
     await prefs.setString('airp_key_nanogpt', _nanoGptKey);
     await prefs.setString('airp_key_huggingface', _huggingFaceKey);
+    await prefs.setString('airp_key_groq', _groqKey);
     await prefs.setString('airp_model_arliai', _arliAiModel);
     await prefs.setString('airp_model_nanogpt', _nanoGptModel);
     await prefs.setString('airp_model_openai', _openAiModel);
     await prefs.setString('airp_model_huggingface', _huggingFaceModel);
+    await prefs.setString('airp_model_groq', _groqModel);
     await prefs.setDouble('airp_top_p', _topP);
     await prefs.setInt('airp_top_k', _topK);
     await prefs.setInt('airp_max_output', _maxOutputTokens);
@@ -405,6 +425,8 @@ class ChatProvider extends ChangeNotifier {
       activeKey = _openAiKey;
     } else if (_currentProvider == AiProvider.huggingFace) {
       activeKey = _huggingFaceKey;
+    } else if (_currentProvider == AiProvider.groq) {
+      activeKey = _groqKey;
     }
 
     if (activeKey.isEmpty && _currentProvider != AiProvider.local && _currentProvider != AiProvider.huggingFace) {
@@ -630,6 +652,9 @@ class ChatProvider extends ChangeNotifier {
           // URL: https://api-inference.huggingface.co/models/{model_id}/v1/chat/completions
           baseUrl = "https://api-inference.huggingface.co/models/$_selectedModel/v1/chat/completions";
           apiKey = _huggingFaceKey;
+        } else if (_currentProvider == AiProvider.groq) {
+          baseUrl = "https://api.groq.com/openai/v1/chat/completions";
+          apiKey = _groqKey;
         } else if (_currentProvider == AiProvider.local) {
           baseUrl = _localIp.trim();
           if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
@@ -789,6 +814,7 @@ class ChatProvider extends ChangeNotifier {
       providerStr = 'openRouter';
     } else if (_currentProvider == AiProvider.local) providerStr = 'local';
     else if (_currentProvider == AiProvider.openAi) providerStr = 'openAi';
+    else if (_currentProvider == AiProvider.groq) providerStr = 'groq';
 
     final sessionData = ChatSessionData(
       id: _currentSessionId!,
@@ -859,6 +885,9 @@ class ChatProvider extends ChangeNotifier {
       _selectedModel = "Local Network AI";
     } else if (session.provider == 'openAi') {
       _currentProvider = AiProvider.openAi;
+      _selectedModel = session.modelName;
+    } else if (session.provider == 'groq') {
+      _currentProvider = AiProvider.groq;
       _selectedModel = session.modelName;
     } else {
       _currentProvider = AiProvider.gemini;
@@ -1066,12 +1095,10 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> fetchHuggingFaceModels() async {
-    // HuggingFace doesn't strictly require a key for public models, but it helps with rate limits.
     _isLoadingHuggingFaceModels = true;
     notifyListeners();
 
     try {
-      // Fetch top 100 text-generation models sorted by downloads
       final response = await http.get(
         Uri.parse("https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100"),
         headers: _huggingFaceKey.isNotEmpty ? {"Authorization": "Bearer ${_huggingFaceKey.trim()}"} : {},
@@ -1095,6 +1122,40 @@ class ChatProvider extends ChangeNotifier {
       debugPrint("Fetch Error: $e");
     } finally {
       _isLoadingHuggingFaceModels = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchGroqModels() async {
+    if (_groqKey.isEmpty) return;
+    _isLoadingGroqModels = true;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse("https://api.groq.com/openai/v1/models"),
+        headers: {"Authorization": "Bearer ${_groqKey.trim()}"},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> dataList = data['data'] ?? [];
+        final List<String> fetchedIds = dataList.map<String>((e) => e['id'].toString()).toList();
+        fetchedIds.sort();
+
+        _groqModelsList = fetchedIds;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('airp_list_groq', fetchedIds);
+        
+        if (!_groqModelsList.contains(_groqModel) && _groqModelsList.isNotEmpty) {
+            _groqModel = _groqModelsList.first;
+            if (_currentProvider == AiProvider.groq) _selectedModel = _groqModel;
+        }
+      }
+    } catch (e) {
+      debugPrint("Fetch Error: $e");
+    } finally {
+      _isLoadingGroqModels = false;
       notifyListeners();
     }
   }

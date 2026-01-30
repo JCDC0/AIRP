@@ -30,7 +30,6 @@ class ChatApiService {
             final String fileContent = await File(path).readAsString();
             accumulatedText += "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n";
           } catch (e) { 
-             // Error handling usually goes to logs
           }
         } 
         // Binary Files (Images/PDF)

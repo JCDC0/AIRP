@@ -1,4 +1,4 @@
-enum AiProvider { gemini, openRouter, openAi, local, arliAi, nanoGpt, huggingFace }
+enum AiProvider { gemini, openRouter, openAi, local, arliAi, nanoGpt, huggingFace, groq }
 
 class ChatSessionData {
   final String id;

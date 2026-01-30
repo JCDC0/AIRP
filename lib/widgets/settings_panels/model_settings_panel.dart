@@ -8,11 +8,13 @@ import '../model_selector.dart';
 class ModelSettingsPanel extends StatelessWidget {
   final TextEditingController titleController;
   final TextEditingController openRouterModelController;
+  final TextEditingController groqModelController;
 
   const ModelSettingsPanel({
     super.key,
     required this.titleController,
     required this.openRouterModelController,
+    required this.groqModelController,
   });
 
   int _getModelCount(ChatProvider provider) {
@@ -23,6 +25,7 @@ class ModelSettingsPanel extends StatelessWidget {
       case AiProvider.nanoGpt: return provider.nanoGptModelsList.length;
       case AiProvider.openAi: return provider.openAiModelsList.length;
       case AiProvider.huggingFace: return provider.huggingFaceModelsList.length;
+      case AiProvider.groq: return provider.groqModelsList.length;
       default: return 0;
     }
   }
@@ -281,6 +284,42 @@ class ModelSettingsPanel extends StatelessWidget {
               label: Text(chatProvider.isLoadingHuggingFaceModels ? "Fetching..." : "Refresh Top Models"),
               onPressed: chatProvider.isLoadingHuggingFaceModels ? null : chatProvider.fetchHuggingFaceModels,
               style: OutlinedButton.styleFrom(foregroundColor: Colors.amberAccent),
+            ),
+          ),
+        ],
+
+        // ============================================
+        // GROQ UI
+        // ============================================
+        if (chatProvider.currentProvider == AiProvider.groq) ...[
+          if (chatProvider.groqModelsList.isNotEmpty)
+            ModelSelector(
+              modelsList: chatProvider.groqModelsList,
+              selectedModel: chatProvider.groqModel,
+              onSelected: (val) {
+                chatProvider.setModel(val);
+                groqModelController.text = val;
+              },
+              placeholder: "Select Groq Model",
+            )
+          else
+            TextField(
+              controller: groqModelController,
+              decoration: const InputDecoration(hintText: "llama3-8b-8192", border: OutlineInputBorder(), isDense: true),
+              style: const TextStyle(fontSize: 13),
+              // onChanged: (val) { chatProvider.setModel(val.trim()); }, // Removed for Save button logic
+            ),
+
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: chatProvider.isLoadingGroqModels
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.cloud_sync, size: 16),
+              label: Text(chatProvider.isLoadingGroqModels ? "Fetching..." : "Refresh Model List"),
+              onPressed: chatProvider.isLoadingGroqModels ? null : chatProvider.fetchGroqModels,
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.deepOrangeAccent),
             ),
           ),
         ],

@@ -24,7 +24,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   late TextEditingController _titleController;
   late TextEditingController _promptTitleController;
   late TextEditingController _mainPromptController;
-  late TextEditingController _openRouterModelController; 
+  late TextEditingController _openRouterModelController;
+  late TextEditingController _groqModelController;
   late TextEditingController _advancedPromptController;
 
   bool _hasUnsavedChanges = false;
@@ -34,6 +35,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   String? _lastSyncedLocalIp;
   String? _lastSyncedTitle;
   String? _lastSyncedOpenRouterModel;
+  String? _lastSyncedGroqModel;
   
   @override
   void initState() {
@@ -45,6 +47,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _titleController = TextEditingController(text: chatProvider.currentTitle);
     _promptTitleController = TextEditingController();
     _openRouterModelController = TextEditingController(text: chatProvider.openRouterModel);
+    _groqModelController = TextEditingController(text: chatProvider.groqModel);
     
     _advancedPromptController = TextEditingController();
     _mainPromptController = TextEditingController();
@@ -54,12 +57,14 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _lastSyncedLocalIp = _localIpController.text;
     _lastSyncedTitle = _titleController.text;
     _lastSyncedOpenRouterModel = _openRouterModelController.text;
+    _lastSyncedGroqModel = _groqModelController.text;
 
     // Add listeners to detect changes
     _apiKeyController.addListener(_checkForChanges);
     _localIpController.addListener(_checkForChanges);
     _titleController.addListener(_checkForChanges);
     _openRouterModelController.addListener(_checkForChanges);
+    _groqModelController.addListener(_checkForChanges);
     _mainPromptController.addListener(_checkForChanges);
     _advancedPromptController.addListener(_checkForChanges);
     
@@ -74,6 +79,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       case AiProvider.arliAi: return provider.arliAiKey;
       case AiProvider.nanoGpt: return provider.nanoGptKey;
       case AiProvider.huggingFace: return provider.huggingFaceKey;
+      case AiProvider.groq: return provider.groqKey;
       case AiProvider.local: return "";
     }
   }
@@ -100,6 +106,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     
     if (chatProvider.currentProvider == AiProvider.openRouter) {
       chatProvider.setModel(_openRouterModelController.text.trim());
+    } else if (chatProvider.currentProvider == AiProvider.groq) {
+      chatProvider.setModel(_groqModelController.text.trim());
     }
 
     // 3. Persist to Disk
@@ -110,6 +118,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _lastSyncedLocalIp = _localIpController.text;
     _lastSyncedTitle = _titleController.text;
     _lastSyncedOpenRouterModel = _openRouterModelController.text;
+    _lastSyncedGroqModel = _groqModelController.text;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -143,7 +152,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       if (_openRouterModelController.text != chatProvider.openRouterModel) hasChanges = true;
     }
 
-    // 5. Check System Prompt
+    // 5. Check Groq Model
+    if (chatProvider.currentProvider == AiProvider.groq) {
+      if (_groqModelController.text != chatProvider.groqModel) hasChanges = true;
+    }
+
+    // 6. Check System Prompt
     String advanced = _advancedPromptController.text.trim();
     String main = _mainPromptController.text.trim(); // Use trim for comparison consistency
     String finalPrompt = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main;
@@ -165,6 +179,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _promptTitleController.dispose();
     _mainPromptController.dispose();
     _openRouterModelController.dispose();
+    _groqModelController.dispose();
     _advancedPromptController.dispose();
     super.dispose();
   }
@@ -202,6 +217,16 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
           _openRouterModelController.text = chatProvider.openRouterModel;
         }
         _lastSyncedOpenRouterModel = chatProvider.openRouterModel;
+      }
+    }
+
+    // 5. Sync Groq Model
+    if (chatProvider.currentProvider == AiProvider.groq) {
+      if (chatProvider.groqModel != _lastSyncedGroqModel) {
+        if (_groqModelController.text != chatProvider.groqModel) {
+          _groqModelController.text = chatProvider.groqModel;
+        }
+        _lastSyncedGroqModel = chatProvider.groqModel;
       }
     }
   }
@@ -255,6 +280,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       ModelSettingsPanel(
                         titleController: _titleController,
                         openRouterModelController: _openRouterModelController,
+                        groqModelController: _groqModelController,
                       ),
                     ],
                   ),

@@ -72,6 +72,10 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.huggingFace,
             child: Row(children: [Icon(Icons.emoji_emotions, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - HuggingFace')]),
           ),
+          PopupMenuItem<AiProvider>(
+            value: AiProvider.groq,
+            child: Row(children: [Icon(Icons.speed, color: themeProvider.appThemeColor), const SizedBox(width: 8), const Text('AIRP - Groq')]),
+          ),
         ],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,6 +103,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                         : chatProvider.currentProvider == AiProvider.nanoGpt ? "NanoGPT"
                         : chatProvider.currentProvider == AiProvider.local ? "Local"
                         : chatProvider.currentProvider == AiProvider.openAi ? "OpenAI"
+                        : chatProvider.currentProvider == AiProvider.groq ? "Groq"
                         : "HuggingFace"} ${_getModelCount(chatProvider) > 0 ? "(${_getModelCount(chatProvider)})" : ""}',
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -186,6 +191,14 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           placeholder: "Select HuggingFace Model",
           isCompact: true,
         );
+      case AiProvider.groq:
+        return ModelSelector(
+          modelsList: chatProvider.groqModelsList,
+          selectedModel: chatProvider.groqModel,
+          onSelected: chatProvider.setModel,
+          placeholder: "Select Groq Model",
+          isCompact: true,
+        );
       case AiProvider.local:
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -223,6 +236,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       case AiProvider.nanoGpt: return provider.nanoGptModelsList.length;
       case AiProvider.openAi: return provider.openAiModelsList.length;
       case AiProvider.huggingFace: return provider.huggingFaceModelsList.length;
+      case AiProvider.groq: return provider.groqModelsList.length;
       default: return 0;
     }
   }

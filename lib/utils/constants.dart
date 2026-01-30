@@ -1,59 +1,7 @@
 // ----------------------------------------------------------------------
 // GLOBAL HELPERS & CONSTANTS
 // ----------------------------------------------------------------------
-const Map<String, String> kModelDisplayNames = {
-  // Gemini 3 Series
-  'models/gemini-3-pro-preview': 'Gemini 3 Pro Preview (Expensive)',
-  'models/gemini-3-flash-preview': 'Gemini 3 Flash Preview (Fast)',
-  // Gemini 2.5 Series
-  'models/gemini-2.5-pro': 'Gemini 2.5 Pro (Middle ground)',
-  'models/gemini-flash-latest': 'Gemini 2.5 Flash Latest (Cheap)',
-  'models/gemini-flash-lite-latest': 'Gemini 2.5 Flash Latest Lite (Cheaper)',
-  // Gemini 2.0 Series
-  'models/gemini-2.0-flash': 'Gemini 2.0 Flash',
-  'models/gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
-  // Gemma 3 Series
-  'models/gemma-3-27b-it': 'Gemma 3 27B (Desktop Class)',
-  'models/gemma-3-12b-it': 'Gemma 3 12B (Efficient)',
-  'models/gemma-3-4b-it': 'Gemma 3 4B (Lightweight)',
-  'models/gemma-3-2b-it': 'Gemma 3 2B (Small)',
-  'models/gemma-3-1b-it': 'Gemma 3 1B (Tiny)',
-    // OpenRouter Models (Free)
-  'allenai/olmo-3.1-32b-think:free': 'Olmo 3.1 32B Think (Free)',
-  'cognitivecomputations/dolphin-mistral-24b-venice-edition:free': 'Dolphin Mistral 24B Venice (Free)',
-  'deepseek/deepseek-r1-0528:free': 'DeepSeek R1 (Free)',
-  'google/gemma-3-27b-it:free': 'Gemma 3 27B It (Free)',
-  'google/gemini-2.0-flash-exp:free': 'Gemini 2.0 Flash Exp (Free)',
-  'meta-llama/llama-3.1-405b-instruct:free': 'Llama 3.1 405B Instruct (Free)',
-  'meta-llama/llama-3.3-70b-instruct:free': 'Llama 3.3 70B Instruct (Free)',
-  'mistralai/devstral-2512:free': 'DevStral 25B (Free)',
-  'mistralai/mistral-7b-instruct:free': 'Mistral 7B Instruct (Free)',
-  'mistralai/mistral-small-3.1-24b-instruct:free': 'Mistral Small 3.1 24B Instruct (Free)',
-  'nex-agi/deepseek-v3.1-nex-n1:free': 'DeepSeek V3.1 NEX-N1 (Free)',
-  'openai/gpt-oss-120b:free': 'GPT-OSS 120B (Free)',
-  'openai/gpt-oss-20b:free': 'GPT-OSS 20B (Free)',
-  'qwen/qwen3-coder:free': 'Qwen3 Coder (Free)',
-  'tngtech/deepseek-r1t-chimera:free': 'DeepSeek R1T Chimera (Free)',
-  'tngtech/deepseek-r1t2-chimera:free': 'DeepSeek R1T2 Chimera (Free)',
-  'tngtech/tng-r1t-chimera:free': 'TNG R1T Chimera (Free)',
-  'xiaomi/mimo-v2-flash:free': 'Mimo V2 Flash (Free)',
-  // OpenRouter Models (Paid)
-  'deepseek/deepseek-chat-v3-0324': '⚠️DeepSeek Chat V3 (Paid)',
-  'tngtech/deepseek-r1t2-chimera': '⚠️DeepSeek R1T2 Chimera (Paid)',
-  'tngtech/deepseek-r1t-chimera': '⚠️DeepSeek R1T Chimera (Paid)',
-  'tngtech/tng-r1t-chimera': '⚠️TNG R1T Chimera (Paid)',
-  'deepseek/deepseek-chat-v3.1-0528': '⚠️DeepSeek Chat V3.1 (Paid)',
-  'deepseek/deepseek-v3.1-terminus': '⚠️DeepSeek V3.1 Terminus (Paid)',
-  'deepseek/deepseek-v3.2': '⚠️DeepSeek V3.2 (Paid)',
-  'deepseek/deepseek-v3.2-exp': '⚠️DeepSeek V3.2 Exp (Paid)',
-  'google/gemini-2.5-flash': '⚠️Gemini 2.5 Flash (Paid)',
-  'google/gemini-3-flash-preview': '⚠️Gemini 3 Flash Preview (Paid)',
-  'google/gemini-3-pro-preview': '⚠️Gemini 3 Pro Preview (Paid)',
-  'x-ai/grok-4.1-fast': '⚠️Grok 4.1 Fast (Paid)',
-  'z-ai/glm-4.5-air': '⚠️GLM-4.5-AIR (Paid)',
-  'z-ai/glm-4.6':'⚠️GLM-4.6 (Paid)',
-  'z-ai/glm-4.7': '⚠️GLM-4.7 (Paid)',
-};
+const Map<String, String> kModelDisplayNames = {};
 
 String cleanModelName(String rawId) {
   // 1. Check if we have a manual override (The Dictionary)
