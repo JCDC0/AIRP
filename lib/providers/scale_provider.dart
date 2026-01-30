@@ -89,14 +89,14 @@ class ScaleProvider extends ChangeNotifier {
         break;
       case DeviceType.tablet:
         _chatFontSize = 16.0;
-        _systemFontSize = 17.0;
+        _systemFontSize = 14.0;
         _drawerWidth = 450.0;
         _iconScale = 1.2;
         _inputAreaScale = 7;
         break;
       case DeviceType.desktop:
         _chatFontSize = 21.0;
-        _systemFontSize = 20.0;
+        _systemFontSize = 18.0;
         _drawerWidth = 600.0;
         _iconScale = 2.0;
         _inputAreaScale = 10;

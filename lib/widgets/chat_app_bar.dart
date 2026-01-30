@@ -9,15 +9,24 @@ import 'model_selector.dart';
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onOpenDrawer;
   final VoidCallback? onOpenEndDrawer;
+  final double systemFontSize;
 
   const ChatAppBar({
     super.key,
     this.onOpenDrawer,
     this.onOpenEndDrawer,
+    required this.systemFontSize,
   });
 
   @override
-  Size get preferredSize => const Size.fromHeight(150);
+  Size get preferredSize {
+    const double baseToolbarHeight = 60.0;
+    const double baseBottomHeight = 40.0;
+    final double extraHeight = (systemFontSize - 12).clamp(0, 15);
+    final double scaledToolbarHeight = baseToolbarHeight + extraHeight;
+    final double scaledBottomHeight = baseBottomHeight + extraHeight * 0.5;
+    return Size.fromHeight(scaledToolbarHeight + scaledBottomHeight);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,15 +44,11 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         : chatProvider.currentProvider == AiProvider.groq ? "Groq"
         : "HuggingFace";
     
-    // Scale toolbar height with systemFontSize to prevent text clipping
-    final double baseToolbarHeight = 60;
-    final double extraToolbarHeight = (scaleProvider.systemFontSize - 12) * 2.0;
-    final double scaledToolbarHeight = baseToolbarHeight + extraToolbarHeight;
-    
-    // Scale bottom section height with systemFontSize
-    final double baseBottomHeight = 40;
-    final double extraBottomHeight = (scaleProvider.systemFontSize - 12) * 1.5;
-    final double scaledBottomHeight = baseBottomHeight + extraBottomHeight;
+    const double baseToolbarHeight = 60.0;
+    const double baseBottomHeight = 40.0;
+    final double extraHeight = (scaleProvider.systemFontSize - 12).clamp(0, 15);
+    final double scaledToolbarHeight = baseToolbarHeight + extraHeight;
+    final double scaledBottomHeight = baseBottomHeight + extraHeight * 0.5;
 
     return AppBar(
       toolbarHeight: scaledToolbarHeight,
@@ -107,10 +112,10 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
         child: SizedBox(
-          width: 300 + (scaleProvider.systemFontSize) * 10,
+          width: 300 + (scaleProvider.systemFontSize * 10),
           child: Padding(
             padding: EdgeInsets.only(
-              top: scaleProvider.systemFontSize * 1.2,
+              top: scaleProvider.systemFontSize * 1,
               bottom: scaleProvider.systemFontSize * 0.6,
               left: 8.0,
               right: 8.0,
@@ -129,7 +134,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 6)] : [],
                   ),
                 ),
-                SizedBox(height: scaleProvider.systemFontSize * 0.3),
+                SizedBox(height: 2),
                 // 2. Provider Selector (Middle Line)
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -167,7 +172,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         preferredSize: Size.fromHeight(scaledBottomHeight),
         child: Container(
           height: scaledBottomHeight,
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          padding: const EdgeInsets.fromLTRB(10, 0, 16, 4),
           child: _buildModelSelector(context, chatProvider, themeProvider, scaleProvider),
         ),
       ),
@@ -250,23 +255,19 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : [],
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
-                  chatProvider.currentProvider == AiProvider.local
-                      ? (chatProvider.localModelName.isNotEmpty ? chatProvider.localModelName : "Local Model")
-                          : "Model Selection Unavailable",
-                      style: TextStyle(color: Colors.white, fontSize: scaleProvider.systemFontSize + 1),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (chatProvider.currentProvider == AiProvider.local)
-                     const Icon(Icons.computer, color: Colors.white70, size: 16),
-                ],
+                  chatProvider.localModelName.isNotEmpty ? chatProvider.localModelName : "Local Model",
+                  style: TextStyle(color: Colors.white, fontSize: scaleProvider.systemFontSize + 1),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            );
-            break;
+              const Icon(Icons.computer, color: Colors.white70, size: 16),
+            ],
+          ),
+        );
+        break;
         }
     
         final int count = _getModelCount(chatProvider);

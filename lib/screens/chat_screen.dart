@@ -172,6 +172,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           appBar: ChatAppBar(
             onOpenDrawer: _toggleDrawer,
             onOpenEndDrawer: _toggleEndDrawer,
+            systemFontSize: Provider.of<ScaleProvider>(context).systemFontSize,
           ),
           body: Stack(
             children: [
