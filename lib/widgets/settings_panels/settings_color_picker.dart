@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
-import '../../providers/scale_provider.dart';
+import '../../../providers/scale_provider.dart';
 
 class SettingsColorPicker extends StatelessWidget {
   final String label;

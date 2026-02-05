@@ -6,8 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../utils/constants.dart';
-import '../settings_color_picker.dart';
-import '../settings_slider.dart';
+import 'settings_color_picker.dart';
+import 'settings_slider.dart';
 
 class VisualSettingsPanel extends StatelessWidget {
   const VisualSettingsPanel({super.key});

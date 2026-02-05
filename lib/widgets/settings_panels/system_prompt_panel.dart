@@ -46,7 +46,12 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     // Load rules after build to ensure provider is available or use listen:false
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      _loadCustomRulesAndParse(chatProvider.systemInstruction);
+      String fullPrompt = chatProvider.systemInstruction;
+      if (chatProvider.advancedSystemInstruction.isNotEmpty) {
+         if (fullPrompt.isNotEmpty) fullPrompt += "\n\n";
+         fullPrompt += chatProvider.advancedSystemInstruction;
+      }
+      _loadCustomRulesAndParse(fullPrompt);
     });
   }
 
@@ -315,14 +320,29 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 30),
-        Text("System Prompt", style: 
-        TextStyle(
-          fontSize: scaleProvider.systemFontSize,
-          fontWeight: FontWeight.bold, 
-          shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
-        const SizedBox(height: 5),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text("System Prompt", style:
+            TextStyle(
+              fontSize: scaleProvider.systemFontSize,
+              fontWeight: FontWeight.bold,
+              shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+          value: chatProvider.enableSystemPrompt,
+          activeThumbColor: themeProvider.appThemeColor,
+          onChanged: (val) {
+            chatProvider.setEnableSystemPrompt(val);
+            chatProvider.saveSettings();
+          },
+        ),
         
         // 1. THE DROPDOWN & ACTIONS ROW
+        Opacity(
+          opacity: chatProvider.enableSystemPrompt ? 1.0 : 0.5,
+          child: AbsorbPointer(
+            absorbing: !chatProvider.enableSystemPrompt,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
@@ -454,7 +474,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             Expanded(
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: themeProvider.appThemeColor, 
+                  foregroundColor: themeProvider.appThemeColor,
                   side: BorderSide(color: themeProvider.appThemeColor),
                   padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
                   textStyle: TextStyle(fontSize: scaleProvider.systemFontSize * 1),
@@ -476,6 +496,10 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
               },
             ),
           ],
+        ),
+              ],
+            ),
+          ),
         ),
         // --- GROUNDING SWITCH ---
         SwitchListTile(
@@ -527,9 +551,23 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         const Divider(),
 
         // --- ADVANCED SYSTEM PROMPT SECTION ---
-        Text("Advanced System Prompt", style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
-        const SizedBox(height: 5),
-
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text("Advanced System Prompt", style: TextStyle(fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize, color: themeProvider.appThemeColor, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+          value: chatProvider.enableAdvancedSystemPrompt,
+          activeThumbColor: themeProvider.appThemeColor,
+          onChanged: (val) {
+            chatProvider.setEnableAdvancedSystemPrompt(val);
+            chatProvider.saveSettings();
+          },
+        ),
+        
+        Opacity(
+          opacity: chatProvider.enableAdvancedSystemPrompt ? 1.0 : 0.5,
+          child: AbsorbPointer(
+            absorbing: !chatProvider.enableAdvancedSystemPrompt,
+            child: Column(
+              children: [
         Container(
           decoration: BoxDecoration(
             color: Colors.black26,
@@ -749,6 +787,10 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           ],
         ),
         const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
         const Divider(),
       ],
     );

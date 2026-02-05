@@ -118,12 +118,12 @@ class ChatApiService {
     required List<String> imagePaths,
 
     // Settings
-    double temperature = 1.0,
-    double topP = 0.95,
-    int topK = 40,
-    int maxTokens = 8192,
-    bool enableGrounding = false, 
-    String reasoningEffort = "none", 
+    double? temperature,
+    double? topP,
+    int? topK,
+    int? maxTokens,
+    bool enableGrounding = false,
+    String? reasoningEffort,
     Map<String, String>? extraHeaders,
     bool includeUsage = false,
   }) async* {
@@ -198,15 +198,16 @@ class ChatApiService {
     }
 
     // 2. Request Body
-    final bodyMap = {
+    final Map<String, dynamic> bodyMap = {
       "model": model.trim(),
       "messages": messagesPayload,
-      "temperature": temperature,
-      "stream": true, 
-      "top_p": topP,
-      "top_k": topK,
-      "max_tokens": maxTokens,
+      "stream": true,
     };
+
+    if (temperature != null) bodyMap["temperature"] = temperature;
+    if (topP != null) bodyMap["top_p"] = topP;
+    if (topK != null) bodyMap["top_k"] = topK;
+    if (maxTokens != null) bodyMap["max_tokens"] = maxTokens;
 
     if (includeUsage) {
       bodyMap["stream_options"] = {"include_usage": true};
@@ -218,9 +219,9 @@ class ChatApiService {
     }
 
     // Apply Reasoning Effort if supported
-    if (reasoningEffort != "none") {
+    if (reasoningEffort != null && reasoningEffort != "none") {
       // 1. OpenRouter Standard (often uses 'reasoning' block or provider-specific parameters)
-      bodyMap["reasoning_effort"] = reasoningEffort; 
+      bodyMap["reasoning_effort"] = reasoningEffort;
       }
 
     if (enableGrounding) {

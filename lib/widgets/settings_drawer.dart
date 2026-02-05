@@ -51,8 +51,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _openRouterModelController = TextEditingController(text: chatProvider.openRouterModel);
     _groqModelController = TextEditingController(text: chatProvider.groqModel);
     
-    _advancedPromptController = TextEditingController();
-    _mainPromptController = TextEditingController();
+    _advancedPromptController = TextEditingController(text: chatProvider.advancedSystemInstruction);
+    _mainPromptController = TextEditingController(text: chatProvider.systemInstruction);
 
     // Initialize last synced values
     _lastSyncedApiKey = _apiKeyController.text;
@@ -89,19 +89,11 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   void _handleSaveSettings() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     
-    // 1. Construct System Prompt
-    String finalPrompt;
-    String advanced = _advancedPromptController.text.trim();
-    String main = _mainPromptController.text.trim();
-    
-    if (advanced.isNotEmpty && main.isNotEmpty) {
-      finalPrompt = "$advanced\n\n$main";
-    } else {
-      finalPrompt = advanced + main;
-    }
-    
+    // 1. Save System Prompts (Separately)
+    chatProvider.setSystemInstruction(_mainPromptController.text.trim());
+    chatProvider.setAdvancedSystemInstruction(_advancedPromptController.text.trim());
+
     // 2. Save All Values to Provider
-    chatProvider.setSystemInstruction(finalPrompt);
     chatProvider.setApiKey(_apiKeyController.text.trim());
     chatProvider.setLocalIp(_localIpController.text.trim());
     chatProvider.setTitle(_titleController.text.trim());
@@ -160,11 +152,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     }
 
     // 6. Check System Prompt
-    String advanced = _advancedPromptController.text.trim();
-    String main = _mainPromptController.text.trim(); // Use trim for comparison consistency
-    String finalPrompt = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main;
-    
-    if (finalPrompt != chatProvider.systemInstruction) hasChanges = true;
+    if (_mainPromptController.text.trim() != chatProvider.systemInstruction) hasChanges = true;
+    if (_advancedPromptController.text.trim() != chatProvider.advancedSystemInstruction) hasChanges = true;
 
     if (_hasUnsavedChanges != hasChanges) {
       setState(() {

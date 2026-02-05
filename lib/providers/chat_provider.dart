@@ -101,13 +101,21 @@ class ChatProvider extends ChangeNotifier {
   double _temperature = 1.0;
   double _topP = 0.95;
   int _topK = 40;
-  int _maxOutputTokens = 32768;
+  int _maxOutputTokens = 8192;
   int _historyLimit = 500;
   bool _enableGrounding = false;
   bool _enableImageGen = false;
   bool _enableUsage = false;
   bool _disableSafety = true;
   String _reasoningEffort = "none";
+
+  // Toggles
+  bool _enableSystemPrompt = true;
+  bool _enableAdvancedSystemPrompt = true;
+  bool _enableMsgHistory = true;
+  bool _enableReasoning = false;
+  bool _enableGenerationSettings = true;
+  bool _enableMaxOutputTokens = true;
 
   double get temperature => _temperature;
   double get topP => _topP;
@@ -120,6 +128,13 @@ class ChatProvider extends ChangeNotifier {
   bool get disableSafety => _disableSafety;
   String get reasoningEffort => _reasoningEffort;
 
+  bool get enableSystemPrompt => _enableSystemPrompt;
+  bool get enableAdvancedSystemPrompt => _enableAdvancedSystemPrompt;
+  bool get enableMsgHistory => _enableMsgHistory;
+  bool get enableReasoning => _enableReasoning;
+  bool get enableGenerationSettings => _enableGenerationSettings;
+  bool get enableMaxOutputTokens => _enableMaxOutputTokens;
+
   // Session Data
   List<ChatMessage> _messages = [];
   List<ChatSessionData> _savedSessions = [];
@@ -127,6 +142,7 @@ class ChatProvider extends ChangeNotifier {
   int _tokenCount = 0;
   String _currentTitle = "";
   String _systemInstruction = "";
+  String _advancedSystemInstruction = "";
 
   List<ChatMessage> get messages => _messages;
   List<ChatSessionData> get savedSessions => _savedSessions;
@@ -134,6 +150,7 @@ class ChatProvider extends ChangeNotifier {
   int get tokenCount => _tokenCount;
   String get currentTitle => _currentTitle;
   String get systemInstruction => _systemInstruction;
+  String get advancedSystemInstruction => _advancedSystemInstruction;
 
   // System Prompts Library
   List<SystemPromptData> _savedSystemPrompts = [];
@@ -262,12 +279,20 @@ class ChatProvider extends ChangeNotifier {
     // Load Other Settings
     _topP = prefs.getDouble('airp_top_p') ?? 0.95;
     _topK = prefs.getInt('airp_top_k') ?? 40;
-    _maxOutputTokens = prefs.getInt('airp_max_output') ?? 32768;
+    _maxOutputTokens = prefs.getInt('airp_max_output') ?? 8192;
     _historyLimit = prefs.getInt('airp_history_limit') ?? 500;
     _temperature = prefs.getDouble('airp_temperature') ?? 1.0;
     _enableUsage = prefs.getBool('airp_enable_usage') ?? false;
     _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
     _systemInstruction = prefs.getString('airp_default_system_instruction') ?? '';
+    _advancedSystemInstruction = prefs.getString('airp_advanced_system_instruction') ?? '';
+
+    _enableSystemPrompt = prefs.getBool('airp_enable_system_prompt') ?? true;
+    _enableAdvancedSystemPrompt = prefs.getBool('airp_enable_advanced_system_prompt') ?? true;
+    _enableMsgHistory = prefs.getBool('airp_enable_msg_history') ?? true;
+    _enableReasoning = prefs.getBool('airp_enable_reasoning') ?? false;
+    _enableGenerationSettings = prefs.getBool('airp_enable_generation_settings') ?? true;
+    _enableMaxOutputTokens = prefs.getBool('airp_enable_max_output_tokens') ?? true;
 
     notifyListeners();
 
@@ -311,6 +336,11 @@ class ChatProvider extends ChangeNotifier {
 
   void setSystemInstruction(String instruction) {
     _systemInstruction = instruction;
+    notifyListeners();
+  }
+
+  void setAdvancedSystemInstruction(String instruction) {
+    _advancedSystemInstruction = instruction;
     notifyListeners();
   }
 
@@ -395,6 +425,13 @@ class ChatProvider extends ChangeNotifier {
   void setEnableUsage(bool val) { _enableUsage = val; notifyListeners(); }
   void setReasoningEffort(String val) { _reasoningEffort = val; notifyListeners(); }
 
+  void setEnableSystemPrompt(bool val) { _enableSystemPrompt = val; notifyListeners(); }
+  void setEnableAdvancedSystemPrompt(bool val) { _enableAdvancedSystemPrompt = val; notifyListeners(); }
+  void setEnableMsgHistory(bool val) { _enableMsgHistory = val; notifyListeners(); }
+  void setEnableReasoning(bool val) { _enableReasoning = val; notifyListeners(); }
+  void setEnableGenerationSettings(bool val) { _enableGenerationSettings = val; notifyListeners(); }
+  void setEnableMaxOutputTokens(bool val) { _enableMaxOutputTokens = val; notifyListeners(); }
+
   Future<void> saveSettings({bool showConfirmation = true}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(ApiConstants.prefKeyGemini, _geminiKey);
@@ -421,6 +458,14 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setBool('airp_enable_usage', _enableUsage);
     await prefs.setString('airp_reasoning_effort', _reasoningEffort);
     await prefs.setString('airp_default_system_instruction', _systemInstruction);
+    await prefs.setString('airp_advanced_system_instruction', _advancedSystemInstruction);
+
+    await prefs.setBool('airp_enable_system_prompt', _enableSystemPrompt);
+    await prefs.setBool('airp_enable_advanced_system_prompt', _enableAdvancedSystemPrompt);
+    await prefs.setBool('airp_enable_msg_history', _enableMsgHistory);
+    await prefs.setBool('airp_enable_reasoning', _enableReasoning);
+    await prefs.setBool('airp_enable_generation_settings', _enableGenerationSettings);
+    await prefs.setBool('airp_enable_max_output_tokens', _enableMaxOutputTokens);
 
     if (_currentSessionId != null) {
       autoSaveCurrentSession();
@@ -456,8 +501,14 @@ class ChatProvider extends ChangeNotifier {
             ]
           : [];
 
-      String finalSystemInstruction = _systemInstruction;
-      if (_currentProvider == AiProvider.gemini && (_reasoningEffort != "none" || _selectedModel.contains("thinking"))) {
+      String finalSystemInstruction = "";
+      if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
+      if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
+        if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
+        finalSystemInstruction += _advancedSystemInstruction;
+      }
+
+      if (_currentProvider == AiProvider.gemini && _enableReasoning && (_reasoningEffort != "none" || _selectedModel.contains("thinking"))) {
          finalSystemInstruction += "\n\n[SYSTEM: You are a reasoning model. You MUST enclose your internal thought process in <think> and </think> tags before your final response.";
          if (_reasoningEffort != "none") {
             finalSystemInstruction += " Reasoning Effort: $_reasoningEffort.";
@@ -472,17 +523,18 @@ class ChatProvider extends ChangeNotifier {
             ? Content.system(finalSystemInstruction)
             : null,
           generationConfig: GenerationConfig(
-            temperature: _temperature,
-            topP: _topP,
-            topK: _topK,
-            maxOutputTokens: _maxOutputTokens,
+            temperature: _enableGenerationSettings ? _temperature : null,
+            topP: _enableGenerationSettings ? _topP : null,
+            topK: _enableGenerationSettings ? _topK : null,
+            maxOutputTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
           ),
           safetySettings: safetySettings,
         );
       
       // Rebuild history for Gemini Chat Session
       List<Content> history = [];
-      int startIndex = _messages.length - _historyLimit;
+      int effectiveHistoryLimit = _enableMsgHistory ? _historyLimit : 0;
+      int startIndex = _messages.length - effectiveHistoryLimit;
       if (startIndex < 0) startIndex = 0;
       final limitedMessages = _messages.sublist(startIndex);
 
@@ -545,12 +597,19 @@ class ChatProvider extends ChangeNotifier {
             }
          }
 
+         String finalSystemInstruction = "";
+         if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
+         if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
+           if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
+           finalSystemInstruction += _advancedSystemInstruction;
+         }
+
          final result = await ChatApiService.performGeminiGrounding(
             apiKey: activeKey,
             model: _selectedModel,
             history: _messages.sublist(0, _messages.length - 1),
             userMessage: messageText,
-            systemInstruction: _systemInstruction,
+            systemInstruction: finalSystemInstruction,
             disableSafety: _disableSafety,
             thoughtSignature: previousSignature,
          );
@@ -639,8 +698,9 @@ class ChatProvider extends ChangeNotifier {
         String apiKey = "";
         Map<String, String>? headers;
 
-        final contextMessages = _messages.sublist(0, _messages.length - 2); 
-        int startIndex = contextMessages.length - _historyLimit;
+        final contextMessages = _messages.sublist(0, _messages.length - 2);
+        int effectiveHistoryLimit = _enableMsgHistory ? _historyLimit : 0;
+        int startIndex = contextMessages.length - effectiveHistoryLimit;
         if (startIndex < 0) startIndex = 0;
         final limitedHistory = contextMessages.sublist(startIndex);
 
@@ -677,20 +737,27 @@ class ChatProvider extends ChangeNotifier {
           apiKey = "local-key";
         }
 
+        String finalSystemInstruction = "";
+        if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
+        if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
+          if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
+          finalSystemInstruction += _advancedSystemInstruction;
+        }
+
         responseStream = ChatApiService.streamOpenAiCompatible(
           apiKey: apiKey,
           baseUrl: baseUrl,
           model: _currentProvider == AiProvider.local ? _localModelName : _selectedModel,
           history: limitedHistory,
-          systemInstruction: _systemInstruction,
+          systemInstruction: finalSystemInstruction,
           userMessage: messageText,
           imagePaths: imagesToSend,
-          temperature: _temperature,
-          topP: _topP,
-          topK: _topK,
-          maxTokens: _maxOutputTokens,
+          temperature: _enableGenerationSettings ? _temperature : null,
+          topP: _enableGenerationSettings ? _topP : null,
+          topK: _enableGenerationSettings ? _topK : null,
+          maxTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
           enableGrounding: _enableGrounding,
-          reasoningEffort: _reasoningEffort,
+          reasoningEffort: _enableReasoning ? _reasoningEffort : null,
           extraHeaders: headers,
           includeUsage: _enableUsage,
         );
@@ -827,13 +894,20 @@ class ChatProvider extends ChangeNotifier {
       providerStr = 'groq';
     }
 
+    String finalSystemInstruction = "";
+    if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
+    if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
+      if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
+      finalSystemInstruction += _advancedSystemInstruction;
+    }
+
     final sessionData = ChatSessionData(
       id: _currentSessionId!,
       title: title,
       messages: List.from(_messages),
       modelName: _selectedModel,
       tokenCount: _tokenCount,
-      systemInstruction: _systemInstruction,
+      systemInstruction: finalSystemInstruction,
       backgroundImage: backgroundImagePath,
       provider: providerStr,
     );

@@ -190,12 +190,14 @@ Slide from the **right** edge or tap the **Settings** icon.
 **AIRP** features a layered prompting system designed for complex roleplay and character consistency.
 
 1.  **Main System Prompt**:
+    *   **Toggle**: Enable or disable the entire System Prompt section with a single switch.
     *   This is your "World Rulebook" or "Main Persona".
     *   Type directly into the large text box in the settings drawer.
     *   **Save/Load**: Use the dropdown menu to save your prompt to a local library for later use.
 
 2.  **Advanced Tweaks (Character Cards)**:
     *   Below the main prompt, expand the **"Advanced System Prompt"** section.
+    *   **Toggle**: Enable or disable all advanced tweaks with a single switch.
     *   **Create Rules**: Add small, specific instructions (e.g., "Always speak in rhymes", "User is an enemy", "Enable Kaomoji").
     *   **Toggle**: Each rule has a switch. You can turn them ON or OFF dynamically between turns without deleting the text.
     *   **Edit**: Tap the **Pencil Icon** to modify a rule's name or content.
@@ -205,17 +207,25 @@ Slide from the **right** edge or tap the **Settings** icon.
 
 ## Advanced Generation Controls
 
-Fine-tune how the AI behaves using the **Settings Drawer**. All sliders support manual numeric input for precision.
+Fine-tune how the AI behaves using the **Settings Drawer**. Each section can be toggled ON or OFF to simplify the interface or disable specific behaviors. All sliders support manual numeric input for precision.
 
-*   **Temperature (Creativity)**: Controls randomness.
-    *   **High (1.0 - 2.0)**: Creative, unpredictable, and diverse responses.
-    *   **Low (0.0 - 0.5)**: Focused, deterministic, and logical responses.
-*   **Top P (Nucleus Sampling)**: Limits the token selection to the top cumulative probability. Lower values (e.g., 0.9) make the text more coherent and less prone to "hallucinations."
-*   **Top K (Vocabulary Size)**: Restricts the AI to choosing from the top `K` most likely next words.
-*   **Max Output Tokens**: Sets the hard limit on response length. Increase this for longer stories or code generation.
-*   **Context Memory Limit**: Controls how many past messages are sent to the AI.
-    *   **Slider**: Adjusts the truncation window (e.g., last 20 messages).
-    *   **Usage**: Lower this if you encounter "Context Window Exceeded" errors or want to reduce API costs.
+*   **Message History**:
+    *   **Toggle**: Enable or disable sending past messages to the AI.
+    *   **Context Memory Limit**: Adjusts the truncation window (e.g., last 20 messages). Lower this if you encounter "Context Window Exceeded" errors.
+
+*   **Reasoning Mode**:
+    *   **Toggle**: Enable "Thinking" models (if supported by the provider).
+    *   **Effort**: Set the depth of thought (Low, Medium, High).
+
+*   **Generation Settings**:
+    *   **Toggle**: Enable or disable manual control over Temperature, Top P, and Top K.
+    *   **Temperature (Creativity)**: Controls randomness. High (1.0 - 2.0) for creativity, Low (0.0 - 0.5) for logic.
+    *   **Top P (Nucleus Sampling)**: Limits token selection to top cumulative probability.
+    *   **Top K (Vocabulary Size)**: Restricts the AI to the top `K` most likely next words.
+
+*   **Max Output Tokens**:
+    *   **Toggle**: Enable or disable the output token limit.
+    *   **Slider**: Sets the hard limit on response length (up to 8192 tokens).
 
 ---
 

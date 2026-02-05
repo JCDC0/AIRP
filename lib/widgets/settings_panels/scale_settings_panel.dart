@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../settings_slider.dart';
+import 'settings_slider.dart';
 
 class ScaleSettingsPanel extends StatelessWidget {
   const ScaleSettingsPanel({super.key});
