@@ -23,7 +23,7 @@ class SettingsHeader extends StatelessWidget {
             shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
           )
         ),
-        Text("v0.5.2.1 Exp.",
+        Text("v0.5.2.2 Exp.",
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize + 4,
             fontWeight: FontWeight.bold,

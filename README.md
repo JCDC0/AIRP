@@ -68,49 +68,49 @@ This app follows a **BYOK (Bring Your Own Key)** architecture. Keys are stored l
 
 ### 1. Google Gemini
 1.  Obtain an API key from [Google AI Studio](https://aistudio.google.com/).  
-2.  Select **AIRP - Gemini** from the top dropdown.
+2.  Select **Gemini** from the top dropdown.
 3.  Open the **Settings Drawer** (slide from right or click the gear icon).
 4.  Paste your key into the API Key field.
 5.  **Important:** Click the **Floating Save Button** (cyan circle) that appears at the bottom right.
 
 ### 2. OpenRouter
 1.  Obtain an API key from [OpenRouter.ai](https://openrouter.ai/).
-2.  Select **AIRP - OpenRouter** from the top dropdown.
+2.  Select **OpenRouter** from the top dropdown.
 3.  Open the **Settings Drawer**.
 4.  Paste your key.
 5.  **Important:** Click the **Floating Save Button**.
 
 ### 3. OpenAI
 1.  Obtain an API key from [OpenAI Platform](https://platform.openai.com/).
-2.  Select **AIRP - OpenAI** from the top dropdown.
+2.  Select **OpenAI** from the top dropdown.
 3.  Open the **Settings Drawer**.
 4.  Paste your key.
 5.  **Important:** Click the **Floating Save Button**.
 
 ### 4. HuggingFace (Serverless Inference)
 1.  Obtain an Access Token from [HuggingFace Settings](https://huggingface.co/settings/tokens).
-2.  Select **AIRP - HuggingFace** from the top dropdown.
+2.  Select **HuggingFace** from the top dropdown.
 3.  Open the **Settings Drawer**.
 4.  Paste your token.
 5.  **Important:** Click the **Floating Save Button**.
 
 ### 5. ArliAI
 1.  Obtain an API key from [ArliAI](https://arliai.com/).
-2.  Select **AIRP - ArliAI** from the top dropdown.
+2.  Select **ArliAI** from the top dropdown.
 3.  Open the **Settings Drawer**.
 4.  Paste your key.
 5.  **Important:** Click the **Floating Save Button**.
 
 ### 6. NanoGPT
 1.  Obtain an API key from [NanoGPT](https://nano-gpt.com/).
-2.  Select **AIRP - NanoGPT** from the top dropdown.
+2.  Select **NanoGPT** from the top dropdown.
 3.  Open the **Settings Drawer**.
 4.  Paste your key.
 5.  **Important:** Click the **Floating Save Button**.
 
 ### 7. Groq
 1.  Obtain an API key from [Groq Console](https://console.groq.com/).
-2.  Select **AIRP - Groq** from the top dropdown.
+2.  Select **Groq** from the top dropdown.
 3.  Open the **Settings Drawer**.
 4.  Paste your key.
 5.  **Important:** Click the **Floating Save Button**.
@@ -123,7 +123,7 @@ Connect to an LLM running on your own computer or home server.
     *   **Ollama**: Run `OLLAMA_HOST=0.0.0.0 ollama serve`.
 2.  **Find your IP**: Get the IPv4 address of your computer (e.g., `192.168.1.15` and add the port number next to it that comes with your local AI service).
 3.  **Configure AIRP**:
-        *   Select **AIRP - Local** from the top dropdown.
+        *   Select **Local** from the top dropdown.
     *   Open the **Settings Drawer**.
     *   Enter the URL in the **Local Server Address** field.
         *   Format: `http://<YOUR_PC_IP>:<PORT>/v1`

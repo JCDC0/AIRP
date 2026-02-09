@@ -29,7 +29,7 @@ class _ChatInputAreaState extends State<ChatInputArea> with TickerProviderStateM
     super.initState();
     _orbitController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3000),
+      duration: const Duration(milliseconds: 4000),
     );
   }
 
@@ -516,7 +516,7 @@ class _ChatInputAreaState extends State<ChatInputArea> with TickerProviderStateM
                         animation: _orbitController,
                         builder: (context, child) {
                           return CustomPaint(
-                            foregroundPainter: isLoading ? DotOrbitPainter(
+                            foregroundPainter: isLoading ? LineOrbitPainter(
                               progress: _orbitController.value,
                               color: Colors.white,
                               bloomColor: themeProvider.appThemeColor,
@@ -596,13 +596,13 @@ class _ChatInputAreaState extends State<ChatInputArea> with TickerProviderStateM
   }
 }
 
-class DotOrbitPainter extends CustomPainter {
+class LineOrbitPainter extends CustomPainter {
   final double progress;
   final Color color;
   final Color bloomColor;
   final bool enableBloom;
 
-  DotOrbitPainter({
+  LineOrbitPainter({
     required this.progress,
     required this.color,
     required this.bloomColor,
@@ -621,33 +621,50 @@ class DotOrbitPainter extends CustomPainter {
     final ui.PathMetric metric = metrics.first;
     final double pathLength = metric.length;
 
-    final Paint dotPaint = Paint()..color = color;
-    final Paint bloomPaint = Paint()
-      ..color = bloomColor.withValues(alpha: 0.4)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    final Paint linePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = ui.StrokeCap.round;
 
-    // Draw 4 dots with different offsets and speeds
-    final List<Map<String, double>> dots = [
-      {'speed': 1.0, 'offset': 0.0, 'size': 2.0},
-      {'speed': 1.5, 'offset': 0.2, 'size': 1.5},
-      {'speed': 0.8, 'offset': 0.5, 'size': 2.5},
-      {'speed': 1.2, 'offset': 0.7, 'size': 1.8},
+    final Paint bloomPaint = Paint()
+      ..color = bloomColor.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3)
+      ..strokeCap = ui.StrokeCap.round;
+
+    // Define 3 lines with unique curves and properties for organic "randomness"
+    final List<Map<String, dynamic>> lines = [
+      {'speed': 1.0, 'offset': 0.15, 'length': 0.2, 'curve': Curves.easeInOutSine},
+      {'speed': 1.5, 'offset': 0.45, 'length': 0.15, 'curve': Curves.fastOutSlowIn},
+      {'speed': 0.8, 'offset': 0.75, 'length': 0.25, 'curve': Curves.slowMiddle},
     ];
 
-    for (var dot in dots) {
-      double dotProgress = (progress * dot['speed']! + dot['offset']!) % 1.0;
-      ui.Tangent? tangent = metric.getTangentForOffset(dotProgress * pathLength);
+    for (var line in lines) {
+      // Apply unique curve per line
+      double p = (progress * (line['speed'] as double) + (line['offset'] as double)) % 1.0;
+      double curvedP = (line['curve'] as Curve).transform(p);
       
-      if (tangent != null) {
-        if (enableBloom) {
-          canvas.drawCircle(tangent.position, dot['size']! + 2, bloomPaint);
-        }
-        canvas.drawCircle(tangent.position, dot['size']!, dotPaint);
+      double startOffset = curvedP * pathLength;
+      double segmentLength = (line['length'] as double) * pathLength;
+      
+      Path extract;
+      if (startOffset + segmentLength <= pathLength) {
+        extract = metric.extractPath(startOffset, startOffset + segmentLength);
+      } else {
+        extract = metric.extractPath(startOffset, pathLength);
+        extract.addPath(metric.extractPath(0, (startOffset + segmentLength) % pathLength), Offset.zero);
       }
+
+      if (enableBloom) {
+        canvas.drawPath(extract, bloomPaint);
+      }
+      canvas.drawPath(extract, linePaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant DotOrbitPainter oldDelegate) => 
+  bool shouldRepaint(covariant LineOrbitPainter oldDelegate) => 
     oldDelegate.progress != progress || oldDelegate.enableBloom != enableBloom;
 }

@@ -13,20 +13,20 @@ void main() {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => ScaleProvider()),
       ],
-      child: const GeminiChatApp(),
+      child: const AIRP(),
     ),
   );
 }
 
-class GeminiChatApp extends StatelessWidget {
-  const GeminiChatApp({super.key});
+class AIRP extends StatelessWidget {
+  const AIRP({super.key});
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
-      title: 'AIRP - Gemini Chat',
+      title: 'AIRP',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,

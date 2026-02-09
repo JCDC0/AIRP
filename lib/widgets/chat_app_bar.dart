@@ -69,88 +69,88 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           chatProvider.setProvider(result);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Switched to ${result.name.toUpperCase()}")));
         },
-        itemBuilder: (BuildContext context) => <PopupMenuEntry<AiProvider>>[
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.gemini,
-            child: Row(children: [Icon(Icons.auto_awesome, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - Gemini', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.openRouter,
-            child: Row(children: [Icon(Icons.router, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - OpenRouter', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.arliAi,
-            child: Row(children: [Icon(Icons.alternate_email, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - ArliAI', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.nanoGpt,
-            child: Row(children: [Icon(Icons.bolt, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - NanoGPT', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.local,
-            child: Row(children: [Icon(Icons.laptop_mac, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - Local', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.openAi,
-            child: Row(children: [Icon(Icons.auto_awesome_mosaic, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - OpenAI', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.huggingFace,
-            child: Row(children: [Icon(Icons.emoji_emotions, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - HuggingFace', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.groq,
-            child: Row(children: [Icon(Icons.speed, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('AIRP - Groq', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
-          ),
-        ],
-        child: SizedBox(
-          width: 300 + (scaleProvider.systemFontSize * 10),
-          child: Padding(
-            padding: EdgeInsets.only(
-              top: scaleProvider.systemFontSize * 1,
-              bottom: scaleProvider.systemFontSize * 0.6,
-              left: 8.0,
-              right: 8.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 1. Token Counter (Top Line)
-                Text(
-                  "Context: ${chatProvider.tokenCount} / 1,048,576",
-                  style: TextStyle(
-                    color: tokenColor.withOpacity(0.8),
-                    fontSize: scaleProvider.systemFontSize - 2,
-                    fontWeight: FontWeight.w600,
-                    shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 6)] : [],
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<AiProvider>>[
+                  PopupMenuItem<AiProvider>(
+                    height: scaleProvider.systemFontSize * 2.5,
+                    value: AiProvider.gemini,
+                    child: Row(children: [Icon(Icons.auto_awesome, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('Gemini', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
                   ),
-                ),
-                SizedBox(height: 2),
-                // 2. Provider Selector (Middle Line)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'AIRP - $providerName',
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      softWrap: false,
-                      style: TextStyle(
-                        color: themeProvider.appThemeColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize + 4,
-                        shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] : [],
-                      ),
+                  PopupMenuItem<AiProvider>(
+                    height: scaleProvider.systemFontSize * 2.5,
+                    value: AiProvider.openRouter,
+                    child: Row(children: [Icon(Icons.router, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('OpenRouter', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
+                  ),
+                  PopupMenuItem<AiProvider>(
+                    height: scaleProvider.systemFontSize * 2.5,
+                    value: AiProvider.arliAi,
+                    child: Row(children: [Icon(Icons.alternate_email, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('ArliAI', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
+                  ),
+                  PopupMenuItem<AiProvider>(
+                    height: scaleProvider.systemFontSize * 2.5,
+                    value: AiProvider.nanoGpt,
+                    child: Row(children: [Icon(Icons.bolt, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('NanoGPT', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
+                  ),
+                  PopupMenuItem<AiProvider>(
+                    height: scaleProvider.systemFontSize * 2.5,
+                    value: AiProvider.local,
+                    child: Row(children: [Icon(Icons.laptop_mac, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('Local', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
+                  ),
+                  PopupMenuItem<AiProvider>(
+                    height: scaleProvider.systemFontSize * 2.5,
+                    value: AiProvider.openAi,
+                    child: Row(children: [Icon(Icons.auto_awesome_mosaic, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('OpenAI', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
+                  ),
+                  PopupMenuItem<AiProvider>(
+                    height: scaleProvider.systemFontSize * 2.5,
+                    value: AiProvider.huggingFace,
+                    child: Row(children: [Icon(Icons.emoji_emotions, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('HuggingFace', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
+                  ),
+                  PopupMenuItem<AiProvider>(
+                    height: scaleProvider.systemFontSize * 2.5,
+                    value: AiProvider.groq,
+                    child: Row(children: [Icon(Icons.speed, color: themeProvider.appThemeColor), const SizedBox(width: 8), Text('Groq', style: TextStyle(fontSize: scaleProvider.systemFontSize))]),
+                  ),
+                ],
+                child: SizedBox(
+                  width: 300 + (scaleProvider.systemFontSize * 10),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: scaleProvider.systemFontSize * 1,
+                      bottom: scaleProvider.systemFontSize * 0.6,
+                      left: 8.0,
+                      right: 8.0,
                     ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 1. Token Counter (Top Line)
+                        Text(
+                          "Context: ${chatProvider.tokenCount} / 1,048,576",
+                          style: TextStyle(
+                            color: tokenColor.withOpacity(0.8),
+                            fontSize: scaleProvider.systemFontSize - 2,
+                            fontWeight: FontWeight.w600,
+                            shadows: themeProvider.enableBloom ? [Shadow(color: tokenColor, blurRadius: 6)] : [],
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        // 2. Provider Selector (Middle Line)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              providerName,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                color: themeProvider.appThemeColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: scaleProvider.systemFontSize + 4,
+                                shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)] : [],
+                              ),
+                            ),
                     const SizedBox(width: 4),
                     Icon(Icons.arrow_drop_down, color: themeProvider.appThemeColor, size: 18),
                   ],

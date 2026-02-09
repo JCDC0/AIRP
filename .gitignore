@@ -46,3 +46,4 @@ app.*.map.json
 /android/app/release
 *.env
 main.dart.txt
+GEMINI.md
