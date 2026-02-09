@@ -26,7 +26,9 @@ class ChatMessagesList extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return SafeArea(
           child: Padding(
@@ -36,69 +38,84 @@ class ChatMessagesList extends StatelessWidget {
               children: [
                 // Little handle bar
                 Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    color: Colors.grey[600], 
+                    color: Colors.grey[600],
                     borderRadius: BorderRadius.circular(2),
-                    boxShadow: useBloom ? [const BoxShadow(color: Colors.white24, blurRadius: 6)] : [],
+                    boxShadow: useBloom
+                        ? [
+                            const BoxShadow(
+                              color: Colors.white24,
+                              blurRadius: 6,
+                            ),
+                          ]
+                        : [],
                   ),
                 ),
-                
+
                 // THE ICON ROW
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     // 1. COPY
                     _buildMenuIcon(
-                      icon: Icons.copy, 
-                      label: "Copy", 
+                      icon: Icons.copy,
+                      label: "Copy",
                       color: themeProvider.appThemeColor,
                       useBloom: useBloom,
                       onTap: () {
                         Navigator.pop(context);
                         Clipboard.setData(ClipboardData(text: msg.text));
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Copied!"), duration: Duration(milliseconds: 800)));
-                      }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Copied!"),
+                            duration: Duration(milliseconds: 800),
+                          ),
+                        );
+                      },
                     ),
 
                     // 2. EDIT
                     _buildMenuIcon(
-                      icon: Icons.edit, 
-                      label: "Edit", 
-                      color: Colors.orangeAccent, 
+                      icon: Icons.edit,
+                      label: "Edit",
+                      color: Colors.orangeAccent,
                       useBloom: useBloom,
                       onTap: () {
                         Navigator.pop(context);
                         _showEditDialog(context, index);
-                      }
+                      },
                     ),
 
                     // 3. REGENERATE
                     Opacity(
                       opacity: isLastMessage ? 1.0 : 0.3,
                       child: _buildMenuIcon(
-                        icon: Icons.refresh, 
-                        label: "Retry", 
-                        color: Colors.greenAccent, 
+                        icon: Icons.refresh,
+                        label: "Retry",
+                        color: Colors.greenAccent,
                         useBloom: useBloom,
-                        onTap: isLastMessage ? () {
-                          Navigator.pop(context);
-                          _confirmRegenerate(context, index);
-                        } : null
+                        onTap: isLastMessage
+                            ? () {
+                                Navigator.pop(context);
+                                _confirmRegenerate(context, index);
+                              }
+                            : null,
                       ),
                     ),
 
                     // 4. DELETE
                     _buildMenuIcon(
-                      icon: Icons.delete, 
-                      label: "Delete", 
-                      color: Colors.redAccent, 
+                      icon: Icons.delete,
+                      label: "Delete",
+                      color: Colors.redAccent,
                       useBloom: useBloom,
                       onTap: () {
-                        Navigator.pop(context); 
-                        _confirmDeleteMessage(context, index); 
-                      }
+                        Navigator.pop(context);
+                        _confirmDeleteMessage(context, index);
+                      },
                     ),
                   ],
                 ),
@@ -110,19 +127,27 @@ class ChatMessagesList extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuIcon({required IconData icon, required String label, required Color color, VoidCallback? onTap, bool useBloom = false}) {
+  Widget _buildMenuIcon({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onTap,
+    bool useBloom = false,
+  }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton.filled(
           style: IconButton.styleFrom(
             backgroundColor: color.withValues(alpha: 0.1),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             padding: const EdgeInsets.all(20),
           ),
           icon: Icon(
-            icon, 
-            color: color, 
+            icon,
+            color: color,
             size: 36,
             shadows: useBloom ? [Shadow(color: color, blurRadius: 10)] : [],
           ),
@@ -130,12 +155,12 @@ class ChatMessagesList extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          label, 
+          label,
           style: TextStyle(
-            color: Colors.grey[400], 
+            color: Colors.grey[400],
             fontSize: 12,
             shadows: useBloom ? [Shadow(color: color, blurRadius: 8)] : [],
-          )
+          ),
         ),
       ],
     );
@@ -144,26 +169,42 @@ class ChatMessagesList extends StatelessWidget {
   void _showEditDialog(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final TextEditingController editController = TextEditingController(text: chatProvider.messages[index].text);
-    
+    final TextEditingController editController = TextEditingController(
+      text: chatProvider.messages[index].text,
+    );
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2C),
-        title: const Text("Edit Message", style: TextStyle(color: Colors.white)),
+        title: const Text(
+          "Edit Message",
+          style: TextStyle(color: Colors.white),
+        ),
         content: TextField(
-          controller: editController, maxLines: null,
+          controller: editController,
+          maxLines: null,
           style: const TextStyle(color: Colors.white70),
-          decoration: const InputDecoration(border: OutlineInputBorder(), filled: true, fillColor: Colors.black26,),
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.black26,
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           TextButton(
             onPressed: () {
               chatProvider.editMessage(index, editController.text);
               Navigator.pop(context);
             },
-            child: Text("Save", style: TextStyle(color: themeProvider.appThemeColor)),
+            child: Text(
+              "Save",
+              style: TextStyle(color: themeProvider.appThemeColor),
+            ),
           ),
         ],
       ),
@@ -177,8 +218,14 @@ class ChatMessagesList extends StatelessWidget {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2C),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Delete Message?", style: TextStyle(color: Colors.white)),
-        content: const Text("This cannot be undone.", style: TextStyle(color: Colors.white70)),
+        title: const Text(
+          "Delete Message?",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          "This cannot be undone.",
+          style: TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -194,7 +241,7 @@ class ChatMessagesList extends StatelessWidget {
                   content: Text("Message deleted"),
                   behavior: SnackBarBehavior.floating,
                   duration: Duration(milliseconds: 1000),
-                )
+                ),
               );
             },
             child: const Text("Delete"),
@@ -213,8 +260,8 @@ class ChatMessagesList extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text("Regenerate?", style: TextStyle(color: Colors.white)),
         content: const Text(
-          "This will delete this message and all subsequent history, then retry the generation.", 
-          style: TextStyle(color: Colors.white70)
+          "This will delete this message and all subsequent history, then retry the generation.",
+          style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -227,7 +274,10 @@ class ChatMessagesList extends StatelessWidget {
               Navigator.pop(context);
               chatProvider.regenerateResponse(index);
             },
-            child: const Text("Regenerate", style: TextStyle(color: Colors.black)),
+            child: const Text(
+              "Regenerate",
+              style: TextStyle(color: Colors.black),
+            ),
           ),
         ],
       ),
@@ -256,9 +306,12 @@ class ChatMessagesList extends StatelessWidget {
           if (themeProvider.backgroundImagePath != null)
             Positioned.fill(
               child: Container(
-                  color: Colors.black.withAlpha((themeProvider.backgroundOpacity * 255).round())),
+                color: Colors.black.withAlpha(
+                  (themeProvider.backgroundOpacity * 255).round(),
+                ),
+              ),
             ),
-          
+
           Positioned.fill(
             child: EffectsOverlay(
               showMotes: themeProvider.enableMotes,
@@ -285,9 +338,15 @@ class ChatMessagesList extends StatelessWidget {
                         themeProvider: themeProvider,
                         onLongPress: () => _showMessageOptions(context, index),
                         onCopy: () {
-                          Clipboard.setData(ClipboardData(text: messages[index].text));
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                              content: Text("Copied!"), duration: Duration(milliseconds: 600)));
+                          Clipboard.setData(
+                            ClipboardData(text: messages[index].text),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Copied!"),
+                              duration: Duration(milliseconds: 600),
+                            ),
+                          );
                         },
                         onEdit: () => _showEditDialog(context, index),
                         onRegenerate: () => _confirmRegenerate(context, index),

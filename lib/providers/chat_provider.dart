@@ -12,12 +12,12 @@ class ChatProvider extends ChangeNotifier {
   // ----------------------------------------------------------------------
   // STATE VARIABLES
   // ----------------------------------------------------------------------
-  
+
   // Loading & Status
   bool _isLoading = false;
   bool _isCancelled = false;
   StreamSubscription? _geminiSubscription;
-  
+
   bool get isLoading => _isLoading;
   bool get isCancelled => _isCancelled;
 
@@ -163,7 +163,7 @@ class ChatProvider extends ChangeNotifier {
   // Internal
   late GenerativeModel _model;
   late ChatSession _chat;
-  static const _defaultApiKey = ''; 
+  static const _defaultApiKey = '';
 
   // ----------------------------------------------------------------------
   // INITIALIZATION
@@ -199,7 +199,9 @@ class ChatProvider extends ChangeNotifier {
     if (data != null) {
       try {
         final List<dynamic> jsonList = jsonDecode(data);
-        _savedSessions = jsonList.map((j) => ChatSessionData.fromJson(j)).toList();
+        _savedSessions = jsonList
+            .map((j) => ChatSessionData.fromJson(j))
+            .toList();
         notifyListeners();
       } catch (e) {
         debugPrint("Error loading sessions: $e");
@@ -213,7 +215,9 @@ class ChatProvider extends ChangeNotifier {
     if (data != null) {
       try {
         final List<dynamic> jsonList = jsonDecode(data);
-        _savedSystemPrompts = jsonList.map((j) => SystemPromptData.fromJson(j)).toList();
+        _savedSystemPrompts = jsonList
+            .map((j) => SystemPromptData.fromJson(j))
+            .toList();
         notifyListeners();
       } catch (e) {
         debugPrint("Error loading prompts: $e");
@@ -223,7 +227,7 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Load Keys
     _geminiKey = prefs.getString(ApiConstants.prefKeyGemini) ?? '';
     _openRouterKey = prefs.getString(ApiConstants.prefKeyOpenRouter) ?? '';
@@ -232,7 +236,8 @@ class ChatProvider extends ChangeNotifier {
     _nanoGptKey = prefs.getString(ApiConstants.prefKeyNanoGpt) ?? '';
     _huggingFaceKey = prefs.getString(ApiConstants.prefKeyHuggingFace) ?? '';
     _groqKey = prefs.getString(ApiConstants.prefKeyGroq) ?? '';
-    _localIp = prefs.getString('airp_local_ip') ?? 'http://192.168.1.15:1234/v1';
+    _localIp =
+        prefs.getString('airp_local_ip') ?? 'http://192.168.1.15:1234/v1';
 
     // Load Provider
     final providerString = prefs.getString('airp_provider') ?? 'gemini';
@@ -256,21 +261,33 @@ class ChatProvider extends ChangeNotifier {
 
     // Load Lists
     _geminiModelsList = prefs.getStringList(ApiConstants.prefListGemini) ?? [];
-    _openRouterModelsList = prefs.getStringList(ApiConstants.prefListOpenRouter) ?? [];
+    _openRouterModelsList =
+        prefs.getStringList(ApiConstants.prefListOpenRouter) ?? [];
     _arliAiModelsList = prefs.getStringList(ApiConstants.prefListArliAi) ?? [];
-    _nanoGptModelsList = prefs.getStringList(ApiConstants.prefListNanoGpt) ?? [];
+    _nanoGptModelsList =
+        prefs.getStringList(ApiConstants.prefListNanoGpt) ?? [];
     _openAiModelsList = prefs.getStringList(ApiConstants.prefListOpenAi) ?? [];
-    _huggingFaceModelsList = prefs.getStringList(ApiConstants.prefListHuggingFace) ?? [];
+    _huggingFaceModelsList =
+        prefs.getStringList(ApiConstants.prefListHuggingFace) ?? [];
     _groqModelsList = prefs.getStringList(ApiConstants.prefListGroq) ?? [];
 
     // Load Selected Models
-    _selectedGeminiModel = prefs.getString(ApiConstants.prefModelGemini) ?? 'models/gemini-3-flash-preview';
-    _openRouterModel = prefs.getString(ApiConstants.prefModelOpenRouter) ?? 'z-ai/glm-4.5-air:free';
-    _arliAiModel = prefs.getString(ApiConstants.prefModelArliAi) ?? 'Mistral-Nemo-12B-Instruct-v1';
+    _selectedGeminiModel =
+        prefs.getString(ApiConstants.prefModelGemini) ??
+        'models/gemini-3-flash-preview';
+    _openRouterModel =
+        prefs.getString(ApiConstants.prefModelOpenRouter) ??
+        'z-ai/glm-4.5-air:free';
+    _arliAiModel =
+        prefs.getString(ApiConstants.prefModelArliAi) ??
+        'Mistral-Nemo-12B-Instruct-v1';
     _nanoGptModel = prefs.getString(ApiConstants.prefModelNanoGpt) ?? 'gpt-4o';
     _openAiModel = prefs.getString(ApiConstants.prefModelOpenAi) ?? 'gpt-4o';
-    _huggingFaceModel = prefs.getString(ApiConstants.prefModelHuggingFace) ?? 'meta-llama/Meta-Llama-3-8B-Instruct';
-    _groqModel = prefs.getString(ApiConstants.prefModelGroq) ?? 'llama3-8b-8192';
+    _huggingFaceModel =
+        prefs.getString(ApiConstants.prefModelHuggingFace) ??
+        'meta-llama/Meta-Llama-3-8B-Instruct';
+    _groqModel =
+        prefs.getString(ApiConstants.prefModelGroq) ?? 'llama3-8b-8192';
 
     // Determine current selected model
     // Determine current selected model
@@ -284,15 +301,20 @@ class ChatProvider extends ChangeNotifier {
     _temperature = prefs.getDouble('airp_temperature') ?? 1.0;
     _enableUsage = prefs.getBool('airp_enable_usage') ?? false;
     _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
-    _systemInstruction = prefs.getString('airp_default_system_instruction') ?? '';
-    _advancedSystemInstruction = prefs.getString('airp_advanced_system_instruction') ?? '';
+    _systemInstruction =
+        prefs.getString('airp_default_system_instruction') ?? '';
+    _advancedSystemInstruction =
+        prefs.getString('airp_advanced_system_instruction') ?? '';
 
     _enableSystemPrompt = prefs.getBool('airp_enable_system_prompt') ?? true;
-    _enableAdvancedSystemPrompt = prefs.getBool('airp_enable_advanced_system_prompt') ?? true;
+    _enableAdvancedSystemPrompt =
+        prefs.getBool('airp_enable_advanced_system_prompt') ?? true;
     _enableMsgHistory = prefs.getBool('airp_enable_msg_history') ?? true;
     _enableReasoning = prefs.getBool('airp_enable_reasoning') ?? false;
-    _enableGenerationSettings = prefs.getBool('airp_enable_generation_settings') ?? true;
-    _enableMaxOutputTokens = prefs.getBool('airp_enable_max_output_tokens') ?? true;
+    _enableGenerationSettings =
+        prefs.getBool('airp_enable_generation_settings') ?? true;
+    _enableMaxOutputTokens =
+        prefs.getBool('airp_enable_max_output_tokens') ?? true;
 
     notifyListeners();
 
@@ -308,7 +330,7 @@ class ChatProvider extends ChangeNotifier {
   void setProvider(AiProvider provider) {
     _currentProvider = provider;
     _selectedModel = _getProviderModel(provider);
-    
+
     notifyListeners();
     saveSettings(showConfirmation: false);
     if (provider == AiProvider.gemini) initializeModel();
@@ -356,81 +378,183 @@ class ChatProvider extends ChangeNotifier {
 
   String _getProviderModel(AiProvider provider) {
     switch (provider) {
-      case AiProvider.gemini: return _selectedGeminiModel;
-      case AiProvider.openRouter: return _openRouterModel;
-      case AiProvider.arliAi: return _arliAiModel;
-      case AiProvider.nanoGpt: return _nanoGptModel;
-      case AiProvider.openAi: return _openAiModel;
-      case AiProvider.huggingFace: return _huggingFaceModel;
-      case AiProvider.groq: return _groqModel;
-      case AiProvider.local: return "Local Network AI";
+      case AiProvider.gemini:
+        return _selectedGeminiModel;
+      case AiProvider.openRouter:
+        return _openRouterModel;
+      case AiProvider.arliAi:
+        return _arliAiModel;
+      case AiProvider.nanoGpt:
+        return _nanoGptModel;
+      case AiProvider.openAi:
+        return _openAiModel;
+      case AiProvider.huggingFace:
+        return _huggingFaceModel;
+      case AiProvider.groq:
+        return _groqModel;
+      case AiProvider.local:
+        return "Local Network AI";
     }
   }
 
   void _setProviderModel(AiProvider provider, String model) {
     switch (provider) {
-      case AiProvider.gemini: _selectedGeminiModel = model; break;
-      case AiProvider.openRouter: _openRouterModel = model; break;
-      case AiProvider.arliAi: _arliAiModel = model; break;
-      case AiProvider.nanoGpt: _nanoGptModel = model; break;
-      case AiProvider.openAi: _openAiModel = model; break;
-      case AiProvider.huggingFace: _huggingFaceModel = model; break;
-      case AiProvider.groq: _groqModel = model; break;
-      case AiProvider.local: break;
+      case AiProvider.gemini:
+        _selectedGeminiModel = model;
+        break;
+      case AiProvider.openRouter:
+        _openRouterModel = model;
+        break;
+      case AiProvider.arliAi:
+        _arliAiModel = model;
+        break;
+      case AiProvider.nanoGpt:
+        _nanoGptModel = model;
+        break;
+      case AiProvider.openAi:
+        _openAiModel = model;
+        break;
+      case AiProvider.huggingFace:
+        _huggingFaceModel = model;
+        break;
+      case AiProvider.groq:
+        _groqModel = model;
+        break;
+      case AiProvider.local:
+        break;
     }
   }
 
   String _getProviderKey(AiProvider provider) {
     switch (provider) {
-      case AiProvider.gemini: return _geminiKey;
-      case AiProvider.openRouter: return _openRouterKey;
-      case AiProvider.openAi: return _openAiKey;
-      case AiProvider.arliAi: return _arliAiKey;
-      case AiProvider.nanoGpt: return _nanoGptKey;
-      case AiProvider.huggingFace: return _huggingFaceKey;
-      case AiProvider.groq: return _groqKey;
-      case AiProvider.local: return "local-key";
+      case AiProvider.gemini:
+        return _geminiKey;
+      case AiProvider.openRouter:
+        return _openRouterKey;
+      case AiProvider.openAi:
+        return _openAiKey;
+      case AiProvider.arliAi:
+        return _arliAiKey;
+      case AiProvider.nanoGpt:
+        return _nanoGptKey;
+      case AiProvider.huggingFace:
+        return _huggingFaceKey;
+      case AiProvider.groq:
+        return _groqKey;
+      case AiProvider.local:
+        return "local-key";
     }
   }
 
   void _setProviderKey(AiProvider provider, String key) {
     switch (provider) {
-      case AiProvider.gemini: _geminiKey = key; break;
-      case AiProvider.openRouter: _openRouterKey = key; break;
-      case AiProvider.openAi: _openAiKey = key; break;
-      case AiProvider.arliAi: _arliAiKey = key; break;
-      case AiProvider.nanoGpt: _nanoGptKey = key; break;
-      case AiProvider.huggingFace: _huggingFaceKey = key; break;
-      case AiProvider.groq: _groqKey = key; break;
-      case AiProvider.local: break;
+      case AiProvider.gemini:
+        _geminiKey = key;
+        break;
+      case AiProvider.openRouter:
+        _openRouterKey = key;
+        break;
+      case AiProvider.openAi:
+        _openAiKey = key;
+        break;
+      case AiProvider.arliAi:
+        _arliAiKey = key;
+        break;
+      case AiProvider.nanoGpt:
+        _nanoGptKey = key;
+        break;
+      case AiProvider.huggingFace:
+        _huggingFaceKey = key;
+        break;
+      case AiProvider.groq:
+        _groqKey = key;
+        break;
+      case AiProvider.local:
+        break;
     }
   }
 
-  void setTemperature(double val) { _temperature = val; notifyListeners(); }
-  void setTopP(double val) { _topP = val; notifyListeners(); }
-  void setTopK(int val) { _topK = val; notifyListeners(); }
-  void setMaxOutputTokens(int val) { _maxOutputTokens = val; notifyListeners(); }
-  void setHistoryLimit(int val) { _historyLimit = val; notifyListeners(); }
+  void setTemperature(double val) {
+    _temperature = val;
+    notifyListeners();
+  }
+
+  void setTopP(double val) {
+    _topP = val;
+    notifyListeners();
+  }
+
+  void setTopK(int val) {
+    _topK = val;
+    notifyListeners();
+  }
+
+  void setMaxOutputTokens(int val) {
+    _maxOutputTokens = val;
+    notifyListeners();
+  }
+
+  void setHistoryLimit(int val) {
+    _historyLimit = val;
+    notifyListeners();
+  }
+
   void setEnableGrounding(bool val) {
     _enableGrounding = val;
     if (val) _enableImageGen = false;
     notifyListeners();
   }
+
   void setEnableImageGen(bool val) {
     _enableImageGen = val;
     if (val) _enableGrounding = false;
     notifyListeners();
   }
-  void setDisableSafety(bool val) { _disableSafety = val; notifyListeners(); }
-  void setEnableUsage(bool val) { _enableUsage = val; notifyListeners(); }
-  void setReasoningEffort(String val) { _reasoningEffort = val; notifyListeners(); }
 
-  void setEnableSystemPrompt(bool val) { _enableSystemPrompt = val; notifyListeners(); }
-  void setEnableAdvancedSystemPrompt(bool val) { _enableAdvancedSystemPrompt = val; notifyListeners(); }
-  void setEnableMsgHistory(bool val) { _enableMsgHistory = val; notifyListeners(); }
-  void setEnableReasoning(bool val) { _enableReasoning = val; notifyListeners(); }
-  void setEnableGenerationSettings(bool val) { _enableGenerationSettings = val; notifyListeners(); }
-  void setEnableMaxOutputTokens(bool val) { _enableMaxOutputTokens = val; notifyListeners(); }
+  void setDisableSafety(bool val) {
+    _disableSafety = val;
+    notifyListeners();
+  }
+
+  void setEnableUsage(bool val) {
+    _enableUsage = val;
+    notifyListeners();
+  }
+
+  void setReasoningEffort(String val) {
+    _reasoningEffort = val;
+    notifyListeners();
+  }
+
+  void setEnableSystemPrompt(bool val) {
+    _enableSystemPrompt = val;
+    notifyListeners();
+  }
+
+  void setEnableAdvancedSystemPrompt(bool val) {
+    _enableAdvancedSystemPrompt = val;
+    notifyListeners();
+  }
+
+  void setEnableMsgHistory(bool val) {
+    _enableMsgHistory = val;
+    notifyListeners();
+  }
+
+  void setEnableReasoning(bool val) {
+    _enableReasoning = val;
+    notifyListeners();
+  }
+
+  void setEnableGenerationSettings(bool val) {
+    _enableGenerationSettings = val;
+    notifyListeners();
+  }
+
+  void setEnableMaxOutputTokens(bool val) {
+    _enableMaxOutputTokens = val;
+    notifyListeners();
+  }
 
   Future<void> saveSettings({bool showConfirmation = true}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -457,15 +581,30 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setDouble('airp_temperature', _temperature);
     await prefs.setBool('airp_enable_usage', _enableUsage);
     await prefs.setString('airp_reasoning_effort', _reasoningEffort);
-    await prefs.setString('airp_default_system_instruction', _systemInstruction);
-    await prefs.setString('airp_advanced_system_instruction', _advancedSystemInstruction);
+    await prefs.setString(
+      'airp_default_system_instruction',
+      _systemInstruction,
+    );
+    await prefs.setString(
+      'airp_advanced_system_instruction',
+      _advancedSystemInstruction,
+    );
 
     await prefs.setBool('airp_enable_system_prompt', _enableSystemPrompt);
-    await prefs.setBool('airp_enable_advanced_system_prompt', _enableAdvancedSystemPrompt);
+    await prefs.setBool(
+      'airp_enable_advanced_system_prompt',
+      _enableAdvancedSystemPrompt,
+    );
     await prefs.setBool('airp_enable_msg_history', _enableMsgHistory);
     await prefs.setBool('airp_enable_reasoning', _enableReasoning);
-    await prefs.setBool('airp_enable_generation_settings', _enableGenerationSettings);
-    await prefs.setBool('airp_enable_max_output_tokens', _enableMaxOutputTokens);
+    await prefs.setBool(
+      'airp_enable_generation_settings',
+      _enableGenerationSettings,
+    );
+    await prefs.setBool(
+      'airp_enable_max_output_tokens',
+      _enableMaxOutputTokens,
+    );
 
     if (_currentSessionId != null) {
       autoSaveCurrentSession();
@@ -486,7 +625,9 @@ class ChatProvider extends ChangeNotifier {
       activeKey = _defaultApiKey;
     }
 
-    if (activeKey.isEmpty && _currentProvider != AiProvider.local && _currentProvider != AiProvider.huggingFace) {
+    if (activeKey.isEmpty &&
+        _currentProvider != AiProvider.local &&
+        _currentProvider != AiProvider.huggingFace) {
       // HuggingFace can work without a key for some models, but rate limited.
       debugPrint("Warning: No API Key found for ${_currentProvider.name}");
     }
@@ -496,24 +637,34 @@ class ChatProvider extends ChangeNotifier {
           ? [
               SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
               SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
-              SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
-              SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
+              SafetySetting(
+                HarmCategory.sexuallyExplicit,
+                HarmBlockThreshold.none,
+              ),
+              SafetySetting(
+                HarmCategory.dangerousContent,
+                HarmBlockThreshold.none,
+              ),
             ]
           : [];
 
       String finalSystemInstruction = "";
       if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
-      if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
+      if (_enableAdvancedSystemPrompt &&
+          _advancedSystemInstruction.isNotEmpty) {
         if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
         finalSystemInstruction += _advancedSystemInstruction;
       }
 
-      if (_currentProvider == AiProvider.gemini && _enableReasoning && (_reasoningEffort != "none" || _selectedModel.contains("thinking"))) {
-         finalSystemInstruction += "\n\n[SYSTEM: You are a reasoning model. You MUST enclose your internal thought process in <think> and </think> tags before your final response.";
-         if (_reasoningEffort != "none") {
-            finalSystemInstruction += " Reasoning Effort: $_reasoningEffort.";
-         }
-         finalSystemInstruction += "]";
+      if (_currentProvider == AiProvider.gemini &&
+          _enableReasoning &&
+          (_reasoningEffort != "none" || _selectedModel.contains("thinking"))) {
+        finalSystemInstruction +=
+            "\n\n[SYSTEM: You are a reasoning model. You MUST enclose your internal thought process in <think> and </think> tags before your final response.";
+        if (_reasoningEffort != "none") {
+          finalSystemInstruction += " Reasoning Effort: $_reasoningEffort.";
+        }
+        finalSystemInstruction += "]";
       }
 
       _model = GenerativeModel(
@@ -522,15 +673,15 @@ class ChatProvider extends ChangeNotifier {
         systemInstruction: finalSystemInstruction.isNotEmpty
             ? Content.system(finalSystemInstruction)
             : null,
-          generationConfig: GenerationConfig(
-            temperature: _enableGenerationSettings ? _temperature : null,
-            topP: _enableGenerationSettings ? _topP : null,
-            topK: _enableGenerationSettings ? _topK : null,
-            maxOutputTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
-          ),
-          safetySettings: safetySettings,
-        );
-      
+        generationConfig: GenerationConfig(
+          temperature: _enableGenerationSettings ? _temperature : null,
+          topP: _enableGenerationSettings ? _topP : null,
+          topK: _enableGenerationSettings ? _topK : null,
+          maxOutputTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
+        ),
+        safetySettings: safetySettings,
+      );
+
       // Rebuild history for Gemini Chat Session
       List<Content> history = [];
       int effectiveHistoryLimit = _enableMsgHistory ? _historyLimit : 0;
@@ -539,25 +690,31 @@ class ChatProvider extends ChangeNotifier {
       final limitedMessages = _messages.sublist(startIndex);
 
       for (var msg in limitedMessages) {
-          final String role = msg.isUser ? 'user' : 'model';
-          if (msg.isUser && msg.imagePaths.isNotEmpty) {
-              List<Part> parts = [];
-              if (msg.text.isNotEmpty) parts.add(TextPart(msg.text));
-              for (String path in msg.imagePaths) {
-                  if (await File(path).exists()) {
-                      final bytes = await File(path).readAsBytes();
-                      final mimeType = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-                      parts.add(DataPart(mimeType, bytes));
-                  }
-              }
-              history.add(Content(role, parts));
-          } else if (history.isNotEmpty && history.last.role == role) {
-              final List<Part> existingParts = history.last.parts.toList();
-              existingParts.add(TextPart("\n\n${msg.text}"));
-              history[history.length - 1] = Content(role, existingParts);
-          } else {
-              history.add(msg.isUser ? Content.text(msg.text) : Content.model([TextPart(msg.text)]));
+        final String role = msg.isUser ? 'user' : 'model';
+        if (msg.isUser && msg.imagePaths.isNotEmpty) {
+          List<Part> parts = [];
+          if (msg.text.isNotEmpty) parts.add(TextPart(msg.text));
+          for (String path in msg.imagePaths) {
+            if (await File(path).exists()) {
+              final bytes = await File(path).readAsBytes();
+              final mimeType = path.toLowerCase().endsWith('.png')
+                  ? 'image/png'
+                  : 'image/jpeg';
+              parts.add(DataPart(mimeType, bytes));
+            }
           }
+          history.add(Content(role, parts));
+        } else if (history.isNotEmpty && history.last.role == role) {
+          final List<Part> existingParts = history.last.parts.toList();
+          existingParts.add(TextPart("\n\n${msg.text}"));
+          history[history.length - 1] = Content(role, existingParts);
+        } else {
+          history.add(
+            msg.isUser
+                ? Content.text(msg.text)
+                : Content.model([TextPart(msg.text)]),
+          );
+        }
       }
 
       _chat = _model.startChat(history: history);
@@ -570,69 +727,86 @@ class ChatProvider extends ChangeNotifier {
   // LOGIC: SEND MESSAGE
   // ----------------------------------------------------------------------
 
-  Future<void> sendMessage(String messageText, List<String> imagesToSend) async {
+  Future<void> sendMessage(
+    String messageText,
+    List<String> imagesToSend,
+  ) async {
     if (messageText.isEmpty && imagesToSend.isEmpty) return;
 
     // 1. Optimistic Update
-    _messages.add(ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend));
+    _messages.add(
+      ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend),
+    );
     _isLoading = true;
     _isCancelled = false;
     notifyListeners();
-    
+
     autoSaveCurrentSession();
 
     // 2. Grounding (Gemini)
-    if (_enableGrounding && _currentProvider == AiProvider.gemini && imagesToSend.isEmpty) {
-       try {
-         final activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
-         
-         // Get previous thought signature if available
-         String? previousSignature;
-         if (_messages.isNotEmpty) {
-            for (int i = _messages.length - 1; i >= 0; i--) {
-               if (!_messages[i].isUser && _messages[i].thoughtSignature != null) {
-                  previousSignature = _messages[i].thoughtSignature;
-                  break;
-               }
+    if (_enableGrounding &&
+        _currentProvider == AiProvider.gemini &&
+        imagesToSend.isEmpty) {
+      try {
+        final activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
+
+        // Get previous thought signature if available
+        String? previousSignature;
+        if (_messages.isNotEmpty) {
+          for (int i = _messages.length - 1; i >= 0; i--) {
+            if (!_messages[i].isUser && _messages[i].thoughtSignature != null) {
+              previousSignature = _messages[i].thoughtSignature;
+              break;
             }
-         }
+          }
+        }
 
-         String finalSystemInstruction = "";
-         if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
-         if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
-           if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
-           finalSystemInstruction += _advancedSystemInstruction;
-         }
+        String finalSystemInstruction = "";
+        if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
+        if (_enableAdvancedSystemPrompt &&
+            _advancedSystemInstruction.isNotEmpty) {
+          if (finalSystemInstruction.isNotEmpty)
+            finalSystemInstruction += "\n\n";
+          finalSystemInstruction += _advancedSystemInstruction;
+        }
 
-         final result = await ChatApiService.performGeminiGrounding(
-            apiKey: activeKey,
-            model: _selectedModel,
-            history: _messages.sublist(0, _messages.length - 1),
-            userMessage: messageText,
-            systemInstruction: finalSystemInstruction,
-            disableSafety: _disableSafety,
-            thoughtSignature: previousSignature,
-         );
-         
-         if (_isCancelled) return;
-         
-         if (result != null) {
-             _messages.add(ChatMessage(
-                text: result['text'] ?? "Error",
-                isUser: false,
-                modelName: _selectedModel,
-                thoughtSignature: result['thoughtSignature']
-             ));
-         } else {
-             _messages.add(ChatMessage(text: "Grounding Error", isUser: false, modelName: _selectedModel));
-         }
+        final result = await ChatApiService.performGeminiGrounding(
+          apiKey: activeKey,
+          model: _selectedModel,
+          history: _messages.sublist(0, _messages.length - 1),
+          userMessage: messageText,
+          systemInstruction: finalSystemInstruction,
+          disableSafety: _disableSafety,
+          thoughtSignature: previousSignature,
+        );
 
-         _isLoading = false;
-         notifyListeners();
-         return;
-       } catch (e) {
-         debugPrint("Grounding failed: $e");
-       }
+        if (_isCancelled) return;
+
+        if (result != null) {
+          _messages.add(
+            ChatMessage(
+              text: result['text'] ?? "Error",
+              isUser: false,
+              modelName: _selectedModel,
+              thoughtSignature: result['thoughtSignature'],
+            ),
+          );
+        } else {
+          _messages.add(
+            ChatMessage(
+              text: "Grounding Error",
+              isUser: false,
+              modelName: _selectedModel,
+            ),
+          );
+        }
+
+        _isLoading = false;
+        notifyListeners();
+        return;
+      } catch (e) {
+        debugPrint("Grounding failed: $e");
+      }
     }
 
     // 3. Image Generation
@@ -640,7 +814,7 @@ class ChatProvider extends ChangeNotifier {
       try {
         String activeKey = '';
         String provider = 'openai';
-        
+
         if (_currentProvider == AiProvider.openRouter) {
           activeKey = _openRouterKey;
           provider = 'openrouter';
@@ -648,10 +822,17 @@ class ChatProvider extends ChangeNotifier {
           activeKey = _openAiKey;
           provider = 'openai';
         } else {
-           _messages.add(ChatMessage(text: "Image Gen currently only supported for OpenRouter/OpenAI in this mode.", isUser: false, modelName: "System"));
-           _isLoading = false;
-           notifyListeners();
-           return;
+          _messages.add(
+            ChatMessage(
+              text:
+                  "Image Gen currently only supported for OpenRouter/OpenAI in this mode.",
+              isUser: false,
+              modelName: "System",
+            ),
+          );
+          _isLoading = false;
+          notifyListeners();
+          return;
         }
 
         final imageUrl = await ChatApiService.generateImage(
@@ -663,24 +844,45 @@ class ChatProvider extends ChangeNotifier {
         if (_isCancelled) return;
 
         if (imageUrl != null && imageUrl.startsWith('http')) {
-            _messages.add(ChatMessage(text: imageUrl, isUser: false, modelName: "Image Gen"));
+          _messages.add(
+            ChatMessage(text: imageUrl, isUser: false, modelName: "Image Gen"),
+          );
         } else {
-            _messages.add(ChatMessage(text: "Image Gen Failed: $imageUrl", isUser: false, modelName: "System"));
+          _messages.add(
+            ChatMessage(
+              text: "Image Gen Failed: $imageUrl",
+              isUser: false,
+              modelName: "System",
+            ),
+          );
         }
         _isLoading = false;
         notifyListeners();
         return;
       } catch (e) {
-         _messages.add(ChatMessage(text: "Error generating image: $e", isUser: false, modelName: "System"));
-         _isLoading = false;
-         notifyListeners();
-         return;
+        _messages.add(
+          ChatMessage(
+            text: "Error generating image: $e",
+            isUser: false,
+            modelName: "System",
+          ),
+        );
+        _isLoading = false;
+        notifyListeners();
+        return;
       }
     }
 
     // 4. Standard Chat Response
     final contentNotifier = ValueNotifier<String>("");
-    _messages.add(ChatMessage(text: "", isUser: false, modelName: _selectedModel, contentNotifier: contentNotifier));
+    _messages.add(
+      ChatMessage(
+        text: "",
+        isUser: false,
+        modelName: _selectedModel,
+        contentNotifier: contentNotifier,
+      ),
+    );
     notifyListeners();
 
     Stream<String>? responseStream;
@@ -688,7 +890,7 @@ class ChatProvider extends ChangeNotifier {
     try {
       if (_currentProvider == AiProvider.gemini) {
         responseStream = ChatApiService.streamGeminiResponse(
-          chatSession: _chat, 
+          chatSession: _chat,
           message: messageText,
           imagePaths: imagesToSend,
           modelName: _selectedModel,
@@ -723,31 +925,39 @@ class ChatProvider extends ChangeNotifier {
         } else if (_currentProvider == AiProvider.huggingFace) {
           // HuggingFace Serverless Inference API (OpenAI Compatible)
           // URL: https://api-inference.huggingface.co/models/{model_id}/v1/chat/completions
-          baseUrl = "https://api-inference.huggingface.co/models/$_selectedModel/v1/chat/completions";
+          baseUrl =
+              "https://api-inference.huggingface.co/models/$_selectedModel/v1/chat/completions";
           apiKey = _huggingFaceKey;
         } else if (_currentProvider == AiProvider.groq) {
           baseUrl = "https://api.groq.com/openai/v1/chat/completions";
           apiKey = _groqKey;
         } else if (_currentProvider == AiProvider.local) {
           baseUrl = _localIp.trim();
-          if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+          if (baseUrl.endsWith('/'))
+            baseUrl = baseUrl.substring(0, baseUrl.length - 1);
           if (!baseUrl.endsWith('/chat/completions')) {
-             baseUrl += baseUrl.endsWith('/v1') ? "/chat/completions" : "/v1/chat/completions";
+            baseUrl += baseUrl.endsWith('/v1')
+                ? "/chat/completions"
+                : "/v1/chat/completions";
           }
           apiKey = "local-key";
         }
 
         String finalSystemInstruction = "";
         if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
-        if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
-          if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
+        if (_enableAdvancedSystemPrompt &&
+            _advancedSystemInstruction.isNotEmpty) {
+          if (finalSystemInstruction.isNotEmpty)
+            finalSystemInstruction += "\n\n";
           finalSystemInstruction += _advancedSystemInstruction;
         }
 
         responseStream = ChatApiService.streamOpenAiCompatible(
           apiKey: apiKey,
           baseUrl: baseUrl,
-          model: _currentProvider == AiProvider.local ? _localModelName : _selectedModel,
+          model: _currentProvider == AiProvider.local
+              ? _localModelName
+              : _selectedModel,
           history: limitedHistory,
           systemInstruction: finalSystemInstruction,
           userMessage: messageText,
@@ -773,9 +983,9 @@ class ChatProvider extends ChangeNotifier {
             _messages.last = _messages.last.copyWith(usage: usage);
             notifyListeners();
           } else if (chunk.startsWith('[[THOUGHT_SIG:')) {
-             final sig = chunk.substring(14, chunk.length - 2);
-             _messages.last = _messages.last.copyWith(thoughtSignature: sig);
-             notifyListeners();
+            final sig = chunk.substring(14, chunk.length - 2);
+            _messages.last = _messages.last.copyWith(thoughtSignature: sig);
+            notifyListeners();
           } else {
             fullText += chunk;
             _messages.last.contentNotifier?.value = fullText;
@@ -787,7 +997,7 @@ class ChatProvider extends ChangeNotifier {
             _messages.last = ChatMessage(
               text: "${_messages.last.text}\n\n**Error:** $e",
               isUser: false,
-              modelName: "System Alert"
+              modelName: "System Alert",
             );
             _isLoading = false;
             notifyListeners();
@@ -798,23 +1008,24 @@ class ChatProvider extends ChangeNotifier {
             _isLoading = false;
             notifyListeners();
             autoSaveCurrentSession();
-            
+
             if (_currentProvider == AiProvider.gemini) {
-              await initializeModel(); 
+              await initializeModel();
             }
-            
+
             if (!_enableGrounding) updateTokenCount();
           }
         },
       );
-    
     } catch (e) {
       if (!_isCancelled) {
-        _messages.add(ChatMessage(
-          text: "**System Error**\n\n```\n$e\n```",
-          isUser: false,
-          modelName: "System Alert",
-        ));
+        _messages.add(
+          ChatMessage(
+            text: "**System Error**\n\n```\n$e\n```",
+            isUser: false,
+            modelName: "System Alert",
+          ),
+        );
         _isLoading = false;
         notifyListeners();
         autoSaveCurrentSession();
@@ -916,7 +1127,9 @@ class ChatProvider extends ChangeNotifier {
     _savedSessions.insert(0, sessionData);
     notifyListeners();
 
-    final String data = jsonEncode(_savedSessions.map((s) => s.toJson()).toList());
+    final String data = jsonEncode(
+      _savedSessions.map((s) => s.toJson()).toList(),
+    );
     await prefs.setString('airp_sessions', data);
   }
 
@@ -941,7 +1154,9 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_savedSessions.map((s) => s.toJson()).toList());
+    final String data = jsonEncode(
+      _savedSessions.map((s) => s.toJson()).toList(),
+    );
     await prefs.setString('airp_sessions', data);
   }
 
@@ -979,7 +1194,7 @@ class ChatProvider extends ChangeNotifier {
       _selectedGeminiModel = session.modelName;
       _selectedModel = session.modelName;
     }
-    
+
     notifyListeners();
     initializeModel();
   }
@@ -991,9 +1206,11 @@ class ChatProvider extends ChangeNotifier {
     } else {
       notifyListeners();
     }
-    
+
     final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_savedSessions.map((s) => s.toJson()).toList());
+    final String data = jsonEncode(
+      _savedSessions.map((s) => s.toJson()).toList(),
+    );
     await prefs.setString('airp_sessions', data);
   }
 
@@ -1005,7 +1222,10 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void editMessage(int index, String newText) {
-    _messages[index] = ChatMessage(text: newText, isUser: _messages[index].isUser);
+    _messages[index] = ChatMessage(
+      text: newText,
+      isUser: _messages[index].isUser,
+    );
     notifyListeners();
     autoSaveCurrentSession();
     initializeModel();
@@ -1027,28 +1247,29 @@ class ChatProvider extends ChangeNotifier {
     void Function(String)? updateSelectedModel,
   }) async {
     if (apiKey.isEmpty && headers == null) return;
-    
+
     updateLoading(true);
     notifyListeners();
 
     try {
       final models = await ChatApiService.fetchModels(
         url: url,
-        headers: headers ?? (apiKey.isNotEmpty ? {"Authorization": "Bearer $apiKey"} : null),
+        headers:
+            headers ??
+            (apiKey.isNotEmpty ? {"Authorization": "Bearer $apiKey"} : null),
         parser: parser,
       );
 
       updateList(models);
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(prefKey, models);
 
       if (currentModel != null && updateSelectedModel != null) {
-         if (!models.contains(currentModel) && models.isNotEmpty) {
-            updateSelectedModel(models.first);
-         }
+        if (!models.contains(currentModel) && models.isNotEmpty) {
+          updateSelectedModel(models.first);
+        }
       }
-
     } catch (e) {
       debugPrint("Fetch Error: $e");
     } finally {
@@ -1066,7 +1287,9 @@ class ChatProvider extends ChangeNotifier {
         final List<dynamic> models = json['models'];
         return models
             .where((m) {
-              final methods = List<String>.from(m['supportedGenerationMethods'] ?? []);
+              final methods = List<String>.from(
+                m['supportedGenerationMethods'] ?? [],
+              );
               return methods.contains('generateContent');
             })
             .map<String>((m) => m['name'].toString())
@@ -1091,7 +1314,10 @@ class ChatProvider extends ChangeNotifier {
       },
       updateList: (list) => _openRouterModelsList = list,
       updateLoading: (val) => _isLoadingOpenRouterModels = val,
-      headers: {"HTTP-Referer": "https://airp-chat.com", "X-Title": "AIRP Chat"},
+      headers: {
+        "HTTP-Referer": "https://airp-chat.com",
+        "X-Title": "AIRP Chat",
+      },
     );
   }
 
@@ -1123,7 +1349,8 @@ class ChatProvider extends ChangeNotifier {
       currentModel: _nanoGptModel,
       updateSelectedModel: (val) {
         _nanoGptModel = val;
-        if (_currentProvider == AiProvider.nanoGpt) _selectedModel = _nanoGptModel;
+        if (_currentProvider == AiProvider.nanoGpt)
+          _selectedModel = _nanoGptModel;
       },
     );
   }
@@ -1142,7 +1369,8 @@ class ChatProvider extends ChangeNotifier {
       currentModel: _openAiModel,
       updateSelectedModel: (val) {
         _openAiModel = val;
-        if (_currentProvider == AiProvider.openAi) _selectedModel = _openAiModel;
+        if (_currentProvider == AiProvider.openAi)
+          _selectedModel = _openAiModel;
       },
     );
   }
@@ -1161,7 +1389,8 @@ class ChatProvider extends ChangeNotifier {
       currentModel: _huggingFaceModel,
       updateSelectedModel: (val) {
         _huggingFaceModel = val;
-        if (_currentProvider == AiProvider.huggingFace) _selectedModel = _huggingFaceModel;
+        if (_currentProvider == AiProvider.huggingFace)
+          _selectedModel = _huggingFaceModel;
       },
     );
   }
@@ -1193,8 +1422,10 @@ class ChatProvider extends ChangeNotifier {
     if (title.isEmpty || content.isEmpty) return;
 
     final newPrompt = SystemPromptData(title: title, content: content);
-    final index = _savedSystemPrompts.indexWhere((p) => p.title == newPrompt.title);
-    
+    final index = _savedSystemPrompts.indexWhere(
+      (p) => p.title == newPrompt.title,
+    );
+
     if (index != -1) {
       _savedSystemPrompts[index] = newPrompt;
     } else {
@@ -1203,7 +1434,9 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_savedSystemPrompts.map((s) => s.toJson()).toList());
+    final String data = jsonEncode(
+      _savedSystemPrompts.map((s) => s.toJson()).toList(),
+    );
     await prefs.setString('airp_system_prompts', data);
   }
 
@@ -1212,7 +1445,9 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_savedSystemPrompts.map((s) => s.toJson()).toList());
+    final String data = jsonEncode(
+      _savedSystemPrompts.map((s) => s.toJson()).toList(),
+    );
     await prefs.setString('airp_system_prompts', data);
   }
 
@@ -1229,7 +1464,13 @@ class ChatProvider extends ChangeNotifier {
 
     if (_currentProvider == AiProvider.gemini) {
       try {
-        final contents = _messages.map((m) => m.isUser ? Content.text(m.text) : Content.model([TextPart(m.text)])).toList();
+        final contents = _messages
+            .map(
+              (m) => m.isUser
+                  ? Content.text(m.text)
+                  : Content.model([TextPart(m.text)]),
+            )
+            .toList();
         final response = await _model.countTokens(contents);
         _tokenCount = response.totalTokens;
         notifyListeners();

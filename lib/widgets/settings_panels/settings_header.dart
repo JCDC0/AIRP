@@ -10,25 +10,35 @@ class SettingsHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 40),
-        Text("Main Settings",
+        Text(
+          "Main Settings",
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize + 10,
             fontWeight: FontWeight.bold,
             color: themeProvider.appThemeColor,
-            shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [],
-          )
+            shadows: themeProvider.enableBloom
+                ? [
+                    Shadow(
+                      color: themeProvider.appThemeColor.withOpacity(0.9),
+                      blurRadius: 20,
+                    ),
+                  ]
+                : [],
+          ),
         ),
-        Text("v0.5.2.2 Exp.",
+        Text(
+          "v0.5.2.3",
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize + 4,
             fontWeight: FontWeight.bold,
-            color: Colors.grey
-            )),
+            color: Colors.grey,
+          ),
+        ),
         const Divider(),
       ],
     );

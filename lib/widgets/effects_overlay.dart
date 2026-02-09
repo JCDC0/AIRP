@@ -58,11 +58,7 @@ class MotesEffect extends StatefulWidget {
   final int numberOfMotes;
   final Color color;
 
-  const MotesEffect({
-    super.key,
-    this.numberOfMotes = 50,
-    required this.color,
-  });
+  const MotesEffect({super.key, this.numberOfMotes = 50, required this.color});
 
   @override
   State<MotesEffect> createState() => _MotesEffectState();
@@ -95,14 +91,35 @@ class _MotesEffectState extends State<MotesEffect> {
 
       final tween = MovieTween()
         ..scene(duration: duration)
-            .tween('x', Tween(begin: random.nextDouble(), end: random.nextDouble()), curve: Curves.easeInOutSine)
-            .tween('y', Tween(begin: random.nextDouble(), end: random.nextDouble()), curve: Curves.easeInOutSine)
-            .tween('scale', Tween(begin: 0.6, end: 1.4), curve: Curves.easeInOut)
-            .tween('opacityFactor', TweenSequence([
-              TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 10),
-              TweenSequenceItem(tween: ConstantTween(1.0), weight: 80),
-              TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 10),
-            ]));
+            .tween(
+              'x',
+              Tween(begin: random.nextDouble(), end: random.nextDouble()),
+              curve: Curves.easeInOutSine,
+            )
+            .tween(
+              'y',
+              Tween(begin: random.nextDouble(), end: random.nextDouble()),
+              curve: Curves.easeInOutSine,
+            )
+            .tween(
+              'scale',
+              Tween(begin: 0.6, end: 1.4),
+              curve: Curves.easeInOut,
+            )
+            .tween(
+              'opacityFactor',
+              TweenSequence([
+                TweenSequenceItem(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  weight: 10,
+                ),
+                TweenSequenceItem(tween: ConstantTween(1.0), weight: 80),
+                TweenSequenceItem(
+                  tween: Tween(begin: 1.0, end: 0.0),
+                  weight: 10,
+                ),
+              ]),
+            );
 
       return _MoteItem(
         tween: tween,
@@ -184,7 +201,9 @@ class MotePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant MotePainter oldDelegate) {
-    return x != oldDelegate.x || y != oldDelegate.y || opacity != oldDelegate.opacity;
+    return x != oldDelegate.x ||
+        y != oldDelegate.y ||
+        opacity != oldDelegate.opacity;
   }
 }
 
@@ -195,11 +214,7 @@ class RainEffect extends StatefulWidget {
   final int numberOfDrops;
   final Color color;
 
-  const RainEffect({
-    super.key,
-    this.numberOfDrops = 40,
-    required this.color,
-  });
+  const RainEffect({super.key, this.numberOfDrops = 40, required this.color});
 
   @override
   State<RainEffect> createState() => _RainEffectState();
@@ -286,7 +301,7 @@ class RainPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const double slantX = 0.15; 
+    const double slantX = 0.15;
 
     for (var drop in drops) {
       final paint = Paint()
@@ -294,12 +309,13 @@ class RainPainter extends CustomPainter {
         ..strokeWidth = drop.strokeWidth
         ..strokeCap = StrokeCap.round;
 
-      final double progress = (drop.yStart + animationValue * drop.speed * 0.8) % 1.0;
-      
+      final double progress =
+          (drop.yStart + animationValue * drop.speed * 0.8) % 1.0;
+
       final double topY = progress * size.height;
       final double bottomY = topY + (drop.length * size.height);
       final double xOffset = drop.length * slantX * size.width;
-      
+
       canvas.drawLine(
         Offset(drop.x * size.width, topY),
         Offset(drop.x * size.width - xOffset, bottomY),
@@ -308,10 +324,10 @@ class RainPainter extends CustomPainter {
 
       // Wrap-around logic
       if (progress + drop.length > 1.0) {
-         final double wrapTopY = (progress - 1.0) * size.height;
-         final double wrapBottomY = wrapTopY + (drop.length * size.height);
-         
-         canvas.drawLine(
+        final double wrapTopY = (progress - 1.0) * size.height;
+        final double wrapBottomY = wrapTopY + (drop.length * size.height);
+
+        canvas.drawLine(
           Offset(drop.x * size.width, wrapTopY),
           Offset(drop.x * size.width - xOffset, wrapBottomY),
           paint,
@@ -330,10 +346,7 @@ class RainPainter extends CustomPainter {
 class FirefliesEffect extends StatefulWidget {
   final int numberOfFireflies;
 
-  const FirefliesEffect({
-    super.key,
-    this.numberOfFireflies = 30,
-  });
+  const FirefliesEffect({super.key, this.numberOfFireflies = 30});
 
   @override
   State<FirefliesEffect> createState() => _FirefliesEffectState();
@@ -362,18 +375,37 @@ class _FirefliesEffectState extends State<FirefliesEffect> {
       final duration = Duration(milliseconds: random.nextInt(25000) + 20000);
       final double pulsePhase = random.nextDouble();
       final bool isGreen = random.nextDouble() > 0.7;
-      final Color flyColor = isGreen ? Colors.lightGreenAccent : Colors.yellowAccent;
+      final Color flyColor = isGreen
+          ? Colors.lightGreenAccent
+          : Colors.yellowAccent;
       final double fireflySize = random.nextDouble() * 40.0 + 10.0;
 
       final pathTween = MovieTween()
         ..scene(duration: duration)
-            .tween('x', Tween(begin: random.nextDouble(), end: random.nextDouble()), curve: Curves.easeInOutSine)
-            .tween('y', Tween(begin: random.nextDouble(), end: random.nextDouble()), curve: Curves.easeInOutSine)
-            .tween('opacityFactor', TweenSequence([
-              TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 10),
-              TweenSequenceItem(tween: ConstantTween(1.0), weight: 80),
-              TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 10),
-            ]));
+            .tween(
+              'x',
+              Tween(begin: random.nextDouble(), end: random.nextDouble()),
+              curve: Curves.easeInOutSine,
+            )
+            .tween(
+              'y',
+              Tween(begin: random.nextDouble(), end: random.nextDouble()),
+              curve: Curves.easeInOutSine,
+            )
+            .tween(
+              'opacityFactor',
+              TweenSequence([
+                TweenSequenceItem(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  weight: 10,
+                ),
+                TweenSequenceItem(tween: ConstantTween(1.0), weight: 80),
+                TweenSequenceItem(
+                  tween: Tween(begin: 1.0, end: 0.0),
+                  weight: 10,
+                ),
+              ]),
+            );
 
       final int halfCycleDuration = random.nextInt(2000) + 2000;
       final pulseTween = Tween<double>(begin: 0.4, end: 1.0);
@@ -476,6 +508,8 @@ class FireflyPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant FireflyPainter oldDelegate) {
-    return x != oldDelegate.x || y != oldDelegate.y || opacity != oldDelegate.opacity;
+    return x != oldDelegate.x ||
+        y != oldDelegate.y ||
+        opacity != oldDelegate.opacity;
   }
 }

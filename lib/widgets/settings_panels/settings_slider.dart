@@ -32,14 +32,22 @@ class SettingsSlider extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: TextStyle(fontSize: fontSize, color: Colors.grey)),
+            Text(
+              title,
+              style: TextStyle(fontSize: fontSize, color: Colors.grey),
+            ),
             SizedBox(
               width: 60,
               height: 30,
               child: TextField(
                 controller: TextEditingController(
-                    text: isInt ? value.toInt().toString() : value.toStringAsFixed(2)),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  text: isInt
+                      ? value.toInt().toString()
+                      : value.toStringAsFixed(2),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 style: TextStyle(fontSize: fontSize, color: Colors.white),
                 textAlign: TextAlign.center,
                 decoration: InputDecoration(
@@ -47,8 +55,9 @@ class SettingsSlider extends StatelessWidget {
                   filled: true,
                   fillColor: Colors.white10,
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none),
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
                 onSubmitted: (val) {
                   double? parsed = double.tryParse(val);

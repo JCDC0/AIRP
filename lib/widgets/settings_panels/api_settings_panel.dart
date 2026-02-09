@@ -24,16 +24,19 @@ class ApiSettingsPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("API Key (BYOK)",
+        Text(
+          "API Key (BYOK)",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: themeProvider.appThemeColor,
             fontSize: scaleProvider.systemFontSize,
-            shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
-          )
+            shadows: themeProvider.enableBloom
+                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)]
+                : [],
+          ),
         ),
         const SizedBox(height: 5),
-        
+
         if (chatProvider.currentProvider != AiProvider.local) ...[
           TextField(
             controller: apiKeyController,
@@ -41,12 +44,19 @@ class ApiSettingsPanel extends StatelessWidget {
             decoration: InputDecoration(
               hintText: "Paste AI Studio Key...",
               border: OutlineInputBorder(
-                borderSide: themeProvider.enableBloom ? BorderSide(color: themeProvider.appThemeColor) : const BorderSide(),
+                borderSide: themeProvider.enableBloom
+                    ? BorderSide(color: themeProvider.appThemeColor)
+                    : const BorderSide(),
               ),
-              enabledBorder: themeProvider.enableBloom 
-                ? OutlineInputBorder(borderSide: BorderSide(color: themeProvider.appThemeColor.withOpacity(0.5)))
-                : const OutlineInputBorder(),
-              filled: true, isDense: true,
+              enabledBorder: themeProvider.enableBloom
+                  ? OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: themeProvider.appThemeColor.withOpacity(0.5),
+                      ),
+                    )
+                  : const OutlineInputBorder(),
+              filled: true,
+              isDense: true,
             ),
             style: TextStyle(fontSize: scaleProvider.systemFontSize - 2),
           ),
@@ -57,15 +67,25 @@ class ApiSettingsPanel extends StatelessWidget {
             decoration: InputDecoration(
               hintText: "http://192.168.1.X:1234/v1",
               labelText: "Local Server Address",
-              labelStyle: TextStyle(color: Colors.greenAccent, fontSize: scaleProvider.systemFontSize),
+              labelStyle: TextStyle(
+                color: Colors.greenAccent,
+                fontSize: scaleProvider.systemFontSize,
+              ),
               border: const OutlineInputBorder(),
-              filled: true, isDense: true
+              filled: true,
+              isDense: true,
             ),
             style: TextStyle(fontSize: scaleProvider.systemFontSize - 2),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4, left: 4),
-            child: Text("Ensure your local AI is listening on Network (0.0.0.0)", style: TextStyle(fontSize: scaleProvider.systemFontSize - 4, color: Colors.grey)),
+            child: Text(
+              "Ensure your local AI is listening on Network (0.0.0.0)",
+              style: TextStyle(
+                fontSize: scaleProvider.systemFontSize - 4,
+                color: Colors.grey,
+              ),
+            ),
           ),
           const SizedBox(height: 20),
         ],

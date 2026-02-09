@@ -20,14 +20,22 @@ class ModelSettingsPanel extends StatelessWidget {
 
   int _getModelCount(ChatProvider provider) {
     switch (provider.currentProvider) {
-      case AiProvider.gemini: return provider.geminiModelsList.length;
-      case AiProvider.openRouter: return provider.openRouterModelsList.length;
-      case AiProvider.arliAi: return provider.arliAiModelsList.length;
-      case AiProvider.nanoGpt: return provider.nanoGptModelsList.length;
-      case AiProvider.openAi: return provider.openAiModelsList.length;
-      case AiProvider.huggingFace: return provider.huggingFaceModelsList.length;
-      case AiProvider.groq: return provider.groqModelsList.length;
-      default: return 0;
+      case AiProvider.gemini:
+        return provider.geminiModelsList.length;
+      case AiProvider.openRouter:
+        return provider.openRouterModelsList.length;
+      case AiProvider.arliAi:
+        return provider.arliAiModelsList.length;
+      case AiProvider.nanoGpt:
+        return provider.nanoGptModelsList.length;
+      case AiProvider.openAi:
+        return provider.openAiModelsList.length;
+      case AiProvider.huggingFace:
+        return provider.huggingFaceModelsList.length;
+      case AiProvider.groq:
+        return provider.groqModelsList.length;
+      default:
+        return 0;
     }
   }
 
@@ -40,38 +48,75 @@ class ModelSettingsPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Conversation Title",
+        Text(
+          "Conversation Title",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: themeProvider.appThemeColor,
             fontSize: scaleProvider.systemFontSize,
-            shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)] : [],
-          )
+            shadows: themeProvider.enableBloom
+                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)]
+                : [],
+          ),
         ),
         const SizedBox(height: 5),
         Container(
           decoration: BoxDecoration(
             color: Colors.black26,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12),
-            boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : [],
+            border: Border.all(
+              color: themeProvider.enableBloom
+                  ? themeProvider.appThemeColor.withOpacity(0.5)
+                  : Colors.white12,
+            ),
+            boxShadow: themeProvider.enableBloom
+                ? [
+                    BoxShadow(
+                      color: themeProvider.appThemeColor.withOpacity(0.1),
+                      blurRadius: 8,
+                    ),
+                  ]
+                : [],
           ),
           child: TextField(
             controller: titleController,
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize),
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: scaleProvider.systemFontSize,
+            ),
             decoration: InputDecoration(
               hintText: "Type a title...",
-              hintStyle: TextStyle(color: Colors.white24, fontSize: scaleProvider.systemFontSize),
+              hintStyle: TextStyle(
+                color: Colors.white24,
+                fontSize: scaleProvider.systemFontSize,
+              ),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              suffixIcon: Icon(Icons.edit, size: 16, color: themeProvider.appThemeColor),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
+              suffixIcon: Icon(
+                Icons.edit,
+                size: 16,
+                color: themeProvider.appThemeColor,
+              ),
             ),
             // onChanged: chatProvider.setTitle, // Removed for Save button logic
           ),
         ),
         const SizedBox(height: 20),
 
-        Text("Model Selection ${_getModelCount(chatProvider) > 0 ? "(${_getModelCount(chatProvider)})" : ""}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+        Text(
+          "Model Selection ${_getModelCount(chatProvider) > 0 ? "(${_getModelCount(chatProvider)})" : ""}",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: scaleProvider.systemFontSize,
+            shadows: themeProvider.enableBloom
+                ? [const Shadow(color: Colors.white, blurRadius: 10)]
+                : [],
+          ),
+        ),
         const SizedBox(height: 5),
 
         // ============================================
@@ -87,7 +132,6 @@ class ModelSettingsPanel extends StatelessWidget {
             onRefresh: chatProvider.fetchGeminiModels,
             refreshButtonColor: Colors.blueAccent,
           )
-
         // ============================================
         // OPENROUTER UI
         // ============================================
@@ -109,20 +153,22 @@ class ModelSettingsPanel extends StatelessWidget {
         // LOCAL UI
         // -------------------------------------------
         if (chatProvider.currentProvider == AiProvider.local) ...[
-           const SizedBox(height: 5),
-           TextField(
-             onChanged: chatProvider.setLocalModelName,
-             controller: TextEditingController(text: chatProvider.localModelName),
-             decoration: InputDecoration(
-               hintText: "local-model",
-               hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
-               labelText: "Target Model ID (Optional)",
-               labelStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
-               border: const OutlineInputBorder(),
-               isDense: true
-             ),
-             style: TextStyle(fontSize: scaleProvider.systemFontSize),
-           ),
+          const SizedBox(height: 5),
+          TextField(
+            onChanged: chatProvider.setLocalModelName,
+            controller: TextEditingController(
+              text: chatProvider.localModelName,
+            ),
+            decoration: InputDecoration(
+              hintText: "local-model",
+              hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
+              labelText: "Target Model ID (Optional)",
+              labelStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            style: TextStyle(fontSize: scaleProvider.systemFontSize),
+          ),
         ],
 
         // ============================================
@@ -198,7 +244,7 @@ class ModelSettingsPanel extends StatelessWidget {
             refreshButtonColor: Colors.deepOrangeAccent,
             controller: groqModelController,
           ),
-                const SizedBox(height: 16),
+        const SizedBox(height: 16),
       ],
     );
   }

@@ -19,15 +19,39 @@ class ScaleSettingsPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Device Presets
-          Text("Device Presets", style: TextStyle(color: Colors.grey, fontSize: scaleProvider.systemFontSize * 0.8)),
+          Text(
+            "Device Presets",
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: scaleProvider.systemFontSize * 0.8,
+            ),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
-              _buildPresetButton(context, DeviceType.phone, "Phone", scaleProvider, themeColor),
+              _buildPresetButton(
+                context,
+                DeviceType.phone,
+                "Phone",
+                scaleProvider,
+                themeColor,
+              ),
               const SizedBox(width: 8),
-              _buildPresetButton(context, DeviceType.tablet, "Tablet", scaleProvider, themeColor),
+              _buildPresetButton(
+                context,
+                DeviceType.tablet,
+                "Tablet",
+                scaleProvider,
+                themeColor,
+              ),
               const SizedBox(width: 8),
-              _buildPresetButton(context, DeviceType.desktop, "Desktop", scaleProvider, themeColor),
+              _buildPresetButton(
+                context,
+                DeviceType.desktop,
+                "Desktop",
+                scaleProvider,
+                themeColor,
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -44,7 +68,7 @@ class ScaleSettingsPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize,
           ),
           const SizedBox(height: 12),
-          
+
           SettingsSlider(
             title: "System Font Size",
             value: scaleProvider.systemFontSize,
@@ -98,18 +122,20 @@ class ScaleSettingsPanel extends StatelessWidget {
   }
 
   Widget _buildPresetButton(
-    BuildContext context, 
-    DeviceType type, 
-    String label, 
-    ScaleProvider provider, 
-    Color activeColor
+    BuildContext context,
+    DeviceType type,
+    String label,
+    ScaleProvider provider,
+    Color activeColor,
   ) {
     final bool isActive = provider.deviceType == type;
-    
+
     return Expanded(
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: isActive ? activeColor.withOpacity(0.2) : Colors.black26,
+          backgroundColor: isActive
+              ? activeColor.withOpacity(0.2)
+              : Colors.black26,
           foregroundColor: isActive ? activeColor : Colors.grey,
           side: BorderSide(
             color: isActive ? activeColor : Colors.transparent,
@@ -119,7 +145,13 @@ class ScaleSettingsPanel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
         ),
         onPressed: () => provider.setDeviceType(type),
-        child: Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: provider.systemFontSize)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: provider.systemFontSize,
+          ),
+        ),
       ),
     );
   }

@@ -1,6 +1,15 @@
 import 'package:flutter/foundation.dart';
 
-enum AiProvider { gemini, openRouter, openAi, local, arliAi, nanoGpt, huggingFace, groq }
+enum AiProvider {
+  gemini,
+  openRouter,
+  openAi,
+  local,
+  arliAi,
+  nanoGpt,
+  huggingFace,
+  groq,
+}
 
 class ChatSessionData {
   final String id;
@@ -9,7 +18,7 @@ class ChatSessionData {
   final String modelName;
   final int tokenCount;
   final String systemInstruction;
-    final String? backgroundImage;
+  final String? backgroundImage;
   final String provider;
   final bool isBookmarked;
 
@@ -37,19 +46,22 @@ class ChatSessionData {
     'messages': messages.map((m) => m.toJson()).toList(),
   };
 
-  factory ChatSessionData.fromJson(Map<String, dynamic> json) => ChatSessionData(
-    id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-    title: json['title'] ?? "Untitled",
-    messages: (json['messages'] as List?)
-        ?.map((m) => ChatMessage.fromJson(m))
-        .toList() ?? [],
-    modelName: json['modelName'] ?? 'models/gemini-3-flash-preview',
-    tokenCount: json['tokenCount'] ?? 0,
-    systemInstruction: json['systemInstruction'] ?? "",
-    backgroundImage: json['backgroundImage'],
-    provider: json['provider'] ?? 'gemini',
-    isBookmarked: json['isBookmarked'] ?? false,
-  );
+  factory ChatSessionData.fromJson(Map<String, dynamic> json) =>
+      ChatSessionData(
+        id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        title: json['title'] ?? "Untitled",
+        messages:
+            (json['messages'] as List?)
+                ?.map((m) => ChatMessage.fromJson(m))
+                .toList() ??
+            [],
+        modelName: json['modelName'] ?? 'models/gemini-3-flash-preview',
+        tokenCount: json['tokenCount'] ?? 0,
+        systemInstruction: json['systemInstruction'] ?? "",
+        backgroundImage: json['backgroundImage'],
+        provider: json['provider'] ?? 'gemini',
+        isBookmarked: json['isBookmarked'] ?? false,
+      );
 }
 
 class ChatMessage {

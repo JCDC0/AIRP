@@ -30,21 +30,21 @@ class ScaleProvider extends ChangeNotifier {
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Check if this is the first run ever for scaling settings
     if (prefs.containsKey('scale_device_type')) {
       _isFirstRun = false;
-      
+
       // Load saved values
       final deviceTypeIndex = prefs.getInt('scale_device_type') ?? 0;
       _deviceType = DeviceType.values[deviceTypeIndex];
-      
+
       _chatFontSize = prefs.getDouble('scale_chat_font_size') ?? 14.0;
       _systemFontSize = prefs.getDouble('scale_system_font_size') ?? 12.0;
       _drawerWidth = prefs.getDouble('scale_drawer_width') ?? 300.0;
       _iconScale = prefs.getDouble('scale_icon_scale') ?? 1.0;
       _inputAreaScale = prefs.getDouble('scale_input_area_scale') ?? 1.0;
-      
+
       // Check if user has seen the settings
       _shouldGlow = !(prefs.getBool('scale_settings_seen') ?? false);
     } else {
@@ -52,7 +52,7 @@ class ScaleProvider extends ChangeNotifier {
       _isFirstRun = true;
       _shouldGlow = true; // Enable glow for first run
     }
-    
+
     notifyListeners();
   }
 
@@ -77,7 +77,7 @@ class ScaleProvider extends ChangeNotifier {
 
   Future<void> setDeviceType(DeviceType type) async {
     _deviceType = type;
-    
+
     // Apply Presets
     switch (type) {
       case DeviceType.phone:
@@ -145,7 +145,7 @@ class ScaleProvider extends ChangeNotifier {
 
   Future<void> markSettingsAsSeen() async {
     if (!_shouldGlow) return;
-    
+
     _shouldGlow = false;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();

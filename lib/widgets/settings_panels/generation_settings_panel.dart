@@ -9,11 +9,11 @@ class GenerationSettingsPanel extends StatefulWidget {
   const GenerationSettingsPanel({super.key});
 
   @override
-  State<GenerationSettingsPanel> createState() => _GenerationSettingsPanelState();
+  State<GenerationSettingsPanel> createState() =>
+      _GenerationSettingsPanelState();
 }
 
 class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
-
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -26,8 +26,27 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         // --- MSG HISTORY TOGGLE ---
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text("Message History", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-          subtitle: Text("Limits conversation context", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)),
+          title: Text(
+            "Message History",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize,
+              shadows: themeProvider.enableBloom
+                  ? [
+                      Shadow(
+                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        blurRadius: 20,
+                      ),
+                    ]
+                  : [],
+            ),
+          ),
+          subtitle: Text(
+            "Limits conversation context",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
           value: chatProvider.enableMsgHistory,
           activeThumbColor: Colors.greenAccent,
           onChanged: (val) {
@@ -35,7 +54,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
             chatProvider.saveSettings();
           },
         ),
-        
+
         // --- MSG HISTORY SLIDER ---
         Opacity(
           opacity: chatProvider.enableMsgHistory ? 1.0 : 0.5,
@@ -60,7 +79,11 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                 ),
                 Text(
                   "Note: Lower this if you get 'Context Window Exceeded' errors.",
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey, fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    fontSize: scaleProvider.systemFontSize * 0.8,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
             ),
@@ -71,14 +94,33 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         // --- REASONING TOGGLE ---
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text("Reasoning Mode", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-          subtitle: Text("Enables thinking models", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)),
+          title: Text(
+            "Reasoning Mode",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize,
+              shadows: themeProvider.enableBloom
+                  ? [
+                      Shadow(
+                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        blurRadius: 20,
+                      ),
+                    ]
+                  : [],
+            ),
+          ),
+          subtitle: Text(
+            "Enables thinking models",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
           value: chatProvider.enableReasoning,
           activeThumbColor: Colors.purpleAccent,
           onChanged: (val) {
             chatProvider.setEnableReasoning(val);
             if (val && chatProvider.reasoningEffort == "none") {
-               chatProvider.setReasoningEffort("medium");
+              chatProvider.setReasoningEffort("medium");
             }
             chatProvider.saveSettings();
           },
@@ -92,33 +134,90 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Reasoning / Thinking Effort", style: TextStyle(fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [const Shadow(color: Colors.white, blurRadius: 10)] : [])),
+                Text(
+                  "Reasoning / Thinking Effort",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                    shadows: themeProvider.enableBloom
+                        ? [const Shadow(color: Colors.white, blurRadius: 10)]
+                        : [],
+                  ),
+                ),
                 const SizedBox(height: 5),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     color: Colors.black26,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.5) : Colors.white12),
-                    boxShadow: themeProvider.enableBloom ? [BoxShadow(color: themeProvider.appThemeColor.withOpacity(0.1), blurRadius: 8)] : [],
+                    border: Border.all(
+                      color: themeProvider.enableBloom
+                          ? themeProvider.appThemeColor.withOpacity(0.5)
+                          : Colors.white12,
+                    ),
+                    boxShadow: themeProvider.enableBloom
+                        ? [
+                            BoxShadow(
+                              color: themeProvider.appThemeColor.withOpacity(
+                                0.1,
+                              ),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : [],
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
                       value: chatProvider.reasoningEffort,
                       dropdownColor: const Color(0xFF2C2C2C),
-                      icon: Icon(Icons.psychology, color: themeProvider.appThemeColor),
+                      icon: Icon(
+                        Icons.psychology,
+                        color: themeProvider.appThemeColor,
+                      ),
                       items: [
-                        DropdownMenuItem(value: "none", child: Text("Disabled (None)", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
-                        DropdownMenuItem(value: "low", child: Text("Low / Minimal", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
-                        DropdownMenuItem(value: "medium", child: Text("Medium", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
-                        DropdownMenuItem(value: "high", child: Text("High / Deep Think", style: TextStyle(fontSize: scaleProvider.systemFontSize))),
+                        DropdownMenuItem(
+                          value: "none",
+                          child: Text(
+                            "Disabled (None)",
+                            style: TextStyle(
+                              fontSize: scaleProvider.systemFontSize,
+                            ),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: "low",
+                          child: Text(
+                            "Low / Minimal",
+                            style: TextStyle(
+                              fontSize: scaleProvider.systemFontSize,
+                            ),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: "medium",
+                          child: Text(
+                            "Medium",
+                            style: TextStyle(
+                              fontSize: scaleProvider.systemFontSize,
+                            ),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: "high",
+                          child: Text(
+                            "High / Deep Think",
+                            style: TextStyle(
+                              fontSize: scaleProvider.systemFontSize,
+                            ),
+                          ),
+                        ),
                       ],
                       onChanged: (val) {
-                         if (val != null) {
-                           chatProvider.setReasoningEffort(val);
-                           chatProvider.saveSettings();
-                         }
+                        if (val != null) {
+                          chatProvider.setReasoningEffort(val);
+                          chatProvider.saveSettings();
+                        }
                       },
                     ),
                   ),
@@ -126,7 +225,11 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                 const SizedBox(height: 5),
                 Text(
                   "Controls the depth of thought (Thinking Models Only).",
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey, fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    fontSize: scaleProvider.systemFontSize * 0.8,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
             ),
@@ -137,8 +240,27 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         // --- GENERATION SETTINGS TOGGLE ---
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text("Generation Settings", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-          subtitle: Text("Temperature, Top P, Top K controls", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)),
+          title: Text(
+            "Generation Settings",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize,
+              shadows: themeProvider.enableBloom
+                  ? [
+                      Shadow(
+                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        blurRadius: 20,
+                      ),
+                    ]
+                  : [],
+            ),
+          ),
+          subtitle: Text(
+            "Temperature, Top P, Top K controls",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
           value: chatProvider.enableGenerationSettings,
           activeThumbColor: Colors.orangeAccent,
           onChanged: (val) {
@@ -208,8 +330,27 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         // --- MAX OUTPUT TOKENS TOGGLE ---
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text("Max Output Tokens", style: TextStyle(fontSize: scaleProvider.systemFontSize, shadows: themeProvider.enableBloom ? [Shadow(color: themeProvider.appThemeColor.withOpacity(0.9), blurRadius: 20)] : [])),
-          subtitle: Text("Limits response length", style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8, color: Colors.grey)),
+          title: Text(
+            "Max Output Tokens",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize,
+              shadows: themeProvider.enableBloom
+                  ? [
+                      Shadow(
+                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        blurRadius: 20,
+                      ),
+                    ]
+                  : [],
+            ),
+          ),
+          subtitle: Text(
+            "Limits response length",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
           value: chatProvider.enableMaxOutputTokens,
           activeThumbColor: Colors.blueAccent,
           onChanged: (val) {

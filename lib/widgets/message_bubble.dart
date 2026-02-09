@@ -30,7 +30,7 @@ class MessageBubble extends StatelessWidget {
     this.onDelete,
   });
 
-    void _showImageZoom(BuildContext context, ImageProvider provider) {
+  void _showImageZoom(BuildContext context, ImageProvider provider) {
     showDialog(
       context: context,
       barrierColor: const Color.fromARGB(255, 0, 0, 0),
@@ -72,7 +72,9 @@ class MessageBubble extends StatelessWidget {
                   onPressed: () {
                     // Placeholder for actual download logic
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Image saved to Gallery (Simulated)")),
+                      const SnackBar(
+                        content: Text("Image saved to Gallery (Simulated)"),
+                      ),
                     );
                   },
                   icon: const Icon(Icons.download),
@@ -86,54 +88,104 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-    @override
-    Widget build(BuildContext context) {
-      final scaleProvider = Provider.of<ScaleProvider>(context);
-      final bubbleColor = msg.isUser ? themeProvider.userBubbleColor : themeProvider.aiBubbleColor;
-      final textColor = msg.isUser ? themeProvider.userTextColor : themeProvider.aiTextColor;
-      final borderColor = msg.isUser ? themeProvider.userBubbleColor.withAlpha(128) : Colors.white10;
-      final useBloom = themeProvider.enableBloom;
-  
-      Widget bubble;
-      if (msg.contentNotifier != null) {
-        bubble = ValueListenableBuilder<String>(
-          valueListenable: msg.contentNotifier!,
-          builder: (context, value, child) {
-            return _buildBubble(context, value, bubbleColor, borderColor, textColor, useBloom, scaleProvider);
-          },
-        );
-      } else {
-        bubble = _buildBubble(context, msg.text, bubbleColor, borderColor, textColor, useBloom, scaleProvider);
-      }
-  
-      return Align(
-        alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
-        child: Column(
-          crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            GestureDetector(
-              onLongPress: onLongPress,
-              child: bubble,
-            ),
+  @override
+  Widget build(BuildContext context) {
+    final scaleProvider = Provider.of<ScaleProvider>(context);
+    final bubbleColor = msg.isUser
+        ? themeProvider.userBubbleColor
+        : themeProvider.aiBubbleColor;
+    final textColor = msg.isUser
+        ? themeProvider.userTextColor
+        : themeProvider.aiTextColor;
+    final borderColor = msg.isUser
+        ? themeProvider.userBubbleColor.withAlpha(128)
+        : Colors.white10;
+    final useBloom = themeProvider.enableBloom;
+
+    Widget bubble;
+    if (msg.contentNotifier != null) {
+      bubble = ValueListenableBuilder<String>(
+        valueListenable: msg.contentNotifier!,
+        builder: (context, value, child) {
+          return _buildBubble(
+            context,
+            value,
+            bubbleColor,
+            borderColor,
+            textColor,
+            useBloom,
+            scaleProvider,
+          );
+        },
+      );
+    } else {
+      bubble = _buildBubble(
+        context,
+        msg.text,
+        bubbleColor,
+        borderColor,
+        textColor,
+        useBloom,
+        scaleProvider,
+      );
+    }
+
+    return Align(
+      alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment: msg.isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          GestureDetector(onLongPress: onLongPress, child: bubble),
           Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 8, left: 4, right: 4),
+            padding: const EdgeInsets.only(
+              top: 4,
+              bottom: 8,
+              left: 4,
+              right: 4,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // 1. REGENERATE (Leftmost for AI)
-                 if (onRegenerate != null)
-                   _buildIconBtn(Icons.refresh, "Regenerate", onRegenerate!, textColor, 25 * scaleProvider.iconScale),
+                if (onRegenerate != null)
+                  _buildIconBtn(
+                    Icons.refresh,
+                    "Regenerate",
+                    onRegenerate!,
+                    textColor,
+                    25 * scaleProvider.iconScale,
+                  ),
 
-                 // 2. COPY
-                 if (onCopy != null)
-                   _buildIconBtn(Icons.copy_rounded, "Copy", onCopy!, textColor, 25 * scaleProvider.iconScale),
+                // 2. COPY
+                if (onCopy != null)
+                  _buildIconBtn(
+                    Icons.copy_rounded,
+                    "Copy",
+                    onCopy!,
+                    textColor,
+                    25 * scaleProvider.iconScale,
+                  ),
 
-                 // 3. EDIT (User Only usually)
-                 if (onEdit != null)
-                   _buildIconBtn(Icons.edit_outlined, "Edit", onEdit!, textColor, 25 * scaleProvider.iconScale),
-                 // 4. DELETE
-                 if (onDelete != null)
-                   _buildIconBtn(Icons.delete_outline, "Delete", onDelete!, textColor, 25 * scaleProvider.iconScale),
+                // 3. EDIT (User Only usually)
+                if (onEdit != null)
+                  _buildIconBtn(
+                    Icons.edit_outlined,
+                    "Edit",
+                    onEdit!,
+                    textColor,
+                    25 * scaleProvider.iconScale,
+                  ),
+                // 4. DELETE
+                if (onDelete != null)
+                  _buildIconBtn(
+                    Icons.delete_outline,
+                    "Delete",
+                    onDelete!,
+                    textColor,
+                    25 * scaleProvider.iconScale,
+                  ),
               ],
             ),
           ),
@@ -142,7 +194,13 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-    Widget _buildIconBtn(IconData icon, String tooltip, VoidCallback onTap, Color color, double size) {
+  Widget _buildIconBtn(
+    IconData icon,
+    String tooltip,
+    VoidCallback onTap,
+    Color color,
+    double size,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: IconButton(
@@ -159,166 +217,254 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-    Widget _buildBubble(BuildContext context, String text, Color bubbleColor, Color borderColor, Color textColor, bool useBloom, ScaleProvider scaleProvider) {
-      final codeStyle = TextStyle(
-        color: textColor,
-        backgroundColor: Colors.black26,
-        shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
-        fontFamily: 'monospace',
-        fontSize: scaleProvider.chatFontSize - 2,
-      );
-  
-      // --- PARSE REASONING ---
-      final splitContent = _extractReasoning(text);
-      final reasoningText = splitContent['reasoning'] as String;
-      final visibleText = splitContent['content'] as String;
-      final isReasoningDone = splitContent['isDone'] as bool;
-  
-      // Define the content once to avoid repetition
-      final contentColumn = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // --- MODEL NAME DISPLAY ADDED HERE ---
-          if (!msg.isUser && msg.modelName != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6.0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: useBloom ? [const BoxShadow(color: Color.fromARGB(26, 255, 255, 255), blurRadius: 4)] : [],
-                ),
-                child: Text(
-                  cleanModelName(msg.modelName!),
-                  style: TextStyle(
-                    fontSize: scaleProvider.chatFontSize - 4,
-                    color: textColor.withOpacity(0.7),
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                    shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
-                  ),
-                ),
-              ),
-            ),
-  
-          // --- REASONING DROPDOWN ---
-          if (reasoningText.isNotEmpty)
-            ReasoningView(
-              reasoning: reasoningText,
-              textColor: textColor,
-              useBloom: useBloom,
-              isDone: isReasoningDone,
-            ),
-  
-          if (msg.imagePaths.isNotEmpty)
-            _buildAttachmentGrid(context, msg.imagePaths),
-          if (msg.aiImage != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: GestureDetector(
-                onTap: () => _showImageZoom(context, MemoryImage(base64Decode(msg.aiImage!))),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(base64Decode(msg.aiImage!), width: 250, fit: BoxFit.contain),
-                ),
-              ),
-            ),
-          if (visibleText.isNotEmpty)
-            MarkdownBody(
-              data: visibleText,
-              builders: {
-                'code': CodeElementBuilder(context, codeStyle),
-              },
-              styleSheet: MarkdownStyleSheet(
-                codeblockPadding: EdgeInsets.zero,
-                codeblockDecoration: const BoxDecoration(color: Colors.transparent),
-                p: TextStyle(
-                  color: textColor,
-                  fontSize: scaleProvider.chatFontSize,
-                  shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 15)] : [],
-                ),
-                a: TextStyle(
-                  color: Colors.blueAccent,
-                  fontSize: scaleProvider.chatFontSize,
-                  decoration: TextDecoration.underline,
-                  shadows: useBloom ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)] : [],
-                ),
-                code: codeStyle,
-                h1: TextStyle(color: textColor, fontSize: scaleProvider.chatFontSize + 8, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-                h2: TextStyle(color: textColor, fontSize: scaleProvider.chatFontSize + 6, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-                h3: TextStyle(color: textColor, fontSize: scaleProvider.chatFontSize + 4, fontWeight: FontWeight.bold, shadows: useBloom ? [Shadow(color: textColor, blurRadius: 10)] : []),
-              ),
-            ),
-  
-          // --- USAGE STATS DISPLAY ---
-          if (msg.usage != null && !msg.isUser)
-            Padding(
-              padding: const EdgeInsets.only(top: 6.0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: useBloom ? [const BoxShadow(color: Color.fromARGB(26, 255, 255, 255), blurRadius: 4)] : [],
-                ),
-                child: Text(
-                  "Usage: ${msg.usage!['prompt_tokens'] ?? 0} in + ${msg.usage!['completion_tokens'] ?? 0} out = ${msg.usage!['total_tokens'] ?? 0} total",
-                  style: TextStyle(
-                    fontSize: scaleProvider.chatFontSize - 4,
-                    color: textColor.withOpacity(0.7),
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                    shadows: useBloom ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)] : [],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      );
-  
-      // Use the CustomPaint for the glowing border, or a simple Container if bloom is off
-      return useBloom
-          ? Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              child: CustomPaint(
-                painter: BorderGlowPainter(
-                  backgroundColor: bubbleColor,
-                  borderColor: borderColor,
-                  glowColor: (msg.isUser ? bubbleColor : Colors.white).withOpacity(0.15),
-                  radius: 12.0,
-                  strokeWidth: 2.0,
-                  glowStrokeWidth: 10.0,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-                  child: contentColumn,
-                ),
-              ),
-            )
-          : Container(
-              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              padding: const EdgeInsets.all(12),
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+  Widget _buildBubble(
+    BuildContext context,
+    String text,
+    Color bubbleColor,
+    Color borderColor,
+    Color textColor,
+    bool useBloom,
+    ScaleProvider scaleProvider,
+  ) {
+    final codeStyle = TextStyle(
+      color: textColor,
+      backgroundColor: Colors.black26,
+      shadows: useBloom
+          ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)]
+          : [],
+      fontFamily: 'monospace',
+      fontSize: scaleProvider.chatFontSize - 2,
+    );
+
+    // --- PARSE REASONING ---
+    final splitContent = _extractReasoning(text);
+    final reasoningText = splitContent['reasoning'] as String;
+    final visibleText = splitContent['content'] as String;
+    final isReasoningDone = splitContent['isDone'] as bool;
+
+    // Define the content once to avoid repetition
+    final contentColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // --- MODEL NAME DISPLAY ADDED HERE ---
+        if (!msg.isUser && msg.modelName != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: bubbleColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: borderColor),
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: useBloom
+                    ? [
+                        const BoxShadow(
+                          color: Color.fromARGB(26, 255, 255, 255),
+                          blurRadius: 4,
+                        ),
+                      ]
+                    : [],
               ),
-              child: contentColumn,
-            );
-    }
-  
-    Widget _buildAttachmentGrid(BuildContext context, List<String> paths) {
+              child: Text(
+                cleanModelName(msg.modelName!),
+                style: TextStyle(
+                  fontSize: scaleProvider.chatFontSize - 4,
+                  color: textColor.withOpacity(0.7),
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  shadows: useBloom
+                      ? [
+                          Shadow(
+                            color: textColor.withOpacity(0.9),
+                            blurRadius: 4,
+                          ),
+                        ]
+                      : [],
+                ),
+              ),
+            ),
+          ),
+
+        // --- REASONING DROPDOWN ---
+        if (reasoningText.isNotEmpty)
+          ReasoningView(
+            reasoning: reasoningText,
+            textColor: textColor,
+            useBloom: useBloom,
+            isDone: isReasoningDone,
+          ),
+
+        if (msg.imagePaths.isNotEmpty)
+          _buildAttachmentGrid(context, msg.imagePaths),
+        if (msg.aiImage != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: GestureDetector(
+              onTap: () => _showImageZoom(
+                context,
+                MemoryImage(base64Decode(msg.aiImage!)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  base64Decode(msg.aiImage!),
+                  width: 250,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+        if (visibleText.isNotEmpty)
+          MarkdownBody(
+            data: visibleText,
+            builders: {'code': CodeElementBuilder(context, codeStyle)},
+            styleSheet: MarkdownStyleSheet(
+              codeblockPadding: EdgeInsets.zero,
+              codeblockDecoration: const BoxDecoration(
+                color: Colors.transparent,
+              ),
+              p: TextStyle(
+                color: textColor,
+                fontSize: scaleProvider.chatFontSize,
+                shadows: useBloom
+                    ? [
+                        Shadow(
+                          color: textColor.withOpacity(0.9),
+                          blurRadius: 15,
+                        ),
+                      ]
+                    : [],
+              ),
+              a: TextStyle(
+                color: Colors.blueAccent,
+                fontSize: scaleProvider.chatFontSize,
+                decoration: TextDecoration.underline,
+                shadows: useBloom
+                    ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)]
+                    : [],
+              ),
+              code: codeStyle,
+              h1: TextStyle(
+                color: textColor,
+                fontSize: scaleProvider.chatFontSize + 8,
+                fontWeight: FontWeight.bold,
+                shadows: useBloom
+                    ? [Shadow(color: textColor, blurRadius: 10)]
+                    : [],
+              ),
+              h2: TextStyle(
+                color: textColor,
+                fontSize: scaleProvider.chatFontSize + 6,
+                fontWeight: FontWeight.bold,
+                shadows: useBloom
+                    ? [Shadow(color: textColor, blurRadius: 10)]
+                    : [],
+              ),
+              h3: TextStyle(
+                color: textColor,
+                fontSize: scaleProvider.chatFontSize + 4,
+                fontWeight: FontWeight.bold,
+                shadows: useBloom
+                    ? [Shadow(color: textColor, blurRadius: 10)]
+                    : [],
+              ),
+            ),
+          ),
+
+        // --- USAGE STATS DISPLAY ---
+        if (msg.usage != null && !msg.isUser)
+          Padding(
+            padding: const EdgeInsets.only(top: 6.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: useBloom
+                    ? [
+                        const BoxShadow(
+                          color: Color.fromARGB(26, 255, 255, 255),
+                          blurRadius: 4,
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Text(
+                "Usage: ${msg.usage!['prompt_tokens'] ?? 0} in + ${msg.usage!['completion_tokens'] ?? 0} out = ${msg.usage!['total_tokens'] ?? 0} total",
+                style: TextStyle(
+                  fontSize: scaleProvider.chatFontSize - 4,
+                  color: textColor.withOpacity(0.7),
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  shadows: useBloom
+                      ? [
+                          Shadow(
+                            color: textColor.withOpacity(0.9),
+                            blurRadius: 4,
+                          ),
+                        ]
+                      : [],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+
+    // Use the CustomPaint for the glowing border, or a simple Container if bloom is off
+    return useBloom
+        ? Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            child: CustomPaint(
+              painter: BorderGlowPainter(
+                backgroundColor: bubbleColor,
+                borderColor: borderColor,
+                glowColor: (msg.isUser ? bubbleColor : Colors.white)
+                    .withOpacity(0.15),
+                radius: 12.0,
+                strokeWidth: 2.0,
+                glowStrokeWidth: 10.0,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.85,
+                ),
+                child: contentColumn,
+              ),
+            ),
+          )
+        : Container(
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            padding: const EdgeInsets.all(12),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.85,
+            ),
+            decoration: BoxDecoration(
+              color: bubbleColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor),
+            ),
+            child: contentColumn,
+          );
+  }
+
+  Widget _buildAttachmentGrid(BuildContext context, List<String> paths) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Wrap(
-        spacing: 8, runSpacing: 8,
+        spacing: 8,
+        runSpacing: 8,
         children: paths.map((path) {
           final String ext = path.split('.').last.toLowerCase();
-          final bool isImage = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].contains(ext);
+          final bool isImage = [
+            'jpg',
+            'jpeg',
+            'png',
+            'webp',
+            'heic',
+            'heif',
+          ].contains(ext);
 
           if (isImage) {
             return GestureDetector(
@@ -326,7 +472,8 @@ class MessageBubble extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  width: 150, height: 150,
+                  width: 150,
+                  height: 150,
                   color: Colors.black26,
                   child: Image.file(File(path), fit: BoxFit.cover),
                 ),
@@ -338,24 +485,32 @@ class MessageBubble extends StatelessWidget {
           return ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
-              width: 150, height: 150,
+              width: 150,
+              height: 150,
               color: Colors.black26,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   Icon(
-                    ext == 'pdf' ? Icons.picture_as_pdf 
-                    : ['doc', 'docx'].contains(ext) ? Icons.description
-                    : Icons.insert_drive_file,
-                    size: 50, 
-                    color: Colors.white54
+                    ext == 'pdf'
+                        ? Icons.picture_as_pdf
+                        : ['doc', 'docx'].contains(ext)
+                        ? Icons.description
+                        : Icons.insert_drive_file,
+                    size: 50,
+                    color: Colors.white54,
                   ),
                   Positioned(
-                    bottom: 8, left: 8, right: 8,
+                    bottom: 8,
+                    left: 8,
+                    right: 8,
                     child: Text(
                       path.split('/').last,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 10, color: Colors.white70),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.white70,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -367,7 +522,7 @@ class MessageBubble extends StatelessWidget {
         }).toList(),
       ),
     );
-    }
+  }
 }
 
 class CodeElementBuilder extends MarkdownElementBuilder {
@@ -376,7 +531,7 @@ class CodeElementBuilder extends MarkdownElementBuilder {
 
   CodeElementBuilder(this.context, this.textStyle);
 
-    @override
+  @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     var language = '';
 
@@ -392,7 +547,8 @@ class CodeElementBuilder extends MarkdownElementBuilder {
 
     // 2. Decide if this is a Block Code or Inline Code
     // If it has a language class or contains newlines, treat as block.
-    final bool isBlock = language.isNotEmpty || element.textContent.contains('\n');
+    final bool isBlock =
+        language.isNotEmpty || element.textContent.contains('\n');
 
     if (!isBlock) {
       // INLINE CODE STYLE
@@ -434,22 +590,32 @@ class CodeElementBuilder extends MarkdownElementBuilder {
                 if (language.isNotEmpty)
                   Text(
                     language.toUpperCase(),
-                    style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   )
                 else
-                   const SizedBox.shrink(),
+                  const SizedBox.shrink(),
                 InkWell(
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: element.textContent));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Code copied!'), duration: Duration(seconds: 1)),
+                      const SnackBar(
+                        content: Text('Code copied!'),
+                        duration: Duration(seconds: 1),
+                      ),
                     );
                   },
                   child: const Row(
                     children: [
                       Icon(Icons.copy, color: Colors.white70, size: 14),
                       SizedBox(width: 6),
-                      Text("Copy Code", style: TextStyle(color: Colors.white70, fontSize: 11)),
+                      Text(
+                        "Copy Code",
+                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
                     ],
                   ),
                 ),
@@ -489,7 +655,7 @@ class BorderGlowPainter extends CustomPainter {
     this.glowStrokeWidth = 3.0,
   });
 
-    @override
+  @override
   void paint(Canvas canvas, Size size) {
     // Paint for the glowing effect
     final glowPaint = Paint()
@@ -517,11 +683,11 @@ class BorderGlowPainter extends CustomPainter {
     canvas.drawRRect(rrect.inflate(-strokeWidth / 2), borderPaint);
   }
 
-    @override
+  @override
   bool shouldRepaint(covariant BorderGlowPainter oldDelegate) {
     return oldDelegate.backgroundColor != backgroundColor ||
-           oldDelegate.borderColor != borderColor ||
-           oldDelegate.glowColor != glowColor;
+        oldDelegate.borderColor != borderColor ||
+        oldDelegate.glowColor != glowColor;
   }
 }
 
@@ -531,21 +697,17 @@ Map<String, dynamic> _extractReasoning(String text) {
   // Matches <think> content </think> (handling unclosed tag for streaming)
   final RegExp thinkRegex = RegExp(r'<think>(.*?)(?:</think>|$)', dotAll: true);
   final match = thinkRegex.firstMatch(text);
-  
+
   if (match != null) {
     final reasoning = match.group(1)?.trim() ?? '';
     // Check if the closing tag exists in the full match
     final bool hasClosing = match.group(0)!.contains('</think>');
-    
+
     // Remove the think block from the main text
     final content = text.replaceFirst(match.group(0)!, '').trim();
-    return {
-      'reasoning': reasoning, 
-      'content': content,
-      'isDone': hasClosing
-    };
+    return {'reasoning': reasoning, 'content': content, 'isDone': hasClosing};
   }
-  
+
   // If no reasoning found, effectively "done" with reasoning (none exists)
   return {'reasoning': '', 'content': text, 'isDone': true};
 }
@@ -590,7 +752,7 @@ class _ReasoningViewState extends State<ReasoningView> {
     }
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -604,33 +766,37 @@ class _ReasoningViewState extends State<ReasoningView> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                 color: Colors.black12,
-                 borderRadius: BorderRadius.circular(4),
-                 border: Border.all(color: widget.textColor.withOpacity(0.1)),
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: widget.textColor.withOpacity(0.1)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   Icon(
-                     _isExpanded ? Icons.visibility_off_outlined : Icons.psychology_outlined,
-                     size: 14, 
-                     color: widget.textColor.withOpacity(0.6)
-                   ),
-                   const SizedBox(width: 6),
-                   Text(
-                     _isExpanded ? "Hide Thought Process" : "Show Thought Process",
-                     style: TextStyle(
-                       fontSize: 11,
-                       fontWeight: FontWeight.bold,
-                       color: widget.textColor.withOpacity(0.6),
-                     ),
-                   ),
-                   const SizedBox(width: 4),
+                  Icon(
+                    _isExpanded
+                        ? Icons.visibility_off_outlined
+                        : Icons.psychology_outlined,
+                    size: 14,
+                    color: widget.textColor.withOpacity(0.6),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _isExpanded
+                        ? "Hide Thought Process"
+                        : "Show Thought Process",
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: widget.textColor.withOpacity(0.6),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
                 ],
               ),
             ),
           ),
-          
+
           // Content
           if (_isExpanded)
             Container(
@@ -641,7 +807,10 @@ class _ReasoningViewState extends State<ReasoningView> {
                 color: Colors.black26,
                 borderRadius: BorderRadius.circular(6),
                 border: Border(
-                  left: BorderSide(color: widget.textColor.withOpacity(0.3), width: 3)
+                  left: BorderSide(
+                    color: widget.textColor.withOpacity(0.3),
+                    width: 3,
+                  ),
                 ),
               ),
               child: Text(
@@ -659,5 +828,3 @@ class _ReasoningViewState extends State<ReasoningView> {
     );
   }
 }
-
-

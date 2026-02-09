@@ -38,21 +38,27 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   String? _lastSyncedTitle;
   String? _lastSyncedOpenRouterModel;
   String? _lastSyncedGroqModel;
-  
+
   @override
   void initState() {
     super.initState();
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    
+
     _apiKeyController = TextEditingController(text: _getApiKey(chatProvider));
     _localIpController = TextEditingController(text: chatProvider.localIp);
     _titleController = TextEditingController(text: chatProvider.currentTitle);
     _promptTitleController = TextEditingController();
-    _openRouterModelController = TextEditingController(text: chatProvider.openRouterModel);
+    _openRouterModelController = TextEditingController(
+      text: chatProvider.openRouterModel,
+    );
     _groqModelController = TextEditingController(text: chatProvider.groqModel);
-    
-    _advancedPromptController = TextEditingController(text: chatProvider.advancedSystemInstruction);
-    _mainPromptController = TextEditingController(text: chatProvider.systemInstruction);
+
+    _advancedPromptController = TextEditingController(
+      text: chatProvider.advancedSystemInstruction,
+    );
+    _mainPromptController = TextEditingController(
+      text: chatProvider.systemInstruction,
+    );
 
     // Initialize last synced values
     _lastSyncedApiKey = _apiKeyController.text;
@@ -69,35 +75,45 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _groqModelController.addListener(_checkForChanges);
     _mainPromptController.addListener(_checkForChanges);
     _advancedPromptController.addListener(_checkForChanges);
-    
+
     // Note: SystemPromptPanel handles loading custom rules and populating the prompt controllers
   }
 
   String _getApiKey(ChatProvider provider) {
     switch (provider.currentProvider) {
-      case AiProvider.gemini: return provider.geminiKey;
-      case AiProvider.openRouter: return provider.openRouterKey;
-      case AiProvider.openAi: return provider.openAiKey;
-      case AiProvider.arliAi: return provider.arliAiKey;
-      case AiProvider.nanoGpt: return provider.nanoGptKey;
-      case AiProvider.huggingFace: return provider.huggingFaceKey;
-      case AiProvider.groq: return provider.groqKey;
-      case AiProvider.local: return "";
+      case AiProvider.gemini:
+        return provider.geminiKey;
+      case AiProvider.openRouter:
+        return provider.openRouterKey;
+      case AiProvider.openAi:
+        return provider.openAiKey;
+      case AiProvider.arliAi:
+        return provider.arliAiKey;
+      case AiProvider.nanoGpt:
+        return provider.nanoGptKey;
+      case AiProvider.huggingFace:
+        return provider.huggingFaceKey;
+      case AiProvider.groq:
+        return provider.groqKey;
+      case AiProvider.local:
+        return "";
     }
   }
-  
+
   void _handleSaveSettings() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    
+
     // 1. Save System Prompts (Separately)
     chatProvider.setSystemInstruction(_mainPromptController.text.trim());
-    chatProvider.setAdvancedSystemInstruction(_advancedPromptController.text.trim());
+    chatProvider.setAdvancedSystemInstruction(
+      _advancedPromptController.text.trim(),
+    );
 
     // 2. Save All Values to Provider
     chatProvider.setApiKey(_apiKeyController.text.trim());
     chatProvider.setLocalIp(_localIpController.text.trim());
     chatProvider.setTitle(_titleController.text.trim());
-    
+
     if (chatProvider.currentProvider == AiProvider.openRouter) {
       chatProvider.setModel(_openRouterModelController.text.trim());
     } else if (chatProvider.currentProvider == AiProvider.groq) {
@@ -106,7 +122,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
     // 3. Persist to Disk
     chatProvider.saveSettings();
-    
+
     // 4. Update Sync State
     _lastSyncedApiKey = _apiKeyController.text;
     _lastSyncedLocalIp = _localIpController.text;
@@ -120,9 +136,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.lightBlue,
         duration: Duration(milliseconds: 1500),
-      )
+      ),
     );
-    
+
     setState(() {
       _hasUnsavedChanges = false;
     });
@@ -143,17 +159,22 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
     // 4. Check OpenRouter Model
     if (chatProvider.currentProvider == AiProvider.openRouter) {
-      if (_openRouterModelController.text != chatProvider.openRouterModel) hasChanges = true;
+      if (_openRouterModelController.text != chatProvider.openRouterModel)
+        hasChanges = true;
     }
 
     // 5. Check Groq Model
     if (chatProvider.currentProvider == AiProvider.groq) {
-      if (_groqModelController.text != chatProvider.groqModel) hasChanges = true;
+      if (_groqModelController.text != chatProvider.groqModel)
+        hasChanges = true;
     }
 
     // 6. Check System Prompt
-    if (_mainPromptController.text.trim() != chatProvider.systemInstruction) hasChanges = true;
-    if (_advancedPromptController.text.trim() != chatProvider.advancedSystemInstruction) hasChanges = true;
+    if (_mainPromptController.text.trim() != chatProvider.systemInstruction)
+      hasChanges = true;
+    if (_advancedPromptController.text.trim() !=
+        chatProvider.advancedSystemInstruction)
+      hasChanges = true;
 
     if (_hasUnsavedChanges != hasChanges) {
       setState(() {
@@ -227,15 +248,19 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
-    
+
     _syncControllers(chatProvider);
 
     return Material(
       elevation: themeProvider.enableBloom ? 30 : 16,
-      shadowColor: themeProvider.enableBloom ? themeProvider.appThemeColor.withOpacity(0.9) : null,
+      shadowColor: themeProvider.enableBloom
+          ? themeProvider.appThemeColor.withOpacity(0.9)
+          : null,
       color: const Color.fromARGB(255, 0, 0, 0),
       child: SizedBox(
-        width: scaleProvider.drawerWidth + (scaleProvider.systemFontSize - 12) * 10,
+        width:
+            scaleProvider.drawerWidth +
+            (scaleProvider.systemFontSize - 12) * 10,
         height: double.infinity,
         child: Stack(
           children: [
@@ -245,11 +270,18 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SettingsHeader(),
-                  
+
                   ExpansionTile(
                     key: Key('api_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("API & Connectivity", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
+                    title: Text(
+                      "API & Connectivity",
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [
@@ -263,7 +295,14 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ExpansionTile(
                     key: Key('model_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("Model Configuration", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
+                    title: Text(
+                      "Model Configuration",
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [
@@ -274,11 +313,18 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       ),
                     ],
                   ),
-                  
+
                   ExpansionTile(
                     key: Key('system_prompt_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("System Prompt", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
+                    title: Text(
+                      "System Prompt",
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [
@@ -290,16 +336,21 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       ),
                     ],
                   ),
-                  
+
                   ExpansionTile(
                     key: Key('generation_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("Generation Parameters", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
+                    title: Text(
+                      "Generation Parameters",
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
-                    children: [
-                      const GenerationSettingsPanel(),
-                    ],
+                    children: [const GenerationSettingsPanel()],
                   ),
 
                   ExpansionTile(
@@ -317,41 +368,61 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                         shadows: scaleProvider.shouldGlow
-                            ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 15, offset: const Offset(0, 0))]
+                            ? [
+                                Shadow(
+                                  color: themeProvider.appThemeColor,
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 0),
+                                ),
+                              ]
                             : null,
-                      )
+                      ),
                     ),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     leading: scaleProvider.shouldGlow
-                        ? Icon(Icons.new_releases, color: themeProvider.appThemeColor, shadows: [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)])
+                        ? Icon(
+                            Icons.new_releases,
+                            color: themeProvider.appThemeColor,
+                            shadows: [
+                              Shadow(
+                                color: themeProvider.appThemeColor,
+                                blurRadius: 10,
+                              ),
+                            ],
+                          )
                         : null,
-                    children: [
-                      const ScaleSettingsPanel(),
-                    ],
+                    children: [const ScaleSettingsPanel()],
                   ),
-                  
+
                   ExpansionTile(
                     key: Key('visual_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
-                    title: Text("Visuals & Atmosphere", style: TextStyle(color: themeProvider.appThemeColor, fontWeight: FontWeight.bold, fontSize: scaleProvider.systemFontSize)),
+                    title: Text(
+                      "Visuals & Atmosphere",
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
-                    children: [
-                      const VisualSettingsPanel(),
-                    ],
+                    children: [const VisualSettingsPanel()],
                   ),
-                  
+
                   // Extra space for FAB
                   const SizedBox(height: 80),
                 ],
               ),
             ),
-            
+
             AnimatedPositioned(
               duration: const Duration(milliseconds: 800),
               curve: _hasUnsavedChanges ? Curves.bounceOut : Curves.easeInBack,
-              bottom: _hasUnsavedChanges ? 30 : MediaQuery.of(context).size.height + 200,
+              bottom: _hasUnsavedChanges
+                  ? 30
+                  : MediaQuery.of(context).size.height + 200,
               right: 20,
               child: FloatingActionButton(
                 backgroundColor: themeProvider.appThemeColor,
