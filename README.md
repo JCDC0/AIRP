@@ -62,18 +62,6 @@ AIRP is designed to be your companion across all your devices. Whether you are o
     ```
 
 ---
-### Modular Settings Structure
-The settings interface has been refactored into modular components located in `lib/widgets/settings_panels/`. This allows for easier maintenance and expansion of specific settings categories:
-
-*   `api_settings_panel.dart`: API key management and provider selection.
-*   `model_settings_panel.dart`: Model selection and list management.
-*   `system_prompt_panel.dart`: System prompt and advanced tweak configuration.
-*   `generation_settings_panel.dart`: LLM parameters (Temperature, Top P, etc.).
-*   `visual_settings_panel.dart`: Theme, background, and effect customization.
-*   `scale_settings_panel.dart`: Multi-device scaling and UI dimension controls.
-
----
-
 ## Configuration & API Keys
 
 This app follows a **BYOK (Bring Your Own Key)** architecture. Keys are stored locally on your device.

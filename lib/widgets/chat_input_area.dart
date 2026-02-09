@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,13 +18,24 @@ class ChatInputArea extends StatefulWidget {
   State<ChatInputArea> createState() => _ChatInputAreaState();
 }
 
-class _ChatInputAreaState extends State<ChatInputArea> {
+class _ChatInputAreaState extends State<ChatInputArea> with TickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final List<String> _pendingImages = [];
   final ImagePicker _picker = ImagePicker();
+  late AnimationController _orbitController;
+
+  @override
+  void initState() {
+    super.initState();
+    _orbitController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    );
+  }
 
   @override
   void dispose() {
+    _orbitController.dispose();
     _textController.dispose();
     super.dispose();
   }
@@ -201,7 +213,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
         color: backgroundColor,
         shape: BoxShape.circle,
         boxShadow: isActive && useBloom && color != null
-            ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 8 * iconScale, spreadRadius: 1 * iconScale)]
+            ? [BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 8 * iconScale, spreadRadius: 1 * iconScale)]
             : [],
         border: isActive ? Border.all(color: color ?? Colors.white, width: 1.5 * iconScale) : null,
       ),
@@ -252,19 +264,27 @@ class _ChatInputAreaState extends State<ChatInputArea> {
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final bool isLoading = chatProvider.isLoading;
 
+    if (isLoading) {
+      if (!_orbitController.isAnimating) {
+        _orbitController.repeat();
+      }
+    } else {
+      if (_orbitController.isAnimating) {
+        _orbitController.stop();
+      }
+    }
+
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isLoading)
-            LinearProgressIndicator(color: themeProvider.appThemeColor, minHeight: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
             color: Colors.transparent,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ROW 0: ATTACHMENTS LIST (Scrollable) - Moved to top
+                // ROW 0: ATTACHMENTS LIST
                 if (_pendingImages.isNotEmpty) ...[
                   SizedBox(
                     height: 50,
@@ -354,7 +374,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                   const SizedBox(height: 12),
                 ],
 
-                // ROW 1: Icons + Scroll Buttons
+                // ROW 1: Icons
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -492,24 +512,63 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                   children: [
                     // 3. INPUT FIELD
                     Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        minLines: 1,
-                        maxLines: scaleProvider.inputAreaScale.toInt(),
-                        style: TextStyle(color: Colors.white, fontSize: scaleProvider.chatFontSize),
-                        decoration: InputDecoration(
-                          hintText: _pendingImages.isNotEmpty
-                              ? 'Add a caption...'
-                              : (chatProvider.enableGrounding
-                                  ? 'Search web...'
-                                  : (chatProvider.enableImageGen ? 'Describe image...' : 'Message...')),
-                          hintStyle: TextStyle(color: Colors.grey[500], fontSize: scaleProvider.chatFontSize),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                          filled: true,
-                          fillColor: Colors.black,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          isDense: true,
+                      child: AnimatedBuilder(
+                        animation: _orbitController,
+                        builder: (context, child) {
+                          return CustomPaint(
+                            foregroundPainter: isLoading ? DotOrbitPainter(
+                              progress: _orbitController.value,
+                              color: Colors.white,
+                              bloomColor: themeProvider.appThemeColor,
+                              enableBloom: themeProvider.enableBloom,
+                            ) : null,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                color: Colors.black,
+                              ),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: TextField(
+                          controller: _textController,
+                          minLines: 1,
+                          maxLines: scaleProvider.inputAreaScale.toInt(),
+                          style: TextStyle(color: Colors.white, fontSize: scaleProvider.chatFontSize),
+                          decoration: InputDecoration(
+                            hintText: _pendingImages.isNotEmpty
+                                ? 'Add a caption...'
+                                : (chatProvider.enableGrounding
+                                    ? 'Search web...'
+                                    : (chatProvider.enableImageGen ? 'Describe image...' : 'Message...')),
+                            hintStyle: TextStyle(color: Colors.grey[500], fontSize: scaleProvider.chatFontSize),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide(
+                                color: isLoading ? Colors.transparent : Colors.grey[900]!,
+                                width: 1,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide(
+                                color: isLoading ? Colors.transparent : Colors.grey[900]!,
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide(
+                                color: isLoading ? Colors.transparent : themeProvider.appThemeColor.withValues(alpha: 0.5),
+                                width: 1,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.black,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            isDense: true,
+                          ),
                         ),
                       ),
                     ),
@@ -519,7 +578,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                     IconButton.filled(
                       style: IconButton.styleFrom(
                           backgroundColor: isLoading
-                              ? themeProvider.appThemeColor.withOpacity(0.2)
+                              ? themeProvider.appThemeColor.withValues(alpha: 0.2)
                               : (chatProvider.enableGrounding ? Colors.green : themeProvider.appThemeColor),
                           fixedSize: Size(40 * scaleProvider.iconScale, 40 * scaleProvider.iconScale)),
                       onPressed: isLoading ? chatProvider.cancelGeneration : _sendMessage,
@@ -535,4 +594,60 @@ class _ChatInputAreaState extends State<ChatInputArea> {
       ),
     );
   }
+}
+
+class DotOrbitPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final Color bloomColor;
+  final bool enableBloom;
+
+  DotOrbitPainter({
+    required this.progress,
+    required this.color,
+    required this.bloomColor,
+    required this.enableBloom,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect rect = Offset.zero & size;
+    final RRect rrect = RRect.fromRectAndRadius(rect, const Radius.circular(24));
+    final Path path = Path()..addRRect(rrect);
+    
+    final List<ui.PathMetric> metrics = path.computeMetrics().toList();
+    if (metrics.isEmpty) return;
+    
+    final ui.PathMetric metric = metrics.first;
+    final double pathLength = metric.length;
+
+    final Paint dotPaint = Paint()..color = color;
+    final Paint bloomPaint = Paint()
+      ..color = bloomColor.withValues(alpha: 0.4)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+
+    // Draw 4 dots with different offsets and speeds
+    final List<Map<String, double>> dots = [
+      {'speed': 1.0, 'offset': 0.0, 'size': 2.0},
+      {'speed': 1.5, 'offset': 0.2, 'size': 1.5},
+      {'speed': 0.8, 'offset': 0.5, 'size': 2.5},
+      {'speed': 1.2, 'offset': 0.7, 'size': 1.8},
+    ];
+
+    for (var dot in dots) {
+      double dotProgress = (progress * dot['speed']! + dot['offset']!) % 1.0;
+      ui.Tangent? tangent = metric.getTangentForOffset(dotProgress * pathLength);
+      
+      if (tangent != null) {
+        if (enableBloom) {
+          canvas.drawCircle(tangent.position, dot['size']! + 2, bloomPaint);
+        }
+        canvas.drawCircle(tangent.position, dot['size']!, dotPaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant DotOrbitPainter oldDelegate) => 
+    oldDelegate.progress != progress || oldDelegate.enableBloom != enableBloom;
 }
