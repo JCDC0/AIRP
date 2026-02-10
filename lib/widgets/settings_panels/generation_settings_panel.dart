@@ -23,7 +23,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- MSG HISTORY TOGGLE ---
+        // Conversation Context Control
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -55,7 +55,6 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           },
         ),
 
-        // --- MSG HISTORY SLIDER ---
         Opacity(
           opacity: chatProvider.enableMsgHistory ? 1.0 : 0.5,
           child: AbsorbPointer(
@@ -91,7 +90,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         ),
         const Divider(),
 
-        // --- REASONING TOGGLE ---
+        // Thinking Model Depth
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -126,7 +125,6 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           },
         ),
 
-        // --- REASONING DROPDOWN ---
         Opacity(
           opacity: chatProvider.enableReasoning ? 1.0 : 0.5,
           child: AbsorbPointer(
@@ -237,7 +235,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         ),
         const Divider(),
 
-        // --- GENERATION SETTINGS TOGGLE ---
+        // Creative Parameters (Temperature, Top P/K)
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -269,14 +267,12 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           },
         ),
 
-        // --- GENERATION SETTINGS SLIDERS ---
         Opacity(
           opacity: chatProvider.enableGenerationSettings ? 1.0 : 0.5,
           child: AbsorbPointer(
             absorbing: !chatProvider.enableGenerationSettings,
             child: Column(
               children: [
-                // --- TEMPERATURE ---
                 SettingsSlider(
                   title: "Temperature (Creativity)",
                   value: chatProvider.temperature,
@@ -291,7 +287,6 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   },
                 ),
 
-                // --- TOP P ---
                 SettingsSlider(
                   title: "Top P (Nucleus Sampling)",
                   value: chatProvider.topP,
@@ -306,7 +301,6 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   },
                 ),
 
-                // --- TOP K ---
                 SettingsSlider(
                   title: "Top K (Vocabulary Size)",
                   value: chatProvider.topK.toDouble(),
@@ -327,7 +321,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         ),
         const Divider(),
 
-        // --- MAX OUTPUT TOKENS TOGGLE ---
+        // Response Length Limit
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -359,7 +353,6 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           },
         ),
 
-        // --- MAX OUTPUT TOKENS SLIDER ---
         Opacity(
           opacity: chatProvider.enableMaxOutputTokens ? 1.0 : 0.5,
           child: AbsorbPointer(

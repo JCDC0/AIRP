@@ -582,8 +582,9 @@ class VisualSettingsPanel extends StatelessWidget {
                         final XFile? image = await picker.pickImage(
                           source: ImageSource.gallery,
                         );
-                        if (image != null)
+                        if (image != null) {
                           themeProvider.addCustomImage(image.path);
+                        }
                       },
                       child: Container(
                         decoration: BoxDecoration(

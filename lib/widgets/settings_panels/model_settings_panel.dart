@@ -119,9 +119,6 @@ class ModelSettingsPanel extends StatelessWidget {
         ),
         const SizedBox(height: 5),
 
-        // ============================================
-        // GEMINI UI
-        // ============================================
         if (chatProvider.currentProvider == AiProvider.gemini)
           ProviderModelSelector(
             modelsList: chatProvider.geminiModelsList,
@@ -132,9 +129,6 @@ class ModelSettingsPanel extends StatelessWidget {
             onRefresh: chatProvider.fetchGeminiModels,
             refreshButtonColor: Colors.blueAccent,
           )
-        // ============================================
-        // OPENROUTER UI
-        // ============================================
         else if (chatProvider.currentProvider == AiProvider.openRouter)
           ProviderModelSelector(
             modelsList: chatProvider.openRouterModelsList,
@@ -149,9 +143,7 @@ class ModelSettingsPanel extends StatelessWidget {
             refreshButtonColor: Colors.purpleAccent,
             controller: openRouterModelController,
           ),
-        // -------------------------------------------
-        // LOCAL UI
-        // -------------------------------------------
+
         if (chatProvider.currentProvider == AiProvider.local) ...[
           const SizedBox(height: 5),
           TextField(
@@ -171,9 +163,6 @@ class ModelSettingsPanel extends StatelessWidget {
           ),
         ],
 
-        // ============================================
-        // ARLI AI UI
-        // ============================================
         if (chatProvider.currentProvider == AiProvider.arliAi)
           ProviderModelSelector(
             modelsList: chatProvider.arliAiModelsList,
@@ -185,9 +174,6 @@ class ModelSettingsPanel extends StatelessWidget {
             refreshButtonColor: Colors.orangeAccent,
           ),
 
-        // ============================================
-        // NANOGPT UI
-        // ============================================
         if (chatProvider.currentProvider == AiProvider.nanoGpt)
           ProviderModelSelector(
             modelsList: chatProvider.nanoGptModelsList,
@@ -199,9 +185,6 @@ class ModelSettingsPanel extends StatelessWidget {
             refreshButtonColor: Colors.yellowAccent,
           ),
 
-        // ============================================
-        // OPENAI UI
-        // ============================================
         if (chatProvider.currentProvider == AiProvider.openAi)
           ProviderModelSelector(
             modelsList: chatProvider.openAiModelsList,
@@ -213,9 +196,6 @@ class ModelSettingsPanel extends StatelessWidget {
             refreshButtonColor: Colors.greenAccent,
           ),
 
-        // ============================================
-        // HUGGINGFACE UI
-        // ============================================
         if (chatProvider.currentProvider == AiProvider.huggingFace)
           ProviderModelSelector(
             modelsList: chatProvider.huggingFaceModelsList,
@@ -227,9 +207,6 @@ class ModelSettingsPanel extends StatelessWidget {
             refreshButtonColor: Colors.amberAccent,
           ),
 
-        // ============================================
-        // GROQ UI
-        // ============================================
         if (chatProvider.currentProvider == AiProvider.groq)
           ProviderModelSelector(
             modelsList: chatProvider.groqModelsList,

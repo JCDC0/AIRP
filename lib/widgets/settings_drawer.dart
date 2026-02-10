@@ -159,22 +159,26 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
     // 4. Check OpenRouter Model
     if (chatProvider.currentProvider == AiProvider.openRouter) {
-      if (_openRouterModelController.text != chatProvider.openRouterModel)
+      if (_openRouterModelController.text != chatProvider.openRouterModel) {
         hasChanges = true;
+      }
     }
 
     // 5. Check Groq Model
     if (chatProvider.currentProvider == AiProvider.groq) {
-      if (_groqModelController.text != chatProvider.groqModel)
+      if (_groqModelController.text != chatProvider.groqModel) {
         hasChanges = true;
+      }
     }
 
     // 6. Check System Prompt
-    if (_mainPromptController.text.trim() != chatProvider.systemInstruction)
+    if (_mainPromptController.text.trim() != chatProvider.systemInstruction) {
       hasChanges = true;
+    }
     if (_advancedPromptController.text.trim() !=
-        chatProvider.advancedSystemInstruction)
+        chatProvider.advancedSystemInstruction) {
       hasChanges = true;
+    }
 
     if (_hasUnsavedChanges != hasChanges) {
       setState(() {

@@ -765,8 +765,9 @@ class ChatProvider extends ChangeNotifier {
         if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
         if (_enableAdvancedSystemPrompt &&
             _advancedSystemInstruction.isNotEmpty) {
-          if (finalSystemInstruction.isNotEmpty)
+          if (finalSystemInstruction.isNotEmpty) {
             finalSystemInstruction += "\n\n";
+          }
           finalSystemInstruction += _advancedSystemInstruction;
         }
 
@@ -933,8 +934,9 @@ class ChatProvider extends ChangeNotifier {
           apiKey = _groqKey;
         } else if (_currentProvider == AiProvider.local) {
           baseUrl = _localIp.trim();
-          if (baseUrl.endsWith('/'))
+          if (baseUrl.endsWith('/')) {
             baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+          }
           if (!baseUrl.endsWith('/chat/completions')) {
             baseUrl += baseUrl.endsWith('/v1')
                 ? "/chat/completions"
@@ -947,8 +949,9 @@ class ChatProvider extends ChangeNotifier {
         if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
         if (_enableAdvancedSystemPrompt &&
             _advancedSystemInstruction.isNotEmpty) {
-          if (finalSystemInstruction.isNotEmpty)
+          if (finalSystemInstruction.isNotEmpty) {
             finalSystemInstruction += "\n\n";
+          }
           finalSystemInstruction += _advancedSystemInstruction;
         }
 
@@ -1349,8 +1352,9 @@ class ChatProvider extends ChangeNotifier {
       currentModel: _nanoGptModel,
       updateSelectedModel: (val) {
         _nanoGptModel = val;
-        if (_currentProvider == AiProvider.nanoGpt)
+        if (_currentProvider == AiProvider.nanoGpt) {
           _selectedModel = _nanoGptModel;
+        }
       },
     );
   }
@@ -1369,8 +1373,9 @@ class ChatProvider extends ChangeNotifier {
       currentModel: _openAiModel,
       updateSelectedModel: (val) {
         _openAiModel = val;
-        if (_currentProvider == AiProvider.openAi)
+        if (_currentProvider == AiProvider.openAi) {
           _selectedModel = _openAiModel;
+        }
       },
     );
   }
@@ -1389,8 +1394,9 @@ class ChatProvider extends ChangeNotifier {
       currentModel: _huggingFaceModel,
       updateSelectedModel: (val) {
         _huggingFaceModel = val;
-        if (_currentProvider == AiProvider.huggingFace)
+        if (_currentProvider == AiProvider.huggingFace) {
           _selectedModel = _huggingFaceModel;
+        }
       },
     );
   }

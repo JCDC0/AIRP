@@ -6,52 +6,39 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/chat_models.dart';
 
 class ChatApiService {
-  // ==============================================================================
-  // 1. GEMINI STREAMING
-  // ==============================================================================
+  /// Streams a response from Google Gemini, handling text content and various
+  /// file attachments (images, PDFs, and text-based source files).
   static Stream<String> streamGeminiResponse({
     required ChatSession chatSession,
     required String message,
     required List<String> imagePaths,
     required String modelName,
   }) async* {
-    // 1. Prepare Content
     final List<Part> parts = [];
     String accumulatedText = message;
 
-    // Handle Attachments
     if (imagePaths.isNotEmpty) {
       for (String path in imagePaths) {
         final String ext = path.split('.').last.toLowerCase();
-        // Text Files
+
         if ([
-          'txt',
-          'md',
-          'json',
-          'dart',
-          'js',
-          'py',
-          'html',
-          'css',
-          'csv',
-          'c',
-          'cpp',
-          'java',
+          'txt', 'md', 'json', 'dart', 'js', 'py', 'html', 'css', 'csv', 'c', 'cpp', 'java',
         ].contains(ext)) {
           try {
             final String fileContent = await File(path).readAsString();
             accumulatedText +=
                 "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n";
-          } catch (e) {}
-        }
-        // Binary Files (Images/PDF)
-        else {
+          } catch (e) {
+            // Silently fail if file reading fails
+          }
+        } else {
           final bytes = await File(path).readAsBytes();
           String? mimeType;
           if (['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'].contains(ext)) {
             mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
-          } else if (ext == 'pdf')
+          } else if (ext == 'pdf') {
             mimeType = 'application/pdf';
+          }
 
           if (mimeType != null) parts.add(DataPart(mimeType, bytes));
         }
@@ -63,19 +50,11 @@ class ChatApiService {
         ? Content.multi(parts)
         : Content.text(accumulatedText);
 
-    // 2. Stream
     final stream = chatSession.sendMessageStream(userContent);
 
-    // NOTE: Gemini 3 models will require explicit handling of "thought signatures"
-    // when performing function calls. We defensively attempt to extract a thought
-    // signature from each streamed response (if present) and emit it as a
-    // special token `[[THOUGHT_SIG:<value>]]`. The UI/provider layer can capture
-    // this token and return the signature back to Gemini when invoking functions.
-    //
-    // This extraction is intentionally defensive: we treat `response` as `dynamic`
-    // and try multiple strategies (direct field, `toJson()` map) so that this
-    // change won't break existing behavior if the underlying response type
-    // doesn't include a signature field.
+    // Gemini 3 models require explicit handling of 'thought signatures' for 
+    // function calling continuity. We extract these tokens for the UI to 
+    // return in subsequent turns.
     await for (final dynamic response in stream) {
       try {
         String? text;
@@ -87,26 +66,23 @@ class ChatApiService {
           yield text;
         }
 
-        // Attempt to pull a thought signature (if the response exposes one).
         String? tryExtractSignature(dynamic r) {
           try {
             if (r == null) return null;
-            // If already a Map-like structure
             if (r is Map) {
               return r['thought_signature']?.toString() ??
                   r['thoughtSignature']?.toString();
             }
-            // Try direct field access (may throw/noSuchMethod if absent)
             try {
               final sig = r.thoughtSignature;
               if (sig != null) return sig.toString();
             } catch (_) {}
-            // Try toJson() if available
             try {
               final json = r.toJson();
-              if (json is Map)
+              if (json is Map) {
                 return json['thought_signature']?.toString() ??
                     json['thoughtSignature']?.toString();
+              }
             } catch (_) {}
           } catch (_) {}
           return null;
@@ -117,26 +93,22 @@ class ChatApiService {
           yield '[[THOUGHT_SIG:$sig]]';
         }
       } catch (e) {
-        // Ignore any unexpected errors while attempting to extract signatures
-        // and continue streaming the textual content.
+        // Stream continues even if signature extraction fails
       }
     }
   }
 
-  // ==============================================================================
-  // 2. OPENAI-COMPATIBLE STREAMING (OpenRouter, ArliAI, NanoGPT, Local)
-  // ==============================================================================
+  /// Streams responses from OpenAI-compatible endpoints (OpenRouter, Groq, etc.).
+  /// Supports multimodal inputs by converting images to base64 and appending
+  /// text file contents directly to the prompt.
   static Stream<String> streamOpenAiCompatible({
     required String apiKey,
-    required String
-    baseUrl, // e.g., https://openrouter.ai/api/v1/chat/completions
+    required String baseUrl,
     required String model,
     required List<ChatMessage> history,
     required String systemInstruction,
     required String userMessage,
     required List<String> imagePaths,
-
-    // Settings
     double? temperature,
     double? topP,
     int? topK,
@@ -147,15 +119,12 @@ class ChatApiService {
     bool includeUsage = false,
   }) async* {
     final cleanKey = apiKey.trim();
-
-    // 1. Build Payload
     List<Map<String, dynamic>> messagesPayload = [];
 
     if (systemInstruction.isNotEmpty) {
       messagesPayload.add({"role": "system", "content": systemInstruction});
     }
 
-    // Convert History
     for (var msg in history) {
       messagesPayload.add({
         "role": msg.isUser ? "user" : "assistant",
@@ -163,60 +132,35 @@ class ChatApiService {
       });
     }
 
-    // Current Message with Images
     if (imagePaths.isEmpty) {
       messagesPayload.add({"role": "user", "content": userMessage});
     } else {
       List<Map<String, dynamic>> contentParts = [];
 
-      // 1. Add User's main text first
       if (userMessage.isNotEmpty) {
         contentParts.add({"type": "text", "text": userMessage});
       }
 
-      // 2. Process Attachments
       for (String path in imagePaths) {
         final String ext = path.split('.').last.toLowerCase();
 
-        // --- Case A: Text-based files (Code, logs, etc.) ---
-        // Read as strings so the LLM can actually read due to unsuporrted file uploads
         if ([
-          'txt',
-          'md',
-          'json',
-          'dart',
-          'js',
-          'py',
-          'html',
-          'css',
-          'csv',
-          'c',
-          'cpp',
-          'java',
-          'xml',
-          'yaml',
-          'yml',
+          'txt', 'md', 'json', 'dart', 'js', 'py', 'html', 'css', 'csv', 'c', 'cpp', 'java', 'xml', 'yaml', 'yml',
         ].contains(ext)) {
           try {
             final String fileContent = await File(path).readAsString();
             contentParts.add({
               "type": "text",
-              "text":
-                  "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n",
+              "text": "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n",
             });
           } catch (e) {
-            // Skip unreadable files
+            // Ignore unreadable files
           }
-        }
-        // --- Case B: Images (Vision) ---
-        else if (['png', 'jpg', 'jpeg', 'webp', 'gif'].contains(ext)) {
+        } else if (['png', 'jpg', 'jpeg', 'webp', 'gif'].contains(ext)) {
           try {
             final bytes = await File(path).readAsBytes();
             final base64Img = base64Encode(bytes);
-
-            // Determine correct MIME type
-            String mimeType = 'image/jpeg';
-            if (ext == 'png') mimeType = 'image/png';
+            String mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
             if (ext == 'webp') mimeType = 'image/webp';
             if (ext == 'gif') mimeType = 'image/gif';
 
@@ -225,14 +169,13 @@ class ChatApiService {
               "image_url": {"url": "data:$mimeType;base64,$base64Img"},
             });
           } catch (e) {
-            // Error reading image
+            // Ignore image reading errors
           }
         }
       }
       messagesPayload.add({"role": "user", "content": contentParts});
     }
 
-    // 2. Request Body
     final Map<String, dynamic> bodyMap = {
       "model": model.trim(),
       "messages": messagesPayload,
@@ -243,46 +186,28 @@ class ChatApiService {
     if (topP != null) bodyMap["top_p"] = topP;
     if (topK != null) bodyMap["top_k"] = topK;
     if (maxTokens != null) bodyMap["max_tokens"] = maxTokens;
+    if (includeUsage) bodyMap["stream_options"] = {"include_usage": true};
 
-    if (includeUsage) {
-      bodyMap["stream_options"] = {"include_usage": true};
-    }
-
-    // Force OpenRouter to send reasoning in the dedicated field
     if (baseUrl.contains("openrouter.ai")) {
       bodyMap["include_reasoning"] = true;
     }
 
-    // Apply Reasoning Effort if supported
     if (reasoningEffort != null && reasoningEffort != "none") {
-      // 1. OpenRouter Standard (often uses 'reasoning' block or provider-specific parameters)
       bodyMap["reasoning_effort"] = reasoningEffort;
     }
 
     if (enableGrounding) {
-      // OpenRouter specific parameter for web search
-      if (baseUrl.contains("openrouter.ai")) {
-        bodyMap["plugins"] = [
-          {"id": "web"},
-        ];
-      } else {
-        // Generic fallback or for providers that might support similar flags in the future
-        bodyMap["plugins"] = ["web_search"];
-      }
+      bodyMap["plugins"] = baseUrl.contains("openrouter.ai") ? [{"id": "web"}] : ["web_search"];
     }
 
-    // 3. Prepare Request
     final request = http.Request('POST', Uri.parse(baseUrl));
-
     request.headers.addAll({
       "Authorization": "Bearer $cleanKey",
       "Content-Type": "application/json",
-      ...?extraHeaders, // Spread extra headers if any (like HTTP-Referer)
+      ...?extraHeaders,
     });
-
     request.body = jsonEncode(bodyMap);
 
-    // 4. Send & Listen
     final client = http.Client();
     try {
       final streamedResponse = await client.send(request);
@@ -293,15 +218,10 @@ class ChatApiService {
         return;
       }
 
-      // 5. Decode Stream (SSE Format)
-      // Assume standard "data: {...}" format used by OpenAI/OpenRouter/LocalAI
       bool hasEmittedThinkStart = false;
       bool hasEmittedThinkEnd = false;
 
-      await for (final line
-          in streamedResponse.stream
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())) {
+      await for (final line in streamedResponse.stream.transform(utf8.decoder).transform(const LineSplitter())) {
         if (line.startsWith("data: ")) {
           final dataStr = line.substring(6).trim();
           if (dataStr == "[DONE]") break;
@@ -309,24 +229,17 @@ class ChatApiService {
           try {
             final json = jsonDecode(dataStr);
 
-            // Handle Usage (Standard OpenAI 'stream_options: {include_usage: true}')
             if (includeUsage && json['usage'] != null) {
-              final usage = json['usage'];
-              yield "[[USAGE:${jsonEncode(usage)}]]";
+              yield "[[USAGE:${jsonEncode(json['usage'])}]]";
             }
 
             final choices = json['choices'] as List;
             if (choices.isNotEmpty) {
               final delta = choices[0]['delta'];
-
-              // Handle separate reasoning_content (common in DeepSeek R1 via OpenRouter)
-              final reasoningChunk =
-                  delta['reasoning_content'] ?? delta['reasoning'];
+              final reasoningChunk = delta['reasoning_content'] ?? delta['reasoning'];
               final contentChunk = delta['content'];
 
-              // 1. Yield Reasoning (wrapped in tags if not already)
-              if (reasoningChunk != null &&
-                  reasoningChunk.toString().isNotEmpty) {
+              if (reasoningChunk != null && reasoningChunk.toString().isNotEmpty) {
                 if (!hasEmittedThinkStart) {
                   yield "<think>\n";
                   hasEmittedThinkStart = true;
@@ -334,7 +247,6 @@ class ChatApiService {
                 yield reasoningChunk.toString();
               }
 
-              // 2. Yield Content
               if (contentChunk != null && contentChunk.toString().isNotEmpty) {
                 if (hasEmittedThinkStart && !hasEmittedThinkEnd) {
                   yield "\n</think>\n";
@@ -343,20 +255,16 @@ class ChatApiService {
                 yield contentChunk.toString();
               }
 
-              // Fallback for non-standard APIs that might use 'text'
               if (delta == null && choices[0]['text'] != null) {
-                // Legacy completion endpoint style
                 yield choices[0]['text'].toString();
               }
             }
           } catch (e) {
-            // Ignore parse errors on partial chunks
+            // Ignore partial or malformed chunks
           }
         }
       }
-      if (hasEmittedThinkStart && !hasEmittedThinkEnd) {
-        yield "\n</think>\n";
-      }
+      if (hasEmittedThinkStart && !hasEmittedThinkEnd) yield "\n</think>\n";
     } catch (e) {
       yield "\n\n**Connection Error:** $e";
     } finally {
@@ -364,9 +272,8 @@ class ChatApiService {
     }
   }
 
-  // ==============================================================================
-  // 3. GEMINI GROUNDING (Separate because it's unique)
-  // ==============================================================================
+  /// Handles Google Gemini's grounding (web search) feature. 
+  /// This requires a non-streaming call to include grounding metadata.
   static Future<Map<String, dynamic>?> performGeminiGrounding({
     required String apiKey,
     required String model,
@@ -461,9 +368,10 @@ class ChatApiService {
             final metadata = candidate['groundingMetadata'];
             if (metadata['groundingChunks'] != null) {
               for (var chunk in metadata['groundingChunks']) {
-                if (chunk['web'] != null)
+                if (chunk['web'] != null) {
                   fullText +=
                       "- [${chunk['web']['title']}](${chunk['web']['uri']})\n";
+                }
               }
             }
           }

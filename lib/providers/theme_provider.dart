@@ -57,8 +57,9 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   ImageProvider get currentImageProvider {
-    if (_backgroundImagePath == null)
+    if (_backgroundImagePath == null) {
       return const AssetImage(kDefaultBackground);
+    }
     if (_backgroundImagePath!.startsWith('assets/')) {
       return AssetImage(_backgroundImagePath!);
     } else {

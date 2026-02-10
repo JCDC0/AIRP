@@ -97,12 +97,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void _closeDrawers() {
     if (_drawerController.isCompleted ||
         _drawerController.isAnimating ||
-        _drawerController.value > 0)
+        _drawerController.value > 0) {
       _drawerController.reverse();
+    }
     if (_endDrawerController.isCompleted ||
         _endDrawerController.isAnimating ||
-        _endDrawerController.value > 0)
+        _endDrawerController.value > 0) {
       _endDrawerController.reverse();
+    }
   }
 
   void _handleDrawerDragUpdate(DragUpdateDetails details) {
@@ -163,7 +165,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
 
-    // Auto-scroll to bottom when session changes
+    // Synchronize scroll position on session changes
     if (chatProvider.currentSessionId != _previousSessionId) {
       _previousSessionId = chatProvider.currentSessionId;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -175,11 +177,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     return Stack(
       children: [
-        // 1. MAIN SCAFFOLD
         Scaffold(
           backgroundColor: const Color.fromARGB(255, 0, 0, 0),
           resizeToAvoidBottomInset: true,
-          // Remove default drawers
           drawer: null,
           endDrawer: null,
           appBar: ChatAppBar(
@@ -189,12 +189,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
           body: Stack(
             children: [
+              // Message list with zoom/scroll capabilities
               ChatMessagesList(
                 scrollController: _scrollController,
                 transformationController: _transformationController,
               ),
 
-              // 2. FIXED INPUT AREA (Stays at bottom, doesn't zoom)
+              // Fixed overlay for message input
               Positioned(
                 left: 0,
                 right: 0,
@@ -202,7 +203,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 child: ChatInputArea(scrollController: _scrollController),
               ),
 
-              // 3. ANIMATED ZOOM RESET BUTTON
+              // floating reset button for zoom state
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 400),
                 curve: Curves.easeOutCubic,
@@ -252,7 +253,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
         ),
 
-        // 2. SCRIM (Overlay)
+        // Semi-transparent overlay for drawer visibility
         AnimatedBuilder(
           animation: Listenable.merge([
             _drawerController,
@@ -274,7 +275,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           },
         ),
 
-        // 3. LEFT DRAWER (Conversation)
+        // Custom animated drawers for navigation and settings
         SlideTransition(
           position: _drawerSlideAnimation,
           child: GestureDetector(
@@ -287,7 +288,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
         ),
 
-        // 4. RIGHT DRAWER (Settings)
         SlideTransition(
           position: _endDrawerSlideAnimation,
           child: GestureDetector(
@@ -300,8 +300,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
         ),
 
-        // 5. EDGE GESTURE DETECTORS (For sliding open)
-        // Left Edge
+        // Edge detectors for gesture-based drawer opening
         Positioned(
           left: 0,
           top: 0,
@@ -314,7 +313,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             behavior: HitTestBehavior.translucent,
           ),
         ),
-        // Right Edge
         Positioned(
           right: 0,
           top: 0,

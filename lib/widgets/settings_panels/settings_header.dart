@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
 
+/// Header widget for the settings panel that displays the application title
+/// and version number with theme-aware styling and optional bloom effects.
 class SettingsHeader extends StatelessWidget {
   const SettingsHeader({super.key});
 
@@ -32,7 +34,7 @@ class SettingsHeader extends StatelessWidget {
           ),
         ),
         Text(
-          "v0.5.2.3",
+          "v0.5.2.3 Exp.",
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize + 4,
             fontWeight: FontWeight.bold,
