@@ -54,6 +54,36 @@ class AppColors {
 }
 
 // ----------------------------------------------------------------------
+// APP DEFAULTS
+// ----------------------------------------------------------------------
+class AppDefaults {
+  static const double backgroundOpacity = 0.7;
+  static const int motesDensity = 75;
+  static const int rainIntensity = 100;
+  static const int firefliesCount = 50;
+}
+
+class ChatDefaults {
+  static const double temperature = 1.0;
+  static const double topP = 0.95;
+  static const int topK = 40;
+  static const int maxOutputTokens = 8192;
+  static const int historyLimit = 500;
+  static const int sessionTitleMaxLength = 25;
+  static const String localIp = 'http://192.168.1.15:1234/v1';
+  static const Duration autoSaveDebounce = Duration(milliseconds: 600);
+}
+
+class AnimationDefaults {
+  static const Duration drawerDuration = Duration(milliseconds: 300);
+  static const Duration zoomResetDuration = Duration(milliseconds: 300);
+  static const Duration zoomButtonDuration = Duration(milliseconds: 400);
+  static const double drawerDragDivisor = 360.0;
+  static const double endDrawerDragDivisor = 370.0;
+  static const double drawerVelocityThreshold = 365.0;
+}
+
+// ----------------------------------------------------------------------
 // API CONSTANTS
 // ----------------------------------------------------------------------
 class ApiConstants {
@@ -86,6 +116,15 @@ class ApiConstants {
   static const String prefKeyHuggingFace = 'airp_key_huggingface';
   static const String prefKeyGroq = 'airp_key_groq';
 
+  // Secure Storage Keys (API Keys)
+  static const String secureKeyGemini = 'secure_airp_key_gemini';
+  static const String secureKeyOpenRouter = 'secure_airp_key_openrouter';
+  static const String secureKeyOpenAi = 'secure_airp_key_openai';
+  static const String secureKeyArliAi = 'secure_airp_key_arliai';
+  static const String secureKeyNanoGpt = 'secure_airp_key_nanogpt';
+  static const String secureKeyHuggingFace = 'secure_airp_key_huggingface';
+  static const String secureKeyGroq = 'secure_airp_key_groq';
+
   // Preference Keys (Selected Models)
   static const String prefModelGemini = 'airp_model_gemini';
   static const String prefModelOpenRouter = 'airp_model_openrouter';
@@ -94,6 +133,13 @@ class ApiConstants {
   static const String prefModelOpenAi = 'airp_model_openai';
   static const String prefModelHuggingFace = 'airp_model_huggingface';
   static const String prefModelGroq = 'airp_model_groq';
+
+  // Preference Keys (Local & Toggles)
+  static const String prefLocalIp = 'airp_local_ip';
+  static const String prefLocalModelName = 'airp_local_model_name';
+  static const String prefEnableGrounding = 'airp_enable_grounding';
+  static const String prefEnableImageGen = 'airp_enable_image_gen';
+  static const String prefDisableSafety = 'airp_disable_safety';
 }
 
 // ----------------------------------------------------------------------

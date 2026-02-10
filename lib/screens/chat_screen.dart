@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
+import '../utils/constants.dart';
 import '../widgets/conversation_drawer.dart';
 import '../widgets/settings_drawer.dart';
 import '../widgets/chat_app_bar.dart';
@@ -47,11 +48,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     // Initialize Drawer Controllers
     _drawerController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: AnimationDefaults.drawerDuration,
     );
     _endDrawerController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: AnimationDefaults.drawerDuration,
     );
 
     _drawerSlideAnimation =
@@ -108,11 +109,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   void _handleDrawerDragUpdate(DragUpdateDetails details) {
-    _drawerController.value += details.primaryDelta! / 360;
+    _drawerController.value +=
+        details.primaryDelta! / AnimationDefaults.drawerDragDivisor;
   }
 
   void _handleDrawerDragEnd(DragEndDetails details) {
-    if (_drawerController.value > 0.5 || details.primaryVelocity! > 365) {
+    if (_drawerController.value > 0.5 ||
+        details.primaryVelocity! > AnimationDefaults.drawerVelocityThreshold) {
       _drawerController.forward();
     } else {
       _drawerController.reverse();
@@ -120,11 +123,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   void _handleEndDrawerDragUpdate(DragUpdateDetails details) {
-    _endDrawerController.value -= details.primaryDelta! / 370;
+    _endDrawerController.value -=
+        details.primaryDelta! / AnimationDefaults.endDrawerDragDivisor;
   }
 
   void _handleEndDrawerDragEnd(DragEndDetails details) {
-    if (_endDrawerController.value > 0.5 || details.primaryVelocity! < -365) {
+    if (_endDrawerController.value > 0.5 ||
+        details.primaryVelocity! < -AnimationDefaults.drawerVelocityThreshold) {
       _endDrawerController.forward();
     } else {
       _endDrawerController.reverse();
@@ -149,7 +154,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           CurvedAnimation(
             parent: AnimationController(
               vsync: this,
-              duration: const Duration(milliseconds: 300),
+              duration: AnimationDefaults.zoomResetDuration,
             )..forward(),
             curve: Curves.easeOut,
           ),
@@ -205,7 +210,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
               // floating reset button for zoom state
               AnimatedPositioned(
-                duration: const Duration(milliseconds: 400),
+                duration: AnimationDefaults.zoomButtonDuration,
                 curve: Curves.easeOutCubic,
                 top: _isZoomed ? 16.0 : -60.0,
                 right: 16,

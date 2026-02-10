@@ -6,6 +6,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_models.dart';
 import '../services/chat_api_service.dart';
+import '../services/secure_storage_service.dart';
 import '../utils/constants.dart';
 
 class ChatProvider extends ChangeNotifier {
@@ -17,6 +18,7 @@ class ChatProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isCancelled = false;
   StreamSubscription? _geminiSubscription;
+  Timer? _autoSaveTimer;
 
   bool get isLoading => _isLoading;
   bool get isCancelled => _isCancelled;
@@ -64,7 +66,7 @@ class ChatProvider extends ChangeNotifier {
   String _nanoGptKey = '';
   String _huggingFaceKey = '';
   String _groqKey = '';
-  String _localIp = 'http://192.168.1.15:1234/v1';
+  String _localIp = ChatDefaults.localIp;
   String _localModelName = 'local-model';
 
   AiProvider get currentProvider => _currentProvider;
@@ -98,11 +100,11 @@ class ChatProvider extends ChangeNotifier {
   String get selectedModel => _selectedModel;
 
   // Generation Settings
-  double _temperature = 1.0;
-  double _topP = 0.95;
-  int _topK = 40;
-  int _maxOutputTokens = 8192;
-  int _historyLimit = 500;
+  double _temperature = ChatDefaults.temperature;
+  double _topP = ChatDefaults.topP;
+  int _topK = ChatDefaults.topK;
+  int _maxOutputTokens = ChatDefaults.maxOutputTokens;
+  int _historyLimit = ChatDefaults.historyLimit;
   bool _enableGrounding = false;
   bool _enableImageGen = false;
   bool _enableUsage = false;
@@ -176,6 +178,14 @@ class ChatProvider extends ChangeNotifier {
     _loadModelBookmarks();
   }
 
+  @override
+  void dispose() {
+    _autoSaveTimer?.cancel();
+    _geminiSubscription?.cancel();
+    _disposeMessageNotifiers(_messages);
+    super.dispose();
+  }
+
   Future<void> _loadModelBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
     _bookmarkedModels = prefs.getStringList('bookmarked_models')?.toSet() ?? {};
@@ -229,15 +239,45 @@ class ChatProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     // Load Keys
-    _geminiKey = prefs.getString(ApiConstants.prefKeyGemini) ?? '';
-    _openRouterKey = prefs.getString(ApiConstants.prefKeyOpenRouter) ?? '';
-    _openAiKey = prefs.getString(ApiConstants.prefKeyOpenAi) ?? '';
-    _arliAiKey = prefs.getString(ApiConstants.prefKeyArliAi) ?? '';
-    _nanoGptKey = prefs.getString(ApiConstants.prefKeyNanoGpt) ?? '';
-    _huggingFaceKey = prefs.getString(ApiConstants.prefKeyHuggingFace) ?? '';
-    _groqKey = prefs.getString(ApiConstants.prefKeyGroq) ?? '';
+    _geminiKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyGemini,
+      prefsKey: ApiConstants.prefKeyGemini,
+    );
+    _openRouterKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyOpenRouter,
+      prefsKey: ApiConstants.prefKeyOpenRouter,
+    );
+    _openAiKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyOpenAi,
+      prefsKey: ApiConstants.prefKeyOpenAi,
+    );
+    _arliAiKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyArliAi,
+      prefsKey: ApiConstants.prefKeyArliAi,
+    );
+    _nanoGptKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyNanoGpt,
+      prefsKey: ApiConstants.prefKeyNanoGpt,
+    );
+    _huggingFaceKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyHuggingFace,
+      prefsKey: ApiConstants.prefKeyHuggingFace,
+    );
+    _groqKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyGroq,
+      prefsKey: ApiConstants.prefKeyGroq,
+    );
     _localIp =
-        prefs.getString('airp_local_ip') ?? 'http://192.168.1.15:1234/v1';
+      prefs.getString(ApiConstants.prefLocalIp) ?? ChatDefaults.localIp;
+    _localModelName =
+      prefs.getString(ApiConstants.prefLocalModelName) ?? _localModelName;
 
     // Load Provider
     final providerString = prefs.getString('airp_provider') ?? 'gemini';
@@ -294,13 +334,25 @@ class ChatProvider extends ChangeNotifier {
     _selectedModel = _getProviderModel(_currentProvider);
 
     // Load Other Settings
-    _topP = prefs.getDouble('airp_top_p') ?? 0.95;
-    _topK = prefs.getInt('airp_top_k') ?? 40;
-    _maxOutputTokens = prefs.getInt('airp_max_output') ?? 8192;
-    _historyLimit = prefs.getInt('airp_history_limit') ?? 500;
-    _temperature = prefs.getDouble('airp_temperature') ?? 1.0;
+    _topP = prefs.getDouble('airp_top_p') ?? ChatDefaults.topP;
+    _topK = prefs.getInt('airp_top_k') ?? ChatDefaults.topK;
+    _maxOutputTokens =
+      prefs.getInt('airp_max_output') ?? ChatDefaults.maxOutputTokens;
+    _historyLimit = prefs.getInt('airp_history_limit') ?? ChatDefaults.historyLimit;
+    _temperature =
+      prefs.getDouble('airp_temperature') ?? ChatDefaults.temperature;
     _enableUsage = prefs.getBool('airp_enable_usage') ?? false;
     _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
+    _enableGrounding =
+      prefs.getBool(ApiConstants.prefEnableGrounding) ?? false;
+    _enableImageGen =
+      prefs.getBool(ApiConstants.prefEnableImageGen) ?? false;
+    _disableSafety =
+      prefs.getBool(ApiConstants.prefDisableSafety) ?? true;
+
+    if (_enableGrounding && _enableImageGen) {
+      _enableImageGen = false;
+    }
     _systemInstruction =
         prefs.getString('airp_default_system_instruction') ?? '';
     _advancedSystemInstruction =
@@ -558,17 +610,56 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> saveSettings({bool showConfirmation = true}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(ApiConstants.prefKeyGemini, _geminiKey);
-    await prefs.setString(ApiConstants.prefKeyOpenRouter, _openRouterKey);
-    await prefs.setString(ApiConstants.prefKeyOpenAi, _openAiKey);
-    await prefs.setString('airp_local_ip', _localIp);
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyGemini,
+      prefsKey: ApiConstants.prefKeyGemini,
+      value: _geminiKey,
+    );
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyOpenRouter,
+      prefsKey: ApiConstants.prefKeyOpenRouter,
+      value: _openRouterKey,
+    );
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyOpenAi,
+      prefsKey: ApiConstants.prefKeyOpenAi,
+      value: _openAiKey,
+    );
+    await prefs.setString(ApiConstants.prefLocalIp, _localIp);
+    await prefs.setString(
+      ApiConstants.prefLocalModelName,
+      _localModelName,
+    );
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString(ApiConstants.prefModelGemini, _selectedGeminiModel);
     await prefs.setString(ApiConstants.prefModelOpenRouter, _openRouterModel);
-    await prefs.setString(ApiConstants.prefKeyArliAi, _arliAiKey);
-    await prefs.setString(ApiConstants.prefKeyNanoGpt, _nanoGptKey);
-    await prefs.setString(ApiConstants.prefKeyHuggingFace, _huggingFaceKey);
-    await prefs.setString(ApiConstants.prefKeyGroq, _groqKey);
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyArliAi,
+      prefsKey: ApiConstants.prefKeyArliAi,
+      value: _arliAiKey,
+    );
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyNanoGpt,
+      prefsKey: ApiConstants.prefKeyNanoGpt,
+      value: _nanoGptKey,
+    );
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyHuggingFace,
+      prefsKey: ApiConstants.prefKeyHuggingFace,
+      value: _huggingFaceKey,
+    );
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyGroq,
+      prefsKey: ApiConstants.prefKeyGroq,
+      value: _groqKey,
+    );
     await prefs.setString(ApiConstants.prefModelArliAi, _arliAiModel);
     await prefs.setString(ApiConstants.prefModelNanoGpt, _nanoGptModel);
     await prefs.setString(ApiConstants.prefModelOpenAi, _openAiModel);
@@ -581,6 +672,9 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setDouble('airp_temperature', _temperature);
     await prefs.setBool('airp_enable_usage', _enableUsage);
     await prefs.setString('airp_reasoning_effort', _reasoningEffort);
+    await prefs.setBool(ApiConstants.prefEnableGrounding, _enableGrounding);
+    await prefs.setBool(ApiConstants.prefEnableImageGen, _enableImageGen);
+    await prefs.setBool(ApiConstants.prefDisableSafety, _disableSafety);
     await prefs.setString(
       'airp_default_system_instruction',
       _systemInstruction,
@@ -607,7 +701,7 @@ class ChatProvider extends ChangeNotifier {
     );
 
     if (_currentSessionId != null) {
-      autoSaveCurrentSession();
+      _scheduleAutoSave();
     }
 
     if (_currentProvider == AiProvider.gemini) {
@@ -741,7 +835,7 @@ class ChatProvider extends ChangeNotifier {
     _isCancelled = false;
     notifyListeners();
 
-    autoSaveCurrentSession();
+    _scheduleAutoSave();
 
     // 2. Grounding (Gemini)
     if (_enableGrounding &&
@@ -997,6 +1091,7 @@ class ChatProvider extends ChangeNotifier {
         },
         onError: (e) {
           if (!_isCancelled) {
+            _messages.last.contentNotifier?.dispose();
             _messages.last = ChatMessage(
               text: "${_messages.last.text}\n\n**Error:** $e",
               isUser: false,
@@ -1010,7 +1105,7 @@ class ChatProvider extends ChangeNotifier {
           if (!_isCancelled) {
             _isLoading = false;
             notifyListeners();
-            autoSaveCurrentSession();
+            _scheduleAutoSave();
 
             if (_currentProvider == AiProvider.gemini) {
               await initializeModel();
@@ -1022,6 +1117,7 @@ class ChatProvider extends ChangeNotifier {
       );
     } catch (e) {
       if (!_isCancelled) {
+        _messages.last.contentNotifier?.dispose();
         _messages.add(
           ChatMessage(
             text: "**System Error**\n\n```\n$e\n```",
@@ -1031,7 +1127,7 @@ class ChatProvider extends ChangeNotifier {
         );
         _isLoading = false;
         notifyListeners();
-        autoSaveCurrentSession();
+        _scheduleAutoSave();
       }
     }
   }
@@ -1059,16 +1155,21 @@ class ChatProvider extends ChangeNotifier {
       int userMsgIndex = index - 1;
       if (userMsgIndex >= 0 && _messages[userMsgIndex].isUser) {
         final userMsg = _messages[userMsgIndex];
+        _disposeMessageNotifiers(
+          _messages.getRange(userMsgIndex, _messages.length),
+        );
         _messages.removeRange(userMsgIndex, _messages.length);
         textToResend = userMsg.text;
         imagesToResend = userMsg.imagePaths;
       } else {
+        _disposeMessageNotifiers([_messages[index]]);
         _messages.removeAt(index);
         return; // Cannot regenerate without user context
       }
     } else {
       // If User message, rewind to this message
       final userMsg = _messages[index];
+      _disposeMessageNotifiers(_messages.getRange(index, _messages.length));
       _messages.removeRange(index, _messages.length);
       textToResend = userMsg.text;
       imagesToResend = userMsg.imagePaths;
@@ -1090,7 +1191,9 @@ class ChatProvider extends ChangeNotifier {
     String title = _currentTitle;
     if (title.isEmpty && _messages.isNotEmpty) {
       title = _messages.first.text;
-      if (title.length > 25) title = "${title.substring(0, 25)}...";
+      if (title.length > ChatDefaults.sessionTitleMaxLength) {
+        title = "${title.substring(0, ChatDefaults.sessionTitleMaxLength)}...";
+      }
       _currentTitle = title;
     }
     if (title.isEmpty) title = "New Conversation";
@@ -1164,6 +1267,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void createNewSession() {
+    _disposeMessageNotifiers(_messages);
     _messages.clear();
     _tokenCount = 0;
     _currentSessionId = null;
@@ -1173,6 +1277,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void loadSession(ChatSessionData session) {
+    _disposeMessageNotifiers(_messages);
     _messages = List.from(session.messages);
     _currentSessionId = session.id;
     _tokenCount = session.tokenCount;
@@ -1218,9 +1323,10 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void deleteMessage(int index) {
+    _disposeMessageNotifiers([_messages[index]]);
     _messages.removeAt(index);
     notifyListeners();
-    autoSaveCurrentSession();
+    _scheduleAutoSave();
     initializeModel();
   }
 
@@ -1230,7 +1336,7 @@ class ChatProvider extends ChangeNotifier {
       isUser: _messages[index].isUser,
     );
     notifyListeners();
-    autoSaveCurrentSession();
+    _scheduleAutoSave();
     initializeModel();
   }
 
@@ -1492,6 +1598,70 @@ class ChatProvider extends ChangeNotifier {
       }
       _tokenCount = (totalChars / 3.5).ceil() + (imgCount * 200);
       notifyListeners();
+    }
+  }
+
+  Future<String> _loadApiKeyFromStorage({
+    required SharedPreferences prefs,
+    required String secureKey,
+    required String prefsKey,
+  }) async {
+    try {
+      final secureValue = await SecureStorageService.read(secureKey);
+      if (secureValue != null && secureValue.isNotEmpty) {
+        return secureValue;
+      }
+    } catch (e) {
+      debugPrint('Secure storage read failed: $e');
+    }
+
+    final legacyValue = prefs.getString(prefsKey) ?? '';
+    if (legacyValue.isNotEmpty) {
+      try {
+        await SecureStorageService.write(secureKey, legacyValue);
+        await prefs.remove(prefsKey);
+      } catch (e) {
+        debugPrint('Secure storage migrate failed: $e');
+      }
+    }
+    return legacyValue;
+  }
+
+  Future<void> _persistApiKey({
+    required SharedPreferences prefs,
+    required String secureKey,
+    required String prefsKey,
+    required String value,
+  }) async {
+    if (value.isEmpty) {
+      try {
+        await SecureStorageService.delete(secureKey);
+      } catch (e) {
+        debugPrint('Secure storage delete failed: $e');
+      }
+      await prefs.remove(prefsKey);
+      return;
+    }
+
+    try {
+      await SecureStorageService.write(secureKey, value);
+      await prefs.remove(prefsKey);
+    } catch (e) {
+      debugPrint('Secure storage write failed: $e');
+      await prefs.setString(prefsKey, value);
+    }
+  }
+
+  void _scheduleAutoSave() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(ChatDefaults.autoSaveDebounce, () {
+      autoSaveCurrentSession();
+    });
+  }
+
+  void _disposeMessageNotifiers(Iterable<ChatMessage> messages) {
+    for (final message in messages) {
+      message.contentNotifier?.dispose();
     }
   }
 }

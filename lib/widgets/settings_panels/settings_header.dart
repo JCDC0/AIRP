@@ -34,7 +34,7 @@ class SettingsHeader extends StatelessWidget {
           ),
         ),
         Text(
-          "v0.5.2.3 Exp.",
+          "v0.5.3",
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize + 4,
             fontWeight: FontWeight.bold,

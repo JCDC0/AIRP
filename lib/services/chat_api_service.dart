@@ -1,11 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/chat_models.dart';
 
 class ChatApiService {
+  static void _logWarning(String message) {
+    if (kDebugMode) {
+      debugPrint(message);
+    }
+  }
+
   /// Streams a response from Google Gemini, handling text content and various
   /// file attachments (images, PDFs, and text-based source files).
   static Stream<String> streamGeminiResponse({
@@ -29,18 +36,22 @@ class ChatApiService {
             accumulatedText +=
                 "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n";
           } catch (e) {
-            // Silently fail if file reading fails
+            _logWarning('Failed to read attachment: $path ($e)');
           }
         } else {
-          final bytes = await File(path).readAsBytes();
-          String? mimeType;
-          if (['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'].contains(ext)) {
-            mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
-          } else if (ext == 'pdf') {
-            mimeType = 'application/pdf';
-          }
+          try {
+            final bytes = await File(path).readAsBytes();
+            String? mimeType;
+            if (['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'].contains(ext)) {
+              mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+            } else if (ext == 'pdf') {
+              mimeType = 'application/pdf';
+            }
 
-          if (mimeType != null) parts.add(DataPart(mimeType, bytes));
+            if (mimeType != null) parts.add(DataPart(mimeType, bytes));
+          } catch (e) {
+            _logWarning('Failed to read binary attachment: $path ($e)');
+          }
         }
       }
     }
@@ -60,8 +71,9 @@ class ChatApiService {
         String? text;
         try {
           text = response.text;
-        } catch (_) {}
-
+        } catch (e) {
+          _logWarning('Failed to extract response text: $e');
+        }
         if (text != null) {
           yield text;
         }
@@ -93,7 +105,7 @@ class ChatApiService {
           yield '[[THOUGHT_SIG:$sig]]';
         }
       } catch (e) {
-        // Stream continues even if signature extraction fails
+        _logWarning('Failed to extract thought signature: $e');
       }
     }
   }
@@ -154,7 +166,7 @@ class ChatApiService {
               "text": "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n",
             });
           } catch (e) {
-            // Ignore unreadable files
+            _logWarning('Failed to read attachment: $path ($e)');
           }
         } else if (['png', 'jpg', 'jpeg', 'webp', 'gif'].contains(ext)) {
           try {
@@ -169,7 +181,7 @@ class ChatApiService {
               "image_url": {"url": "data:$mimeType;base64,$base64Img"},
             });
           } catch (e) {
-            // Ignore image reading errors
+            _logWarning('Failed to read image attachment: $path ($e)');
           }
         }
       }
@@ -260,7 +272,7 @@ class ChatApiService {
               }
             }
           } catch (e) {
-            // Ignore partial or malformed chunks
+            _logWarning('Stream chunk parse warning: $e');
           }
         }
       }

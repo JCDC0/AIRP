@@ -210,10 +210,10 @@ class ThemeProvider extends ChangeNotifier {
     _enableMotes = false;
     _enableRain = false;
     _enableFireflies = false;
-    _backgroundOpacity = 0.7;
-    _motesDensity = 75;
-    _rainIntensity = 100;
-    _firefliesCount = 50;
+    _backgroundOpacity = AppDefaults.backgroundOpacity;
+    _motesDensity = AppDefaults.motesDensity;
+    _rainIntensity = AppDefaults.rainIntensity;
+    _firefliesCount = AppDefaults.firefliesCount;
 
     notifyListeners();
     _saveColors();
@@ -223,49 +223,30 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_motes', false);
     await prefs.setBool('app_enable_rain', false);
     await prefs.setBool('app_enable_fireflies', false);
-    await prefs.setDouble('app_bg_opacity', 0.7);
-    await prefs.setInt('vfx_motes_density', 75);
-    await prefs.setInt('vfx_rain_intensity', 100);
-    await prefs.setInt('vfx_fireflies_count', 50);
+    await prefs.setDouble('app_bg_opacity', AppDefaults.backgroundOpacity);
+    await prefs.setInt('vfx_motes_density', AppDefaults.motesDensity);
+    await prefs.setInt('vfx_rain_intensity', AppDefaults.rainIntensity);
+    await prefs.setInt('vfx_fireflies_count', AppDefaults.firefliesCount);
   }
 
   Future<void> _saveColors() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final int themeVal =
-        (((_appThemeColor.a * 255.0).round() & 0xff) << 24) |
-        (((_appThemeColor.r * 255.0).round() & 0xff) << 16) |
-        (((_appThemeColor.g * 255.0).round() & 0xff) << 8) |
-        ((_appThemeColor.b * 255.0).round() & 0xff);
-    await prefs.setInt('color_app_theme', themeVal);
+    await prefs.setInt('color_app_theme', _colorToStorageInt(_appThemeColor));
+    await prefs.setInt(
+      'color_user_bubble',
+      _colorToStorageInt(_userBubbleColor),
+    );
+    await prefs.setInt('color_user_text', _colorToStorageInt(_userTextColor));
+    await prefs.setInt('color_ai_bubble', _colorToStorageInt(_aiBubbleColor));
+    await prefs.setInt('color_ai_text', _colorToStorageInt(_aiTextColor));
+  }
 
-    final int ub =
-        (((_userBubbleColor.a * 255.0).round() & 0xff) << 24) |
-        (((_userBubbleColor.r * 255.0).round() & 0xff) << 16) |
-        (((_userBubbleColor.g * 255.0).round() & 0xff) << 8) |
-        ((_userBubbleColor.b * 255.0).round() & 0xff);
-    await prefs.setInt('color_user_bubble', ub);
-
-    final int ut =
-        (((_userTextColor.a * 255.0).round() & 0xff) << 24) |
-        (((_userTextColor.r * 255.0).round() & 0xff) << 16) |
-        (((_userTextColor.g * 255.0).round() & 0xff) << 8) |
-        ((_userTextColor.b * 255.0).round() & 0xff);
-    await prefs.setInt('color_user_text', ut);
-
-    final int ab =
-        (((_aiBubbleColor.a * 255.0).round() & 0xff) << 24) |
-        (((_aiBubbleColor.r * 255.0).round() & 0xff) << 16) |
-        (((_aiBubbleColor.g * 255.0).round() & 0xff) << 8) |
-        ((_aiBubbleColor.b * 255.0).round() & 0xff);
-    await prefs.setInt('color_ai_bubble', ab);
-
-    final int at =
-        (((_aiTextColor.a * 255.0).round() & 0xff) << 24) |
-        (((_aiTextColor.r * 255.0).round() & 0xff) << 16) |
-        (((_aiTextColor.g * 255.0).round() & 0xff) << 8) |
-        ((_aiTextColor.b * 255.0).round() & 0xff);
-    await prefs.setInt('color_ai_text', at);
+  int _colorToStorageInt(Color color) {
+    return (((color.a * 255.0).round() & 0xff) << 24) |
+        (((color.r * 255.0).round() & 0xff) << 16) |
+        (((color.g * 255.0).round() & 0xff) << 8) |
+        ((color.b * 255.0).round() & 0xff);
   }
 
   Future<void> addCustomImage(String path) async {
@@ -295,7 +276,8 @@ class ThemeProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _fontStyle = prefs.getString('app_font_style') ?? 'Default';
     _backgroundImagePath = prefs.getString('app_bg_path');
-    _backgroundOpacity = prefs.getDouble('app_bg_opacity') ?? 0.7;
+    _backgroundOpacity =
+        prefs.getDouble('app_bg_opacity') ?? AppDefaults.backgroundOpacity;
     _enableBloom = prefs.getBool('app_enable_bloom') ?? false;
     _enableMotes = prefs.getBool('app_enable_motes') ?? false;
     _enableRain = prefs.getBool('app_enable_rain') ?? false;
@@ -303,9 +285,12 @@ class ThemeProvider extends ChangeNotifier {
     _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
 
     // LOAD INTENSITIES
-    _motesDensity = prefs.getInt('vfx_motes_density') ?? 75;
-    _rainIntensity = prefs.getInt('vfx_rain_intensity') ?? 100;
-    _firefliesCount = prefs.getInt('vfx_fireflies_count') ?? 50;
+    _motesDensity =
+      prefs.getInt('vfx_motes_density') ?? AppDefaults.motesDensity;
+    _rainIntensity =
+      prefs.getInt('vfx_rain_intensity') ?? AppDefaults.rainIntensity;
+    _firefliesCount =
+      prefs.getInt('vfx_fireflies_count') ?? AppDefaults.firefliesCount;
 
     final int? themeInt = prefs.getInt('color_app_theme');
     _appThemeColor = themeInt != null
