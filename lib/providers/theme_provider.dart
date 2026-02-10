@@ -333,4 +333,81 @@ class ThemeProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_font_style', fontName);
   }
+
+  /// Exports all theme settings as a serializable map.
+  Map<String, dynamic> exportSettingsMap() {
+    return {
+      'fontStyle': _fontStyle,
+      'backgroundPath': _backgroundImagePath,
+      'backgroundOpacity': _backgroundOpacity,
+      'bloom': _enableBloom,
+      'motes': _enableMotes,
+      'rain': _enableRain,
+      'fireflies': _enableFireflies,
+      'motesDensity': _motesDensity,
+      'rainIntensity': _rainIntensity,
+      'firefliesCount': _firefliesCount,
+      'colors': {
+        'appTheme': _colorToStorageInt(_appThemeColor),
+        'userBubble': _colorToStorageInt(_userBubbleColor),
+        'userText': _colorToStorageInt(_userTextColor),
+        'aiBubble': _colorToStorageInt(_aiBubbleColor),
+        'aiText': _colorToStorageInt(_aiTextColor),
+      },
+    };
+  }
+
+  /// Applies theme settings from a previously exported map and persists them.
+  Future<void> importSettingsMap(Map<String, dynamic> data) async {
+    _fontStyle = data['fontStyle'] as String? ?? _fontStyle;
+    _backgroundImagePath = data['backgroundPath'] as String?;
+    _backgroundOpacity =
+        (data['backgroundOpacity'] as num?)?.toDouble() ?? _backgroundOpacity;
+    _enableBloom = data['bloom'] as bool? ?? _enableBloom;
+    _enableMotes = data['motes'] as bool? ?? _enableMotes;
+    _enableRain = data['rain'] as bool? ?? _enableRain;
+    _enableFireflies = data['fireflies'] as bool? ?? _enableFireflies;
+    _motesDensity = (data['motesDensity'] as num?)?.toInt() ?? _motesDensity;
+    _rainIntensity =
+        (data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity;
+    _firefliesCount =
+        (data['firefliesCount'] as num?)?.toInt() ?? _firefliesCount;
+
+    final colors = data['colors'] as Map<String, dynamic>? ?? {};
+    if (colors['appTheme'] != null) {
+      _appThemeColor = Color(colors['appTheme'] as int);
+    }
+    if (colors['userBubble'] != null) {
+      _userBubbleColor = Color(colors['userBubble'] as int);
+    }
+    if (colors['userText'] != null) {
+      _userTextColor = Color(colors['userText'] as int);
+    }
+    if (colors['aiBubble'] != null) {
+      _aiBubbleColor = Color(colors['aiBubble'] as int);
+    }
+    if (colors['aiText'] != null) {
+      _aiTextColor = Color(colors['aiText'] as int);
+    }
+
+    notifyListeners();
+
+    // Persist all imported values
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_font_style', _fontStyle);
+    if (_backgroundImagePath != null) {
+      await prefs.setString('app_bg_path', _backgroundImagePath!);
+    } else {
+      await prefs.remove('app_bg_path');
+    }
+    await prefs.setDouble('app_bg_opacity', _backgroundOpacity);
+    await prefs.setBool('app_enable_bloom', _enableBloom);
+    await prefs.setBool('app_enable_motes', _enableMotes);
+    await prefs.setBool('app_enable_rain', _enableRain);
+    await prefs.setBool('app_enable_fireflies', _enableFireflies);
+    await prefs.setInt('vfx_motes_density', _motesDensity);
+    await prefs.setInt('vfx_rain_intensity', _rainIntensity);
+    await prefs.setInt('vfx_fireflies_count', _firefliesCount);
+    await _saveColors();
+  }
 }

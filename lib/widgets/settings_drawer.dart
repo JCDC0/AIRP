@@ -11,6 +11,7 @@ import 'settings_panels/system_prompt_panel.dart';
 import 'settings_panels/generation_settings_panel.dart';
 import 'settings_panels/visual_settings_panel.dart';
 import 'settings_panels/scale_settings_panel.dart';
+import 'settings_panels/library_panel.dart';
 
 /// A drawer widget that contains all application settings.
 ///
@@ -399,6 +400,22 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [const VisualSettingsPanel()],
+                  ),
+
+                  ExpansionTile(
+                    key: Key('library_settings_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    title: Text(
+                      "Save & Load Library",
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
+                    collapsedIconColor: themeProvider.appThemeColor,
+                    iconColor: themeProvider.appThemeColor,
+                    children: [const LibraryPanel()],
                   ),
 
                   const SizedBox(height: 80),

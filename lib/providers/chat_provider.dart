@@ -1607,4 +1607,167 @@ class ChatProvider extends ChangeNotifier {
       message.contentNotifier?.dispose();
     }
   }
+
+  /// Exports all non-secret ChatProvider settings as a serializable map.
+  Map<String, dynamic> exportSettingsMap() {
+    return {
+      'generation': {
+        'temperature': _temperature,
+        'topP': _topP,
+        'topK': _topK,
+        'maxOutputTokens': _maxOutputTokens,
+        'historyLimit': _historyLimit,
+        'reasoningEffort': _reasoningEffort,
+      },
+      'toggles': {
+        'enableSystemPrompt': _enableSystemPrompt,
+        'enableAdvancedSystemPrompt': _enableAdvancedSystemPrompt,
+        'enableMsgHistory': _enableMsgHistory,
+        'enableReasoning': _enableReasoning,
+        'enableGenerationSettings': _enableGenerationSettings,
+        'enableMaxOutputTokens': _enableMaxOutputTokens,
+        'enableGrounding': _enableGrounding,
+        'enableImageGen': _enableImageGen,
+        'enableUsage': _enableUsage,
+        'disableSafety': _disableSafety,
+      },
+      'provider': _currentProvider.name,
+      'models': {
+        'gemini': _selectedGeminiModel,
+        'openRouter': _openRouterModel,
+        'arliAi': _arliAiModel,
+        'nanoGpt': _nanoGptModel,
+        'openAi': _openAiModel,
+        'huggingFace': _huggingFaceModel,
+        'groq': _groqModel,
+      },
+      'modelBookmarks': _bookmarkedModels.toList(),
+      'localIp': _localIp,
+      'localModelName': _localModelName,
+      'systemInstruction': _systemInstruction,
+      'advancedSystemInstruction': _advancedSystemInstruction,
+      'systemPrompts':
+          _savedSystemPrompts.map((p) => p.toJson()).toList(),
+      'sessions': _savedSessions.map((s) => s.toJson()).toList(),
+    };
+  }
+
+  /// Applies settings from a previously exported map.
+  ///
+  /// Settings are overwritten. System prompts and sessions are merged
+  /// via [mergeSystemPrompts] and [mergeSessions].
+  Future<void> importSettingsMap(Map<String, dynamic> data) async {
+    final gen = data['generation'] as Map<String, dynamic>? ?? {};
+    _temperature = (gen['temperature'] as num?)?.toDouble() ?? _temperature;
+    _topP = (gen['topP'] as num?)?.toDouble() ?? _topP;
+    _topK = (gen['topK'] as num?)?.toInt() ?? _topK;
+    _maxOutputTokens =
+        (gen['maxOutputTokens'] as num?)?.toInt() ?? _maxOutputTokens;
+    _historyLimit = (gen['historyLimit'] as num?)?.toInt() ?? _historyLimit;
+    _reasoningEffort =
+        gen['reasoningEffort'] as String? ?? _reasoningEffort;
+
+    final tog = data['toggles'] as Map<String, dynamic>? ?? {};
+    _enableSystemPrompt =
+        tog['enableSystemPrompt'] as bool? ?? _enableSystemPrompt;
+    _enableAdvancedSystemPrompt =
+        tog['enableAdvancedSystemPrompt'] as bool? ??
+        _enableAdvancedSystemPrompt;
+    _enableMsgHistory =
+        tog['enableMsgHistory'] as bool? ?? _enableMsgHistory;
+    _enableReasoning =
+        tog['enableReasoning'] as bool? ?? _enableReasoning;
+    _enableGenerationSettings =
+        tog['enableGenerationSettings'] as bool? ??
+        _enableGenerationSettings;
+    _enableMaxOutputTokens =
+        tog['enableMaxOutputTokens'] as bool? ?? _enableMaxOutputTokens;
+    _enableGrounding =
+        tog['enableGrounding'] as bool? ?? _enableGrounding;
+    _enableImageGen =
+        tog['enableImageGen'] as bool? ?? _enableImageGen;
+    _enableUsage = tog['enableUsage'] as bool? ?? _enableUsage;
+    _disableSafety = tog['disableSafety'] as bool? ?? _disableSafety;
+
+    final providerName = data['provider'] as String?;
+    if (providerName != null) {
+      try {
+        _currentProvider = AiProvider.values.firstWhere(
+          (p) => p.name == providerName,
+        );
+      } catch (_) {}
+    }
+
+    final models = data['models'] as Map<String, dynamic>? ?? {};
+    _selectedGeminiModel =
+        models['gemini'] as String? ?? _selectedGeminiModel;
+    _openRouterModel =
+        models['openRouter'] as String? ?? _openRouterModel;
+    _arliAiModel = models['arliAi'] as String? ?? _arliAiModel;
+    _nanoGptModel = models['nanoGpt'] as String? ?? _nanoGptModel;
+    _openAiModel = models['openAi'] as String? ?? _openAiModel;
+    _huggingFaceModel =
+        models['huggingFace'] as String? ?? _huggingFaceModel;
+    _groqModel = models['groq'] as String? ?? _groqModel;
+    _selectedModel = _getProviderModel(_currentProvider);
+
+    final bookmarks = data['modelBookmarks'] as List<dynamic>?;
+    if (bookmarks != null) {
+      _bookmarkedModels = bookmarks.map((e) => e.toString()).toSet();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        'bookmarked_models',
+        _bookmarkedModels.toList(),
+      );
+    }
+
+    _localIp = data['localIp'] as String? ?? _localIp;
+    _localModelName = data['localModelName'] as String? ?? _localModelName;
+
+    _systemInstruction =
+        data['systemInstruction'] as String? ?? _systemInstruction;
+    _advancedSystemInstruction =
+        data['advancedSystemInstruction'] as String? ??
+        _advancedSystemInstruction;
+
+    // Merge (concatenate) system prompts and sessions
+    if (data['systemPrompts'] != null) {
+      final imported = (data['systemPrompts'] as List)
+          .map((j) => SystemPromptData.fromJson(j))
+          .toList();
+      mergeSystemPrompts(imported);
+    }
+
+    if (data['sessions'] != null) {
+      final imported = (data['sessions'] as List)
+          .map((j) => ChatSessionData.fromJson(j))
+          .toList();
+      mergeSessions(imported);
+    }
+
+    notifyListeners();
+    await saveSettings(showConfirmation: false);
+  }
+
+  /// Concatenates imported sessions with existing ones, skipping duplicates by ID.
+  void mergeSessions(List<ChatSessionData> incoming) {
+    final existingIds = _savedSessions.map((s) => s.id).toSet();
+    for (final session in incoming) {
+      if (!existingIds.contains(session.id)) {
+        _savedSessions.add(session);
+        existingIds.add(session.id);
+      }
+    }
+  }
+
+  /// Concatenates imported prompts with existing ones, skipping duplicates by title.
+  void mergeSystemPrompts(List<SystemPromptData> incoming) {
+    final existingTitles = _savedSystemPrompts.map((p) => p.title).toSet();
+    for (final prompt in incoming) {
+      if (!existingTitles.contains(prompt.title)) {
+        _savedSystemPrompts.add(prompt);
+        existingTitles.add(prompt.title);
+      }
+    }
+  }
 }

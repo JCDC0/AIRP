@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
+import '../../utils/version.dart';
 
 /// Header widget for the settings panel that displays the application title
 /// and version number with theme-aware styling and optional bloom effects.
@@ -34,7 +35,7 @@ class SettingsHeader extends StatelessWidget {
           ),
         ),
         Text(
-          "v0.5.3",
+          "v$appVersion",
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize + 4,
             fontWeight: FontWeight.bold,

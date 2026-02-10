@@ -163,4 +163,40 @@ class ScaleProvider extends ChangeNotifier {
     await prefs.setDouble('scale_icon_scale', _iconScale);
     await prefs.setDouble('scale_input_area_scale', _inputAreaScale);
   }
+
+  /// Exports all scale settings as a serializable map.
+  Map<String, dynamic> exportSettingsMap() {
+    return {
+      'deviceType': _deviceType.index,
+      'chatFontSize': _chatFontSize,
+      'systemFontSize': _systemFontSize,
+      'drawerWidth': _drawerWidth,
+      'iconScale': _iconScale,
+      'inputAreaScale': _inputAreaScale,
+    };
+  }
+
+  /// Applies scale settings from a previously exported map and persists them.
+  Future<void> importSettingsMap(Map<String, dynamic> data) async {
+    final deviceIndex = data['deviceType'] as int?;
+    if (deviceIndex != null &&
+        deviceIndex >= 0 &&
+        deviceIndex < DeviceType.values.length) {
+      _deviceType = DeviceType.values[deviceIndex];
+    }
+    _chatFontSize =
+        (data['chatFontSize'] as num?)?.toDouble() ?? _chatFontSize;
+    _systemFontSize =
+        (data['systemFontSize'] as num?)?.toDouble() ?? _systemFontSize;
+    _drawerWidth =
+        (data['drawerWidth'] as num?)?.toDouble() ?? _drawerWidth;
+    _iconScale =
+        (data['iconScale'] as num?)?.toDouble() ?? _iconScale;
+    _inputAreaScale =
+        (data['inputAreaScale'] as num?)?.toDouble() ?? _inputAreaScale;
+
+    _isFirstRun = false;
+    notifyListeners();
+    await _saveAll();
+  }
 }
