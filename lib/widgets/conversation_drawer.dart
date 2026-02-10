@@ -7,8 +7,14 @@ import '../providers/chat_provider.dart';
 import '../providers/scale_provider.dart';
 import '../utils/constants.dart';
 
+/// A drawer widget that displays and manages the list of saved chat sessions.
+///
+/// This drawer allows users to search, star, delete, and switch between
+/// different chat conversations.
 class ConversationDrawer extends StatefulWidget {
+  /// Callback triggered when the drawer should be closed.
   final VoidCallback? onClose;
+
   const ConversationDrawer({super.key, this.onClose});
 
   @override
@@ -24,7 +30,6 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
-    // Filter sessions based on search query
     final filteredSessions = chatProvider.savedSessions.where((session) {
       final titleLower = session.title.toLowerCase();
       final queryLower = _searchQuery.toLowerCase();
@@ -308,7 +313,6 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         splashColor: themeProvider.appThemeColor.withAlpha((0.1 * 255).round()),
 
-        // LEADING: Bookmark Icon
         leading: GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
@@ -348,7 +352,6 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
         onTap: () {
           chatProvider.loadSession(session);
 
-          // Also update background if present
           if (session.backgroundImage != null) {
             themeProvider.setBackgroundImage(session.backgroundImage!);
           } else {

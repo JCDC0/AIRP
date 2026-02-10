@@ -6,9 +6,18 @@ import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
 import 'provider_model_selector.dart';
 
+/// A settings panel for configuring the conversation title and selecting AI models.
+///
+/// This panel provides a text field for the title and a provider-specific
+/// model selector widget.
 class ModelSettingsPanel extends StatelessWidget {
+  /// Controller for the conversation title text field.
   final TextEditingController titleController;
+
+  /// Controller for the OpenRouter model selection text field.
   final TextEditingController openRouterModelController;
+
+  /// Controller for the Groq model selection text field.
   final TextEditingController groqModelController;
 
   const ModelSettingsPanel({
@@ -18,6 +27,7 @@ class ModelSettingsPanel extends StatelessWidget {
     required this.groqModelController,
   });
 
+  /// Returns the number of available models for the current provider.
   int _getModelCount(ChatProvider provider) {
     switch (provider.currentProvider) {
       case AiProvider.gemini:
@@ -102,7 +112,6 @@ class ModelSettingsPanel extends StatelessWidget {
                 color: themeProvider.appThemeColor,
               ),
             ),
-            // onChanged: chatProvider.setTitle, // Removed for Save button logic
           ),
         ),
         const SizedBox(height: 20),

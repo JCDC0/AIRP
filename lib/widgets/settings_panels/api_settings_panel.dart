@@ -5,8 +5,15 @@ import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
 
+/// A panel for configuring API keys and local network connectivity.
+///
+/// This panel dynamically switches between an API key field and a local
+/// server address field based on the selected AI provider.
 class ApiSettingsPanel extends StatelessWidget {
+  /// Controller for the API key text field.
   final TextEditingController apiKeyController;
+
+  /// Controller for the local server IP address text field.
   final TextEditingController localIpController;
 
   const ApiSettingsPanel({

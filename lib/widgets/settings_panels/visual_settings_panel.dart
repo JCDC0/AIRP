@@ -9,6 +9,11 @@ import '../../utils/constants.dart';
 import 'settings_color_picker.dart';
 import 'settings_slider.dart';
 
+/// A panel for customizing the application's visual style and atmosphere.
+///
+/// This panel provides controls for font selection, color customization
+/// (bubbles, text, theme), bloom effects, and environmental VFX (motes, rain, fireflies).
+/// It also includes a background image gallery with support for custom uploads.
 class VisualSettingsPanel extends StatelessWidget {
   const VisualSettingsPanel({super.key});
 
@@ -502,7 +507,6 @@ class VisualSettingsPanel extends StatelessWidget {
               onChanged: (val) => themeProvider.toggleFireflies(val),
             ),
             const Divider(),
-            // Sliders for VFX
             if (themeProvider.enableMotes)
               SettingsSlider(
                 title: "Motes Density",
@@ -636,7 +640,6 @@ class VisualSettingsPanel extends StatelessWidget {
 
                   return InkWell(
                     onTap: () => themeProvider.setBackgroundImage(path),
-                    // Long Press triggers "Red Delete"
                     onLongPress: isCustom
                         ? () {
                             HapticFeedback.mediumImpact();
@@ -652,7 +655,7 @@ class VisualSettingsPanel extends StatelessWidget {
                         : null,
                     splashColor: Colors.redAccent.withAlpha(
                       (0.8 * 255).round(),
-                    ), // The Red Blur Effect on hold
+                    ),
                     highlightColor: Colors.redAccent.withAlpha(
                       (0.4 * 255).round(),
                     ),

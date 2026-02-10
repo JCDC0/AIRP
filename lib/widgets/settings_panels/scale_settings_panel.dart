@@ -4,6 +4,10 @@ import '../../providers/scale_provider.dart';
 import '../../providers/theme_provider.dart';
 import 'settings_slider.dart';
 
+/// A panel for adjusting UI scaling and layout dimensions.
+///
+/// This panel provides quick presets for different device types (Phone, Tablet,
+/// Desktop) and individual sliders for font sizes, drawer width, and icon scale.
 class ScaleSettingsPanel extends StatelessWidget {
   const ScaleSettingsPanel({super.key});
 
@@ -18,7 +22,6 @@ class ScaleSettingsPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Device Presets
           Text(
             "Device Presets",
             style: TextStyle(
@@ -56,7 +59,6 @@ class ScaleSettingsPanel extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // 2. Sliders
           SettingsSlider(
             title: "Chat Font Size",
             value: scaleProvider.chatFontSize,

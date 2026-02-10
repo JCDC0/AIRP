@@ -5,6 +5,10 @@ import 'providers/chat_provider.dart';
 import 'providers/scale_provider.dart';
 import 'screens/chat_screen.dart';
 
+/// The entry point for the AIRP application.
+///
+/// This file initializes the application's state management using Provider
+/// and sets up the root Material application with the appropriate theme.
 void main() {
   runApp(
     MultiProvider(
@@ -18,6 +22,9 @@ void main() {
   );
 }
 
+/// The root widget of the application.
+///
+/// Configures the global theme, typography, and initial navigation route.
 class AIRP extends StatelessWidget {
   const AIRP({super.key});
 

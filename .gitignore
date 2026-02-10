@@ -47,3 +47,4 @@ app.*.map.json
 *.env
 main.dart.txt
 GEMINI.md
+Recommendations_summary.md

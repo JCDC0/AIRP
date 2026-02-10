@@ -2,16 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:simple_animations/simple_animations.dart';
 import 'dart:math';
 
-// =======================================================================
-// Main Effects Overlay Widget
-// =======================================================================
+/// A widget that overlays visual effects like motes, rain, and fireflies.
 class EffectsOverlay extends StatelessWidget {
+  /// Whether to show the floating dust motes effect.
   final bool showMotes;
+
+  /// Whether to show the falling rain effect.
   final bool showRain;
+
+  /// Whether to show the pulsing fireflies effect.
   final bool showFireflies;
+
+  /// The primary color used for the effects.
   final Color effectColor;
+
+  /// The density of motes (number of particles).
   final double motesDensity;
+
+  /// The intensity of rain (number of drops).
   final double rainIntensity;
+
+  /// The number of fireflies to display.
   final double firefliesCount;
 
   const EffectsOverlay({
@@ -51,11 +62,12 @@ class EffectsOverlay extends StatelessWidget {
   }
 }
 
-// =======================================================================
-// Dust Motes Effect
-// =======================================================================
+/// A widget that renders a floating dust motes animation.
 class MotesEffect extends StatefulWidget {
+  /// The number of motes to generate and animate.
   final int numberOfMotes;
+
+  /// The color of the motes.
   final Color color;
 
   const MotesEffect({super.key, this.numberOfMotes = 50, required this.color});
@@ -77,7 +89,6 @@ class _MotesEffectState extends State<MotesEffect> {
   @override
   void didUpdateWidget(MotesEffect oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Only regenerate if the density actually changed
     if (oldWidget.numberOfMotes != widget.numberOfMotes) {
       _generateMotes();
     }
@@ -207,11 +218,12 @@ class MotePainter extends CustomPainter {
   }
 }
 
-// =======================================================================
-// Rain Effect
-// =======================================================================
+/// A widget that renders a falling rain animation.
 class RainEffect extends StatefulWidget {
+  /// The number of raindrops to generate and animate.
   final int numberOfDrops;
+
+  /// The color of the raindrops.
   final Color color;
 
   const RainEffect({super.key, this.numberOfDrops = 40, required this.color});
@@ -322,7 +334,6 @@ class RainPainter extends CustomPainter {
         paint,
       );
 
-      // Wrap-around logic
       if (progress + drop.length > 1.0) {
         final double wrapTopY = (progress - 1.0) * size.height;
         final double wrapBottomY = wrapTopY + (drop.length * size.height);
@@ -340,10 +351,9 @@ class RainPainter extends CustomPainter {
   bool shouldRepaint(covariant RainPainter oldDelegate) => true;
 }
 
-// =======================================================================
-// Fireflies Effect
-// =======================================================================
+/// A widget that renders a pulsing fireflies animation.
 class FirefliesEffect extends StatefulWidget {
+  /// The number of fireflies to generate and animate.
   final int numberOfFireflies;
 
   const FirefliesEffect({super.key, this.numberOfFireflies = 30});

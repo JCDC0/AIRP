@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+/// The available AI providers supported by the application.
 enum AiProvider {
   gemini,
   openRouter,
@@ -11,15 +12,33 @@ enum AiProvider {
   groq,
 }
 
+/// Data structure representing a saved chat session.
 class ChatSessionData {
+  /// Unique identifier for the session.
   final String id;
+
+  /// The user-defined or auto-generated title for the session.
   final String title;
+
+  /// The list of messages in this session.
   final List<ChatMessage> messages;
+
+  /// The name of the model used in this session.
   final String modelName;
+
+  /// Total token count for the session.
   final int tokenCount;
+
+  /// The system instruction used during the session.
   final String systemInstruction;
+
+  /// Path to the background image, if any.
   final String? backgroundImage;
+
+  /// The AI provider used for this session.
   final String provider;
+
+  /// Whether the session is marked as a favorite.
   final bool isBookmarked;
 
   ChatSessionData({
@@ -64,14 +83,30 @@ class ChatSessionData {
       );
 }
 
+/// Represents a single message within a chat session.
 class ChatMessage {
+  /// The textual content of the message.
   final String text;
+
+  /// Whether the message was sent by the user.
   final bool isUser;
+
+  /// List of file paths for images attached to the message.
   final List<String> imagePaths;
+
+  /// Base64 encoded string of an AI-generated image.
   final String? aiImage;
+
+  /// The name of the model that generated the response.
   final String? modelName;
+
+  /// Token usage statistics for this message.
   final Map<String, dynamic>? usage;
+
+  /// A signature for reasoning-capable models to maintain context.
   final String? thoughtSignature;
+
+  /// A notifier for streaming message content.
   final ValueNotifier<String>? contentNotifier;
 
   ChatMessage({
@@ -128,8 +163,12 @@ class ChatMessage {
   }
 }
 
+/// Data structure for a saved system prompt preset.
 class SystemPromptData {
+  /// The title of the prompt preset.
   final String title;
+
+  /// The content of the system instruction.
   final String content;
 
   SystemPromptData({required this.title, required this.content});

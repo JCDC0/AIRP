@@ -9,7 +9,12 @@ import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../models/chat_models.dart';
 
+/// A widget that provides the input interface for the chat.
+///
+/// This includes the text field, attachment buttons, feature toggles
+/// (image gen, web search, reasoning), and the send/stop button.
 class ChatInputArea extends StatefulWidget {
+  /// Controller for the chat message list scroll position.
   final ScrollController scrollController;
 
   const ChatInputArea({super.key, required this.scrollController});
@@ -41,6 +46,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     super.dispose();
   }
 
+  /// Opens the gallery to pick an image.
   Future<void> _pickImage() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -54,6 +60,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     }
   }
 
+  /// Opens the file picker to attach a document.
   Future<void> _pickFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -89,6 +96,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     }
   }
 
+  /// Displays a menu for selecting attachment types.
   void _showAttachmentMenu() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final bool useBloom = themeProvider.enableBloom;
@@ -157,6 +165,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     );
   }
 
+  /// Sends the current message text and attachments to the provider.
   void _sendMessage() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final messageText = _textController.text;
@@ -175,6 +184,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     _scrollToBottom();
   }
 
+  /// Scrolls the chat list to the top.
   void _scrollToTop() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.scrollController.hasClients) {
@@ -187,6 +197,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     });
   }
 
+  /// Scrolls the chat list to the bottom.
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.scrollController.hasClients) {
@@ -199,6 +210,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     });
   }
 
+  /// Displays a floating status popup.
   void _showStatusPopup(String message) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -217,6 +229,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     );
   }
 
+  /// Builds a circular button with consistent styling.
   Widget _buildCircularButton({
     required IconData icon,
     required VoidCallback? onPressed,
@@ -272,6 +285,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     );
   }
 
+  /// Builds a toggle button for AI features.
   Widget _buildFeatureSwitch({
     required IconData icon,
     required bool isActive,
@@ -318,7 +332,6 @@ class _ChatInputAreaState extends State<ChatInputArea>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ROW 0: ATTACHMENTS LIST
                 if (_pendingImages.isNotEmpty) ...[
                   SizedBox(
                     height: 50,
@@ -429,7 +442,6 @@ class _ChatInputAreaState extends State<ChatInputArea>
                   const SizedBox(height: 12),
                 ],
 
-                // ROW 1: Icons
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -507,7 +519,6 @@ class _ChatInputAreaState extends State<ChatInputArea>
                         themeProvider: themeProvider,
                         scaleProvider: scaleProvider,
                       ),
-                      // REASONING BUTTON
                       Builder(
                         builder: (context) {
                           Color? reasoningColor;
@@ -566,7 +577,6 @@ class _ChatInputAreaState extends State<ChatInputArea>
                         },
                       ),
 
-                      // SCROLL BUTTONS
                       const SizedBox(width: 12),
                       Container(width: 1, height: 24, color: Colors.grey[800]),
                       const SizedBox(width: 12),
@@ -591,11 +601,9 @@ class _ChatInputAreaState extends State<ChatInputArea>
 
                 const SizedBox(height: 12),
 
-                // ROW 2: Input + Send Button
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // 3. INPUT FIELD
                     Expanded(
                       child: AnimatedBuilder(
                         animation: _orbitController,
@@ -680,7 +688,6 @@ class _ChatInputAreaState extends State<ChatInputArea>
                     ),
                     const SizedBox(width: 8),
 
-                    // 4. SEND BUTTON
                     IconButton.filled(
                       style: IconButton.styleFrom(
                         backgroundColor: isLoading
@@ -715,6 +722,9 @@ class _ChatInputAreaState extends State<ChatInputArea>
   }
 }
 
+/// A custom painter that draws orbiting lines around the input field.
+///
+/// This is used as a loading indicator when an AI response is being generated.
 class LineOrbitPainter extends CustomPainter {
   final double progress;
   final Color color;
@@ -756,7 +766,6 @@ class LineOrbitPainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3)
       ..strokeCap = ui.StrokeCap.round;
 
-    // Define 3 lines with unique curves and properties for organic "randomness"
     final List<Map<String, dynamic>> lines = [
       {
         'speed': 1.0,
@@ -779,7 +788,6 @@ class LineOrbitPainter extends CustomPainter {
     ];
 
     for (var line in lines) {
-      // Apply unique curve per line
       double p =
           (progress * (line['speed'] as double) + (line['offset'] as double)) %
           1.0;

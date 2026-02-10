@@ -8,10 +8,21 @@ import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
 
+/// A panel for configuring the AI's system instruction and advanced prompts.
+///
+/// This panel supports preset library selection, custom behavioral tweaks,
+/// and kaomoji emotion filters.
 class SystemPromptPanel extends StatefulWidget {
+  /// Controller for the main system instruction text.
   final TextEditingController mainPromptController;
+
+  /// Controller for advanced behavioral instructions.
   final TextEditingController advancedPromptController;
+
+  /// Controller for the title of the current prompt preset.
   final TextEditingController promptTitleController;
+
+  /// Callback triggered when any prompt content changes.
   final VoidCallback onPromptChanged;
 
   const SystemPromptPanel({
@@ -30,7 +41,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   late TextEditingController _ruleLabelController;
   late TextEditingController _newRuleContentController;
 
-  // Custom Rules storage
   List<Map<String, dynamic>> _customRules = [];
   bool _isKaomojiFixEnabled = false;
 
@@ -44,7 +54,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     _ruleLabelController = TextEditingController();
     _newRuleContentController = TextEditingController();
 
-    // Load rules after build to ensure provider is available or use listen:false
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
       String fullPrompt = chatProvider.systemInstruction;
@@ -95,7 +104,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     String workingText = fullPrompt;
     String advancedVisualText = "";
 
-    // 2. Detect Kaomoji
     if (workingText.contains(kDefaultKaomojiFix.trim())) {
       _isKaomojiFixEnabled = true;
       workingText = workingText.replaceFirst(kDefaultKaomojiFix.trim(), "");
@@ -104,7 +112,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
       _isKaomojiFixEnabled = false;
     }
 
-    // 3. Detect Custom Rules
     for (var rule in _customRules) {
       final content = rule['content'] as String;
       if (workingText.contains(content.trim())) {
@@ -116,7 +123,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
       }
     }
 
-    // 4. Cleanup
     workingText = workingText.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
     advancedVisualText = advancedVisualText.trim();
 
@@ -139,12 +145,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
 
     widget.advancedPromptController.text = activePrompts.join('\n\n');
 
-    // String advanced = widget.advancedPromptController.text.trim();
-    // String main = widget.mainPromptController.text.trim();
-    // String finalPrompt = (advanced.isNotEmpty && main.isNotEmpty) ? "$advanced\n\n$main" : advanced + main;
-
-    // final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    // chatProvider.setSystemInstruction(finalPrompt); // Removed to allow Save button logic
     widget.onPromptChanged();
   }
 
@@ -402,7 +402,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           },
         ),
 
-        // 1. THE DROPDOWN & ACTIONS ROW
         Opacity(
           opacity: chatProvider.enableSystemPrompt ? 1.0 : 0.5,
           child: AbsorbPointer(
@@ -501,7 +500,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
 
                 const SizedBox(height: 10),
 
-                // 2. PROMPT TITLE FIELD
                 TextField(
                   controller: widget.promptTitleController,
                   decoration: InputDecoration(
@@ -540,7 +538,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
 
                 const SizedBox(height: 5),
 
-                // 3. MAIN PROMPT CONTENT FIELD
                 Focus(
                   onFocusChange: (hasFocus) {
                     setState(() {});
@@ -680,7 +677,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             ),
           ),
         ),
-        // --- GROUNDING SWITCH ---
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -722,7 +718,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
               : null,
         ),
 
-        // --- SAFETY FILTERS (Conditional Visibility) ---
         if (chatProvider.currentProvider == AiProvider.gemini)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -755,7 +750,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             },
           ),
 
-        // --- USAGE STATS (OpenRouter Only) ---
         if (chatProvider.currentProvider == AiProvider.openRouter)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -789,7 +783,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           ),
         const Divider(),
 
-        // --- ADVANCED SYSTEM PROMPT SECTION ---
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -880,7 +873,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                         },
                       ),
 
-                      // Dynamic Rules List
                       if (_customRules.isNotEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(
@@ -948,7 +940,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                           },
                         );
                       }),
-                      // EDITABLE RAW PROMPT
                       const Divider(),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -1020,7 +1011,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
 
                 const Divider(),
 
-                // --- NEW RULE CREATION SECTION ---
                 Text(
                   "Add a New Tweak/Rule",
                   style: TextStyle(
@@ -1078,7 +1068,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                 ),
                 const SizedBox(height: 8),
 
-                // 2. Button bar for new rule content (Copy/Paste)
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.black26,
@@ -1112,7 +1101,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                 ),
                 const SizedBox(height: 8),
 
-                // 3. Rule Name and Add Button Row
                 Row(
                   children: [
                     Expanded(

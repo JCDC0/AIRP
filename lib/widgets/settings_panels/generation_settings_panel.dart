@@ -5,6 +5,10 @@ import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import 'settings_slider.dart';
 
+/// A panel for configuring AI model generation parameters.
+///
+/// This panel provides controls for message history limits, reasoning effort,
+/// temperature, sampling parameters (Top P/K), and output token limits.
 class GenerationSettingsPanel extends StatefulWidget {
   const GenerationSettingsPanel({super.key});
 
@@ -23,7 +27,6 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Conversation Context Control
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -90,7 +93,6 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         ),
         const Divider(),
 
-        // Thinking Model Depth
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -235,7 +237,6 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         ),
         const Divider(),
 
-        // Creative Parameters (Temperature, Top P/K)
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -321,7 +322,6 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         ),
         const Divider(),
 
-        // Response Length Limit
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(

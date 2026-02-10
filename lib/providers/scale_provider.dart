@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Defines the category of device for responsive scaling.
 enum DeviceType { phone, tablet, desktop }
 
+/// Provider for managing UI scaling, font sizes, and layout dimensions.
+///
+/// This class provides responsive presets for different device types
+/// and allows fine-grained control over individual scaling parameters.
 class ScaleProvider extends ChangeNotifier {
-  // State Variables
   DeviceType _deviceType = DeviceType.phone;
   double _chatFontSize = 14.0;
   double _systemFontSize = 12.0;
@@ -14,7 +18,6 @@ class ScaleProvider extends ChangeNotifier {
   bool _shouldGlow = false;
   bool _isFirstRun = true;
 
-  // Getters
   DeviceType get deviceType => _deviceType;
   double get chatFontSize => _chatFontSize;
   double get systemFontSize => _systemFontSize;
@@ -31,11 +34,9 @@ class ScaleProvider extends ChangeNotifier {
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Check if this is the first run ever for scaling settings
     if (prefs.containsKey('scale_device_type')) {
       _isFirstRun = false;
 
-      // Load saved values
       final deviceTypeIndex = prefs.getInt('scale_device_type') ?? 0;
       _deviceType = DeviceType.values[deviceTypeIndex];
 
@@ -45,12 +46,10 @@ class ScaleProvider extends ChangeNotifier {
       _iconScale = prefs.getDouble('scale_icon_scale') ?? 1.0;
       _inputAreaScale = prefs.getDouble('scale_input_area_scale') ?? 1.0;
 
-      // Check if user has seen the settings
       _shouldGlow = !(prefs.getBool('scale_settings_seen') ?? false);
     } else {
-      // First run logic will be triggered via initializeDeviceType
       _isFirstRun = true;
-      _shouldGlow = true; // Enable glow for first run
+      _shouldGlow = true;
     }
 
     notifyListeners();
@@ -71,14 +70,13 @@ class ScaleProvider extends ChangeNotifier {
     }
 
     await setDeviceType(detectedType);
-    _isFirstRun = false; // Prevent re-initialization
+    _isFirstRun = false;
     notifyListeners();
   }
 
   Future<void> setDeviceType(DeviceType type) async {
     _deviceType = type;
 
-    // Apply Presets
     switch (type) {
       case DeviceType.phone:
         _chatFontSize = 14.0;
@@ -107,7 +105,7 @@ class ScaleProvider extends ChangeNotifier {
     await _saveAll();
   }
 
-  // Individual Setters
+  /// Sets the font size for chat messages and persists the change.
   Future<void> setChatFontSize(double value) async {
     _chatFontSize = value;
     notifyListeners();
@@ -115,6 +113,7 @@ class ScaleProvider extends ChangeNotifier {
     await prefs.setDouble('scale_chat_font_size', value);
   }
 
+  /// Sets the font size for system UI elements and persists the change.
   Future<void> setSystemFontSize(double value) async {
     _systemFontSize = value;
     notifyListeners();
@@ -122,6 +121,7 @@ class ScaleProvider extends ChangeNotifier {
     await prefs.setDouble('scale_system_font_size', value);
   }
 
+  /// Sets the width of side drawers and persists the change.
   Future<void> setDrawerWidth(double value) async {
     _drawerWidth = value;
     notifyListeners();
@@ -129,6 +129,7 @@ class ScaleProvider extends ChangeNotifier {
     await prefs.setDouble('scale_drawer_width', value);
   }
 
+  /// Sets the scaling factor for icons and persists the change.
   Future<void> setIconScale(double value) async {
     _iconScale = value;
     notifyListeners();
@@ -136,6 +137,7 @@ class ScaleProvider extends ChangeNotifier {
     await prefs.setDouble('scale_icon_scale', value);
   }
 
+  /// Sets the scaling factor for the input area and persists the change.
   Future<void> setInputAreaScale(double value) async {
     _inputAreaScale = value;
     notifyListeners();

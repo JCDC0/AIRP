@@ -1,14 +1,35 @@
 import 'package:flutter/material.dart';
 
+/// A customizable slider widget used for adjusting numeric settings.
+///
+/// This widget includes a descriptive label, a numeric input field for
+/// precise adjustments, and a visual slider.
 class SettingsSlider extends StatelessWidget {
+  /// The title/label for the slider.
   final String title;
+
+  /// The current value of the slider.
   final double value;
+
+  /// The minimum possible value.
   final double min;
+
+  /// The maximum possible value.
   final double max;
+
+  /// The number of discrete intervals.
   final int? divisions;
+
+  /// The color of the active portion of the slider.
   final Color activeColor;
+
+  /// Callback triggered when the value changes.
   final Function(double) onChanged;
+
+  /// Whether the value should be treated as an integer.
   final bool isInt;
+
+  /// The font size for the labels and input.
   final double fontSize;
 
   const SettingsSlider({

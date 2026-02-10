@@ -6,8 +6,15 @@ import '../providers/theme_provider.dart';
 import 'message_bubble.dart';
 import 'effects_overlay.dart';
 
+/// A widget that displays a list of chat messages with interactive capabilities.
+///
+/// This widget handles rendering the message bubbles, background effects,
+/// and the long-press menu for message actions like copy, edit, and delete.
 class ChatMessagesList extends StatelessWidget {
+  /// Controller for managing the scroll position of the message list.
   final ScrollController scrollController;
+
+  /// Controller for handling zoom and pan transformations.
   final TransformationController transformationController;
 
   const ChatMessagesList({
@@ -16,6 +23,7 @@ class ChatMessagesList extends StatelessWidget {
     required this.transformationController,
   });
 
+  /// Displays a bottom sheet with options for a specific message.
   void _showMessageOptions(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
@@ -36,7 +44,7 @@ class ChatMessagesList extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Little handle bar
+                // Bottom sheet handle
                 Container(
                   width: 40,
                   height: 4,
@@ -55,11 +63,9 @@ class ChatMessagesList extends StatelessWidget {
                   ),
                 ),
 
-                // THE ICON ROW
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // 1. COPY
                     _buildMenuIcon(
                       icon: Icons.copy,
                       label: "Copy",
@@ -77,7 +83,6 @@ class ChatMessagesList extends StatelessWidget {
                       },
                     ),
 
-                    // 2. EDIT
                     _buildMenuIcon(
                       icon: Icons.edit,
                       label: "Edit",
@@ -89,7 +94,6 @@ class ChatMessagesList extends StatelessWidget {
                       },
                     ),
 
-                    // 3. REGENERATE
                     Opacity(
                       opacity: isLastMessage ? 1.0 : 0.3,
                       child: _buildMenuIcon(
@@ -106,7 +110,6 @@ class ChatMessagesList extends StatelessWidget {
                       ),
                     ),
 
-                    // 4. DELETE
                     _buildMenuIcon(
                       icon: Icons.delete,
                       label: "Delete",

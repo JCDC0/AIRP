@@ -10,13 +10,30 @@ import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../utils/constants.dart';
 
+/// A widget that displays a single chat message bubble.
+///
+/// This widget handles rendering markdown text, images, and providing
+/// interactive buttons for message actions.
 class MessageBubble extends StatelessWidget {
+  /// The chat message to display.
   final ChatMessage msg;
+
+  /// The theme provider for styling.
   final ThemeProvider themeProvider;
+
+  /// Callback when the bubble is long-pressed.
   final VoidCallback? onLongPress;
+
+  /// Callback for copying message text.
   final VoidCallback? onCopy;
+
+  /// Callback for editing the message.
   final VoidCallback? onEdit;
+
+  /// Callback for regenerating an AI response.
   final VoidCallback? onRegenerate;
+
+  /// Callback for deleting the message.
   final VoidCallback? onDelete;
 
   const MessageBubble({
@@ -36,7 +53,6 @@ class MessageBubble extends StatelessWidget {
       barrierColor: const Color.fromARGB(255, 0, 0, 0),
       builder: (context) => Stack(
         children: [
-          // 1. Zoomable Image
           Positioned.fill(
             child: InteractiveViewer(
               minScale: 0.5,
@@ -44,7 +60,6 @@ class MessageBubble extends StatelessWidget {
               child: Image(image: provider, fit: BoxFit.contain),
             ),
           ),
-          // 2. Close Button (Top Right)
           Positioned(
             top: 40,
             right: 20,
@@ -56,7 +71,6 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-          // 3. Download Button (Bottom Center)
           Positioned(
             bottom: 40,
             left: 0,
@@ -70,7 +84,6 @@ class MessageBubble extends StatelessWidget {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
-                    // Placeholder for actual download logic
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Image saved to Gallery (Simulated)"),
@@ -148,7 +161,6 @@ class MessageBubble extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 1. REGENERATE (Leftmost for AI)
                 if (onRegenerate != null)
                   _buildIconBtn(
                     Icons.refresh,
@@ -158,7 +170,6 @@ class MessageBubble extends StatelessWidget {
                     25 * scaleProvider.iconScale,
                   ),
 
-                // 2. COPY
                 if (onCopy != null)
                   _buildIconBtn(
                     Icons.copy_rounded,
@@ -168,7 +179,6 @@ class MessageBubble extends StatelessWidget {
                     25 * scaleProvider.iconScale,
                   ),
 
-                // 3. EDIT (User Only usually)
                 if (onEdit != null)
                   _buildIconBtn(
                     Icons.edit_outlined,
@@ -177,7 +187,6 @@ class MessageBubble extends StatelessWidget {
                     textColor,
                     25 * scaleProvider.iconScale,
                   ),
-                // 4. DELETE
                 if (onDelete != null)
                   _buildIconBtn(
                     Icons.delete_outline,
@@ -236,18 +245,15 @@ class MessageBubble extends StatelessWidget {
       fontSize: scaleProvider.chatFontSize - 2,
     );
 
-    // --- PARSE REASONING ---
     final splitContent = _extractReasoning(text);
     final reasoningText = splitContent['reasoning'] as String;
     final visibleText = splitContent['content'] as String;
     final isReasoningDone = splitContent['isDone'] as bool;
 
-    // Define the content once to avoid repetition
     final contentColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // --- MODEL NAME DISPLAY ADDED HERE ---
         if (!msg.isUser && msg.modelName != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 6.0),
@@ -285,7 +291,6 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
 
-        // --- REASONING DROPDOWN ---
         if (reasoningText.isNotEmpty)
           ReasoningView(
             reasoning: reasoningText,
@@ -371,7 +376,6 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
 
-        // --- USAGE STATS DISPLAY ---
         if (msg.usage != null && !msg.isUser)
           Padding(
             padding: const EdgeInsets.only(top: 6.0),
@@ -411,7 +415,6 @@ class MessageBubble extends StatelessWidget {
       ],
     );
 
-    // Use the CustomPaint for the glowing border, or a simple Container if bloom is off
     return useBloom
         ? Padding(
             padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -481,7 +484,6 @@ class MessageBubble extends StatelessWidget {
             );
           }
 
-          // Return Non-Image File Icon
           return ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
@@ -535,7 +537,6 @@ class CodeElementBuilder extends MarkdownElementBuilder {
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     var language = '';
 
-    // 1. Detect Language safely
     if (element.attributes['class'] != null) {
       String lg = element.attributes['class'] as String;
       if (lg.startsWith('language-')) {
@@ -545,13 +546,10 @@ class CodeElementBuilder extends MarkdownElementBuilder {
       }
     }
 
-    // 2. Decide if this is a Block Code or Inline Code
-    // If it has a language class or contains newlines, treat as block.
     final bool isBlock =
         language.isNotEmpty || element.textContent.contains('\n');
 
     if (!isBlock) {
-      // INLINE CODE STYLE
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
@@ -566,7 +564,6 @@ class CodeElementBuilder extends MarkdownElementBuilder {
       );
     }
 
-    // BLOCK CODE STYLE
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -577,7 +574,6 @@ class CodeElementBuilder extends MarkdownElementBuilder {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Code Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: const BoxDecoration(
@@ -622,7 +618,6 @@ class CodeElementBuilder extends MarkdownElementBuilder {
               ],
             ),
           ),
-          // Code Body
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.all(12),
@@ -657,19 +652,16 @@ class BorderGlowPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Paint for the glowing effect
     final glowPaint = Paint()
       ..color = glowColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = glowStrokeWidth
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12.0);
 
-    // Paint for the solid background fill
     final bgPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.fill;
 
-    // Paint for the crisp, visible border
     final borderPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
@@ -736,15 +728,12 @@ class _ReasoningViewState extends State<ReasoningView> {
   @override
   void initState() {
     super.initState();
-    // If it's NOT done (streaming), expand it automatically.
-    // If it IS done (loaded from history), start collapsed.
     _isExpanded = !widget.isDone;
   }
 
   @override
   void didUpdateWidget(covariant ReasoningView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If it transitions from NOT done to DONE, collapse it.
     if (!oldWidget.isDone && widget.isDone) {
       setState(() {
         _isExpanded = false;
@@ -759,7 +748,6 @@ class _ReasoningViewState extends State<ReasoningView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header / Toggle
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             borderRadius: BorderRadius.circular(4),
@@ -797,7 +785,6 @@ class _ReasoningViewState extends State<ReasoningView> {
             ),
           ),
 
-          // Content
           if (_isExpanded)
             Container(
               margin: const EdgeInsets.only(top: 4),

@@ -12,8 +12,14 @@ import 'settings_panels/generation_settings_panel.dart';
 import 'settings_panels/visual_settings_panel.dart';
 import 'settings_panels/scale_settings_panel.dart';
 
+/// A drawer widget that contains all application settings.
+///
+/// This drawer provides panels for API configuration, model selection,
+/// system prompts, generation parameters, scaling, and visual effects.
 class SettingsDrawer extends StatefulWidget {
+  /// A version number used to force a reset of the drawer state.
   final int resetVersion;
+
   const SettingsDrawer({super.key, this.resetVersion = 0});
 
   @override
@@ -32,7 +38,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
   bool _hasUnsavedChanges = false;
 
-  // Track last synced values to avoid overwriting user input
   String? _lastSyncedApiKey;
   String? _lastSyncedLocalIp;
   String? _lastSyncedTitle;
@@ -60,14 +65,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       text: chatProvider.systemInstruction,
     );
 
-    // Initialize last synced values
     _lastSyncedApiKey = _apiKeyController.text;
     _lastSyncedLocalIp = _localIpController.text;
     _lastSyncedTitle = _titleController.text;
     _lastSyncedOpenRouterModel = _openRouterModelController.text;
     _lastSyncedGroqModel = _groqModelController.text;
 
-    // Add listeners to detect changes
     _apiKeyController.addListener(_checkForChanges);
     _localIpController.addListener(_checkForChanges);
     _titleController.addListener(_checkForChanges);
@@ -75,8 +78,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _groqModelController.addListener(_checkForChanges);
     _mainPromptController.addListener(_checkForChanges);
     _advancedPromptController.addListener(_checkForChanges);
-
-    // Note: SystemPromptPanel handles loading custom rules and populating the prompt controllers
   }
 
   String _getApiKey(ChatProvider provider) {
@@ -103,13 +104,11 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   void _handleSaveSettings() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
 
-    // 1. Save System Prompts (Separately)
     chatProvider.setSystemInstruction(_mainPromptController.text.trim());
     chatProvider.setAdvancedSystemInstruction(
       _advancedPromptController.text.trim(),
     );
 
-    // 2. Save All Values to Provider
     chatProvider.setApiKey(_apiKeyController.text.trim());
     chatProvider.setLocalIp(_localIpController.text.trim());
     chatProvider.setTitle(_titleController.text.trim());
@@ -120,10 +119,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       chatProvider.setModel(_groqModelController.text.trim());
     }
 
-    // 3. Persist to Disk
     chatProvider.saveSettings();
 
-    // 4. Update Sync State
     _lastSyncedApiKey = _apiKeyController.text;
     _lastSyncedLocalIp = _localIpController.text;
     _lastSyncedTitle = _titleController.text;
@@ -148,30 +145,24 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     bool hasChanges = false;
 
-    // 1. Check API Key
     if (_apiKeyController.text != _getApiKey(chatProvider)) hasChanges = true;
 
-    // 2. Check Local IP
     if (_localIpController.text != chatProvider.localIp) hasChanges = true;
 
-    // 3. Check Title
     if (_titleController.text != chatProvider.currentTitle) hasChanges = true;
 
-    // 4. Check OpenRouter Model
     if (chatProvider.currentProvider == AiProvider.openRouter) {
       if (_openRouterModelController.text != chatProvider.openRouterModel) {
         hasChanges = true;
       }
     }
 
-    // 5. Check Groq Model
     if (chatProvider.currentProvider == AiProvider.groq) {
       if (_groqModelController.text != chatProvider.groqModel) {
         hasChanges = true;
       }
     }
 
-    // 6. Check System Prompt
     if (_mainPromptController.text.trim() != chatProvider.systemInstruction) {
       hasChanges = true;
     }
@@ -201,7 +192,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   }
 
   void _syncControllers(ChatProvider chatProvider) {
-    // 1. Sync API Key
     final correctKey = _getApiKey(chatProvider);
     if (correctKey != _lastSyncedApiKey) {
       if (_apiKeyController.text != correctKey) {
@@ -210,7 +200,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       _lastSyncedApiKey = correctKey;
     }
 
-    // 2. Sync Local IP
     if (chatProvider.localIp != _lastSyncedLocalIp) {
       if (_localIpController.text != chatProvider.localIp) {
         _localIpController.text = chatProvider.localIp;
@@ -218,7 +207,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       _lastSyncedLocalIp = chatProvider.localIp;
     }
 
-    // 3. Sync Title
     if (chatProvider.currentTitle != _lastSyncedTitle) {
       if (_titleController.text != chatProvider.currentTitle) {
         _titleController.text = chatProvider.currentTitle;
@@ -226,7 +214,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       _lastSyncedTitle = chatProvider.currentTitle;
     }
 
-    // 4. Sync OpenRouter Model
     if (chatProvider.currentProvider == AiProvider.openRouter) {
       if (chatProvider.openRouterModel != _lastSyncedOpenRouterModel) {
         if (_openRouterModelController.text != chatProvider.openRouterModel) {
@@ -236,7 +223,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       }
     }
 
-    // 5. Sync Groq Model
     if (chatProvider.currentProvider == AiProvider.groq) {
       if (chatProvider.groqModel != _lastSyncedGroqModel) {
         if (_groqModelController.text != chatProvider.groqModel) {
@@ -415,7 +401,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     children: [const VisualSettingsPanel()],
                   ),
 
-                  // Extra space for FAB
                   const SizedBox(height: 80),
                 ],
               ),

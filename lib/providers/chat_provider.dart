@@ -9,12 +9,12 @@ import '../services/chat_api_service.dart';
 import '../services/secure_storage_service.dart';
 import '../utils/constants.dart';
 
+/// Central provider for managing chat state, API communication, and settings.
+///
+/// This class handles session persistence, model configuration for multiple
+/// AI providers (Gemini, OpenRouter, OpenAI, etc.), and coordinates the
+/// streaming of chat responses.
 class ChatProvider extends ChangeNotifier {
-  // ----------------------------------------------------------------------
-  // STATE VARIABLES
-  // ----------------------------------------------------------------------
-
-  // Loading & Status
   bool _isLoading = false;
   bool _isCancelled = false;
   StreamSubscription? _geminiSubscription;
@@ -23,7 +23,6 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isCancelled => _isCancelled;
 
-  // Model Lists
   List<String> _geminiModelsList = [];
   List<String> _openRouterModelsList = [];
   List<String> _arliAiModelsList = [];
@@ -40,7 +39,6 @@ class ChatProvider extends ChangeNotifier {
   List<String> get huggingFaceModelsList => _huggingFaceModelsList;
   List<String> get groqModelsList => _groqModelsList;
 
-  // Loading States for Models
   bool _isLoadingGeminiModels = false;
   bool _isLoadingOpenRouterModels = false;
   bool _isLoadingArliAiModels = false;
@@ -57,7 +55,6 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingHuggingFaceModels => _isLoadingHuggingFaceModels;
   bool get isLoadingGroqModels => _isLoadingGroqModels;
 
-  // Keys & Config
   AiProvider _currentProvider = AiProvider.gemini;
   String _geminiKey = '';
   String _openRouterKey = '';
@@ -80,7 +77,6 @@ class ChatProvider extends ChangeNotifier {
   String get localIp => _localIp;
   String get localModelName => _localModelName;
 
-  // Selected Models
   String _selectedGeminiModel = 'models/gemini-3-flash-preview';
   String _openRouterModel = 'z-ai/glm-4.5-air:free';
   String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
@@ -99,7 +95,6 @@ class ChatProvider extends ChangeNotifier {
   String get groqModel => _groqModel;
   String get selectedModel => _selectedModel;
 
-  // Generation Settings
   double _temperature = ChatDefaults.temperature;
   double _topP = ChatDefaults.topP;
   int _topK = ChatDefaults.topK;
@@ -111,7 +106,6 @@ class ChatProvider extends ChangeNotifier {
   bool _disableSafety = true;
   String _reasoningEffort = "none";
 
-  // Toggles
   bool _enableSystemPrompt = true;
   bool _enableAdvancedSystemPrompt = true;
   bool _enableMsgHistory = true;
@@ -137,7 +131,6 @@ class ChatProvider extends ChangeNotifier {
   bool get enableGenerationSettings => _enableGenerationSettings;
   bool get enableMaxOutputTokens => _enableMaxOutputTokens;
 
-  // Session Data
   List<ChatMessage> _messages = [];
   List<ChatSessionData> _savedSessions = [];
   String? _currentSessionId;
@@ -154,22 +147,15 @@ class ChatProvider extends ChangeNotifier {
   String get systemInstruction => _systemInstruction;
   String get advancedSystemInstruction => _advancedSystemInstruction;
 
-  // System Prompts Library
   List<SystemPromptData> _savedSystemPrompts = [];
   List<SystemPromptData> get savedSystemPrompts => _savedSystemPrompts;
 
-  // Model Bookmarks
   Set<String> _bookmarkedModels = {};
   Set<String> get bookmarkedModels => _bookmarkedModels;
 
-  // Internal
   late GenerativeModel _model;
   late ChatSession _chat;
   static const _defaultApiKey = '';
-
-  // ----------------------------------------------------------------------
-  // INITIALIZATION
-  // ----------------------------------------------------------------------
 
   ChatProvider() {
     _loadSettings();
@@ -238,7 +224,6 @@ class ChatProvider extends ChangeNotifier {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Load Keys
     _geminiKey = await _loadApiKeyFromStorage(
       prefs: prefs,
       secureKey: ApiConstants.secureKeyGemini,
@@ -275,11 +260,10 @@ class ChatProvider extends ChangeNotifier {
       prefsKey: ApiConstants.prefKeyGroq,
     );
     _localIp =
-      prefs.getString(ApiConstants.prefLocalIp) ?? ChatDefaults.localIp;
+        prefs.getString(ApiConstants.prefLocalIp) ?? ChatDefaults.localIp;
     _localModelName =
-      prefs.getString(ApiConstants.prefLocalModelName) ?? _localModelName;
+        prefs.getString(ApiConstants.prefLocalModelName) ?? _localModelName;
 
-    // Load Provider
     final providerString = prefs.getString('airp_provider') ?? 'gemini';
     if (providerString == 'openRouter') {
       _currentProvider = AiProvider.openRouter;
@@ -299,7 +283,6 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.gemini;
     }
 
-    // Load Lists
     _geminiModelsList = prefs.getStringList(ApiConstants.prefListGemini) ?? [];
     _openRouterModelsList =
         prefs.getStringList(ApiConstants.prefListOpenRouter) ?? [];
@@ -311,7 +294,6 @@ class ChatProvider extends ChangeNotifier {
         prefs.getStringList(ApiConstants.prefListHuggingFace) ?? [];
     _groqModelsList = prefs.getStringList(ApiConstants.prefListGroq) ?? [];
 
-    // Load Selected Models
     _selectedGeminiModel =
         prefs.getString(ApiConstants.prefModelGemini) ??
         'models/gemini-3-flash-preview';
@@ -329,26 +311,21 @@ class ChatProvider extends ChangeNotifier {
     _groqModel =
         prefs.getString(ApiConstants.prefModelGroq) ?? 'llama3-8b-8192';
 
-    // Determine current selected model
-    // Determine current selected model
     _selectedModel = _getProviderModel(_currentProvider);
 
-    // Load Other Settings
     _topP = prefs.getDouble('airp_top_p') ?? ChatDefaults.topP;
     _topK = prefs.getInt('airp_top_k') ?? ChatDefaults.topK;
     _maxOutputTokens =
-      prefs.getInt('airp_max_output') ?? ChatDefaults.maxOutputTokens;
-    _historyLimit = prefs.getInt('airp_history_limit') ?? ChatDefaults.historyLimit;
+        prefs.getInt('airp_max_output') ?? ChatDefaults.maxOutputTokens;
+    _historyLimit =
+        prefs.getInt('airp_history_limit') ?? ChatDefaults.historyLimit;
     _temperature =
-      prefs.getDouble('airp_temperature') ?? ChatDefaults.temperature;
+        prefs.getDouble('airp_temperature') ?? ChatDefaults.temperature;
     _enableUsage = prefs.getBool('airp_enable_usage') ?? false;
     _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
-    _enableGrounding =
-      prefs.getBool(ApiConstants.prefEnableGrounding) ?? false;
-    _enableImageGen =
-      prefs.getBool(ApiConstants.prefEnableImageGen) ?? false;
-    _disableSafety =
-      prefs.getBool(ApiConstants.prefDisableSafety) ?? true;
+    _enableGrounding = prefs.getBool(ApiConstants.prefEnableGrounding) ?? false;
+    _enableImageGen = prefs.getBool(ApiConstants.prefEnableImageGen) ?? false;
+    _disableSafety = prefs.getBool(ApiConstants.prefDisableSafety) ?? true;
 
     if (_enableGrounding && _enableImageGen) {
       _enableImageGen = false;
@@ -374,10 +351,6 @@ class ChatProvider extends ChangeNotifier {
       await initializeModel();
     }
   }
-
-  // ----------------------------------------------------------------------
-  // SETTERS & UPDATERS
-  // ----------------------------------------------------------------------
 
   void setProvider(AiProvider provider) {
     _currentProvider = provider;
@@ -423,10 +396,6 @@ class ChatProvider extends ChangeNotifier {
     _selectedModel = model;
     notifyListeners();
   }
-
-  // ----------------------------------------------------------------------
-  // HELPER METHODS
-  // ----------------------------------------------------------------------
 
   String _getProviderModel(AiProvider provider) {
     switch (provider) {
@@ -629,10 +598,7 @@ class ChatProvider extends ChangeNotifier {
       value: _openAiKey,
     );
     await prefs.setString(ApiConstants.prefLocalIp, _localIp);
-    await prefs.setString(
-      ApiConstants.prefLocalModelName,
-      _localModelName,
-    );
+    await prefs.setString(ApiConstants.prefLocalModelName, _localModelName);
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString(ApiConstants.prefModelGemini, _selectedGeminiModel);
     await prefs.setString(ApiConstants.prefModelOpenRouter, _openRouterModel);
@@ -709,10 +675,10 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  // ----------------------------------------------------------------------
-  // LOGIC: MODEL INITIALIZATION
-  // ----------------------------------------------------------------------
-
+  /// Initializes the generative model based on the current provider and settings.
+  ///
+  /// This configures safety settings, system instructions, and generation
+  /// parameters. It also rebuilds the chat history for the Gemini provider.
   Future<void> initializeModel() async {
     String activeKey = _getProviderKey(_currentProvider);
     if (_currentProvider == AiProvider.gemini && activeKey.isEmpty) {
@@ -776,7 +742,6 @@ class ChatProvider extends ChangeNotifier {
         safetySettings: safetySettings,
       );
 
-      // Rebuild history for Gemini Chat Session
       List<Content> history = [];
       int effectiveHistoryLimit = _enableMsgHistory ? _historyLimit : 0;
       int startIndex = _messages.length - effectiveHistoryLimit;
@@ -817,17 +782,16 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  // ----------------------------------------------------------------------
-  // LOGIC: SEND MESSAGE
-  // ----------------------------------------------------------------------
-
+  /// Sends a message to the active AI provider and streams the response.
+  ///
+  /// This method handles optimistic updates, grounding, image generation,
+  /// and standard chat response streaming.
   Future<void> sendMessage(
     String messageText,
     List<String> imagesToSend,
   ) async {
     if (messageText.isEmpty && imagesToSend.isEmpty) return;
 
-    // 1. Optimistic Update
     _messages.add(
       ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend),
     );
@@ -837,7 +801,6 @@ class ChatProvider extends ChangeNotifier {
 
     _scheduleAutoSave();
 
-    // 2. Grounding (Gemini)
     if (_enableGrounding &&
         _currentProvider == AiProvider.gemini &&
         imagesToSend.isEmpty) {
@@ -904,7 +867,6 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    // 3. Image Generation
     if (_enableImageGen) {
       try {
         String activeKey = '';
@@ -968,7 +930,6 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    // 4. Standard Chat Response
     final contentNotifier = ValueNotifier<String>("");
     _messages.add(
       ChatMessage(
@@ -1151,7 +1112,6 @@ class ChatProvider extends ChangeNotifier {
     List<String> imagesToResend = [];
 
     if (!msg.isUser) {
-      // If AI message, rewind to the User message that triggered it
       int userMsgIndex = index - 1;
       if (userMsgIndex >= 0 && _messages[userMsgIndex].isUser) {
         final userMsg = _messages[userMsgIndex];
@@ -1164,10 +1124,9 @@ class ChatProvider extends ChangeNotifier {
       } else {
         _disposeMessageNotifiers([_messages[index]]);
         _messages.removeAt(index);
-        return; // Cannot regenerate without user context
+        return;
       }
     } else {
-      // If User message, rewind to this message
       final userMsg = _messages[index];
       _disposeMessageNotifiers(_messages.getRange(index, _messages.length));
       _messages.removeRange(index, _messages.length);
@@ -1179,10 +1138,6 @@ class ChatProvider extends ChangeNotifier {
     await initializeModel();
     sendMessage(textToResend, imagesToResend);
   }
-
-  // ----------------------------------------------------------------------
-  // LOGIC: SESSION MANAGEMENT
-  // ----------------------------------------------------------------------
 
   Future<void> autoSaveCurrentSession({String? backgroundImagePath}) async {
     if (_messages.isEmpty && _currentTitle.isEmpty) return;
@@ -1340,10 +1295,6 @@ class ChatProvider extends ChangeNotifier {
     initializeModel();
   }
 
-  // ----------------------------------------------------------------------
-  // LOGIC: MODEL FETCHING
-  // ----------------------------------------------------------------------
-
   Future<void> _fetchProviderModels({
     required String apiKey,
     required String url,
@@ -1408,7 +1359,7 @@ class ChatProvider extends ChangeNotifier {
       updateLoading: (val) => _isLoadingGeminiModels = val,
       currentModel: _selectedGeminiModel,
       updateSelectedModel: (val) => _selectedGeminiModel = val,
-      headers: {}, // Gemini uses key in URL
+      headers: {},
     );
   }
 
@@ -1526,10 +1477,6 @@ class ChatProvider extends ChangeNotifier {
     );
   }
 
-  // ----------------------------------------------------------------------
-  // LOGIC: PROMPT LIBRARY
-  // ----------------------------------------------------------------------
-
   Future<void> savePromptToLibrary(String title, String content) async {
     if (title.isEmpty || content.isEmpty) return;
 
@@ -1562,10 +1509,6 @@ class ChatProvider extends ChangeNotifier {
     );
     await prefs.setString('airp_system_prompts', data);
   }
-
-  // ----------------------------------------------------------------------
-  // UTILS
-  // ----------------------------------------------------------------------
 
   Future<void> updateTokenCount() async {
     if (_messages.isEmpty) {

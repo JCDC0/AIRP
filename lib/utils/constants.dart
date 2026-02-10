@@ -1,27 +1,22 @@
 import 'package:flutter/material.dart';
 
-// ----------------------------------------------------------------------
-// GLOBAL HELPERS & CONSTANTS
-// ----------------------------------------------------------------------
+/// Cleans and formats a raw model ID into a user-friendly display name.
+///
+/// This removes vendor prefixes, handles special suffixes like ':free',
+/// and converts snake_case or kebab-case to Title Case.
 String cleanModelName(String rawId) {
-  // Quick local check
   if (rawId.contains("local")) return "Local / Home AI";
 
-  // 2. Algorithmically Clean the Name
   String name = rawId;
 
-  // Remove OpenRouter Vendor prefixes (e.g., "google/", "meta-llama/")
   if (name.contains('/')) {
     name = name.split('/').last;
   }
 
-  // Remove typical suffixes
   name = name.replaceAll(':free', ' (Free)');
 
-  // Replace symbols with spaces
   name = name.replaceAll('-', ' ').replaceAll('_', ' ').replaceAll('.', ' .');
 
-  // Capitalize Words (Title Case)
   List<String> words = name.split(' ');
   for (int i = 0; i < words.length; i++) {
     if (words[i].isNotEmpty) {
@@ -29,33 +24,21 @@ String cleanModelName(String rawId) {
     }
   }
   name = words.join(' ');
-  // Fix spacing before periods
   name = name.replaceAll(' .', '.');
 
   return name;
 }
 
+/// Default color palette for the application.
 class AppColors {
   static const Color defaultAppTheme = Colors.white;
-  static const Color defaultUserBubble = Color.fromARGB(
-    204,
-    0,
-    70,
-    70,
-  ); // 0.8 opacity
+  static const Color defaultUserBubble = Color.fromARGB(204, 0, 70, 70);
   static const Color defaultUserText = Colors.white;
-  static const Color defaultAiBubble = Color.fromARGB(
-    204,
-    44,
-    44,
-    44,
-  ); // 0.8 opacity
+  static const Color defaultAiBubble = Color.fromARGB(204, 44, 44, 44);
   static const Color defaultAiText = Colors.white;
 }
 
-// ----------------------------------------------------------------------
-// APP DEFAULTS
-// ----------------------------------------------------------------------
+/// Default configuration for visual effects.
 class AppDefaults {
   static const double backgroundOpacity = 0.7;
   static const int motesDensity = 75;
@@ -63,6 +46,7 @@ class AppDefaults {
   static const int firefliesCount = 50;
 }
 
+/// Default parameters for AI chat interactions.
 class ChatDefaults {
   static const double temperature = 1.0;
   static const double topP = 0.95;
@@ -74,6 +58,7 @@ class ChatDefaults {
   static const Duration autoSaveDebounce = Duration(milliseconds: 600);
 }
 
+/// Default durations and values for UI animations.
 class AnimationDefaults {
   static const Duration drawerDuration = Duration(milliseconds: 300);
   static const Duration zoomResetDuration = Duration(milliseconds: 300);
@@ -83,11 +68,8 @@ class AnimationDefaults {
   static const double drawerVelocityThreshold = 365.0;
 }
 
-// ----------------------------------------------------------------------
-// API CONSTANTS
-// ----------------------------------------------------------------------
+/// API endpoints and configuration keys.
 class ApiConstants {
-  // Base URLs
   static const String geminiBaseUrl =
       "https://generativelanguage.googleapis.com/v1beta/models";
   static const String openRouterBaseUrl = "https://openrouter.ai/api/v1/models";
@@ -98,7 +80,6 @@ class ApiConstants {
       "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100";
   static const String groqBaseUrl = "https://api.groq.com/openai/v1/models";
 
-  // Preference Keys (Lists)
   static const String prefListGemini = 'airp_list_gemini';
   static const String prefListOpenRouter = 'airp_list_openrouter';
   static const String prefListArliAi = 'airp_list_arliai';
@@ -107,7 +88,6 @@ class ApiConstants {
   static const String prefListHuggingFace = 'airp_list_huggingface';
   static const String prefListGroq = 'airp_list_groq';
 
-  // Preference Keys (API Keys)
   static const String prefKeyGemini = 'airp_key_gemini';
   static const String prefKeyOpenRouter = 'airp_key_openrouter';
   static const String prefKeyOpenAi = 'airp_key_openai';
@@ -116,7 +96,6 @@ class ApiConstants {
   static const String prefKeyHuggingFace = 'airp_key_huggingface';
   static const String prefKeyGroq = 'airp_key_groq';
 
-  // Secure Storage Keys (API Keys)
   static const String secureKeyGemini = 'secure_airp_key_gemini';
   static const String secureKeyOpenRouter = 'secure_airp_key_openrouter';
   static const String secureKeyOpenAi = 'secure_airp_key_openai';
@@ -125,7 +104,6 @@ class ApiConstants {
   static const String secureKeyHuggingFace = 'secure_airp_key_huggingface';
   static const String secureKeyGroq = 'secure_airp_key_groq';
 
-  // Preference Keys (Selected Models)
   static const String prefModelGemini = 'airp_model_gemini';
   static const String prefModelOpenRouter = 'airp_model_openrouter';
   static const String prefModelArliAi = 'airp_model_arliai';
@@ -134,7 +112,6 @@ class ApiConstants {
   static const String prefModelHuggingFace = 'airp_model_huggingface';
   static const String prefModelGroq = 'airp_model_groq';
 
-  // Preference Keys (Local & Toggles)
   static const String prefLocalIp = 'airp_local_ip';
   static const String prefLocalModelName = 'airp_local_model_name';
   static const String prefEnableGrounding = 'airp_enable_grounding';
@@ -142,11 +119,10 @@ class ApiConstants {
   static const String prefDisableSafety = 'airp_disable_safety';
 }
 
-// ----------------------------------------------------------------------
-// ASSET CONSTANTS
-// ----------------------------------------------------------------------
+/// Path to the default background asset.
 const String kDefaultBackground = 'assets/default.jpg';
 
+/// List of available background image assets.
 const List<String> kAssetBackgrounds = [
   'assets/67_horror.jpg',
   'assets/Backrooms_2.jpg',

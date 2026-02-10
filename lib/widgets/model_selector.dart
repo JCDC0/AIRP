@@ -5,11 +5,25 @@ import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../utils/constants.dart';
 
+/// A widget that allows users to select an AI model from a list.
+///
+/// This widget displays the currently selected model and opens a searchabled
+/// dialog for choosing a different model. It supports bookmarking models
+/// for quick access.
 class ModelSelector extends StatelessWidget {
+  /// The list of available model IDs.
   final List<String> modelsList;
+
+  /// The currently selected model ID.
   final String selectedModel;
+
+  /// Callback triggered when a new model is selected.
   final Function(String) onSelected;
+
+  /// Placeholder text when no model is selected.
   final String placeholder;
+
+  /// Whether to use a more compact UI layout.
   final bool isCompact;
 
   const ModelSelector({
@@ -77,6 +91,7 @@ class ModelSelector extends StatelessWidget {
     );
   }
 
+  /// Displays a dialog for searching and selecting models.
   void _showModelPickerDialog(
     BuildContext context,
     ThemeProvider themeProvider,
@@ -91,7 +106,6 @@ class ModelSelector extends StatelessWidget {
             final chatProvider = Provider.of<ChatProvider>(context);
             final bookmarkedModels = chatProvider.bookmarkedModels;
 
-            // Filter and Sort
             final filteredModels = modelsList.where((m) {
               final name = cleanModelName(m).toLowerCase();
               final id = m.toLowerCase();
@@ -100,13 +114,11 @@ class ModelSelector extends StatelessWidget {
             }).toList();
 
             filteredModels.sort((a, b) {
-              // 1. Bookmarks first
               final bool aBookmarked = bookmarkedModels.contains(a);
               final bool bBookmarked = bookmarkedModels.contains(b);
               if (aBookmarked && !bBookmarked) return -1;
               if (!aBookmarked && bBookmarked) return 1;
 
-              // 2. Alphabetical
               return cleanModelName(a).compareTo(cleanModelName(b));
             });
 

@@ -10,6 +10,10 @@ import '../widgets/chat_app_bar.dart';
 import '../widgets/chat_messages_list.dart';
 import '../widgets/chat_input_area.dart';
 
+/// The main screen of the application that manages the chat interface.
+///
+/// This screen coordinates the message list, input area, and the
+/// side drawers for conversations and settings.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -22,7 +26,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TransformationController _transformationController =
       TransformationController();
 
-  // Drawer Controllers
   late AnimationController _drawerController;
   late AnimationController _endDrawerController;
   late Animation<Offset> _drawerSlideAnimation;
@@ -37,7 +40,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     super.initState();
     _transformationController.addListener(_onZoomChange);
 
-    // Initialize Scale Provider (First Run)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ScaleProvider>(
         context,
@@ -45,7 +47,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       ).initializeDeviceType(context);
     });
 
-    // Initialize Drawer Controllers
     _drawerController = AnimationController(
       vsync: this,
       duration: AnimationDefaults.drawerDuration,
@@ -170,7 +171,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
 
-    // Synchronize scroll position on session changes
     if (chatProvider.currentSessionId != _previousSessionId) {
       _previousSessionId = chatProvider.currentSessionId;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -194,13 +194,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
           body: Stack(
             children: [
-              // Message list with zoom/scroll capabilities
               ChatMessagesList(
                 scrollController: _scrollController,
                 transformationController: _transformationController,
               ),
 
-              // Fixed overlay for message input
               Positioned(
                 left: 0,
                 right: 0,
@@ -208,7 +206,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 child: ChatInputArea(scrollController: _scrollController),
               ),
 
-              // floating reset button for zoom state
               AnimatedPositioned(
                 duration: AnimationDefaults.zoomButtonDuration,
                 curve: Curves.easeOutCubic,
@@ -258,7 +255,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
         ),
 
-        // Semi-transparent overlay for drawer visibility
         AnimatedBuilder(
           animation: Listenable.merge([
             _drawerController,
@@ -280,7 +276,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           },
         ),
 
-        // Custom animated drawers for navigation and settings
         SlideTransition(
           position: _drawerSlideAnimation,
           child: GestureDetector(
@@ -305,7 +300,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
         ),
 
-        // Edge detectors for gesture-based drawer opening
         Positioned(
           left: 0,
           top: 0,

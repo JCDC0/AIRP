@@ -3,9 +3,18 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/scale_provider.dart';
 
+/// A widget that displays a color swatch and opens a color picker dialog.
+///
+/// This is used in the settings panels to allow users to customize theme colors
+/// for message bubbles, text, and overall application accents.
 class SettingsColorPicker extends StatelessWidget {
+  /// The label displayed below the color swatch.
   final String label;
+
+  /// The currently selected color.
   final Color color;
+
+  /// Callback triggered when a new color is selected and confirmed.
   final Function(Color) onSave;
 
   const SettingsColorPicker({

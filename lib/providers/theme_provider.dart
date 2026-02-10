@@ -4,26 +4,24 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../utils/constants.dart';
 
-// ----------------------------------------------------------------------
-// THEME PROVIDER
-// ----------------------------------------------------------------------
+/// Provider for managing the application's visual theme and special effects.
+///
+/// This class handles font styles, background images, colors, and
+/// visual effects like bloom, motes, and rain.
 class ThemeProvider extends ChangeNotifier {
   String _fontStyle = 'Default';
   String? _backgroundImagePath;
   double _backgroundOpacity = 0.7;
 
-  // VFX toggles
   bool _enableBloom = false;
   bool _enableMotes = false;
   bool _enableRain = false;
   bool _enableFireflies = false;
 
-  // VFX INTENSITY
   int _motesDensity = 75;
   int _rainIntensity = 100;
   int _firefliesCount = 50;
 
-  // Color settings
   Color _userBubbleColor = AppColors.defaultUserBubble;
   Color _userTextColor = AppColors.defaultUserText;
   Color _aiBubbleColor = AppColors.defaultAiBubble;
@@ -41,7 +39,6 @@ class ThemeProvider extends ChangeNotifier {
   bool get enableFireflies => _enableFireflies;
   List<String> get customImagePaths => _customImagePaths;
 
-  // INTENSITY GETTERS
   int get motesDensity => _motesDensity;
   int get rainIntensity => _rainIntensity;
   int get firefliesCount => _firefliesCount;
@@ -56,6 +53,7 @@ class ThemeProvider extends ChangeNotifier {
     _loadPreferences();
   }
 
+  /// Returns the [ImageProvider] for the current background image.
   ImageProvider get currentImageProvider {
     if (_backgroundImagePath == null) {
       return const AssetImage(kDefaultBackground);
@@ -67,6 +65,7 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
+  /// Generates the [TextTheme] based on the selected font style.
   TextTheme get currentTextTheme {
     const baseColor = Colors.white;
     final baseTheme = ThemeData.dark().textTheme.apply(
@@ -109,7 +108,7 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  // --- Background Logic ---
+  /// Sets the background image path and persists the change.
   Future<void> setBackgroundImage(String? path) async {
     _backgroundImagePath = path;
     notifyListeners();
@@ -121,6 +120,7 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
+  /// Sets the opacity of the background image overlay.
   Future<void> setBackgroundOpacity(double value) async {
     _backgroundOpacity = value;
     notifyListeners();
@@ -128,6 +128,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setDouble('app_bg_opacity', value);
   }
 
+  /// Toggles the bloom (glow) effect.
   Future<void> toggleBloom(bool value) async {
     _enableBloom = value;
     notifyListeners();
@@ -135,6 +136,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_bloom', value);
   }
 
+  /// Toggles the floating dust motes effect.
   Future<void> toggleMotes(bool value) async {
     _enableMotes = value;
     notifyListeners();
@@ -142,6 +144,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_motes', value);
   }
 
+  /// Toggles the falling rain effect.
   Future<void> toggleRain(bool value) async {
     _enableRain = value;
     notifyListeners();
@@ -149,6 +152,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_rain', value);
   }
 
+  /// Toggles the pulsing fireflies effect.
   Future<void> toggleFireflies(bool value) async {
     _enableFireflies = value;
     notifyListeners();
@@ -156,7 +160,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_fireflies', value);
   }
 
-  // INTENSITY SETTERS
+  /// Sets the density of floating motes.
   Future<void> setMotesDensity(int value) async {
     _motesDensity = value;
     notifyListeners();
@@ -164,6 +168,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setInt('vfx_motes_density', value);
   }
 
+  /// Sets the intensity of the rain effect.
   Future<void> setRainIntensity(int value) async {
     _rainIntensity = value;
     notifyListeners();
@@ -171,6 +176,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setInt('vfx_rain_intensity', value);
   }
 
+  /// Sets the number of fireflies displayed.
   Future<void> setFirefliesCount(int value) async {
     _firefliesCount = value;
     notifyListeners();
@@ -178,6 +184,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setInt('vfx_fireflies_count', value);
   }
 
+  /// Updates a specific theme color and persists the change.
   Future<void> updateColor(String type, Color color) async {
     switch (type) {
       case 'userBubble':
@@ -200,6 +207,7 @@ class ThemeProvider extends ChangeNotifier {
     _saveColors();
   }
 
+  /// Resets all visual settings to their default values.
   Future<void> resetToDefaults() async {
     _userBubbleColor = AppColors.defaultUserBubble;
     _userTextColor = AppColors.defaultUserText;
@@ -284,13 +292,12 @@ class ThemeProvider extends ChangeNotifier {
     _enableFireflies = prefs.getBool('app_enable_fireflies') ?? false;
     _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
 
-    // LOAD INTENSITIES
     _motesDensity =
-      prefs.getInt('vfx_motes_density') ?? AppDefaults.motesDensity;
+        prefs.getInt('vfx_motes_density') ?? AppDefaults.motesDensity;
     _rainIntensity =
-      prefs.getInt('vfx_rain_intensity') ?? AppDefaults.rainIntensity;
+        prefs.getInt('vfx_rain_intensity') ?? AppDefaults.rainIntensity;
     _firefliesCount =
-      prefs.getInt('vfx_fireflies_count') ?? AppDefaults.firefliesCount;
+        prefs.getInt('vfx_fireflies_count') ?? AppDefaults.firefliesCount;
 
     final int? themeInt = prefs.getInt('color_app_theme');
     _appThemeColor = themeInt != null

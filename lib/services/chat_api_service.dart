@@ -6,6 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/chat_models.dart';
 
+/// A service class that handles communication with various AI provider APIs.
+///
+/// This service provides methods for streaming chat responses, performing
+/// web-grounded searches, and generating images across multiple providers.
 class ChatApiService {
   static void _logWarning(String message) {
     if (kDebugMode) {
@@ -29,7 +33,18 @@ class ChatApiService {
         final String ext = path.split('.').last.toLowerCase();
 
         if ([
-          'txt', 'md', 'json', 'dart', 'js', 'py', 'html', 'css', 'csv', 'c', 'cpp', 'java',
+          'txt',
+          'md',
+          'json',
+          'dart',
+          'js',
+          'py',
+          'html',
+          'css',
+          'csv',
+          'c',
+          'cpp',
+          'java',
         ].contains(ext)) {
           try {
             final String fileContent = await File(path).readAsString();
@@ -63,9 +78,6 @@ class ChatApiService {
 
     final stream = chatSession.sendMessageStream(userContent);
 
-    // Gemini 3 models require explicit handling of 'thought signatures' for 
-    // function calling continuity. We extract these tokens for the UI to 
-    // return in subsequent turns.
     await for (final dynamic response in stream) {
       try {
         String? text;
@@ -157,13 +169,28 @@ class ChatApiService {
         final String ext = path.split('.').last.toLowerCase();
 
         if ([
-          'txt', 'md', 'json', 'dart', 'js', 'py', 'html', 'css', 'csv', 'c', 'cpp', 'java', 'xml', 'yaml', 'yml',
+          'txt',
+          'md',
+          'json',
+          'dart',
+          'js',
+          'py',
+          'html',
+          'css',
+          'csv',
+          'c',
+          'cpp',
+          'java',
+          'xml',
+          'yaml',
+          'yml',
         ].contains(ext)) {
           try {
             final String fileContent = await File(path).readAsString();
             contentParts.add({
               "type": "text",
-              "text": "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n",
+              "text":
+                  "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n",
             });
           } catch (e) {
             _logWarning('Failed to read attachment: $path ($e)');
@@ -209,7 +236,11 @@ class ChatApiService {
     }
 
     if (enableGrounding) {
-      bodyMap["plugins"] = baseUrl.contains("openrouter.ai") ? [{"id": "web"}] : ["web_search"];
+      bodyMap["plugins"] = baseUrl.contains("openrouter.ai")
+          ? [
+              {"id": "web"},
+            ]
+          : ["web_search"];
     }
 
     final request = http.Request('POST', Uri.parse(baseUrl));
@@ -233,7 +264,10 @@ class ChatApiService {
       bool hasEmittedThinkStart = false;
       bool hasEmittedThinkEnd = false;
 
-      await for (final line in streamedResponse.stream.transform(utf8.decoder).transform(const LineSplitter())) {
+      await for (final line
+          in streamedResponse.stream
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())) {
         if (line.startsWith("data: ")) {
           final dataStr = line.substring(6).trim();
           if (dataStr == "[DONE]") break;
@@ -248,10 +282,12 @@ class ChatApiService {
             final choices = json['choices'] as List;
             if (choices.isNotEmpty) {
               final delta = choices[0]['delta'];
-              final reasoningChunk = delta['reasoning_content'] ?? delta['reasoning'];
+              final reasoningChunk =
+                  delta['reasoning_content'] ?? delta['reasoning'];
               final contentChunk = delta['content'];
 
-              if (reasoningChunk != null && reasoningChunk.toString().isNotEmpty) {
+              if (reasoningChunk != null &&
+                  reasoningChunk.toString().isNotEmpty) {
                 if (!hasEmittedThinkStart) {
                   yield "<think>\n";
                   hasEmittedThinkStart = true;
@@ -284,7 +320,7 @@ class ChatApiService {
     }
   }
 
-  /// Handles Google Gemini's grounding (web search) feature. 
+  /// Handles Google Gemini's grounding (web search) feature.
   /// This requires a non-streaming call to include grounding metadata.
   static Future<Map<String, dynamic>?> performGeminiGrounding({
     required String apiKey,
@@ -405,17 +441,12 @@ class ChatApiService {
     return null;
   }
 
-  // ==============================================================================
-  // 4. IMAGE GENERATION (DALL-E 3, Flux, etc.)
-  // ==============================================================================
+  /// Generates an image based on a text prompt using DALL-E or Flux.
   static Future<String?> generateImage({
     required String apiKey,
     required String prompt,
-    String provider = 'openai', // or 'openrouter'
+    String provider = 'openai',
   }) async {
-    // OpenAI: https://api.openai.com/v1/images/generations
-    // OpenRouter: https://openrouter.ai/api/v1/images/generations (check their docs for specific models)
-
     final url = Uri.parse(
       provider == 'openai'
           ? 'https://api.openai.com/v1/images/generations'
@@ -424,7 +455,7 @@ class ChatApiService {
     final body = jsonEncode({
       "model": provider == 'openai'
           ? "dall-e-3"
-          : "stabilityai/stable-diffusion-xl-base-1.0", // Example models
+          : "stabilityai/stable-diffusion-xl-base-1.0",
       "prompt": prompt,
       "n": 1,
       "size": "1024x1024",
@@ -451,9 +482,7 @@ class ChatApiService {
     }
   }
 
-  // ==============================================================================
-  // 5. GENERIC MODEL FETCHING
-  // ==============================================================================
+  /// Fetches a list of available models from a provider's API.
   static Future<List<String>> fetchModels({
     required String url,
     Map<String, String>? headers,
