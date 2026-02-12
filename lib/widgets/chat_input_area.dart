@@ -739,12 +739,13 @@ class _ChatInputAreaState extends State<ChatInputArea>
                         animation: _orbitController,
                         builder: (context, child) {
                           return CustomPaint(
-                            foregroundPainter: isLoading
+                            foregroundPainter: isLoading && themeProvider.enableLoadingAnimation
                                 ? LineOrbitPainter(
                                     progress: _orbitController.value,
                                     color: Colors.white,
                                     bloomColor: themeProvider.appThemeColor,
                                     enableBloom: themeProvider.enableBloom,
+                                    borderRadius: 24.0,
                                   )
                                 : null,
                             child: Container(
@@ -860,12 +861,14 @@ class LineOrbitPainter extends CustomPainter {
   final Color color;
   final Color bloomColor;
   final bool enableBloom;
+  final double borderRadius;
 
   LineOrbitPainter({
     required this.progress,
     required this.color,
     required this.bloomColor,
     required this.enableBloom,
+    this.borderRadius = 24.0,
   });
 
   @override
@@ -873,7 +876,7 @@ class LineOrbitPainter extends CustomPainter {
     final Rect rect = Offset.zero & size;
     final RRect rrect = RRect.fromRectAndRadius(
       rect,
-      const Radius.circular(24),
+      Radius.circular(borderRadius),
     );
     final Path path = Path()..addRRect(rrect);
 
