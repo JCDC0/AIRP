@@ -430,12 +430,16 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ? 30
                   : MediaQuery.of(context).size.height + 200,
               right: 20,
-              child: FloatingActionButton(
-                backgroundColor: themeProvider.appThemeColor,
-                foregroundColor: Colors.black,
-                onPressed: _handleSaveSettings,
-                elevation: 10,
-                child: const Icon(Icons.save),
+              child: SizedBox(
+                width: 56 * scaleProvider.iconScale,
+                height: 56 * scaleProvider.iconScale,
+                child: FloatingActionButton(
+                  backgroundColor: themeProvider.appThemeColor,
+                  foregroundColor: Colors.black,
+                  onPressed: _handleSaveSettings,
+                  elevation: 10,
+                  child: Icon(Icons.save, size: 24 * scaleProvider.iconScale),
+                ),
               ),
             ),
           ],
