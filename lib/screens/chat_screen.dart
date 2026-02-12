@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
@@ -32,6 +35,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late Animation<Offset> _endDrawerSlideAnimation;
 
   bool _isZoomed = false;
+  bool _isZoomMode = false;
+  late AnimationController _zoomBorderController;
   String? _previousSessionId;
   int _settingsDrawerVersion = 0;
 
@@ -39,6 +44,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _transformationController.addListener(_onZoomChange);
+
+    _zoomBorderController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4000),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ScaleProvider>(
@@ -72,6 +82,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _transformationController.removeListener(_onZoomChange);
     _transformationController.dispose();
     _scrollController.dispose();
+    _zoomBorderController.dispose();
     _drawerController.dispose();
     _endDrawerController.dispose();
     super.dispose();
@@ -147,16 +158,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   void _resetZoom() {
+    final controller = AnimationController(
+      vsync: this,
+      duration: AnimationDefaults.zoomResetDuration,
+    );
     final animation =
         Matrix4Tween(
           begin: _transformationController.value,
           end: Matrix4.identity(),
         ).animate(
           CurvedAnimation(
-            parent: AnimationController(
-              vsync: this,
-              duration: AnimationDefaults.zoomResetDuration,
-            )..forward(),
+            parent: controller,
             curve: Curves.easeOut,
           ),
         );
@@ -164,12 +176,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     animation.addListener(() {
       _transformationController.value = animation.value;
     });
+    controller.forward().then((_) => controller.dispose());
+  }
+
+  void _toggleZoomMode() {
+    setState(() {
+      _isZoomMode = !_isZoomMode;
+    });
+    if (_isZoomMode) {
+      _zoomBorderController.repeat();
+    } else {
+      _zoomBorderController.stop();
+      _resetZoom();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final scaleProvider = Provider.of<ScaleProvider>(context);
+    final bool isDesktop = scaleProvider.deviceType == DeviceType.desktop;
 
     if (chatProvider.currentSessionId != _previousSessionId) {
       _previousSessionId = chatProvider.currentSessionId;
@@ -179,6 +206,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         }
       });
     }
+
+    // On desktop, zoom is controlled by _isZoomMode toggle.
+    // On mobile, zoom is always enabled (default behavior).
+    final bool zoomEnabled = isDesktop ? _isZoomMode : true;
+
+    // Determine zoom button visibility
+    final bool showZoomButton = isDesktop ? true : _isZoomed;
+    final double fabSize = 40 * scaleProvider.iconScale;
+    final double fabIconSize = 20 * scaleProvider.iconScale;
 
     return Stack(
       children: [
@@ -190,13 +226,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           appBar: ChatAppBar(
             onOpenDrawer: _toggleDrawer,
             onOpenEndDrawer: _toggleEndDrawer,
-            systemFontSize: Provider.of<ScaleProvider>(context).systemFontSize,
+            systemFontSize: scaleProvider.systemFontSize,
           ),
           body: Stack(
             children: [
               ChatMessagesList(
                 scrollController: _scrollController,
                 transformationController: _transformationController,
+                isZoomEnabled: zoomEnabled,
               ),
 
               Positioned(
@@ -209,43 +246,76 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               AnimatedPositioned(
                 duration: AnimationDefaults.zoomButtonDuration,
                 curve: Curves.easeOutCubic,
-                top: _isZoomed ? 16.0 : -60.0,
+                top: showZoomButton ? 16.0 : -60.0,
                 right: 16,
                 child: SafeArea(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: themeProvider.enableBloom
-                          ? [
-                              BoxShadow(
-                                color: themeProvider.appThemeColor.withOpacity(
-                                  0.6,
-                                ),
-                                blurRadius: 20,
-                                spreadRadius: 0,
-                              ),
-                            ]
-                          : [],
-                    ),
-                    child: FloatingActionButton.small(
-                      backgroundColor: Colors.black87,
-                      foregroundColor: Colors.white,
-                      onPressed: _resetZoom,
-                      child: Icon(
-                        Icons.zoom_out_map,
-                        shadows: themeProvider.enableBloom
-                            ? [
-                                Shadow(
-                                  color: Colors.white.withOpacity(0.7),
-                                  blurRadius: 4,
-                                ),
-                                Shadow(
-                                  color: themeProvider.appThemeColor
-                                      .withOpacity(0.7),
-                                  blurRadius: 8,
-                                ),
-                              ]
-                            : null,
+                  child: SizedBox(
+                    width: fabSize,
+                    height: fabSize,
+                    child: AnimatedBuilder(
+                      animation: _zoomBorderController,
+                      builder: (context, child) {
+                        return CustomPaint(
+                          foregroundPainter: _isZoomMode && isDesktop && themeProvider.enableLoadingAnimation
+                              ? _ZoomArcPainter(
+                                  progress: _zoomBorderController.value,
+                                  color: Colors.white,
+                                  enableBloom: themeProvider.enableBloom,
+                                  bloomColor: themeProvider.appThemeColor,
+                                )
+                              : null,
+                          child: child,
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.4),
+                            width: 1.5,
+                          ),
+                          boxShadow: themeProvider.enableBloom
+                              ? [
+                                  BoxShadow(
+                                    color: themeProvider.appThemeColor.withOpacity(
+                                      0.6,
+                                    ),
+                                    blurRadius: 20,
+                                    spreadRadius: 0,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: SizedBox(
+                          width: fabSize,
+                          height: fabSize,
+                          child: FloatingActionButton(
+                            mini: true,
+                            shape: const CircleBorder(),
+                            backgroundColor: Colors.black87,
+                            foregroundColor: Colors.white,
+                            onPressed: isDesktop ? _toggleZoomMode : _resetZoom,
+                            child: Icon(
+                              isDesktop
+                                  ? (_isZoomMode ? Icons.zoom_out_map : Icons.zoom_in)
+                                  : Icons.zoom_out_map,
+                              size: fabIconSize,
+                              shadows: themeProvider.enableBloom
+                                  ? [
+                                      Shadow(
+                                        color: Colors.white.withOpacity(0.7),
+                                        blurRadius: 4,
+                                      ),
+                                      Shadow(
+                                        color: themeProvider.appThemeColor
+                                            .withOpacity(0.7),
+                                        blurRadius: 8,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -327,4 +397,52 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       ],
     );
   }
+}
+
+/// Draws a single animated arc around the circular zoom button.
+class _ZoomArcPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final bool enableBloom;
+  final Color bloomColor;
+
+  _ZoomArcPainter({
+    required this.progress,
+    required this.color,
+    required this.enableBloom,
+    required this.bloomColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const double strokeWidth = 2.0;
+    const double inset = strokeWidth / 2;
+    final Rect arcRect = Rect.fromLTWH(inset, inset, size.width - strokeWidth, size.height - strokeWidth);
+
+    final Paint arcPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    // Single arc: 90 degrees, rotating
+    final double startAngle = progress * 2 * math.pi;
+    const double sweepAngle = math.pi / 2;
+
+    if (enableBloom) {
+      final Paint bloomPaint = Paint()
+        ..color = bloomColor.withValues(alpha: 0.4)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5.0
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(arcRect, startAngle, sweepAngle, false, bloomPaint);
+    }
+
+    canvas.drawArc(arcRect, startAngle, sweepAngle, false, arcPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ZoomArcPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

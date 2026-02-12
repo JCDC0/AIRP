@@ -17,10 +17,14 @@ class ChatMessagesList extends StatelessWidget {
   /// Controller for handling zoom and pan transformations.
   final TransformationController transformationController;
 
+  /// Whether zoom/pan is enabled on the InteractiveViewer.
+  final bool isZoomEnabled;
+
   const ChatMessagesList({
     super.key,
     required this.scrollController,
     required this.transformationController,
+    this.isZoomEnabled = true,
   });
 
   /// Displays a bottom sheet with options for a specific message.
@@ -295,6 +299,8 @@ class ChatMessagesList extends StatelessWidget {
 
     return InteractiveViewer(
       transformationController: transformationController,
+      scaleEnabled: isZoomEnabled,
+      panEnabled: isZoomEnabled,
       minScale: 1.0,
       maxScale: 5.0,
       child: Stack(
