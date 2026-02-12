@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:io';
@@ -683,6 +684,71 @@ class BorderGlowPainter extends CustomPainter {
   }
 }
 
+/// A custom painter that draws orbiting lines around the thinking bubble header.
+class _ThinkingOrbitPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _ThinkingOrbitPainter({
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect rect = Offset.zero & size;
+    final RRect rrect = RRect.fromRectAndRadius(
+      rect,
+      const Radius.circular(4),
+    );
+    final Path path = Path()..addRRect(rrect);
+
+    final List<ui.PathMetric> metrics = path.computeMetrics().toList();
+    if (metrics.isEmpty) return;
+
+    final ui.PathMetric metric = metrics.first;
+    final double pathLength = metric.length;
+
+    final Paint linePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = ui.StrokeCap.round;
+
+    final List<Map<String, dynamic>> lines = [
+      {'speed': 1.0, 'offset': 0.0, 'length': 0.25},
+      {'speed': 1.5, 'offset': 0.5, 'length': 0.2},
+    ];
+
+    for (var line in lines) {
+      double p =
+          (progress * (line['speed'] as double) + (line['offset'] as double)) %
+          1.0;
+
+      double startOffset = p * pathLength;
+      double segmentLength = (line['length'] as double) * pathLength;
+
+      Path extract;
+      if (startOffset + segmentLength <= pathLength) {
+        extract = metric.extractPath(startOffset, startOffset + segmentLength);
+      } else {
+        extract = metric.extractPath(startOffset, pathLength);
+        extract.addPath(
+          metric.extractPath(0, (startOffset + segmentLength) % pathLength),
+          Offset.zero,
+        );
+      }
+
+      canvas.drawPath(extract, linePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ThinkingOrbitPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+
 // --- REASONING HELPERS ---
 
 Map<String, dynamic> _extractReasoning(String text) {
@@ -722,23 +788,39 @@ class ReasoningView extends StatefulWidget {
   State<ReasoningView> createState() => _ReasoningViewState();
 }
 
-class _ReasoningViewState extends State<ReasoningView> {
+class _ReasoningViewState extends State<ReasoningView>
+    with TickerProviderStateMixin {
   bool _isExpanded = false;
+  late AnimationController _orbitController;
 
   @override
   void initState() {
     super.initState();
     _isExpanded = !widget.isDone;
+    _orbitController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4000),
+    );
+    if (!widget.isDone) {
+      _orbitController.repeat();
+    }
   }
 
   @override
   void didUpdateWidget(covariant ReasoningView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!oldWidget.isDone && widget.isDone) {
+      _orbitController.stop();
       setState(() {
         _isExpanded = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _orbitController.dispose();
+    super.dispose();
   }
 
   @override
@@ -751,36 +833,50 @@ class _ReasoningViewState extends State<ReasoningView> {
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             borderRadius: BorderRadius.circular(4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black12,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: widget.textColor.withOpacity(0.1)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _isExpanded
-                        ? Icons.visibility_off_outlined
-                        : Icons.psychology_outlined,
-                    size: 14,
-                    color: widget.textColor.withOpacity(0.6),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _isExpanded
-                        ? "Hide Thought Process"
-                        : "Show Thought Process",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+            child: AnimatedBuilder(
+              animation: _orbitController,
+              builder: (context, child) {
+                return CustomPaint(
+                  foregroundPainter: !widget.isDone && _isExpanded
+                      ? _ThinkingOrbitPainter(
+                          progress: _orbitController.value,
+                          color: widget.textColor.withOpacity(0.6),
+                        )
+                      : null,
+                  child: child,
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: widget.textColor.withOpacity(0.1)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _isExpanded
+                          ? Icons.visibility_off_outlined
+                          : Icons.psychology_outlined,
+                      size: 14,
                       color: widget.textColor.withOpacity(0.6),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      _isExpanded
+                          ? "Hide Thought Process"
+                          : "Show Thought Process",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: widget.textColor.withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                ),
               ),
             ),
           ),

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -244,31 +245,88 @@ class _ChatInputAreaState extends State<ChatInputArea>
     final double iconScale = scaleProvider?.iconScale ?? 1.0;
     final double containerSize = 40 * iconScale;
 
-    return Container(
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Container(
+        width: containerSize,
+        height: containerSize,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          shape: BoxShape.circle,
+          boxShadow: isActive && useBloom && color != null
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.6),
+                    blurRadius: 8 * iconScale,
+                    spreadRadius: 1 * iconScale,
+                  ),
+                ]
+              : [],
+          border: isActive
+              ? Border.all(color: color ?? Colors.white, width: 0.5 * iconScale)
+              : null,
+        ),
+        child: IconButton(
+          icon: Icon(icon),
+          color: color ?? Colors.white,
+          tooltip: tooltip,
+          onPressed: onPressed,
+          iconSize: 20 * iconScale,
+          constraints: BoxConstraints(
+            minWidth: containerSize,
+            minHeight: containerSize,
+            maxWidth: containerSize,
+            maxHeight: containerSize,
+          ),
+          padding: EdgeInsets.zero,
+          style: IconButton.styleFrom(
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: EdgeInsets.zero,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds a toggle button for AI features with animated border when active & loading.
+  Widget _buildFeatureSwitch({
+    required IconData icon,
+    required bool isActive,
+    required Color activeColor,
+    required VoidCallback onToggle,
+    required ThemeProvider themeProvider,
+    required ScaleProvider scaleProvider,
+    required bool isLoading,
+  }) {
+    final bool useBloom = themeProvider.enableBloom;
+    final double iconScale = scaleProvider.iconScale;
+    final double containerSize = 40 * iconScale;
+    final Color iconColor = isActive ? activeColor : (Colors.grey[400] ?? Colors.grey);
+
+    // Build the core button content
+    Widget buttonContent = Container(
       width: containerSize,
       height: containerSize,
-      margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: Colors.black,
         shape: BoxShape.circle,
-        boxShadow: isActive && useBloom && color != null
+        boxShadow: isActive && useBloom
             ? [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.6),
+                  color: activeColor.withValues(alpha: 0.6),
                   blurRadius: 8 * iconScale,
                   spreadRadius: 1 * iconScale,
                 ),
               ]
             : [],
         border: isActive
-            ? Border.all(color: color ?? Colors.white, width: 1.5 * iconScale)
+            ? Border.all(color: activeColor, width: 0.5 * iconScale)
             : null,
       ),
       child: IconButton(
         icon: Icon(icon),
-        color: color ?? Colors.white,
-        tooltip: tooltip,
-        onPressed: onPressed,
+        color: iconColor,
+        onPressed: isLoading ? null : onToggle,
         iconSize: 20 * iconScale,
         constraints: BoxConstraints(
           minWidth: containerSize,
@@ -283,25 +341,34 @@ class _ChatInputAreaState extends State<ChatInputArea>
         ),
       ),
     );
-  }
 
-  /// Builds a toggle button for AI features.
-  Widget _buildFeatureSwitch({
-    required IconData icon,
-    required bool isActive,
-    required Color activeColor,
-    required VoidCallback onToggle,
-    required ThemeProvider themeProvider,
-    required ScaleProvider scaleProvider,
-    required bool isLoading,
-  }) {
-    return _buildCircularButton(
-      icon: icon,
-      onPressed: isLoading ? null : onToggle,
-      color: isActive ? activeColor : Colors.grey[400],
-      isActive: isActive,
-      themeProvider: themeProvider,
-      scaleProvider: scaleProvider,
+    // Wrap with arc animation if active AND loading AND loading animation enabled
+    if (isActive && isLoading && themeProvider.enableLoadingAnimation) {
+      buttonContent = AnimatedBuilder(
+        animation: _orbitController,
+        builder: (context, child) {
+          return CustomPaint(
+            foregroundPainter: _IconArcPainter(
+              progress: _orbitController.value,
+              color: activeColor,
+              strokeWidth: 2.5 * iconScale,
+              enableBloom: useBloom,
+              bloomColor: themeProvider.appThemeColor,
+            ),
+            child: child,
+          );
+        },
+        child: buttonContent,
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: SizedBox(
+        width: containerSize,
+        height: containerSize,
+        child: buttonContent,
+      ),
     );
   }
 
@@ -519,63 +586,126 @@ class _ChatInputAreaState extends State<ChatInputArea>
                         themeProvider: themeProvider,
                         scaleProvider: scaleProvider,
                       ),
-                      Builder(
-                        builder: (context) {
-                          Color? reasoningColor;
-                          bool isActive =
-                              chatProvider.reasoningEffort != 'none';
+                          Builder(
+                            builder: (context) {
+                              Color? reasoningColor;
+                              bool isActive =
+                                  chatProvider.reasoningEffort != 'none';
 
-                          if (chatProvider.reasoningEffort == 'low') {
-                            reasoningColor = Colors.grey[600];
-                          } else if (chatProvider.reasoningEffort == 'medium') {
-                            reasoningColor = Colors.grey[400];
-                          } else if (chatProvider.reasoningEffort == 'high') {
-                            reasoningColor = Colors.white;
-                          }
+                              if (chatProvider.reasoningEffort == 'low') {
+                                reasoningColor = Colors.grey[600];
+                              } else if (chatProvider.reasoningEffort == 'medium') {
+                                reasoningColor = Colors.grey[400];
+                              } else if (chatProvider.reasoningEffort == 'high') {
+                                reasoningColor = Colors.white;
+                              }
 
-                          return _buildCircularButton(
-                            icon: Icons.psychology,
-                            color: isActive ? reasoningColor : Colors.grey[400],
-                            isActive: isActive,
-                            tooltip:
-                                "Reasoning Effort: ${chatProvider.reasoningEffort}",
-                            onPressed: isLoading
-                                ? null
-                                : () async {
-                                    String nextState;
-                                    String statusMsg;
-                                    switch (chatProvider.reasoningEffort) {
-                                      case 'none':
-                                        nextState = 'low';
-                                        statusMsg = "Reasoning: LOW";
-                                        break;
-                                      case 'low':
-                                        nextState = 'medium';
-                                        statusMsg = "Reasoning: MEDIUM";
-                                        break;
-                                      case 'medium':
-                                        nextState = 'high';
-                                        statusMsg = "Reasoning: HIGH";
-                                        break;
-                                      case 'high':
-                                        nextState = 'none';
-                                        statusMsg = "Reasoning: OFF";
-                                        break;
-                                      default:
-                                        nextState = 'low';
-                                        statusMsg = "Reasoning: LOW";
-                                    }
-                                    chatProvider.setReasoningEffort(nextState);
-                                    await chatProvider.saveSettings(
-                                      showConfirmation: false,
+                              final Color iconColor = isActive
+                                  ? (reasoningColor ?? Colors.grey[400]!)
+                                  : (Colors.grey[400] ?? Colors.grey);
+                              final double iconScale = scaleProvider.iconScale;
+                              final double containerSize = 40 * iconScale;
+
+                              Widget buttonContent = Container(
+                                width: containerSize,
+                                height: containerSize,
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  shape: BoxShape.circle,
+                                  boxShadow: isActive && themeProvider.enableBloom && reasoningColor != null
+                                      ? [
+                                          BoxShadow(
+                                            color: reasoningColor.withValues(alpha: 0.6),
+                                            blurRadius: 8 * iconScale,
+                                            spreadRadius: 1 * iconScale,
+                                          ),
+                                        ]
+                                      : [],
+                                  border: isActive
+                                      ? Border.all(color: reasoningColor ?? Colors.white, width: 0.5 * iconScale)
+                                      : null,
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(Icons.psychology),
+                                  color: iconColor,
+                                  tooltip: "Reasoning Effort: ${chatProvider.reasoningEffort}",
+                                  onPressed: isLoading
+                                      ? null
+                                      : () async {
+                                          String nextState;
+                                          String statusMsg;
+                                          switch (chatProvider.reasoningEffort) {
+                                            case 'none':
+                                              nextState = 'low';
+                                              statusMsg = "Reasoning: LOW";
+                                              break;
+                                            case 'low':
+                                              nextState = 'medium';
+                                              statusMsg = "Reasoning: MEDIUM";
+                                              break;
+                                            case 'medium':
+                                              nextState = 'high';
+                                              statusMsg = "Reasoning: HIGH";
+                                              break;
+                                            case 'high':
+                                              nextState = 'none';
+                                              statusMsg = "Reasoning: OFF";
+                                              break;
+                                            default:
+                                              nextState = 'low';
+                                              statusMsg = "Reasoning: LOW";
+                                          }
+                                          chatProvider.setReasoningEffort(nextState);
+                                          await chatProvider.saveSettings(
+                                            showConfirmation: false,
+                                          );
+                                          _showStatusPopup(statusMsg);
+                                        },
+                                  iconSize: 20 * iconScale,
+                                  constraints: BoxConstraints(
+                                    minWidth: containerSize,
+                                    minHeight: containerSize,
+                                    maxWidth: containerSize,
+                                    maxHeight: containerSize,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  style: IconButton.styleFrom(
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              );
+
+                              // Animate if active, loading, and loading animation enabled
+                              if (isActive && isLoading && themeProvider.enableLoadingAnimation) {
+                                buttonContent = AnimatedBuilder(
+                                  animation: _orbitController,
+                                  builder: (context, child) {
+                                    return CustomPaint(
+                                      foregroundPainter: _IconArcPainter(
+                                        progress: _orbitController.value,
+                                        color: reasoningColor ?? Colors.white,
+                                        strokeWidth: 2.5 * iconScale,
+                                        enableBloom: themeProvider.enableBloom,
+                                        bloomColor: themeProvider.appThemeColor,
+                                      ),
+                                      child: child,
                                     );
-                                    _showStatusPopup(statusMsg);
                                   },
-                            themeProvider: themeProvider,
-                            scaleProvider: scaleProvider,
-                          );
-                        },
-                      ),
+                                  child: buttonContent,
+                                );
+                              }
+
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: SizedBox(
+                                  width: containerSize,
+                                  height: containerSize,
+                                  child: buttonContent,
+                                ),
+                              );
+                            },
+                          ),
 
                       const SizedBox(width: 12),
                       Container(width: 1, height: 24, color: Colors.grey[800]),
@@ -818,4 +948,53 @@ class LineOrbitPainter extends CustomPainter {
   bool shouldRepaint(covariant LineOrbitPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.enableBloom != enableBloom;
+}
+
+/// Draws a single animated arc around a circular icon button.
+class _IconArcPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final double strokeWidth;
+  final bool enableBloom;
+  final Color bloomColor;
+
+  _IconArcPainter({
+    required this.progress,
+    required this.color,
+    required this.strokeWidth,
+    required this.enableBloom,
+    required this.bloomColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double inset = strokeWidth / 2;
+    final Rect arcRect = Rect.fromLTWH(inset, inset, size.width - strokeWidth, size.height - strokeWidth);
+
+    final Paint arcPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    // Single arc: 90 degrees, rotating
+    final double startAngle = progress * 2 * math.pi;
+    const double sweepAngle = math.pi / 2;
+
+    if (enableBloom) {
+      final Paint bloomPaint = Paint()
+        ..color = bloomColor.withValues(alpha: 0.4)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth * 2.5
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(arcRect, startAngle, sweepAngle, false, bloomPaint);
+    }
+
+    canvas.drawArc(arcRect, startAngle, sweepAngle, false, arcPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _IconArcPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
