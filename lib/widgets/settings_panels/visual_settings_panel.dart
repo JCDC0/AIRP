@@ -408,6 +408,33 @@ class VisualSettingsPanel extends StatelessWidget {
               activeThumbColor: themeProvider.appThemeColor,
               onChanged: (val) => themeProvider.toggleBloom(val),
             ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                "Loading Animation",
+                style: TextStyle(
+                  fontSize: scaleProvider.systemFontSize,
+                  shadows: themeProvider.enableBloom
+                      ? [
+                          Shadow(
+                            color: themeProvider.appThemeColor.withOpacity(0.9),
+                            blurRadius: 20,
+                          ),
+                        ]
+                      : [],
+                ),
+              ),
+              subtitle: Text(
+                "Spinning indicators on icons and input area",
+                style: TextStyle(
+                  fontSize: scaleProvider.systemFontSize - 2,
+                  color: Colors.grey,
+                ),
+              ),
+              value: themeProvider.enableLoadingAnimation,
+              activeThumbColor: themeProvider.appThemeColor,
+              onChanged: (val) => themeProvider.toggleLoadingAnimation(val),
+            ),
             const Divider(),
             Text(
               "Environmental Effects",

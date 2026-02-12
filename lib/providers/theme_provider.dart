@@ -14,6 +14,7 @@ class ThemeProvider extends ChangeNotifier {
   double _backgroundOpacity = 0.7;
 
   bool _enableBloom = false;
+  bool _enableLoadingAnimation = true;
   bool _enableMotes = false;
   bool _enableRain = false;
   bool _enableFireflies = false;
@@ -34,6 +35,7 @@ class ThemeProvider extends ChangeNotifier {
   String? get backgroundImagePath => _backgroundImagePath;
   double get backgroundOpacity => _backgroundOpacity;
   bool get enableBloom => _enableBloom;
+  bool get enableLoadingAnimation => _enableLoadingAnimation;
   bool get enableMotes => _enableMotes;
   bool get enableRain => _enableRain;
   bool get enableFireflies => _enableFireflies;
@@ -136,6 +138,14 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_bloom', value);
   }
 
+  /// Toggles the loading animation (spinning indicators) effect.
+  Future<void> toggleLoadingAnimation(bool value) async {
+    _enableLoadingAnimation = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_enable_loading_animation', value);
+  }
+
   /// Toggles the floating dust motes effect.
   Future<void> toggleMotes(bool value) async {
     _enableMotes = value;
@@ -215,6 +225,7 @@ class ThemeProvider extends ChangeNotifier {
     _aiTextColor = AppColors.defaultAiText;
     _appThemeColor = AppColors.defaultAppTheme;
     _enableBloom = false;
+    _enableLoadingAnimation = true;
     _enableMotes = false;
     _enableRain = false;
     _enableFireflies = false;
@@ -228,6 +239,7 @@ class ThemeProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('app_enable_bloom', false);
+    await prefs.setBool('app_enable_loading_animation', true);
     await prefs.setBool('app_enable_motes', false);
     await prefs.setBool('app_enable_rain', false);
     await prefs.setBool('app_enable_fireflies', false);
@@ -287,6 +299,7 @@ class ThemeProvider extends ChangeNotifier {
     _backgroundOpacity =
         prefs.getDouble('app_bg_opacity') ?? AppDefaults.backgroundOpacity;
     _enableBloom = prefs.getBool('app_enable_bloom') ?? false;
+    _enableLoadingAnimation = prefs.getBool('app_enable_loading_animation') ?? true;
     _enableMotes = prefs.getBool('app_enable_motes') ?? false;
     _enableRain = prefs.getBool('app_enable_rain') ?? false;
     _enableFireflies = prefs.getBool('app_enable_fireflies') ?? false;
@@ -341,6 +354,7 @@ class ThemeProvider extends ChangeNotifier {
       'backgroundPath': _backgroundImagePath,
       'backgroundOpacity': _backgroundOpacity,
       'bloom': _enableBloom,
+      'loadingAnimation': _enableLoadingAnimation,
       'motes': _enableMotes,
       'rain': _enableRain,
       'fireflies': _enableFireflies,
@@ -364,6 +378,7 @@ class ThemeProvider extends ChangeNotifier {
     _backgroundOpacity =
         (data['backgroundOpacity'] as num?)?.toDouble() ?? _backgroundOpacity;
     _enableBloom = data['bloom'] as bool? ?? _enableBloom;
+    _enableLoadingAnimation = data['loadingAnimation'] as bool? ?? _enableLoadingAnimation;
     _enableMotes = data['motes'] as bool? ?? _enableMotes;
     _enableRain = data['rain'] as bool? ?? _enableRain;
     _enableFireflies = data['fireflies'] as bool? ?? _enableFireflies;
@@ -402,6 +417,7 @@ class ThemeProvider extends ChangeNotifier {
     }
     await prefs.setDouble('app_bg_opacity', _backgroundOpacity);
     await prefs.setBool('app_enable_bloom', _enableBloom);
+    await prefs.setBool('app_enable_loading_animation', _enableLoadingAnimation);
     await prefs.setBool('app_enable_motes', _enableMotes);
     await prefs.setBool('app_enable_rain', _enableRain);
     await prefs.setBool('app_enable_fireflies', _enableFireflies);
