@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import 'message_bubble.dart';
@@ -296,6 +297,12 @@ class ChatMessagesList extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final messages = chatProvider.messages;
+    final bool showTypingIndicator = _showTypingIndicator(
+      chatProvider,
+      themeProvider,
+    );
+    final bool showVirtualAiTypingBubble =
+        showTypingIndicator && (messages.isEmpty || messages.last.isUser);
 
     return InteractiveViewer(
       transformationController: transformationController,
@@ -339,43 +346,29 @@ class ChatMessagesList extends StatelessWidget {
                 Expanded(
                   child: ListView.builder(
                     controller: scrollController,
-                    itemCount: messages.length + (_showTypingIndicator(chatProvider, themeProvider) ? 1 : 0),
+                    itemCount:
+                        messages.length + (showVirtualAiTypingBubble ? 1 : 0),
                     padding: const EdgeInsets.only(bottom: 120),
                     itemBuilder: (context, index) {
-                      // Show typing indicator as the last item
-                      if (_showTypingIndicator(chatProvider, themeProvider) && index == messages.length) {
-                        return Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                              decoration: BoxDecoration(
-                                color: themeProvider.aiBubbleColor,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(18),
-                                  topRight: Radius.circular(18),
-                                  bottomRight: Radius.circular(18),
-                                  bottomLeft: Radius.circular(4),
-                                ),
-                                boxShadow: themeProvider.enableBloom
-                                    ? [
-                                        BoxShadow(
-                                          color: themeProvider.appThemeColor.withOpacity(0.2),
-                                          blurRadius: 8,
-                                        ),
-                                      ]
-                                    : [],
-                              ),
-                              child: const _TypingDots(),
-                            ),
+                      if (showVirtualAiTypingBubble && index == messages.length) {
+                        return MessageBubble(
+                          msg: ChatMessage(
+                            text: '',
+                            isUser: false,
+                            modelName: chatProvider.selectedModel,
                           ),
+                          themeProvider: themeProvider,
+                          showTypingIndicator: true,
                         );
                       }
 
+                      final message = messages[index];
+                      final bool isLastMessage = index == messages.length - 1;
                       return MessageBubble(
-                        msg: messages[index],
+                        msg: message,
                         themeProvider: themeProvider,
+                        showTypingIndicator:
+                            showTypingIndicator && isLastMessage && !message.isUser,
                         onLongPress: () => _showMessageOptions(context, index),
                         onCopy: () {
                           Clipboard.setData(
@@ -407,75 +400,17 @@ class ChatMessagesList extends StatelessWidget {
   /// Loading is active, animations are disabled, and no AI response text yet.
   bool _showTypingIndicator(ChatProvider chatProvider, ThemeProvider themeProvider) {
     if (!chatProvider.isLoading || themeProvider.enableLoadingAnimation) return false;
-    // Show the dots when waiting for response (last message is empty AI message or user message)
+    
     final messages = chatProvider.messages;
     if (messages.isEmpty) return true;
+    
     final last = messages.last;
-    // If last message is still the user's, API hasn't created AI message yet
+    
+    // If last message is from user, API hasn't created AI message yet
     if (last.isUser) return true;
-    // If AI message exists but is empty, still waiting for tokens
-    return last.text.isEmpty;
-  }
-}
-
-/// Animated three bouncing dots typing indicator.
-class _TypingDots extends StatefulWidget {
-  const _TypingDots();
-
-  @override
-  State<_TypingDots> createState() => _TypingDotsState();
-}
-
-class _TypingDotsState extends State<_TypingDots> with TickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (i) {
-            // Stagger each dot by 0.2
-            final double delay = i * 0.2;
-            final double t = ((_controller.value - delay) % 1.0).clamp(0.0, 1.0);
-            // Bounce: 0→1→0 over the cycle
-            final double bounce = (t < 0.5) ? (t * 2) : (2 - t * 2);
-            final double offset = -4.0 * bounce;
-
-            return Padding(
-              padding: EdgeInsets.only(right: i < 2 ? 4 : 0),
-              child: Transform.translate(
-                offset: Offset(0, offset),
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.7),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            );
-          }),
-        );
-      },
-    );
+    
+    // If AI message exists but is empty or only whitespace, show typing indicator
+    // Hide as soon as any non-whitespace text arrives
+    return last.text.trim().isEmpty;
   }
 }

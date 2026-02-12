@@ -37,6 +37,9 @@ class MessageBubble extends StatelessWidget {
   /// Callback for deleting the message.
   final VoidCallback? onDelete;
 
+  /// Whether to show an inline typing indicator inside this bubble.
+  final bool showTypingIndicator;
+
   const MessageBubble({
     super.key,
     required this.msg,
@@ -46,6 +49,7 @@ class MessageBubble extends StatelessWidget {
     this.onEdit,
     this.onRegenerate,
     this.onDelete,
+    this.showTypingIndicator = false,
   });
 
   void _showImageZoom(BuildContext context, ImageProvider provider) {
@@ -129,6 +133,8 @@ class MessageBubble extends StatelessWidget {
             textColor,
             useBloom,
             scaleProvider,
+            themeProvider.enableLoadingAnimation,
+            showTypingIndicator,
           );
         },
       );
@@ -141,8 +147,16 @@ class MessageBubble extends StatelessWidget {
         textColor,
         useBloom,
         scaleProvider,
+        themeProvider.enableLoadingAnimation,
+        showTypingIndicator,
       );
     }
+
+    final bool hasActions =
+        onRegenerate != null ||
+        onCopy != null ||
+        onEdit != null ||
+        onDelete != null;
 
     return Align(
       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -152,53 +166,54 @@ class MessageBubble extends StatelessWidget {
             : CrossAxisAlignment.start,
         children: [
           GestureDetector(onLongPress: onLongPress, child: bubble),
-          Padding(
-            padding: const EdgeInsets.only(
-              top: 4,
-              bottom: 8,
-              left: 4,
-              right: 4,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (onRegenerate != null)
-                  _buildIconBtn(
-                    Icons.refresh,
-                    "Regenerate",
-                    onRegenerate!,
-                    textColor,
-                    25 * scaleProvider.iconScale,
-                  ),
+          if (hasActions)
+            Padding(
+              padding: const EdgeInsets.only(
+                top: 4,
+                bottom: 8,
+                left: 4,
+                right: 4,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onRegenerate != null)
+                    _buildIconBtn(
+                      Icons.refresh,
+                      "Regenerate",
+                      onRegenerate!,
+                      textColor,
+                      25 * scaleProvider.iconScale,
+                    ),
 
-                if (onCopy != null)
-                  _buildIconBtn(
-                    Icons.copy_rounded,
-                    "Copy",
-                    onCopy!,
-                    textColor,
-                    25 * scaleProvider.iconScale,
-                  ),
+                  if (onCopy != null)
+                    _buildIconBtn(
+                      Icons.copy_rounded,
+                      "Copy",
+                      onCopy!,
+                      textColor,
+                      25 * scaleProvider.iconScale,
+                    ),
 
-                if (onEdit != null)
-                  _buildIconBtn(
-                    Icons.edit_outlined,
-                    "Edit",
-                    onEdit!,
-                    textColor,
-                    25 * scaleProvider.iconScale,
-                  ),
-                if (onDelete != null)
-                  _buildIconBtn(
-                    Icons.delete_outline,
-                    "Delete",
-                    onDelete!,
-                    textColor,
-                    25 * scaleProvider.iconScale,
-                  ),
-              ],
+                  if (onEdit != null)
+                    _buildIconBtn(
+                      Icons.edit_outlined,
+                      "Edit",
+                      onEdit!,
+                      textColor,
+                      25 * scaleProvider.iconScale,
+                    ),
+                  if (onDelete != null)
+                    _buildIconBtn(
+                      Icons.delete_outline,
+                      "Delete",
+                      onDelete!,
+                      textColor,
+                      25 * scaleProvider.iconScale,
+                    ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -235,6 +250,8 @@ class MessageBubble extends StatelessWidget {
     Color textColor,
     bool useBloom,
     ScaleProvider scaleProvider,
+    bool enableLoadingAnimation,
+    bool showTypingIndicator,
   ) {
     final codeStyle = TextStyle(
       color: textColor,
@@ -250,6 +267,11 @@ class MessageBubble extends StatelessWidget {
     final reasoningText = splitContent['reasoning'] as String;
     final visibleText = splitContent['content'] as String;
     final isReasoningDone = splitContent['isDone'] as bool;
+    final bool hasReasoning = reasoningText.trim().isNotEmpty;
+    final bool hasVisibleText = visibleText.trim().isNotEmpty;
+    final bool hasAttachments = msg.imagePaths.isNotEmpty || msg.aiImage != null;
+    final bool shouldShowTypingDots =
+      showTypingIndicator && !hasReasoning && !hasVisibleText && !hasAttachments;
 
     final contentColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,6 +320,16 @@ class MessageBubble extends StatelessWidget {
             textColor: textColor,
             useBloom: useBloom,
             isDone: isReasoningDone,
+            enableLoadingAnimation: enableLoadingAnimation,
+          ),
+
+        if (shouldShowTypingDots)
+          Padding(
+            padding: EdgeInsets.only(
+              top: 5,
+              bottom: 2.0 * scaleProvider.iconScale,
+            ),
+            child: _InlineTypingDots(iconScale: scaleProvider.iconScale),
           ),
 
         if (msg.imagePaths.isNotEmpty)
@@ -320,7 +352,7 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-        if (visibleText.isNotEmpty)
+        if (hasVisibleText)
           MarkdownBody(
             data: visibleText,
             builders: {'code': CodeElementBuilder(context, codeStyle)},
@@ -524,6 +556,72 @@ class MessageBubble extends StatelessWidget {
           );
         }).toList(),
       ),
+    );
+  }
+}
+
+class _InlineTypingDots extends StatefulWidget {
+  final double iconScale;
+
+  const _InlineTypingDots({required this.iconScale});
+
+  @override
+  State<_InlineTypingDots> createState() => _InlineTypingDotsState();
+}
+
+class _InlineTypingDotsState extends State<_InlineTypingDots>
+    with TickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final double dotSize = 8 * widget.iconScale;
+        final double dotSpacing = 4 * widget.iconScale;
+        final double bounceHeight = 4 * widget.iconScale;
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            final double delay = index * 0.2;
+            final double t = ((_controller.value - delay) % 1.0).clamp(0.0, 1.0);
+            final double bounce = (t < 0.5) ? (t * 2) : (2 - t * 2);
+            final double offset = -bounceHeight * bounce;
+
+            return Padding(
+              padding: EdgeInsets.only(right: index < 2 ? dotSpacing : 0),
+              child: Transform.translate(
+                offset: Offset(0, offset),
+                child: Container(
+                  width: dotSize,
+                  height: dotSize,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }
@@ -775,6 +873,7 @@ class ReasoningView extends StatefulWidget {
   final Color textColor;
   final bool useBloom;
   final bool isDone;
+  final bool enableLoadingAnimation;
 
   const ReasoningView({
     super.key,
@@ -782,6 +881,7 @@ class ReasoningView extends StatefulWidget {
     required this.textColor,
     required this.useBloom,
     required this.isDone,
+    required this.enableLoadingAnimation,
   });
 
   @override
@@ -801,7 +901,7 @@ class _ReasoningViewState extends State<ReasoningView>
       vsync: this,
       duration: const Duration(milliseconds: 4000),
     );
-    if (!widget.isDone) {
+    if (!widget.isDone && widget.enableLoadingAnimation) {
       _orbitController.repeat();
     }
   }
@@ -809,6 +909,13 @@ class _ReasoningViewState extends State<ReasoningView>
   @override
   void didUpdateWidget(covariant ReasoningView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.enableLoadingAnimation != widget.enableLoadingAnimation) {
+      if (widget.enableLoadingAnimation && !widget.isDone && _isExpanded) {
+        _orbitController.repeat();
+      } else {
+        _orbitController.stop();
+      }
+    }
     if (!oldWidget.isDone && widget.isDone) {
       _orbitController.stop();
       setState(() {
@@ -837,7 +944,10 @@ class _ReasoningViewState extends State<ReasoningView>
               animation: _orbitController,
               builder: (context, child) {
                 return CustomPaint(
-                  foregroundPainter: !widget.isDone && _isExpanded
+                  foregroundPainter:
+                      !widget.isDone &&
+                          _isExpanded &&
+                          widget.enableLoadingAnimation
                       ? _ThinkingOrbitPainter(
                           progress: _orbitController.value,
                           color: widget.textColor.withOpacity(0.6),

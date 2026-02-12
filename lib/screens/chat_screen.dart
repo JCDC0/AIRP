@@ -1,7 +1,5 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
@@ -179,12 +177,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     controller.forward().then((_) => controller.dispose());
   }
 
-  void _toggleZoomMode() {
+  void _toggleZoomMode(bool enableLoadingAnimation) {
     setState(() {
       _isZoomMode = !_isZoomMode;
     });
     if (_isZoomMode) {
-      _zoomBorderController.repeat();
+      if (enableLoadingAnimation) {
+        _zoomBorderController.repeat();
+      } else {
+        _zoomBorderController.stop();
+      }
     } else {
       _zoomBorderController.stop();
       _resetZoom();
@@ -197,6 +199,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final bool isDesktop = scaleProvider.deviceType == DeviceType.desktop;
+
+    if (!themeProvider.enableLoadingAnimation && _zoomBorderController.isAnimating) {
+      _zoomBorderController.stop();
+    }
 
     if (chatProvider.currentSessionId != _previousSessionId) {
       _previousSessionId = chatProvider.currentSessionId;
@@ -256,7 +262,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       animation: _zoomBorderController,
                       builder: (context, child) {
                         return CustomPaint(
-                          foregroundPainter: _isZoomMode && isDesktop && themeProvider.enableLoadingAnimation
+                          foregroundPainter:
+                            _isZoomMode &&
+                              isDesktop &&
+                              themeProvider.enableLoadingAnimation
                               ? _ZoomArcPainter(
                                   progress: _zoomBorderController.value,
                                   color: Colors.white,
@@ -270,9 +279,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          color: Colors.black87,
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.4),
-                            width: 1.5,
+                            color: Colors.white,
+                            width: 0.5,
                           ),
                           boxShadow: themeProvider.enableBloom
                               ? [
@@ -286,33 +296,36 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                                 ]
                               : [],
                         ),
-                        child: SizedBox(
-                          width: fabSize,
-                          height: fabSize,
-                          child: FloatingActionButton(
-                            mini: true,
-                            shape: const CircleBorder(),
-                            backgroundColor: Colors.black87,
-                            foregroundColor: Colors.white,
-                            onPressed: isDesktop ? _toggleZoomMode : _resetZoom,
-                            child: Icon(
-                              isDesktop
-                                  ? (_isZoomMode ? Icons.zoom_out_map : Icons.zoom_in)
-                                  : Icons.zoom_out_map,
-                              size: fabIconSize,
-                              shadows: themeProvider.enableBloom
-                                  ? [
-                                      Shadow(
-                                        color: Colors.white.withOpacity(0.7),
-                                        blurRadius: 4,
-                                      ),
-                                      Shadow(
-                                        color: themeProvider.appThemeColor
-                                            .withOpacity(0.7),
-                                        blurRadius: 8,
-                                      ),
-                                    ]
-                                  : null,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: isDesktop
+                                ? () => _toggleZoomMode(
+                                    themeProvider.enableLoadingAnimation,
+                                  )
+                                : _resetZoom,
+                            customBorder: const CircleBorder(),
+                            child: Center(
+                              child: Icon(
+                                isDesktop
+                                    ? (_isZoomMode ? Icons.zoom_out_map : Icons.zoom_in)
+                                    : Icons.zoom_out_map,
+                                size: fabIconSize,
+                                color: Colors.white,
+                                shadows: themeProvider.enableBloom
+                                    ? [
+                                        Shadow(
+                                          color: Colors.white.withOpacity(0.7),
+                                          blurRadius: 4,
+                                        ),
+                                        Shadow(
+                                          color: themeProvider.appThemeColor
+                                              .withOpacity(0.7),
+                                          blurRadius: 8,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
                             ),
                           ),
                         ),

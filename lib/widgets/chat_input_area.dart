@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -30,6 +31,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
   final List<String> _pendingImages = [];
   final ImagePicker _picker = ImagePicker();
   late AnimationController _orbitController;
+  bool _isSending = false;
 
   @override
   void initState() {
@@ -168,11 +170,16 @@ class _ChatInputAreaState extends State<ChatInputArea>
 
   /// Sends the current message text and attachments to the provider.
   void _sendMessage() {
+    // Prevent double sends
+    if (_isSending) return;
+    
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final messageText = _textController.text;
 
     if (messageText.isEmpty && _pendingImages.isEmpty) return;
 
+    _isSending = true;
+    
     final List<String> imagesToSend = List.from(_pendingImages);
 
     chatProvider.sendMessage(messageText, imagesToSend);
@@ -183,6 +190,15 @@ class _ChatInputAreaState extends State<ChatInputArea>
     });
 
     _scrollToBottom();
+    
+    // Reset the sending flag after a short delay to allow the state to update
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+      }
+    });
   }
 
   /// Scrolls the chat list to the top.
@@ -735,84 +751,109 @@ class _ChatInputAreaState extends State<ChatInputArea>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
-                      child: AnimatedBuilder(
-                        animation: _orbitController,
-                        builder: (context, child) {
-                          return CustomPaint(
-                            foregroundPainter: isLoading && themeProvider.enableLoadingAnimation
-                                ? LineOrbitPainter(
-                                    progress: _orbitController.value,
-                                    color: Colors.white,
-                                    bloomColor: themeProvider.appThemeColor,
-                                    enableBloom: themeProvider.enableBloom,
-                                    borderRadius: 24.0,
-                                  )
-                                : null,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(24),
-                                color: Colors.black,
-                              ),
-                              child: child,
-                            ),
-                          );
+                      child: Focus(
+                        onKey: (node, event) {
+                          // Handle Ctrl+Enter or Cmd+Enter to send message
+                          if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
+                            final isCtrlOrCmd = HardwareKeyboard.instance
+                                    .isLogicalKeyPressed(
+                                      LogicalKeyboardKey.controlLeft,
+                                    ) ||
+                                HardwareKeyboard.instance.isLogicalKeyPressed(
+                                  LogicalKeyboardKey.controlRight,
+                                ) ||
+                                HardwareKeyboard.instance.isLogicalKeyPressed(
+                                  LogicalKeyboardKey.metaLeft,
+                                ) ||
+                                HardwareKeyboard.instance.isLogicalKeyPressed(
+                                  LogicalKeyboardKey.metaRight,
+                                );
+                            if (isCtrlOrCmd && !isLoading) {
+                              _sendMessage();
+                              return KeyEventResult.handled;
+                            }
+                          }
+                          return KeyEventResult.ignored;
                         },
-                        child: TextField(
-                          controller: _textController,
-                          minLines: 1,
-                          maxLines: scaleProvider.inputAreaScale.toInt(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: scaleProvider.chatFontSize,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: _pendingImages.isNotEmpty
-                                ? 'Add a caption...'
-                                : (chatProvider.enableGrounding
-                                      ? 'Search web...'
-                                      : (chatProvider.enableImageGen
-                                            ? 'Describe image...'
-                                            : 'Message...')),
-                            hintStyle: TextStyle(
-                              color: Colors.grey[500],
+                        child: AnimatedBuilder(
+                          animation: _orbitController,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              foregroundPainter: isLoading && themeProvider.enableLoadingAnimation
+                                  ? LineOrbitPainter(
+                                      progress: _orbitController.value,
+                                      color: Colors.white,
+                                      bloomColor: themeProvider.appThemeColor,
+                                      enableBloom: themeProvider.enableBloom,
+                                      borderRadius: 24.0,
+                                    )
+                                  : null,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24),
+                                  color: Colors.black,
+                                ),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: TextField(
+                            controller: _textController,
+                            minLines: 1,
+                            maxLines: scaleProvider.inputAreaScale.toInt(),
+                            style: TextStyle(
+                              color: Colors.white,
                               fontSize: scaleProvider.chatFontSize,
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide(
-                                color: isLoading
-                                    ? Colors.transparent
-                                    : Colors.grey[900]!,
-                                width: 1,
+                            decoration: InputDecoration(
+                              hintText: _pendingImages.isNotEmpty
+                                  ? 'Add a caption...'
+                                  : (chatProvider.enableGrounding
+                                        ? 'Search web...'
+                                        : (chatProvider.enableImageGen
+                                              ? 'Describe image...'
+                                              : 'Message...')),
+                              hintStyle: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: scaleProvider.chatFontSize,
                               ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide(
-                                color: isLoading
-                                    ? Colors.transparent
-                                    : Colors.grey[900]!,
-                                width: 1,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide(
+                                  color: isLoading
+                                      ? Colors.transparent
+                                      : Colors.grey[900]!,
+                                  width: 1,
+                                ),
                               ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide(
-                                color: isLoading
-                                    ? Colors.transparent
-                                    : themeProvider.appThemeColor.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                width: 1,
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide(
+                                  color: isLoading
+                                      ? Colors.transparent
+                                      : Colors.grey[900]!,
+                                  width: 1,
+                                ),
                               ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide(
+                                  color: isLoading
+                                      ? Colors.transparent
+                                      : themeProvider.appThemeColor.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                  width: 1,
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.black,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              isDense: true,
                             ),
-                            filled: true,
-                            fillColor: Colors.black,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            isDense: true,
                           ),
                         ),
                       ),
