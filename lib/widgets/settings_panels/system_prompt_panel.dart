@@ -3,10 +3,17 @@ import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:async';
+import 'package:file_picker/file_picker.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
+import '../../models/character_card.dart';
+import '../../models/preset_model.dart';
+import '../../services/character_card_service.dart';
+import '../../services/library_service.dart';
 
 /// A panel for configuring the AI's system instruction and advanced prompts.
 ///
@@ -40,35 +47,90 @@ class SystemPromptPanel extends StatefulWidget {
 class _SystemPromptPanelState extends State<SystemPromptPanel> {
   late TextEditingController _ruleLabelController;
   late TextEditingController _newRuleContentController;
+  
+  // Character Card Controllers
+  late TextEditingController _cardNameController;
+  late TextEditingController _cardDescriptionController;
+  late TextEditingController _cardPersonalityController;
+  late TextEditingController _cardScenarioController;
+  late TextEditingController _cardFirstMesController;
+  late TextEditingController _cardMesExampleController;
+  late TextEditingController _cardSystemPromptController;
 
   List<Map<String, dynamic>> _customRules = [];
-  bool _isKaomojiFixEnabled = false;
+
+  // _isKaomojiFixEnabled removed - migrated to custom rules
 
   static const String kDefaultKaomojiFix =
       "Use kaomoji for spoken character (e.g. OwO, ^_^) frequently in character dialogue to convey emotion for spoken characters only. (Except if the character is only you)";
   static const String kCustomRulesKey = "custom_sys_prompt_rules";
+  static const String kKaomojiMigratedKey = "kaomoji_migrated_v2";
+
+
+  Timer? _cardSaveTimer; 
 
   @override
   void initState() {
     super.initState();
     _ruleLabelController = TextEditingController();
     _newRuleContentController = TextEditingController();
+    
+    _cardNameController = TextEditingController();
+    _cardDescriptionController = TextEditingController();
+    _cardPersonalityController = TextEditingController();
+    _cardScenarioController = TextEditingController();
+    _cardFirstMesController = TextEditingController();
+    _cardMesExampleController = TextEditingController();
+    _cardSystemPromptController = TextEditingController();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      _updateCardControllers(chatProvider.characterCard);
+      
       String fullPrompt = chatProvider.systemInstruction;
       if (chatProvider.advancedSystemInstruction.isNotEmpty) {
         if (fullPrompt.isNotEmpty) fullPrompt += "\n\n";
         fullPrompt += chatProvider.advancedSystemInstruction;
       }
       _loadCustomRulesAndParse(fullPrompt);
+      _migrateKaomoji();
     });
+  }
+
+  void _updateCardControllers(CharacterCard card) {
+    _cardNameController.text = card.name;
+    _cardDescriptionController.text = card.description;
+    _cardPersonalityController.text = card.personality;
+    _cardScenarioController.text = card.scenario;
+    _cardFirstMesController.text = card.firstMessage;
+    _cardMesExampleController.text = card.mesExample;
+    _cardSystemPromptController.text = card.systemPrompt;
+  }
+  
+
+  
+  Future<void> _migrateKaomoji() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool migrated = prefs.getBool(kKaomojiMigratedKey) ?? false;
+    
+    if (!migrated) {
+      // Ensure legacy kaomoji settings are migrated to the new rules system.
+      
+      await prefs.setBool(kKaomojiMigratedKey, true);
+    }
   }
 
   @override
   void dispose() {
     _ruleLabelController.dispose();
     _newRuleContentController.dispose();
+    _cardNameController.dispose();
+    _cardDescriptionController.dispose();
+    _cardPersonalityController.dispose();
+    _cardScenarioController.dispose();
+    _cardFirstMesController.dispose();
+    _cardMesExampleController.dispose();
+    _cardSystemPromptController.dispose();
     super.dispose();
   }
 
@@ -100,42 +162,53 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     await prefs.setString(kCustomRulesKey, encoded);
   }
 
-  void _parseSystemInstruction(String fullPrompt) {
+  void _parseSystemInstruction(String fullPrompt, {bool updateMain = true, bool updateRules = true}) {
     String workingText = fullPrompt;
     String advancedVisualText = "";
 
+    // Check for Kaomoji text and migrate if needed
     if (workingText.contains(kDefaultKaomojiFix.trim())) {
-      _isKaomojiFixEnabled = true;
+      // Check if we already have a rule for this
+      bool hasKaomojiRule = _customRules.any((r) => r['content'] == kDefaultKaomojiFix.trim());
+      
+      if (!hasKaomojiRule) {
+        // Auto-create the rule
+        _customRules.add({
+          'label': 'Kaomoji Mode (Legacy)',
+          'content': kDefaultKaomojiFix.trim(),
+          'active': true
+        });
+        _saveCustomRulesToPrefs();
+      }
+      
       workingText = workingText.replaceFirst(kDefaultKaomojiFix.trim(), "");
-      advancedVisualText += "${kDefaultKaomojiFix.trim()}\n\n";
-    } else {
-      _isKaomojiFixEnabled = false;
     }
 
     for (var rule in _customRules) {
       final content = rule['content'] as String;
       if (workingText.contains(content.trim())) {
-        rule['active'] = true;
+        if (updateRules) rule['active'] = true;
         workingText = workingText.replaceFirst(content.trim(), "");
         advancedVisualText += "${content.trim()}\n\n";
       } else {
-        rule['active'] = false;
+        if (updateRules) rule['active'] = false;
       }
     }
 
     workingText = workingText.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
     advancedVisualText = advancedVisualText.trim();
 
-    widget.mainPromptController.text = workingText;
-    widget.advancedPromptController.text = advancedVisualText;
+    if (updateMain) {
+      widget.mainPromptController.text = workingText;
+    }
+    
+    if (updateRules) {
+      widget.advancedPromptController.text = advancedVisualText;
+    }
   }
 
   void _onAdvancedSwitchChanged() {
     final List<String> activePrompts = [];
-
-    if (_isKaomojiFixEnabled) {
-      activePrompts.add(kDefaultKaomojiFix.trim());
-    }
 
     for (final rule in _customRules) {
       if (rule['active'] == true) {
@@ -146,6 +219,248 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     widget.advancedPromptController.text = activePrompts.join('\n\n');
 
     widget.onPromptChanged();
+  }
+
+  Future<void> _handleImportCharacterCard() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['png', 'json'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final card = await CharacterCardService.parseFile(file);
+
+        if (card != null) {
+           final warnings = CharacterCardService.validate(card);
+           if (warnings.isNotEmpty) {
+             // Show warnings but allow proceeding
+             if (!mounted) return;
+             await showDialog(
+               context: context, 
+               builder: (ctx) => AlertDialog(
+                 title: const Text("Import Warnings", style: TextStyle(color: Colors.orangeAccent)),
+                 content: Column(
+                   mainAxisSize: MainAxisSize.min,
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: warnings.map((w) => Text("• $w", style: const TextStyle(color: Colors.white70))).toList(),
+                 ),
+                 actions: [
+                   TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
+                 ],
+                 backgroundColor: const Color(0xFF2C2C2C),
+               )
+             );
+           }
+        
+          final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+          chatProvider.setCharacterCard(card);
+          _updateCardControllers(card);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Imported '${card.name}' successfully!")),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Import failed: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Import failed: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleExportCharacterCard() async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final card = chatProvider.characterCard;
+    
+    if (card.name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Character card is empty. Add a name first.")),
+      );
+      return;
+    }
+
+    try {
+      final jsonStr = await LibraryService.exportCharacterCard(card);
+      final bytes = Uint8List.fromList(utf8.encode(jsonStr));
+
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Export Character Card',
+        fileName: '${card.name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.json',
+        allowedExtensions: ['json'],
+        type: FileType.custom,
+        bytes: bytes,
+      );
+
+      if (outputFile != null) {
+        final jsonStr = await LibraryService.exportCharacterCard(card);
+        final file = File(outputFile);
+        await file.writeAsString(jsonStr);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Exported to $outputFile")),
+          );
+        }
+      }
+    } catch (e) {
+       debugPrint("Export failed: $e");
+       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Export failed: $e")),
+        );
+      }
+    }
+  }
+  
+  Future<void> _handleImportPreset() async {
+     try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final content = await file.readAsString();
+        final jsonMap = jsonDecode(content);
+        final preset = SystemPreset.fromJson(jsonMap);
+
+        // Apply preset
+        // We merge custom rules, replace description/system prompt
+        widget.promptTitleController.text = preset.name;
+        widget.mainPromptController.text = preset.systemPrompt;
+        
+        // Merge rules
+        final prefs = await SharedPreferences.getInstance();
+        final List<Map<String, dynamic>> currentRules = [..._customRules];
+        final existingLabels = currentRules.map((r) => r['label']).toSet();
+        
+        for (final rule in preset.customRules) {
+           if (!existingLabels.contains(rule['label'])) {
+             currentRules.add(rule);
+             existingLabels.add(rule['label']);
+           }
+        }
+        
+        setState(() {
+          _customRules = currentRules;
+          _saveCustomRulesToPrefs(); // Persist merged rules
+          _onAdvancedSwitchChanged(); // Update visual text
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Imported preset '${preset.name}'!")),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Import preset failed: $e");
+       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Import failed: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleExportPreset() async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    
+    // Construct preset from current state
+    final preset = SystemPreset(
+      name: widget.promptTitleController.text.isNotEmpty ? widget.promptTitleController.text : "Untitled Preset",
+      systemPrompt: widget.mainPromptController.text,
+      advancedPrompt: widget.advancedPromptController.text,
+      customRules: _customRules,
+      generationSettings: {
+        'temperature': chatProvider.temperature,
+        'top_p': chatProvider.topP,
+        'top_k': chatProvider.topK,
+      }
+    );
+
+    try {
+      final jsonStr = await LibraryService.exportPreset(preset);
+      final bytes = Uint8List.fromList(utf8.encode(jsonStr));
+
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Export Preset',
+        fileName: '${preset.name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.json',
+        allowedExtensions: ['json'],
+        type: FileType.custom,
+        bytes: bytes,
+      );
+
+      if (outputFile != null) {
+        final jsonStr = await LibraryService.exportPreset(preset);
+        final file = File(outputFile);
+        await file.writeAsString(jsonStr);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Exported to $outputFile")),
+          );
+        }
+      }
+    } catch (e) {
+       debugPrint("Export failed: $e");
+       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Export failed: $e")),
+        );
+      }
+    }
+  }
+
+  void _clearCharacterCard() {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final emptyCard = CharacterCard();
+    chatProvider.setCharacterCard(emptyCard);
+    _updateCardControllers(emptyCard);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Character card cleared.")),
+    );
+  }
+
+  void _confirmDeletePromptFromLibrary(String title) {
+    if (title.isEmpty) return;
+    
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
+        title: Text("Delete '$title'?", style: TextStyle(color: Colors.redAccent, fontSize: scaleProvider.systemFontSize)),
+        content: Text("Are you sure you want to remove this preset from your library?", style: TextStyle(color: Colors.white70, fontSize: scaleProvider.systemFontSize * 0.8)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+              chatProvider.deletePromptFromLibrary(title);
+              widget.promptTitleController.clear();
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Deleted from Library")),
+              );
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _addRuleFromInput() {
@@ -378,14 +693,15 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
+
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 30),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
+        // --- 1. Main System Prompt ---
+        ExpansionTile(
           title: Text(
-            "System Prompt",
+            "Main System Prompt",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
               fontWeight: FontWeight.bold,
@@ -394,399 +710,301 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                   : [],
             ),
           ),
-          value: chatProvider.enableSystemPrompt,
-          activeThumbColor: themeProvider.appThemeColor,
-          onChanged: (val) {
-            chatProvider.setEnableSystemPrompt(val);
-            chatProvider.saveSettings();
-          },
-        ),
-
-        Opacity(
-          opacity: chatProvider.enableSystemPrompt ? 1.0 : 0.5,
-          child: AbsorbPointer(
-            absorbing: !chatProvider.enableSystemPrompt,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: themeProvider.enableBloom
-                          ? themeProvider.appThemeColor.withOpacity(0.5)
-                          : Colors.white12,
-                    ),
-                    boxShadow: themeProvider.enableBloom
-                        ? [
-                            BoxShadow(
-                              color: themeProvider.appThemeColor.withOpacity(
-                                0.1,
-                              ),
-                              blurRadius: 8,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      hint: Text(
-                        "Select from Library...",
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: scaleProvider.systemFontSize * 0.8,
+          trailing: Switch(
+            value: chatProvider.enableSystemPrompt,
+            activeColor: themeProvider.appThemeColor,
+            onChanged: (val) {
+              chatProvider.setEnableSystemPrompt(val);
+              chatProvider.saveSettings();
+            },
+          ),
+          children: [
+            Opacity(
+              opacity: chatProvider.enableSystemPrompt ? 1.0 : 0.5,
+              child: AbsorbPointer(
+                absorbing: !chatProvider.enableSystemPrompt,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // --- Library / Preset Section ---
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: themeProvider.enableBloom
+                                ? themeProvider.appThemeColor.withOpacity(0.5)
+                                : Colors.white12,
+                          ),
                         ),
-                      ),
-                      dropdownColor: const Color(0xFF2C2C2C),
-                      icon: Icon(
-                        Icons.arrow_drop_down,
-                        color: themeProvider.appThemeColor,
-                      ),
-                      value: null,
-                      items: [
-                        DropdownMenuItem<String>(
-                          value: "CREATE_NEW",
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.add,
-                                color: Colors.greenAccent,
-                                size: 16,
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            hint: Text(
+                              "Load Main Prompt...",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: scaleProvider.systemFontSize * 0.8,
                               ),
-                              SizedBox(width: 8),
-                              Text(
-                                "Create New",
-                                style: TextStyle(
-                                  color: Colors.greenAccent,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: scaleProvider.systemFontSize,
+                            ),
+                            dropdownColor: const Color(0xFF2C2C2C),
+                            icon: Icon(
+                              Icons.arrow_drop_down,
+                              color: themeProvider.appThemeColor,
+                            ),
+                            value: null,
+                            items: [
+                              DropdownMenuItem<String>(
+                                value: "CREATE_NEW",
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.add,
+                                      color: Colors.greenAccent,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "Create New",
+                                      style: TextStyle(
+                                        color: Colors.greenAccent,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: scaleProvider.systemFontSize,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        ...chatProvider.savedSystemPrompts.map((prompt) {
-                          return DropdownMenuItem<String>(
-                            value: prompt.title,
-                            child: Text(
-                              prompt.title,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: scaleProvider.systemFontSize,
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                      onChanged: (String? newValue) {
-                        if (newValue == "CREATE_NEW") {
-                          widget.promptTitleController.clear();
-                          widget.mainPromptController.clear();
-                          widget.onPromptChanged();
-                        } else if (newValue != null) {
-                          final prompt = chatProvider.savedSystemPrompts
-                              .firstWhere((p) => p.title == newValue);
-                          widget.promptTitleController.text = prompt.title;
-                          _parseSystemInstruction(prompt.content);
-                          widget.onPromptChanged();
-                        }
-                      },
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                TextField(
-                  controller: widget.promptTitleController,
-                  decoration: InputDecoration(
-                    labelText: "Prompt Title (e.g., 'World of mana and mechs')",
-                    labelStyle: TextStyle(
-                      color: themeProvider.appThemeColor,
-                      fontSize: scaleProvider.systemFontSize * 0.8,
-                    ),
-                    border: OutlineInputBorder(
-                      borderSide: themeProvider.enableBloom
-                          ? BorderSide(color: themeProvider.appThemeColor)
-                          : const BorderSide(),
-                    ),
-                    enabledBorder: themeProvider.enableBloom
-                        ? OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: themeProvider.appThemeColor.withOpacity(
-                                0.5,
-                              ),
-                            ),
-                          )
-                        : const OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.black12,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    isDense: true,
-                  ),
-                  style: TextStyle(
-                    fontSize: scaleProvider.systemFontSize,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 5),
-
-                Focus(
-                  onFocusChange: (hasFocus) {
-                    setState(() {});
-                  },
-                  child: Builder(
-                    builder: (context) {
-                      final hasFocus = Focus.of(context).hasFocus;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                        height: hasFocus ? 300 : null,
-                        child: TextField(
-                          controller: widget.mainPromptController,
-                          onChanged: (_) => widget.onPromptChanged(),
-                          maxLines: hasFocus
-                              ? null
-                              : scaleProvider.inputAreaScale.toInt(),
-                          expands: hasFocus,
-                          textAlignVertical: TextAlignVertical.top,
-                          decoration: InputDecoration(
-                            hintText: "Enter the roleplay rules here...",
-                            hintStyle: TextStyle(
-                              fontSize: scaleProvider.systemFontSize * 0.8,
-                            ),
-                            border: OutlineInputBorder(
-                              borderSide: themeProvider.enableBloom
-                                  ? BorderSide(
-                                      color: themeProvider.appThemeColor,
-                                    )
-                                  : const BorderSide(),
-                            ),
-                            enabledBorder: themeProvider.enableBloom
-                                ? OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: themeProvider.appThemeColor
-                                          .withOpacity(0.5),
+                              ...chatProvider.savedSystemPrompts.map((prompt) {
+                                return DropdownMenuItem<String>(
+                                  value: prompt.title,
+                                  child: Text(
+                                    prompt.title,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: scaleProvider.systemFontSize,
                                     ),
-                                  )
-                                : const OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.black26,
-                          ),
-                          style: TextStyle(
-                            fontSize: scaleProvider.systemFontSize,
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (String? newValue) {
+                              if (newValue == "CREATE_NEW") {
+                                widget.promptTitleController.clear();
+                                widget.mainPromptController.clear();
+                                widget.onPromptChanged();
+                              } else if (newValue != null) {
+                                final prompt = chatProvider.savedSystemPrompts
+                                    .firstWhere((p) => p.title == newValue);
+                                // Only update main prompt (keep rules intact)
+                                _parseSystemInstruction(prompt.content, updateMain: true, updateRules: false);
+                                widget.onPromptChanged();
+                              }
+                            },
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.copy,
-                          color: Colors.blueAccent,
-                          size: scaleProvider.systemFontSize * 1.5,
-                        ),
-                        tooltip: "Copy Text",
-                        onPressed: _copyToClipboard,
                       ),
-                      Container(width: 1, height: 20, color: Colors.white12),
-                      IconButton(
-                        icon: Icon(
-                          Icons.paste,
-                          color: Colors.orangeAccent,
-                          size: scaleProvider.systemFontSize * 1.5,
+
+                      const SizedBox(height: 8),
+                      
+                      // Helper Buttons
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // SAVE TO LIBRARY
+                            Center(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: themeProvider.appThemeColor,
+                                  side: BorderSide(color: themeProvider.appThemeColor),
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                ),
+                                onPressed: _handleSavePreset,
+                                icon: const Icon(Icons.save, size: 18),
+                                label: const Text("Save to Library"),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            
+                            // DELETE, EXPORT, IMPORT
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                IconButton.filled(
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Colors.redAccent.withAlpha(50),
+                                  ),
+                                  icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                                  tooltip: "Delete from Library",
+                                  onPressed: () => _confirmDeletePromptFromLibrary(
+                                    widget.promptTitleController.text,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_upward, color: Colors.blueAccent),
+                                  tooltip: "Export Preset to File",
+                                  onPressed: _handleExportPreset,
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_downward, color: Colors.greenAccent),
+                                  tooltip: "Import Preset from File",
+                                  onPressed: _handleImportPreset,
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        tooltip: "Paste Text",
-                        onPressed: _pasteFromClipboard,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      TextField(
+                        controller: widget.promptTitleController,
+                        decoration: InputDecoration(
+                          labelText: "Prompt Title",
+                          labelStyle: TextStyle(
+                            color: themeProvider.appThemeColor,
+                            fontSize: scaleProvider.systemFontSize * 0.8,
+                          ),
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.black12,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          isDense: true,
+                        ),
+                        style: TextStyle(
+                          fontSize: scaleProvider.systemFontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 5),
+
+                      // Main Prompt Input
+                      TextField(
+                        controller: widget.mainPromptController,
+                        onChanged: (_) => widget.onPromptChanged(),
+                        maxLines: 8,
+                        minLines: 3,
+                        decoration: InputDecoration(
+                          labelText: "Main System Prompt (Base Rules)",
+                          hintText: "Enter the core roleplay rules here...",
+                          hintStyle: TextStyle(
+                            fontSize: scaleProvider.systemFontSize * 0.8,
+                          ),
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.black26,
+                        ),
+                        style: TextStyle(
+                           fontSize: scaleProvider.systemFontSize,
+                        ),
                       ),
                     ],
                   ),
                 ),
-
-                const SizedBox(height: 8),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: themeProvider.appThemeColor,
-                          side: BorderSide(color: themeProvider.appThemeColor),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 0,
-                            horizontal: 8,
-                          ),
-                          textStyle: TextStyle(
-                            fontSize: scaleProvider.systemFontSize * 1,
-                          ),
-                        ),
-                        onPressed: _handleSavePreset,
-                        icon: Icon(
-                          Icons.save,
-                          size: scaleProvider.systemFontSize * 1.25,
-                        ),
-                        label: Text("Save Preset"),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton.filled(
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.redAccent.withAlpha(
-                          (0.2 * 255).round(),
-                        ),
-                      ),
-                      icon: Icon(
-                        Icons.delete,
-                        color: Colors.redAccent,
-                        size: scaleProvider.systemFontSize * 1.2,
-                      ),
-                      tooltip: "Delete Preset",
-                      onPressed: () {
-                        chatProvider.deletePromptFromLibrary(
-                          widget.promptTitleController.text,
-                        );
-                        widget.promptTitleController.clear();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Deleted Preset")),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
+          ],
+        ),                
+                const SizedBox(height: 20),
+                
+        // --- 2. Character Card Section ---
+        ExpansionTile(
+          initiallyExpanded: chatProvider.characterCard.name.isNotEmpty,
           title: Text(
-            "Grounding / Web Search",
+            "Character Card",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
-                  ? [
-                      Shadow(
-                        color: themeProvider.appThemeColor.withOpacity(0.9),
-                        blurRadius: 20,
-                      ),
-                    ]
-                  : [],
+              fontWeight: FontWeight.bold,
+              color: Colors.orangeAccent,
             ),
           ),
           subtitle: Text(
-            chatProvider.currentProvider == AiProvider.gemini
-                ? "Uses Google Search (Native)"
-                : chatProvider.currentProvider == AiProvider.openRouter
-                ? "Uses OpenRouter Web Plugin"
-                : "Not available on this provider",
-            style: TextStyle(
-              fontSize: scaleProvider.systemFontSize * 0.8,
-              color: Colors.grey,
-            ),
+            chatProvider.characterCard.name.isNotEmpty 
+              ? "Active: ${chatProvider.characterCard.name}"
+              : "Import V1/V2 PNG or JSON cards",
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
           ),
-          value: chatProvider.enableGrounding,
-          activeThumbColor: Colors.greenAccent,
-          onChanged:
-              (chatProvider.currentProvider == AiProvider.gemini ||
-                  chatProvider.currentProvider == AiProvider.openRouter ||
-                  chatProvider.currentProvider == AiProvider.arliAi ||
-                  chatProvider.currentProvider == AiProvider.nanoGpt)
-              ? (val) {
-                  chatProvider.setEnableGrounding(val);
-                  chatProvider.saveSettings();
-                }
-              : null,
+          trailing: Switch(
+            value: chatProvider.enableCharacterCard,
+            activeColor: Colors.orangeAccent,
+            onChanged: (val) {
+              chatProvider.setEnableCharacterCard(val);
+              chatProvider.saveSettings();
+            },
+          ),
+          children: [
+             Opacity(
+               opacity: chatProvider.enableCharacterCard ? 1.0 : 0.5,
+               child: AbsorbPointer(
+                 absorbing: !chatProvider.enableCharacterCard,
+                 child: Padding(
+                   padding: const EdgeInsets.all(12.0),
+                   child: Column(
+                     children: [
+                       // Import/Export/Clear Column
+                       Column(
+                         crossAxisAlignment: CrossAxisAlignment.stretch,
+                         children: [
+                               ElevatedButton.icon(
+                                 onPressed: _handleImportCharacterCard,
+                                 icon: const Icon(Icons.file_open, size: 16),
+                                 label: const Text("Import Card"),
+                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                               ),
+                               const SizedBox(height: 8),
+                               OutlinedButton.icon(
+                                 onPressed: _handleExportCharacterCard,
+                                 icon: const Icon(Icons.save_alt, size: 16),
+                                 label: const Text("Export JSON"),
+                               ),
+                               TextButton(
+                                 onPressed: _clearCharacterCard,
+                                 child: const Text("Clear Card", style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                               )
+                         ],
+                       ),
+                       const Divider(color: Colors.white12),
+                       _buildCardField("Name", _cardNameController),
+                       const SizedBox(height: 8),
+                       _buildCardField("Description / Persona", _cardDescriptionController, maxLines: 3),
+                       const SizedBox(height: 8),
+                       _buildCardField("First Message", _cardFirstMesController, maxLines: 3),
+                       const SizedBox(height: 8),
+                       ExpansionTile(
+                         title: const Text("More Fields (Scenario, Examples, etc.)", style: TextStyle(fontSize: 14)),
+                         dense: true,
+                         children: [
+                            _buildCardField("Scenario", _cardScenarioController, maxLines: 2),
+                            const SizedBox(height: 8),
+                            _buildCardField("Personality", _cardPersonalityController, maxLines: 2),
+                            const SizedBox(height: 8),
+                            _buildCardField("Example Dialogue (Mes Example)", _cardMesExampleController, maxLines: 4),
+                            const SizedBox(height: 8),
+                            _buildCardField("Character System Prompt", _cardSystemPromptController, maxLines: 2),
+                         ],
+                       )
+                     ],
+                   ),
+                 ),
+               ),
+             )
+          ],
         ),
 
-        if (chatProvider.currentProvider == AiProvider.gemini)
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              "Disable Safety Filters",
-              style: TextStyle(
-                fontSize: scaleProvider.systemFontSize,
-                shadows: themeProvider.enableBloom
-                    ? [
-                        Shadow(
-                          color: themeProvider.appThemeColor.withOpacity(0.9),
-                          blurRadius: 20,
-                        ),
-                      ]
-                    : [],
-              ),
-            ),
-            subtitle: Text(
-              "Applies to Gemini Only",
-              style: TextStyle(
-                fontSize: scaleProvider.systemFontSize * 0.8,
-                color: Colors.grey,
-              ),
-            ),
-            value: chatProvider.disableSafety,
-            activeThumbColor: Colors.redAccent,
-            onChanged: (val) {
-              chatProvider.setDisableSafety(val);
-              chatProvider.saveSettings();
-            },
-          ),
+                const SizedBox(height: 20),
 
-        if (chatProvider.currentProvider == AiProvider.openRouter)
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              "Request Usage Stats",
-              style: TextStyle(
-                fontSize: scaleProvider.systemFontSize,
-                shadows: themeProvider.enableBloom
-                    ? [
-                        Shadow(
-                          color: themeProvider.appThemeColor.withOpacity(0.9),
-                          blurRadius: 20,
-                        ),
-                      ]
-                    : [],
-              ),
-            ),
-            subtitle: Text(
-              "Appends token usage info to response",
-              style: TextStyle(
-                fontSize: scaleProvider.systemFontSize * 0.8,
-                color: Colors.grey,
-              ),
-            ),
-            value: chatProvider.enableUsage,
-            activeThumbColor: Colors.tealAccent,
-            onChanged: (val) {
-              chatProvider.setEnableUsage(val);
-              chatProvider.saveSettings();
-            },
-          ),
-        const Divider(),
-
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
+                // --- Custom Rules & Advanced Prompt ---
+        // --- 3. Custom Rules & Presets ---
+        ExpansionTile(
           title: Text(
-            "Advanced System Prompt",
+            "Custom Rules & Presets",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: scaleProvider.systemFontSize,
@@ -796,362 +1014,249 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                   : [],
             ),
           ),
-          value: chatProvider.enableAdvancedSystemPrompt,
-          activeThumbColor: themeProvider.appThemeColor,
-          onChanged: (val) {
-            chatProvider.setEnableAdvancedSystemPrompt(val);
-            chatProvider.saveSettings();
-          },
-        ),
-
-        Opacity(
-          opacity: chatProvider.enableAdvancedSystemPrompt ? 1.0 : 0.5,
-          child: AbsorbPointer(
-            absorbing: !chatProvider.enableAdvancedSystemPrompt,
-            child: Column(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: themeProvider.enableBloom
-                          ? themeProvider.appThemeColor.withOpacity(0.5)
-                          : Colors.white12,
-                    ),
-                  ),
-                  child: ExpansionTile(
-                    title: Text(
-                      "Tweaks & Overrides",
-                      style: TextStyle(
-                        fontSize: scaleProvider.systemFontSize * 0.8,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    subtitle: Text(
-                      _isKaomojiFixEnabled
-                          ? "Active: Kaomoji"
-                          : "Configure hidden behavior...",
-                      style: TextStyle(
-                        fontSize: scaleProvider.systemFontSize * 0.6,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    collapsedShape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                    ),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                    ),
-                    children: [
-                      ListTile(
-                        dense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                        ),
-                        title: Text(
-                          "Kaomoji Mode",
-                          style: TextStyle(
-                            color: themeProvider.appThemeColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: scaleProvider.systemFontSize * 0.8,
-                          ),
-                        ),
-                        trailing: Switch(
-                          value: _isKaomojiFixEnabled,
-                          activeThumbColor: themeProvider.appThemeColor,
-                          onChanged: (val) {
-                            setState(() => _isKaomojiFixEnabled = val);
-                            _onAdvancedSwitchChanged();
-                            widget.onPromptChanged();
-                          },
-                        ),
-                        onTap: () {
-                          widget.advancedPromptController.text =
-                              kDefaultKaomojiFix;
-                        },
-                      ),
-
-                      if (_customRules.isNotEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          child: Divider(color: Colors.white10),
-                        ),
-                      ..._customRules.asMap().entries.map((entry) {
-                        final int index = entry.key;
-                        final Map<String, dynamic> rule = entry.value;
-
-                        return ListTile(
-                          dense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                          ),
-                          title: Text(
-                            rule['label'],
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: scaleProvider.systemFontSize * 0.8,
+          trailing: Switch(
+            value: chatProvider.enableAdvancedSystemPrompt,
+            activeColor: themeProvider.appThemeColor,
+            onChanged: (val) {
+              chatProvider.setEnableAdvancedSystemPrompt(val);
+              chatProvider.saveSettings();
+            },
+          ),
+          children: [
+             Opacity(
+               opacity: chatProvider.enableAdvancedSystemPrompt ? 1.0 : 0.5,
+               child: AbsorbPointer(
+                 absorbing: !chatProvider.enableAdvancedSystemPrompt,
+                 child: Container(
+                   decoration: BoxDecoration(
+                     color: Colors.black26,
+                     borderRadius: BorderRadius.circular(8),
+                     border: Border.all(color: Colors.white12),
+                   ),
+                   child: Column(
+                     crossAxisAlignment: CrossAxisAlignment.stretch,
+                     children: [
+                        // --- Rules Preset Dropdown ---
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: themeProvider.enableBloom
+                                  ? themeProvider.appThemeColor.withOpacity(0.5)
+                                  : Colors.white12,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                          leading: IconButton(
-                            icon: const Icon(
-                              Icons.edit,
-                              color: Colors.blueAccent,
-                              size: 16,
-                            ),
-                            tooltip: "Edit Rule",
-                            onPressed: () => _editCustomRule(index),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.white24,
-                                  size: 16,
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              hint: Text(
+                                "Load Rules Preset...",
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: scaleProvider.systemFontSize * 0.8,
                                 ),
-                                onPressed: () =>
-                                    _confirmDeleteCustomRule(index),
-                                tooltip: "Delete Rule",
                               ),
-                              Switch(
-                                value: rule['active'] == true,
-                                activeThumbColor: Colors.blueAccent,
-                                onChanged: (val) {
-                                  setState(() {
-                                    rule['active'] = val;
-                                    _onAdvancedSwitchChanged();
-                                  });
+                              dropdownColor: const Color(0xFF2C2C2C),
+                              icon: Icon(
+                                Icons.arrow_drop_down,
+                                color: themeProvider.appThemeColor,
+                              ),
+                              value: null,
+                              items: chatProvider.savedSystemPrompts.map((prompt) {
+                                  return DropdownMenuItem<String>(
+                                    value: prompt.title,
+                                    child: Text(
+                                      prompt.title,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: scaleProvider.systemFontSize,
+                                      ),
+                                    ),
+                                  );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                if (newValue != null) {
+                                  final prompt = chatProvider.savedSystemPrompts
+                                      .firstWhere((p) => p.title == newValue);
+                                  // Only update rules (keep main prompt intact)
+                                  _parseSystemInstruction(prompt.content, updateMain: false, updateRules: true);
                                   widget.onPromptChanged();
-                                },
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+
+                        // List of Rules
+                        if (_customRules.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Text("No custom rules defined.", style: TextStyle(color: Colors.grey), textAlign: TextAlign.center),
+                          ),
+                          
+                        ..._customRules.asMap().entries.map((entry) {
+                           final int index = entry.key;
+                           final Map<String, dynamic> rule = entry.value;
+
+                           return ListTile(
+                             dense: true,
+                             title: Text(
+                               rule['label'],
+                               style: TextStyle(
+                                 color: Colors.white70,
+                                 fontSize: scaleProvider.systemFontSize * 0.8,
+                               ),
+                               maxLines: 1,
+                               overflow: TextOverflow.ellipsis,
+                             ),
+                             subtitle: Text(
+                               (rule['content'] as String).replaceAll('\n', ' '),
+                               maxLines: 1,
+                               overflow: TextOverflow.ellipsis,
+                               style: const TextStyle(color: Colors.white30, fontSize: 10),
+                             ),
+                             leading: IconButton(
+                               icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 16),
+                               onPressed: () => _editCustomRule(index),
+                             ),
+                             trailing: Row(
+                               mainAxisSize: MainAxisSize.min,
+                               children: [
+                                 IconButton(
+                                   icon: const Icon(Icons.close, color: Colors.white24, size: 16),
+                                   onPressed: () => _confirmDeleteCustomRule(index),
+                                 ),
+                                 Switch(
+                                   value: rule['active'] == true,
+                                   activeThumbColor: Colors.blueAccent,
+                                   onChanged: (val) {
+                                     setState(() {
+                                       rule['active'] = val;
+                                       _onAdvancedSwitchChanged();
+                                     });
+                                   },
+                                 ),
+                               ],
+                             ),
+                           );
+                       }),
+                       
+                       const Divider(color: Colors.white12),
+                       
+                       // Add New Rule
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: _ruleLabelController,
+                                decoration: const InputDecoration(
+                                  labelText: "Rule Name",
+                                  hintText: "Name",
+                                  isDense: true,
+                                  filled: true,
+                                  fillColor: Colors.black12,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _newRuleContentController,
+                                      decoration: const InputDecoration(
+                                        labelText: "New Rule Content",
+                                        hintText: "Content to append...",
+                                        isDense: true,
+                                        filled: true,
+                                        fillColor: Colors.black12,
+                                      ),
+                                      onSubmitted: (_) => _addRuleFromInput(),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle, color: Colors.greenAccent),
+                                    onPressed: _addRuleFromInput,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                          onTap: () {
-                            widget.advancedPromptController.text =
-                                rule['content'];
-                          },
-                        );
-                      }),
-                      const Divider(),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                        
+                        // Preview of compiled Advanced Prompt
+                        ExpansionTile(
+                          title: const Text("View Generated Advanced Prompt", style: TextStyle(fontSize: 12, color: Colors.grey)),
                           children: [
-                            Text(
-                              "Raw Advanced Instructions:",
-                              style: TextStyle(
-                                fontSize: scaleProvider.systemFontSize * 0.7,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.bold,
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: TextField(
+                                controller: widget.advancedPromptController,
+                                readOnly: true, // It is generated from rules
+                                maxLines: 5,
+                                decoration: const InputDecoration(
+                                  filled: true, 
+                                  fillColor: Colors.black12,
+                                  border: OutlineInputBorder(),
+                                ),
+                                style: const TextStyle(fontSize: 12, color: Colors.white70),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Focus(
-                              onFocusChange: (hasFocus) => setState(() {}),
-                              child: Builder(
-                                builder: (context) {
-                                  final hasFocus = Focus.of(context).hasFocus;
-                                  return AnimatedContainer(
-                                    duration: const Duration(milliseconds: 300),
-                                    height: hasFocus ? 200 : null,
-                                    child: TextField(
-                                      controller:
-                                          widget.advancedPromptController,
-                                      maxLines: hasFocus ? null : 4,
-                                      expands: hasFocus,
-                                      textAlignVertical: TextAlignVertical.top,
-                                      style: TextStyle(
-                                        fontSize:
-                                            scaleProvider.systemFontSize * 0.8,
-                                        fontFamily: 'monospace',
-                                        color: Colors.white70,
-                                      ),
-                                      decoration: InputDecoration(
-                                        filled: true,
-                                        fillColor: Colors.black45,
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                          borderSide: BorderSide.none,
-                                        ),
-                                        contentPadding: const EdgeInsets.all(8),
-                                      ),
-                                      onChanged: (val) {
-                                        // Sync switches to text presence
-                                        setState(() {
-                                          _isKaomojiFixEnabled = val.contains(
-                                            kDefaultKaomojiFix,
-                                          );
-                                        });
-                                        widget.onPromptChanged();
-                                      },
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
+                            )
                           ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                const Divider(),
-
-                Text(
-                  "Add a New Tweak/Rule",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white70,
-                    fontSize: scaleProvider.systemFontSize,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Focus(
-                  onFocusChange: (hasFocus) {
-                    setState(() {});
-                  },
-                  child: Builder(
-                    builder: (context) {
-                      final hasFocus = Focus.of(context).hasFocus;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                        height: hasFocus ? 250 : null,
-                        child: TextField(
-                          controller: _newRuleContentController,
-                          maxLines: hasFocus ? null : 4,
-                          expands: hasFocus,
-                          textAlignVertical: TextAlignVertical.top,
-                          decoration: InputDecoration(
-                            hintText:
-                                "Enter new rule content here...\n(e.g., 'You are a pirate.')",
-                            border: OutlineInputBorder(
-                              borderSide: themeProvider.enableBloom
-                                  ? BorderSide(
-                                      color: themeProvider.appThemeColor,
-                                    )
-                                  : const BorderSide(),
-                            ),
-                            enabledBorder: themeProvider.enableBloom
-                                ? OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: themeProvider.appThemeColor
-                                          .withOpacity(0.5),
-                                    ),
-                                  )
-                                : const OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.black26,
-                            contentPadding: const EdgeInsets.all(8),
-                          ),
-                          style: TextStyle(
-                            fontSize: scaleProvider.systemFontSize * 0.8,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.copy,
-                          color: Colors.blueAccent,
-                          size: scaleProvider.systemFontSize * 1.5,
-                        ),
-                        tooltip: "Copy Rule Content",
-                        onPressed: _copyRuleContentToClipboard,
-                      ),
-                      Container(width: 1, height: 20, color: Colors.white12),
-                      IconButton(
-                        icon: Icon(
-                          Icons.paste,
-                          color: Colors.orangeAccent,
-                          size: scaleProvider.systemFontSize * 1.5,
-                        ),
-                        tooltip: "Paste Rule Content",
-                        onPressed: _pasteRuleContentFromClipboard,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _ruleLabelController,
-                        decoration: InputDecoration(
-                          hintText: "Name your new rule...",
-                          hintStyle: TextStyle(
-                            fontSize: scaleProvider.systemFontSize * 0.7,
-                            color: Colors.grey,
-                          ),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          filled: true,
-                          fillColor: Colors.black12,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        style: TextStyle(
-                          fontSize: scaleProvider.systemFontSize * 0.8,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filled(
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.greenAccent.withAlpha(40),
-                      ),
-                      icon: Icon(
-                        Icons.add_circle_outline,
-                        color: Colors.greenAccent,
-                        size: scaleProvider.systemFontSize * 0.8,
-                      ),
-                      tooltip: "Add as new Tweak/Rule",
-                      onPressed: _addRuleFromInput,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
+                        )
+                     ],
+                   ),
+                 ),
+               ),
+             )
+          ],
         ),
+
+        
         const Divider(),
       ],
+    );
+  }
+
+  void _syncCardFromControllers() {
+    _cardSaveTimer?.cancel();
+    _cardSaveTimer = Timer(const Duration(milliseconds: 1000), () {
+      if (!mounted) return;
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      
+      // Create updated card from controllers
+      // Note: We deliberately do NOT update 'creator' or 'spec_version' here as UI doesn't edit them yet
+      final updatedCard = chatProvider.characterCard.copyWith(
+        name: _cardNameController.text,
+        description: _cardDescriptionController.text,
+        firstMessage: _cardFirstMesController.text,
+        scenario: _cardScenarioController.text,
+        personality: _cardPersonalityController.text,
+        mesExample: _cardMesExampleController.text,
+        systemPrompt: _cardSystemPromptController.text,
+      );
+      
+      chatProvider.setCharacterCard(updatedCard);
+    });
+  }
+
+  Widget _buildCardField(String label, TextEditingController controller, {int maxLines = 1}) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      onChanged: (_) => _syncCardFromControllers(),
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        filled: true,
+        fillColor: Colors.black12,
+        border: const OutlineInputBorder(),
+      ),
+      style: const TextStyle(fontSize: 13),
     );
   }
 }

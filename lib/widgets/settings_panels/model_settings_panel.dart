@@ -231,6 +231,114 @@ class ModelSettingsPanel extends StatelessWidget {
             controller: groqModelController,
           ),
         const SizedBox(height: 16),
+        
+        // --- Added Settings (Moved from System Prompt) ---
+        const Divider(),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            "Grounding / Web Search",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize,
+              shadows: themeProvider.enableBloom
+                  ? [
+                      Shadow(
+                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        blurRadius: 20,
+                      ),
+                    ]
+                  : [],
+            ),
+          ),
+          subtitle: Text(
+            chatProvider.currentProvider == AiProvider.gemini
+                ? "Uses Google Search (Native)"
+                : chatProvider.currentProvider == AiProvider.openRouter
+                ? "Uses OpenRouter Web Plugin"
+                : "Not available on this provider",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
+          value: chatProvider.enableGrounding,
+          activeThumbColor: Colors.greenAccent,
+          onChanged:
+              (chatProvider.currentProvider == AiProvider.gemini ||
+                  chatProvider.currentProvider == AiProvider.openRouter ||
+                  chatProvider.currentProvider == AiProvider.arliAi ||
+                  chatProvider.currentProvider == AiProvider.nanoGpt)
+              ? (val) {
+                  chatProvider.setEnableGrounding(val);
+                  chatProvider.saveSettings();
+                }
+              : null,
+        ),
+
+        if (chatProvider.currentProvider == AiProvider.gemini)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              "Disable Safety Filters",
+              style: TextStyle(
+                fontSize: scaleProvider.systemFontSize,
+                shadows: themeProvider.enableBloom
+                    ? [
+                        Shadow(
+                          color: themeProvider.appThemeColor.withOpacity(0.9),
+                          blurRadius: 20,
+                        ),
+                      ]
+                    : [],
+              ),
+            ),
+            subtitle: Text(
+              "Applies to Gemini Only",
+              style: TextStyle(
+                fontSize: scaleProvider.systemFontSize * 0.8,
+                color: Colors.grey,
+              ),
+            ),
+            value: chatProvider.disableSafety,
+            activeThumbColor: Colors.redAccent,
+            onChanged: (val) {
+              chatProvider.setDisableSafety(val);
+              chatProvider.saveSettings();
+            },
+          ),
+
+        if (chatProvider.currentProvider == AiProvider.openRouter)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              "Request Usage Stats",
+              style: TextStyle(
+                fontSize: scaleProvider.systemFontSize,
+                shadows: themeProvider.enableBloom
+                    ? [
+                        Shadow(
+                          color: themeProvider.appThemeColor.withOpacity(0.9),
+                          blurRadius: 20,
+                        ),
+                      ]
+                    : [],
+              ),
+            ),
+            subtitle: Text(
+              "Appends token usage info to response",
+              style: TextStyle(
+                fontSize: scaleProvider.systemFontSize * 0.8,
+                color: Colors.grey,
+              ),
+            ),
+            value: chatProvider.enableUsage,
+            activeThumbColor: Colors.tealAccent,
+            onChanged: (val) {
+              chatProvider.setEnableUsage(val);
+              chatProvider.saveSettings();
+            },
+          ),
+
       ],
     );
   }

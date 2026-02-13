@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_models.dart';
+import '../models/character_card.dart';
 import '../services/chat_api_service.dart';
 import '../services/secure_storage_service.dart';
 import '../utils/constants.dart';
@@ -128,6 +129,7 @@ class ChatProvider extends ChangeNotifier {
 
   bool _enableSystemPrompt = true;
   bool _enableAdvancedSystemPrompt = true;
+  bool _enableCharacterCard = true;
   bool _enableMsgHistory = true;
   bool _enableReasoning = false;
   bool _enableGenerationSettings = true;
@@ -146,6 +148,7 @@ class ChatProvider extends ChangeNotifier {
 
   bool get enableSystemPrompt => _enableSystemPrompt;
   bool get enableAdvancedSystemPrompt => _enableAdvancedSystemPrompt;
+  bool get enableCharacterCard => _enableCharacterCard;
   bool get enableMsgHistory => _enableMsgHistory;
   bool get enableReasoning => _enableReasoning;
   bool get enableGenerationSettings => _enableGenerationSettings;
@@ -158,6 +161,7 @@ class ChatProvider extends ChangeNotifier {
   String _currentTitle = "";
   String _systemInstruction = "";
   String _advancedSystemInstruction = "";
+  CharacterCard _characterCard = CharacterCard();
 
   List<ChatMessage> get messages => _messages;
   List<ChatSessionData> get savedSessions => _savedSessions;
@@ -166,6 +170,7 @@ class ChatProvider extends ChangeNotifier {
   String get currentTitle => _currentTitle;
   String get systemInstruction => _systemInstruction;
   String get advancedSystemInstruction => _advancedSystemInstruction;
+  CharacterCard get characterCard => _characterCard;
 
   List<SystemPromptData> _savedSystemPrompts = [];
   List<SystemPromptData> get savedSystemPrompts => _savedSystemPrompts;
@@ -243,6 +248,20 @@ class ChatProvider extends ChangeNotifier {
         notifyListeners();
       } catch (e) {
         debugPrint("Error loading prompts: $e");
+      }
+    }
+  }
+
+  Future<void> _loadCharacterCard() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? data = prefs.getString('airp_character_card');
+    if (data != null) {
+      try {
+        final Map<String, dynamic> jsonMap = jsonDecode(data);
+        _characterCard = CharacterCard.fromJson(jsonMap);
+        notifyListeners();
+      } catch (e) {
+        debugPrint("Error loading character card: $e");
       }
     }
   }
@@ -364,12 +383,15 @@ class ChatProvider extends ChangeNotifier {
     _enableSystemPrompt = prefs.getBool('airp_enable_system_prompt') ?? true;
     _enableAdvancedSystemPrompt =
         prefs.getBool('airp_enable_advanced_system_prompt') ?? true;
+    _enableCharacterCard = prefs.getBool('enable_character_card') ?? true;
     _enableMsgHistory = prefs.getBool('airp_enable_msg_history') ?? true;
     _enableReasoning = prefs.getBool('airp_enable_reasoning') ?? false;
     _enableGenerationSettings =
         prefs.getBool('airp_enable_generation_settings') ?? true;
     _enableMaxOutputTokens =
         prefs.getBool('airp_enable_max_output_tokens') ?? true;
+
+    await _loadCharacterCard();
 
     notifyListeners();
 
@@ -415,6 +437,36 @@ class ChatProvider extends ChangeNotifier {
   void setAdvancedSystemInstruction(String instruction) {
     _advancedSystemInstruction = instruction;
     notifyListeners();
+  }
+
+  void setEnableCharacterCard(bool enable) {
+    _enableCharacterCard = enable;
+    notifyListeners();
+    _saveEnableCharacterCard();
+    if (_currentProvider == AiProvider.gemini) {
+      initializeModel();
+    }
+  }
+
+  Future<void> _saveEnableCharacterCard() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('enable_character_card', _enableCharacterCard);
+  }
+
+
+  void setCharacterCard(CharacterCard card) {
+    _characterCard = card;
+    notifyListeners();
+    _saveCharacterCard();
+    if (_currentProvider == AiProvider.gemini) {
+      initializeModel();
+    }
+  }
+
+  Future<void> _saveCharacterCard() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String data = jsonEncode(_characterCard.toJson());
+    await prefs.setString('airp_character_card', data);
   }
 
   void setModel(String model) {
@@ -701,6 +753,52 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  /// Constructs the full system instruction including Main Prompt, Advanced Prompt, and Character Card.
+  String _buildSystemInstruction() {
+    String finalSystemInstruction = "";
+    if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
+    if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
+      if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
+      finalSystemInstruction += _advancedSystemInstruction;
+    }
+
+    // Append Character Card data if present AND enabled
+    if (_enableCharacterCard && (_characterCard.name.isNotEmpty || _characterCard.description.isNotEmpty || _characterCard.personality.isNotEmpty)) {
+       if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
+       
+       final StringBuffer cardBuffer = StringBuffer();
+       cardBuffer.writeln("--- Character Information ---");
+       
+       if (_characterCard.name.isNotEmpty) {
+         cardBuffer.writeln("Name: ${_characterCard.name}");
+       }
+       
+       if (_characterCard.description.isNotEmpty) {
+         cardBuffer.writeln("Details/Persona: ${_characterCard.description}");
+       }
+
+        if (_characterCard.personality.isNotEmpty) {
+         cardBuffer.writeln("Personality: ${_characterCard.personality}");
+       }
+       
+       if (_characterCard.scenario.isNotEmpty) {
+         cardBuffer.writeln("Scenario: ${_characterCard.scenario}");
+       }
+       
+       if (_characterCard.mesExample.isNotEmpty) {
+         cardBuffer.writeln("Dialogue Examples:\n${_characterCard.mesExample}");
+       }
+
+       if (_characterCard.systemPrompt.isNotEmpty) {
+          cardBuffer.writeln("Instructions: ${_characterCard.systemPrompt}");
+       }
+
+       finalSystemInstruction += cardBuffer.toString();
+    }
+    
+    return finalSystemInstruction;
+  }
+
   /// Initializes the generative model based on the current provider and settings.
   ///
   /// This configures safety settings, system instructions, and generation
@@ -734,13 +832,8 @@ class ChatProvider extends ChangeNotifier {
             ]
           : [];
 
-      String finalSystemInstruction = "";
-      if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
-      if (_enableAdvancedSystemPrompt &&
-          _advancedSystemInstruction.isNotEmpty) {
-        if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
-        finalSystemInstruction += _advancedSystemInstruction;
-      }
+      final String baseSystemInstruction = _buildSystemInstruction();
+      String finalSystemInstruction = baseSystemInstruction;
 
       if (_currentProvider == AiProvider.gemini &&
           _enableReasoning &&
@@ -851,15 +944,7 @@ class ChatProvider extends ChangeNotifier {
           }
         }
 
-        String finalSystemInstruction = "";
-        if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
-        if (_enableAdvancedSystemPrompt &&
-            _advancedSystemInstruction.isNotEmpty) {
-          if (finalSystemInstruction.isNotEmpty) {
-            finalSystemInstruction += "\n\n";
-          }
-          finalSystemInstruction += _advancedSystemInstruction;
-        }
+        String finalSystemInstruction = _buildSystemInstruction();
 
         final result = await ChatApiService.performGeminiGrounding(
           apiKey: activeKey,
@@ -1059,15 +1144,7 @@ class ChatProvider extends ChangeNotifier {
           apiKey = "local-key";
         }
 
-        String finalSystemInstruction = "";
-        if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
-        if (_enableAdvancedSystemPrompt &&
-            _advancedSystemInstruction.isNotEmpty) {
-          if (finalSystemInstruction.isNotEmpty) {
-            finalSystemInstruction += "\n\n";
-          }
-          finalSystemInstruction += _advancedSystemInstruction;
-        }
+        String finalSystemInstruction = _buildSystemInstruction();
 
         responseStream = ChatApiService.streamOpenAiCompatible(
           apiKey: apiKey,
@@ -1340,12 +1417,7 @@ class ChatProvider extends ChangeNotifier {
       providerStr = 'groq';
     }
 
-    String finalSystemInstruction = "";
-    if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
-    if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
-      if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
-      finalSystemInstruction += _advancedSystemInstruction;
-    }
+    String finalSystemInstruction = _buildSystemInstruction();
 
     final sessionData = ChatSessionData(
       id: _currentSessionId!,

@@ -1,10 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../utils/version.dart';
+import '../models/character_card.dart';
+import '../models/preset_model.dart';
+import 'character_card_service.dart';
 
 /// Options controlling which categories to include in a library export.
 class ExportOptions {
@@ -212,6 +216,20 @@ class LibraryService {
     }
 
     await prefs.setString('custom_sys_prompt_rules', jsonEncode(existing));
+  }
+
+  // --- Character Card Helpers ---
+
+  static Future<String> exportCharacterCard(CharacterCard card) async {
+    final map = card.toJson();
+    const encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(map);
+  }
+
+  static Future<String> exportPreset(SystemPreset preset) async {
+    final map = preset.toJson();
+    const encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(map);
   }
 }
 
