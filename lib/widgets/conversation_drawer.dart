@@ -10,7 +10,8 @@ import '../utils/constants.dart';
 /// A drawer widget that displays and manages the list of saved chat sessions.
 ///
 /// This drawer allows users to search, star, delete, and switch between
-/// different chat conversations.
+/// different chat conversations. Shows loading indicators for sessions with
+/// active background streams and notifications for completed responses.
 class ConversationDrawer extends StatefulWidget {
   /// Callback triggered when the drawer should be closed.
   final VoidCallback? onClose;
@@ -21,8 +22,10 @@ class ConversationDrawer extends StatefulWidget {
   State<ConversationDrawer> createState() => _ConversationDrawerState();
 }
 
-class _ConversationDrawerState extends State<ConversationDrawer> {
+class _ConversationDrawerState extends State<ConversationDrawer>
+    with TickerProviderStateMixin {
   String _searchQuery = '';
+
 
   @override
   Widget build(BuildContext context) {
@@ -52,8 +55,10 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
       child: SizedBox(
         width: scaleProvider.drawerWidth,
         height: double.infinity,
-        child: Column(
+        child: Stack(
           children: [
+            Column(
+              children: [
             Container(
               padding: const EdgeInsets.fromLTRB(16, 50, 16, 0),
               color: Colors.black26,
@@ -273,6 +278,30 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             ),
           ],
         ),
+
+        // Notification overlay for completed background responses
+        if (chatProvider.pendingNotifications.isNotEmpty)
+          Positioned(
+            left: 8,
+            right: 8,
+            bottom: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(
+                chatProvider.pendingNotifications.length,
+                (i) => _BackgroundNotificationCard(
+                  notification: chatProvider.pendingNotifications[i],
+                  themeProvider: themeProvider,
+                  scaleProvider: scaleProvider,
+                  onDismiss: () {
+                    chatProvider.removeNotification(i);
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
+        ),
       ),
     );
   }
@@ -285,6 +314,7 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
     ScaleProvider scaleProvider,
   ) {
     final bool isActive = session.id == chatProvider.currentSessionId;
+    final bool isStreaming = chatProvider.streamingSessionIds.contains(session.id);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
@@ -329,18 +359,37 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
           ),
         ),
 
-        title: Text(
-          session.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: isActive ? themeProvider.appThemeColor : Colors.grey[300],
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            fontSize: scaleProvider.systemFontSize + 1,
-            shadows: (isActive && themeProvider.enableBloom)
-                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)]
-                : [],
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                session.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isActive ? themeProvider.appThemeColor : Colors.grey[300],
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  fontSize: scaleProvider.systemFontSize + 1,
+                  shadows: (isActive && themeProvider.enableBloom)
+                      ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)]
+                      : [],
+                ),
+              ),
+            ),
+            if (isStreaming) ...[
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    themeProvider.appThemeColor,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         subtitle: Text(
           cleanModelName(session.modelName),
@@ -404,6 +453,172 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// An auto-dismissing notification card for completed background AI responses.
+class _BackgroundNotificationCard extends StatefulWidget {
+  final BackgroundNotification notification;
+  final ThemeProvider themeProvider;
+  final ScaleProvider scaleProvider;
+  final VoidCallback onDismiss;
+
+  const _BackgroundNotificationCard({
+    required this.notification,
+    required this.themeProvider,
+    required this.scaleProvider,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_BackgroundNotificationCard> createState() =>
+      _BackgroundNotificationCardState();
+}
+
+class _BackgroundNotificationCardState
+    extends State<_BackgroundNotificationCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _controller.forward();
+
+    // Auto-dismiss after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        _controller.reverse().then((_) {
+          if (mounted) widget.onDismiss();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.themeProvider;
+    final scale = widget.scaleProvider;
+    final notif = widget.notification;
+
+    return SlideTransition(
+      position: _slideAnimation,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A1A),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.appThemeColor.withOpacity(0.4),
+              width: 1,
+            ),
+            boxShadow: theme.enableBloom
+                ? [
+                    BoxShadow(
+                      color: theme.appThemeColor.withOpacity(0.2),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : [
+                    const BoxShadow(
+                      color: Colors.black54,
+                      blurRadius: 8,
+                    ),
+                  ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.greenAccent,
+                    size: 16,
+                    shadows: theme.enableBloom
+                        ? [const Shadow(color: Colors.greenAccent, blurRadius: 6)]
+                        : [],
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      notif.sessionTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: theme.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scale.systemFontSize,
+                        shadows: theme.enableBloom
+                            ? [Shadow(color: theme.appThemeColor, blurRadius: 6)]
+                            : [],
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      _controller.reverse().then((_) {
+                        if (mounted) widget.onDismiss();
+                      });
+                    },
+                    child: Icon(
+                      Icons.close,
+                      color: Colors.grey[600],
+                      size: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                notif.messagePreview,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: scale.systemFontSize - 2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                cleanModelName(notif.modelName),
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: scale.systemFontSize - 3,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

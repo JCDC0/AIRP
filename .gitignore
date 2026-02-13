@@ -48,3 +48,5 @@ app.*.map.json
 main.dart.txt
 GEMINI.md
 Recommendations_summary.md
+suggested_features.md
+.gitignore

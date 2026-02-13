@@ -149,6 +149,7 @@ class ChatMessage {
     Map<String, dynamic>? usage,
     String? thoughtSignature,
     ValueNotifier<String>? contentNotifier,
+    bool clearContentNotifier = false,
   }) {
     return ChatMessage(
       text: text ?? this.text,
@@ -158,9 +159,31 @@ class ChatMessage {
       modelName: modelName ?? this.modelName,
       usage: usage ?? this.usage,
       thoughtSignature: thoughtSignature ?? this.thoughtSignature,
-      contentNotifier: contentNotifier ?? this.contentNotifier,
+      contentNotifier: clearContentNotifier ? null : (contentNotifier ?? this.contentNotifier),
     );
   }
+}
+
+/// A notification shown when a background AI response completes.
+class BackgroundNotification {
+  /// Title of the conversation that completed.
+  final String sessionTitle;
+
+  /// Preview of the AI response message.
+  final String messagePreview;
+
+  /// The model that generated the response.
+  final String modelName;
+
+  /// When the notification was created.
+  final DateTime timestamp;
+
+  BackgroundNotification({
+    required this.sessionTitle,
+    required this.messagePreview,
+    required this.modelName,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
 }
 
 /// Data structure for a saved system prompt preset.
