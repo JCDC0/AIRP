@@ -9,7 +9,6 @@ import 'package:file_picker/file_picker.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
-import '../../models/chat_models.dart';
 import '../../models/character_card.dart';
 import '../../models/preset_model.dart';
 import '../../services/character_card_service.dart';
@@ -338,7 +337,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         widget.mainPromptController.text = preset.systemPrompt;
         
         // Merge rules
-        final prefs = await SharedPreferences.getInstance();
         final List<Map<String, dynamic>> currentRules = [..._customRules];
         final existingLabels = currentRules.map((r) => r['label']).toSet();
         
@@ -621,13 +619,42 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     });
   }
 
+  void _copyCardFieldToClipboard(TextEditingController controller, String fieldName) {
+    final text = controller.text;
+    if (text.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: text));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Copied $fieldName to Clipboard!"),
+          duration: const Duration(milliseconds: 600),
+        ),
+      );
+    }
+  }
+
+  Future<void> _pasteToCardField(TextEditingController controller, String fieldName) async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text != null) {
+      setState(() {
+        controller.text = data!.text!;
+      });
+      _syncCardFromControllers();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Pasted to $fieldName"),
+          duration: const Duration(milliseconds: 600),
+        ),
+      );
+    }
+  }
+
   void _copyToClipboard() {
     final text = widget.mainPromptController.text;
     if (text.isNotEmpty) {
       Clipboard.setData(ClipboardData(text: text));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Copied rule to Clipboard!"),
+          content: Text("Copied main prompt to Clipboard!"),
           duration: Duration(milliseconds: 600),
         ),
       );
@@ -812,50 +839,44 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                       
                       // Helper Buttons
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // SAVE TO LIBRARY
-                            Center(
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: themeProvider.appThemeColor,
-                                  side: BorderSide(color: themeProvider.appThemeColor),
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                ),
-                                onPressed: _handleSavePreset,
-                                icon: const Icon(Icons.save, size: 18),
-                                label: const Text("Save to Library"),
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.redAccent,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              icon: const Icon(Icons.delete, size: 16),
+                              label: const Text("Clear from Library", style: TextStyle(fontSize: 12)),
+                              onPressed: () => _confirmDeletePromptFromLibrary(
+                                widget.promptTitleController.text,
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            
-                            // DELETE, EXPORT, IMPORT
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                IconButton.filled(
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: Colors.redAccent.withAlpha(50),
-                                  ),
-                                  icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                                  tooltip: "Delete from Library",
-                                  onPressed: () => _confirmDeletePromptFromLibrary(
-                                    widget.promptTitleController.text,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.arrow_upward, color: Colors.blueAccent),
-                                  tooltip: "Export Preset to File",
-                                  onPressed: _handleExportPreset,
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.arrow_downward, color: Colors.greenAccent),
-                                  tooltip: "Import Preset from File",
-                                  onPressed: _handleImportPreset,
-                                ),
-                              ],
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.blueAccent,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              icon: const Icon(Icons.arrow_upward, size: 16),
+                              label: const Text("Export to Library", style: TextStyle(fontSize: 12)),
+                              onPressed: _handleExportPreset,
+                            ),
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.greenAccent,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              icon: const Icon(Icons.arrow_downward, size: 16),
+                              label: const Text("Import from Files", style: TextStyle(fontSize: 12)),
+                              onPressed: _handleImportPreset,
                             ),
                           ],
                         ),
@@ -903,6 +924,48 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                         ),
                         style: TextStyle(
                            fontSize: scaleProvider.systemFontSize,
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 8),
+                      
+                      // Copy/Paste/Save Buttons
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.copy_rounded,
+                                size: 18,
+                                color: themeProvider.appThemeColor,
+                              ),
+                              onPressed: _copyToClipboard,
+                              tooltip: 'Copy to Clipboard',
+                              padding: const EdgeInsets.all(8),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.paste,
+                                size: 18,
+                                color: Colors.greenAccent,
+                              ),
+                              onPressed: _pasteFromClipboard,
+                              tooltip: 'Paste from Clipboard',
+                              padding: const EdgeInsets.all(8),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: themeProvider.appThemeColor,
+                                side: BorderSide(color: themeProvider.appThemeColor),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              onPressed: _handleSavePreset,
+                              child: const Text("Save to Library"),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -1163,24 +1226,58 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                                 ),
                               ),
                               const SizedBox(height: 8),
+                              TextField(
+                                controller: _newRuleContentController,
+                                maxLines: 8,
+                                minLines: 3,
+                                decoration: InputDecoration(
+                                  labelText: "New Rule Content",
+                                  hintText: "Enter custom rule content...",
+                                  hintStyle: TextStyle(
+                                    fontSize: scaleProvider.systemFontSize * 0.8,
+                                  ),
+                                  border: const OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: Colors.black26,
+                                ),
+                                style: TextStyle(
+                                  fontSize: scaleProvider.systemFontSize,
+                                ),
+                                onSubmitted: (_) => _addRuleFromInput(),
+                              ),
+                              const SizedBox(height: 8),
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _newRuleContentController,
-                                      decoration: const InputDecoration(
-                                        labelText: "New Rule Content",
-                                        hintText: "Content to append...",
-                                        isDense: true,
-                                        filled: true,
-                                        fillColor: Colors.black12,
-                                      ),
-                                      onSubmitted: (_) => _addRuleFromInput(),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.copy_rounded,
+                                      size: 18,
+                                      color: themeProvider.appThemeColor,
                                     ),
+                                    onPressed: _copyRuleContentToClipboard,
+                                    tooltip: 'Copy Rule Content',
+                                    padding: const EdgeInsets.all(8),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.add_circle, color: Colors.greenAccent),
+                                    icon: const Icon(
+                                      Icons.paste,
+                                      size: 18,
+                                      color: Colors.greenAccent,
+                                    ),
+                                    onPressed: _pasteRuleContentFromClipboard,
+                                    tooltip: 'Paste Rule Content',
+                                    padding: const EdgeInsets.all(8),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.add_circle,
+                                      size: 20,
+                                      color: Colors.greenAccent,
+                                    ),
                                     onPressed: _addRuleFromInput,
+                                    tooltip: 'Add Rule',
+                                    padding: const EdgeInsets.all(8),
                                   ),
                                 ],
                               ),
@@ -1245,18 +1342,55 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   }
 
   Widget _buildCardField(String label, TextEditingController controller, {int maxLines = 1}) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      onChanged: (_) => _syncCardFromControllers(),
-      decoration: InputDecoration(
-        labelText: label,
-        isDense: true,
-        filled: true,
-        fillColor: Colors.black12,
-        border: const OutlineInputBorder(),
-      ),
-      style: const TextStyle(fontSize: 13),
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          onChanged: (_) => _syncCardFromControllers(),
+          decoration: InputDecoration(
+            labelText: label,
+            isDense: true,
+            filled: true,
+            fillColor: Colors.black12,
+            border: const OutlineInputBorder(),
+          ),
+          style: const TextStyle(fontSize: 13),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.copy_rounded,
+                  size: 16,
+                  color: themeProvider.appThemeColor,
+                ),
+                onPressed: () => _copyCardFieldToClipboard(controller, label),
+                tooltip: 'Copy $label',
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.paste,
+                  size: 16,
+                  color: Colors.greenAccent,
+                ),
+                onPressed: () => _pasteToCardField(controller, label),
+                tooltip: 'Paste to $label',
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
