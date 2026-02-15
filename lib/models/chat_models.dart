@@ -213,6 +213,7 @@ class ModelInfo {
   final String description;
   final String contextLength;
   final String pricing; // e.g. "0.01 / 0.03 per 1M"
+  final int? created; // Unix timestamp
   final Map<String, dynamic>? rawData;
 
   ModelInfo({
@@ -221,6 +222,7 @@ class ModelInfo {
     this.description = "",
     this.contextLength = "",
     this.pricing = "",
+    this.created,
     this.rawData,
   });
 
@@ -230,6 +232,7 @@ class ModelInfo {
     'description': description,
     'contextLength': contextLength,
     'pricing': pricing,
+    'created': created,
     'rawData': rawData,
   };
 
@@ -239,6 +242,7 @@ class ModelInfo {
     description: json['description'] ?? "",
     contextLength: json['contextLength']?.toString() ?? "",
     pricing: json['pricing'] ?? "",
+    created: json['created'],
     rawData: json['rawData'],
   );
 }

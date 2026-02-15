@@ -492,6 +492,9 @@ class ChatApiService {
       final response = await http.get(Uri.parse(url), headers: headers);
 
       if (response.statusCode == 200) {
+        if (response.body.trim().isEmpty) {
+          throw Exception('Empty response from server');
+        }
         final data = jsonDecode(response.body);
         final List<ModelInfo> models = parser(data);
         return models;

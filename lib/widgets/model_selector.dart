@@ -105,7 +105,7 @@ class ModelSelector extends StatelessWidget {
       context: context,
       builder: (context) {
         String searchQuery = "";
-        String sortMode = "Alphabetical"; // "Alphabetical" or "Cost"
+        String sortMode = "Name (A-Z)"; // Updated default
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -125,14 +125,37 @@ class ModelSelector extends StatelessWidget {
               if (aBookmarked && !bBookmarked) return -1;
               if (!aBookmarked && bBookmarked) return 1;
 
-              if (sortMode == "Cost" && a.pricing.isNotEmpty && b.pricing.isNotEmpty) {
-                try {
-                  final aCost = double.tryParse(a.pricing.split(' / ').first) ?? 0.0;
-                  final bCost = double.tryParse(b.pricing.split(' / ').first) ?? 0.0;
-                  return aCost.compareTo(bCost);
-                } catch (_) {}
+              if (sortMode == "Newest") {
+                final aCreated = a.created ?? 0;
+                final bCreated = b.created ?? 0;
+                return bCreated.compareTo(aCreated);
               }
 
+              if (sortMode.startsWith("Cost")) {
+                double aInput = 0.0;
+                double bInput = 0.0;
+                
+                try {
+                  if (a.pricing.isNotEmpty) {
+                    aInput = double.tryParse(a.pricing.split(' / ').first) ?? 0.0;
+                  }
+                  if (b.pricing.isNotEmpty) {
+                    bInput = double.tryParse(b.pricing.split(' / ').first) ?? 0.0;
+                  }
+                } catch (_) {}
+
+                if (sortMode == "Cost (Low to High)") {
+                  return aInput.compareTo(bInput);
+                } else if (sortMode == "Cost (High to Low)") {
+                  return bInput.compareTo(aInput);
+                }
+              }
+
+              if (sortMode == "Name (Z-A)") {
+                return b.name.compareTo(a.name);
+              }
+              
+              // Default: Name (A-Z)
               return a.name.compareTo(b.name);
             });
 
@@ -149,11 +172,14 @@ class ModelSelector extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (chatProvider.isLoading)
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                  if (chatProvider.isRefreshingModels)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12.0),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     )
                   else
                     IconButton(
@@ -171,8 +197,11 @@ class ModelSelector extends StatelessWidget {
                       });
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(value: "Alphabetical", child: Text("Sort by Name")),
-                      const PopupMenuItem(value: "Cost", child: Text("Sort by Cost")),
+                      const PopupMenuItem(value: "Name (A-Z)", child: Text("Name (A-Z)")),
+                      const PopupMenuItem(value: "Name (Z-A)", child: Text("Name (Z-A)")),
+                      const PopupMenuItem(value: "Cost (Low to High)", child: Text("Cost (Low-High)")),
+                      const PopupMenuItem(value: "Cost (High to Low)", child: Text("Cost (High-Low)")),
+                      const PopupMenuItem(value: "Newest", child: Text("Newest")),
                     ],
                   ),
                 ],
@@ -391,6 +420,8 @@ class ModelSelector extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _detailRow("ID:", model.id, scaleProvider),
+              if (model.created != null)
+                _detailRow("Created:", _formatTimestamp(model.created!), scaleProvider),
               if (model.contextLength.isNotEmpty)
                 _detailRow("Max Context:", _formatNumber(model.contextLength), scaleProvider),
               if (model.pricing.isNotEmpty)
@@ -443,6 +474,19 @@ class ModelSelector extends StatelessWidget {
     return res;
   }
 
+  String _formatTimestamp(int timestamp) {
+    try {
+      final dt = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+      final months = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      ];
+      return "${months[dt.month - 1]} ${dt.day}, ${dt.year}";
+    } catch (_) {
+      return timestamp.toString();
+    }
+  }
+
   String _formatPricing(String p) {
     try {
       final parts = p.split(' / ');
@@ -450,6 +494,10 @@ class ModelSelector extends StatelessWidget {
       double input = double.tryParse(parts[0]) ?? 0;
       double output = double.tryParse(parts[1]) ?? 0;
       
+      // Handle special values like -1 (Auto Router / Variable)
+      if (input < 0 || output < 0) return "Pricing: Variable / Dynamic";
+      if (input == 0 && output == 0) return "Pricing: Free / Unknown";
+
       // Convert per token to per 1M tokens
       double inputM = input * 1000000;
       double outputM = output * 1000000;

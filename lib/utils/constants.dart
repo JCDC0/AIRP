@@ -74,7 +74,7 @@ class ApiConstants {
       "https://generativelanguage.googleapis.com/v1beta/models";
   static const String openRouterBaseUrl = "https://openrouter.ai/api/v1/models";
   static const String arliAiBaseUrl = "https://api.arliai.com/v1/models";
-  static const String nanoGptBaseUrl = "https://nano-gpt.com/api/v1/models";
+  static const String nanoGptBaseUrl = "https://nano-gpt.com/api/v1/models?detailed=true";
   static const String openAiBaseUrl = "https://api.openai.com/v1/models";
   static const String huggingFaceBaseUrl =
       "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100";

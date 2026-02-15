@@ -76,6 +76,15 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingHuggingFaceModels => _isLoadingHuggingFaceModels;
   bool get isLoadingGroqModels => _isLoadingGroqModels;
 
+  bool get isRefreshingModels =>
+      _isLoadingGeminiModels ||
+      _isLoadingOpenRouterModels ||
+      _isLoadingArliAiModels ||
+      _isLoadingNanoGptModels ||
+      _isLoadingOpenAiModels ||
+      _isLoadingHuggingFaceModels ||
+      _isLoadingGroqModels;
+
   AiProvider _currentProvider = AiProvider.gemini;
   String _geminiKey = '';
   String _openRouterKey = '';
@@ -115,6 +124,69 @@ class ChatProvider extends ChangeNotifier {
   String get huggingFaceModel => _huggingFaceModel;
   String get groqModel => _groqModel;
   String get selectedModel => _selectedModel;
+
+  /// Returns the maximum context length for the currently selected model.
+  int getMaxContext() {
+    List<ModelInfo> currentList = [];
+    String currentId = "";
+
+    switch (_currentProvider) {
+      case AiProvider.gemini:
+        currentList = _geminiModelsList;
+        currentId = _selectedGeminiModel;
+        break;
+      case AiProvider.openRouter:
+        currentList = _openRouterModelsList;
+        currentId = _openRouterModel;
+        break;
+      case AiProvider.arliAi:
+        currentList = _arliAiModelsList;
+        currentId = _arliAiModel;
+        break;
+      case AiProvider.nanoGpt:
+        currentList = _nanoGptModelsList;
+        currentId = _nanoGptModel;
+        break;
+      case AiProvider.openAi:
+        currentList = _openAiModelsList;
+        currentId = _openAiModel;
+        break;
+      case AiProvider.huggingFace:
+        currentList = _huggingFaceModelsList;
+        currentId = _huggingFaceModel;
+        break;
+      case AiProvider.groq:
+        currentList = _groqModelsList;
+        currentId = _groqModel;
+        break;
+      case AiProvider.local:
+        return 32768; // Default for local
+    }
+
+    try {
+      final model = currentList.firstWhere((m) => m.id == currentId);
+      return int.tryParse(model.contextLength.replaceAll(',', '')) ?? 1048576;
+    } catch (_) {
+      return 1048576; // Default fallback
+    }
+  }
+
+  /// Formats a string with commas for readability (e.g., 1000000 -> 1,000,000).
+  String formatNumber(String s) {
+    int? n = int.tryParse(s.replaceAll(',', ''));
+    if (n == null) return s;
+    String str = n.toString();
+    String res = "";
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      res = str[i] + res;
+      count++;
+      if (count % 3 == 0 && i != 0) {
+        res = ",$res";
+      }
+    }
+    return res;
+  }
 
   double _temperature = ChatDefaults.temperature;
   double _topP = ChatDefaults.topP;
@@ -1521,6 +1593,18 @@ class ChatProvider extends ChangeNotifier {
     } else if (session.provider == 'groq') {
       _currentProvider = AiProvider.groq;
       _selectedModel = session.modelName;
+    } else if (session.provider == 'nanoGpt') {
+      _currentProvider = AiProvider.nanoGpt;
+      _selectedModel = session.modelName;
+      _nanoGptModel = session.modelName;
+    } else if (session.provider == 'arliAi') {
+      _currentProvider = AiProvider.arliAi;
+      _selectedModel = session.modelName;
+      _arliAiModel = session.modelName;
+    } else if (session.provider == 'huggingFace') {
+      _currentProvider = AiProvider.huggingFace;
+      _selectedModel = session.modelName;
+      _huggingFaceModel = session.modelName;
     } else {
       _currentProvider = AiProvider.gemini;
       _selectedGeminiModel = session.modelName;
@@ -1679,6 +1763,7 @@ class ChatProvider extends ChangeNotifier {
             description: e['description']?.toString() ?? "",
             contextLength: e['context_length']?.toString() ?? "",
             pricing: "$prompt / $completion",
+            created: e['created'],
             rawData: e,
           );
         }).toList();
@@ -1700,9 +1785,19 @@ class ChatProvider extends ChangeNotifier {
       parser: (json) {
         final List<dynamic> dataList = json['data'];
         return dataList.map<ModelInfo>((e) {
+          final rawId = e['id'].toString();
+          final pricing = e['pricing'] ?? {};
+          final prompt = pricing['prompt'] ?? "0";
+          final completion = pricing['completion'] ?? "0";
+          
           return ModelInfo(
-            id: e['id'].toString(),
-            name: e['id'].toString(),
+            id: rawId,
+            name: e['name']?.toString() ?? cleanModelName(rawId),
+            description: e['description']?.toString() ?? "Owned by: ${e['owned_by'] ?? 'Unknown'}",
+            contextLength: (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            pricing: (pricing.isNotEmpty) ? "$prompt / $completion" : "",
+            created: e['created'],
+            rawData: e,
           );
         }).toList();
       },
@@ -1719,9 +1814,25 @@ class ChatProvider extends ChangeNotifier {
       parser: (json) {
         final List<dynamic> dataList = json['data'] ?? [];
         return dataList.map<ModelInfo>((e) {
+          final pricing = e['pricing'] ?? {};
+          double prompt = double.tryParse(pricing['prompt']?.toString() ?? "0") ?? 0;
+          double completion = double.tryParse(pricing['completion']?.toString() ?? "0") ?? 0;
+          
+          // NanoGPT returns per 1M tokens, normalize to per token
+          // so that the UI formatter (which multiplies by 1M) works correctly.
+          if (prompt > 0) prompt /= 1000000;
+          if (completion > 0) completion /= 1000000;
+          
+          final rawId = e['id'].toString();
+          
           return ModelInfo(
-            id: e['id'].toString(),
-            name: e['id'].toString(),
+            id: rawId,
+            name: e['name']?.toString() ?? cleanModelName(rawId),
+            description: e['description']?.toString() ?? "Owned by: ${e['owned_by'] ?? 'Unknown'}",
+            contextLength: (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            pricing: "$prompt / $completion",
+            created: e['created'],
+            rawData: e,
           );
         }).toList();
       },
@@ -1745,9 +1856,19 @@ class ChatProvider extends ChangeNotifier {
       parser: (json) {
         final List<dynamic> dataList = json['data'] ?? [];
         return dataList.map<ModelInfo>((e) {
+          final rawId = e['id'].toString();
+          final pricing = e['pricing'] ?? {};
+          final prompt = pricing['prompt'] ?? "0";
+          final completion = pricing['completion'] ?? "0";
+          
           return ModelInfo(
-            id: e['id'].toString(),
-            name: e['id'].toString(),
+            id: rawId,
+            name: e['name']?.toString() ?? cleanModelName(rawId),
+            description: e['description']?.toString() ?? "Owned by: ${e['owned_by'] ?? 'Unknown'}",
+            contextLength: (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            pricing: (pricing.isNotEmpty) ? "$prompt / $completion" : "",
+            created: e['created'],
+            rawData: e,
           );
         }).toList();
       },
@@ -1771,9 +1892,11 @@ class ChatProvider extends ChangeNotifier {
       parser: (json) {
         final List<dynamic> dataList = json;
         return dataList.map<ModelInfo>((e) {
+          final rawId = e['id'].toString();
           return ModelInfo(
-            id: e['id'].toString(),
-            name: e['id'].toString(),
+            id: rawId,
+            name: e['name']?.toString() ?? cleanModelName(rawId),
+            description: e['description']?.toString() ?? "",
           );
         }).toList();
       },
@@ -1797,9 +1920,19 @@ class ChatProvider extends ChangeNotifier {
       parser: (json) {
         final List<dynamic> dataList = json['data'] ?? [];
         return dataList.map<ModelInfo>((e) {
+          final rawId = e['id'].toString();
+          final pricing = e['pricing'] ?? {};
+          final prompt = pricing['prompt'] ?? "0";
+          final completion = pricing['completion'] ?? "0";
+          
           return ModelInfo(
-            id: e['id'].toString(),
-            name: e['id'].toString(),
+            id: rawId,
+            name: e['name']?.toString() ?? cleanModelName(rawId),
+            description: e['description']?.toString() ?? "Owned by: ${e['owned_by'] ?? 'Unknown'}",
+            contextLength: (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            pricing: (pricing.isNotEmpty) ? "$prompt / $completion" : "",
+            created: e['created'],
+            rawData: e,
           );
         }).toList();
       },

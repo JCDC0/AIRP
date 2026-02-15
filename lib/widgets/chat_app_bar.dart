@@ -43,9 +43,18 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
-    final tokenColor = chatProvider.tokenCount > 1000000
-        ? Colors.redAccent
-        : themeProvider.appThemeColor;
+    
+    final int maxContext = chatProvider.getMaxContext();
+    final int currentTokens = chatProvider.tokenCount;
+    
+    Color tokenColor = themeProvider.appThemeColor;
+    if (currentTokens >= maxContext) {
+      tokenColor = Colors.redAccent;
+    } else if (currentTokens >= (maxContext * 2 / 3)) {
+      tokenColor = Colors.orangeAccent;
+    } else if (currentTokens >= (maxContext / 2)) {
+      tokenColor = Colors.yellowAccent;
+    }
 
     final String providerName =
         chatProvider.currentProvider == AiProvider.gemini
@@ -223,7 +232,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "Context: ${chatProvider.tokenCount} / 1,048,576",
+                  "Context: ${chatProvider.tokenCount} / ${chatProvider.formatNumber(maxContext.toString())}",
                   style: TextStyle(
                     color: tokenColor.withOpacity(0.8),
                     fontSize: scaleProvider.systemFontSize - 2,
@@ -280,12 +289,47 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         preferredSize: Size.fromHeight(scaledBottomHeight),
         child: Container(
           height: scaledBottomHeight,
-          padding: const EdgeInsets.fromLTRB(10, 0, 16, 4),
-          child: _buildModelSelector(
-            context,
-            chatProvider,
-            themeProvider,
-            scaleProvider,
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildModelSelector(
+                  context,
+                  chatProvider,
+                  themeProvider,
+                  scaleProvider,
+                ),
+              ),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 40, // Fixed width to prevent layout shift
+                child: chatProvider.isRefreshingModels
+                    ? Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              themeProvider.appThemeColor.withOpacity(0.7),
+                            ),
+                          ),
+                        ),
+                      )
+                    : IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: Icon(
+                          Icons.refresh,
+                          size: 20,
+                          color: themeProvider.appThemeColor.withOpacity(0.7),
+                        ),
+                        onPressed: chatProvider.isLoading 
+                            ? null 
+                            : () => chatProvider.refreshCurrentModels(),
+                      ),
+              ),
+            ],
           ),
         ),
       ),
