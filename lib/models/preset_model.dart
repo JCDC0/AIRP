@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Represents a system prompt preset, including main prompt, 
 /// advanced prompt override, and custom rules.
 class SystemPreset {

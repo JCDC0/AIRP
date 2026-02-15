@@ -298,73 +298,65 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     ThemeProvider themeProvider,
     ScaleProvider scaleProvider,
   ) {
-    late Widget selector;
     switch (chatProvider.currentProvider) {
       case AiProvider.gemini:
-        selector = ModelSelector(
+        return ModelSelector(
           modelsList: chatProvider.geminiModelsList,
           selectedModel: chatProvider.selectedGeminiModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select Gemini Model",
           isCompact: true,
         );
-        break;
       case AiProvider.openRouter:
-        selector = ModelSelector(
+        return ModelSelector(
           modelsList: chatProvider.openRouterModelsList,
           selectedModel: chatProvider.openRouterModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select OpenRouter Model",
           isCompact: true,
         );
-        break;
       case AiProvider.arliAi:
-        selector = ModelSelector(
+        return ModelSelector(
           modelsList: chatProvider.arliAiModelsList,
           selectedModel: chatProvider.arliAiModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select ArliAI Model",
           isCompact: true,
         );
-        break;
       case AiProvider.nanoGpt:
-        selector = ModelSelector(
+        return ModelSelector(
           modelsList: chatProvider.nanoGptModelsList,
           selectedModel: chatProvider.nanoGptModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select NanoGPT Model",
           isCompact: true,
         );
-        break;
       case AiProvider.openAi:
-        selector = ModelSelector(
+        return ModelSelector(
           modelsList: chatProvider.openAiModelsList,
           selectedModel: chatProvider.openAiModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select OpenAI Model",
           isCompact: true,
         );
-        break;
       case AiProvider.huggingFace:
-        selector = ModelSelector(
+        return ModelSelector(
           modelsList: chatProvider.huggingFaceModelsList,
           selectedModel: chatProvider.huggingFaceModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select HuggingFace Model",
           isCompact: true,
         );
-        break;
       case AiProvider.groq:
-        selector = ModelSelector(
+        return ModelSelector(
           modelsList: chatProvider.groqModelsList,
           selectedModel: chatProvider.groqModel,
           onSelected: chatProvider.setModel,
           placeholder: "Select Groq Model",
           isCompact: true,
         );
-        break;
       case AiProvider.local:
-        selector = Container(
+        return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: Colors.black26,
@@ -401,47 +393,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
         );
-        break;
-    }
-
-    final int count = _getModelCount(chatProvider);
-    if (count > 0) {
-      return Row(
-        children: [
-          Expanded(child: selector),
-          const SizedBox(width: 8),
-          Text(
-            "($count)",
-            style: TextStyle(
-              color: themeProvider.appThemeColor,
-              fontSize: scaleProvider.systemFontSize,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      );
-    }
-    return selector;
-  }
-
-  int _getModelCount(ChatProvider provider) {
-    switch (provider.currentProvider) {
-      case AiProvider.gemini:
-        return provider.geminiModelsList.length;
-      case AiProvider.openRouter:
-        return provider.openRouterModelsList.length;
-      case AiProvider.arliAi:
-        return provider.arliAiModelsList.length;
-      case AiProvider.nanoGpt:
-        return provider.nanoGptModelsList.length;
-      case AiProvider.openAi:
-        return provider.openAiModelsList.length;
-      case AiProvider.huggingFace:
-        return provider.huggingFaceModelsList.length;
-      case AiProvider.groq:
-        return provider.groqModelsList.length;
-      default:
-        return 0;
     }
   }
 }

@@ -739,7 +739,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           ),
           trailing: Switch(
             value: chatProvider.enableSystemPrompt,
-            activeColor: themeProvider.appThemeColor,
+            activeThumbColor: themeProvider.appThemeColor,
             onChanged: (val) {
               chatProvider.setEnableSystemPrompt(val);
               chatProvider.saveSettings();
@@ -996,7 +996,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           ),
           trailing: Switch(
             value: chatProvider.enableCharacterCard,
-            activeColor: Colors.orangeAccent,
+            activeThumbColor: Colors.orangeAccent,
             onChanged: (val) {
               chatProvider.setEnableCharacterCard(val);
               chatProvider.saveSettings();
@@ -1079,7 +1079,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           ),
           trailing: Switch(
             value: chatProvider.enableAdvancedSystemPrompt,
-            activeColor: themeProvider.appThemeColor,
+            activeThumbColor: themeProvider.appThemeColor,
             onChanged: (val) {
               chatProvider.setEnableAdvancedSystemPrompt(val);
               chatProvider.saveSettings();

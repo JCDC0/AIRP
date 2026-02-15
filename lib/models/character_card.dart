@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 /// Represents a SillyTavern-compatible character card.
 /// Supports V1 and V2 specifications.
 class CharacterCard {
@@ -164,10 +161,10 @@ class CharacterCard {
       postHistoryInstructions: postHistoryInstructions ?? this.postHistoryInstructions,
       alternateGreetings: alternateGreetings ?? List.from(this.alternateGreetings),
       extensions: extensions ?? Map.from(this.extensions),
-      spec: this.spec,
-      specVersion: this.specVersion,
-      hasIncompatibleFields: this.hasIncompatibleFields,
-      compatibilityWarnings: List.from(this.compatibilityWarnings),
+      spec: spec,
+      specVersion: specVersion,
+      hasIncompatibleFields: hasIncompatibleFields,
+      compatibilityWarnings: List.from(compatibilityWarnings),
     );
   }
 }

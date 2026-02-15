@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/chat_provider.dart';
@@ -8,7 +7,6 @@ import '../providers/scale_provider.dart';
 import '../utils/version.dart';
 import '../models/character_card.dart';
 import '../models/preset_model.dart';
-import 'character_card_service.dart';
 
 /// Options controlling which categories to include in a library export.
 class ExportOptions {

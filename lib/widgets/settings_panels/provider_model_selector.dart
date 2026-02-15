@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/scale_provider.dart';
+import '../../models/chat_models.dart';
 import '../model_selector.dart';
 
 /// A wrapper widget that provides model selection and list refreshing.
@@ -9,8 +10,8 @@ import '../model_selector.dart';
 /// otherwise it falls back to a [TextField] for manual entry. It also
 /// includes a refresh button to trigger model fetching.
 class ProviderModelSelector extends StatelessWidget {
-  /// The list of available model IDs.
-  final List<String> modelsList;
+  /// The list of available model info objects.
+  final List<ModelInfo> modelsList;
 
   /// The currently selected model ID.
   final String selectedModel;

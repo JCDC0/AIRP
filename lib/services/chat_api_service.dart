@@ -483,18 +483,17 @@ class ChatApiService {
   }
 
   /// Fetches a list of available models from a provider's API.
-  static Future<List<String>> fetchModels({
+  static Future<List<ModelInfo>> fetchModels({
     required String url,
     Map<String, String>? headers,
-    required List<String> Function(dynamic json) parser,
+    required List<ModelInfo> Function(dynamic json) parser,
   }) async {
     try {
       final response = await http.get(Uri.parse(url), headers: headers);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final List<String> models = parser(data);
-        models.sort();
+        final List<ModelInfo> models = parser(data);
         return models;
       } else {
         throw Exception('Failed to fetch models: ${response.statusCode}');

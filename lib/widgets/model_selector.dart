@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
+import '../models/chat_models.dart';
 import '../utils/constants.dart';
 
 /// A widget that allows users to select an AI model from a list.
@@ -11,8 +12,8 @@ import '../utils/constants.dart';
 /// dialog for choosing a different model. It supports bookmarking models
 /// for quick access.
 class ModelSelector extends StatelessWidget {
-  /// The list of available model IDs.
-  final List<String> modelsList;
+  /// The list of available model info objects.
+  final List<ModelInfo> modelsList;
 
   /// The currently selected model ID.
   final String selectedModel;
@@ -38,6 +39,11 @@ class ModelSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+
+    final selectedModelInfo = modelsList.firstWhere(
+      (m) => m.id == selectedModel,
+      orElse: () => ModelInfo(id: selectedModel, name: cleanModelName(selectedModel)),
+    );
 
     return GestureDetector(
       onTap: () {
@@ -72,11 +78,9 @@ class ModelSelector extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                modelsList.contains(selectedModel)
-                    ? cleanModelName(selectedModel)
-                    : (selectedModel.isNotEmpty
-                          ? cleanModelName(selectedModel)
-                          : placeholder),
+                selectedModelInfo.name.isNotEmpty 
+                    ? selectedModelInfo.name 
+                    : placeholder,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: Provider.of<ScaleProvider>(context).systemFontSize,
@@ -101,38 +105,81 @@ class ModelSelector extends StatelessWidget {
       context: context,
       builder: (context) {
         String searchQuery = "";
+        String sortMode = "Alphabetical"; // "Alphabetical" or "Cost"
+
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final chatProvider = Provider.of<ChatProvider>(context);
             final bookmarkedModels = chatProvider.bookmarkedModels;
 
             final filteredModels = modelsList.where((m) {
-              final name = cleanModelName(m).toLowerCase();
-              final id = m.toLowerCase();
+              final name = m.name.toLowerCase();
+              final id = m.id.toLowerCase();
               final query = searchQuery.toLowerCase();
               return name.contains(query) || id.contains(query);
             }).toList();
 
             filteredModels.sort((a, b) {
-              final bool aBookmarked = bookmarkedModels.contains(a);
-              final bool bBookmarked = bookmarkedModels.contains(b);
+              final bool aBookmarked = bookmarkedModels.contains(a.id);
+              final bool bBookmarked = bookmarkedModels.contains(b.id);
               if (aBookmarked && !bBookmarked) return -1;
               if (!aBookmarked && bBookmarked) return 1;
 
-              return cleanModelName(a).compareTo(cleanModelName(b));
+              if (sortMode == "Cost" && a.pricing.isNotEmpty && b.pricing.isNotEmpty) {
+                try {
+                  final aCost = double.tryParse(a.pricing.split(' / ').first) ?? 0.0;
+                  final bCost = double.tryParse(b.pricing.split(' / ').first) ?? 0.0;
+                  return aCost.compareTo(bCost);
+                } catch (_) {}
+              }
+
+              return a.name.compareTo(b.name);
             });
 
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1E1E),
-              title: Text(
-                "Select Model",
-                style: TextStyle(
-                  color: themeProvider.appThemeColor,
-                  fontSize: scaleProvider.systemFontSize,
-                ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Select Model (${filteredModels.length})",
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
+                  ),
+                  if (chatProvider.isLoading)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: Colors.white70),
+                      onPressed: () async {
+                        await chatProvider.refreshCurrentModels();
+                        setDialogState(() {});
+                      },
+                    ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.sort, color: Colors.white70),
+                    onSelected: (val) {
+                      setDialogState(() {
+                        sortMode = val;
+                      });
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: "Alphabetical", child: Text("Sort by Name")),
+                      const PopupMenuItem(value: "Cost", child: Text("Sort by Cost")),
+                    ],
+                  ),
+                ],
               ),
               content: SizedBox(
-                width: double.maxFinite,
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: MediaQuery.of(context).size.height * 0.7,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -179,77 +226,131 @@ class ModelSelector extends StatelessWidget {
                           : ListView.builder(
                               itemCount: filteredModels.length,
                               itemBuilder: (context, index) {
-                                final modelId = filteredModels[index];
-                                final isSelected = modelId == selectedModel;
+                                final model = filteredModels[index];
+                                final isSelected = model.id == selectedModel;
                                 final isBookmarked = bookmarkedModels.contains(
-                                  modelId,
+                                  model.id,
                                 );
                                 return Container(
-                                  margin: const EdgeInsets.only(bottom: 4),
+                                  margin: const EdgeInsets.only(bottom: 8),
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? themeProvider.appThemeColor
-                                              .withOpacity(0.2)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: isSelected
-                                        ? Border.all(
-                                            color: themeProvider.appThemeColor
-                                                .withOpacity(0.5),
-                                          )
-                                        : null,
+                                              .withOpacity(0.15)
+                                        : Colors.white.withOpacity(0.03),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? themeProvider.appThemeColor
+                                                .withOpacity(0.5)
+                                          : Colors.white10,
+                                    ),
                                   ),
-                                  child: ListTile(
-                                    dense: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 0,
-                                    ),
-                                    title: Text(
-                                      cleanModelName(modelId),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: isBookmarked
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        fontSize: Provider.of<ScaleProvider>(
-                                          context,
-                                          listen: false,
-                                        ).systemFontSize,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      modelId,
-                                      style: TextStyle(
-                                        fontSize:
-                                            Provider.of<ScaleProvider>(
-                                              context,
-                                              listen: false,
-                                            ).systemFontSize -
-                                            2,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    trailing: IconButton(
-                                      icon: Icon(
-                                        isBookmarked
-                                            ? Icons.bookmark
-                                            : Icons.bookmark_border,
-                                        color: isBookmarked
-                                            ? Colors.amber
-                                            : Colors.grey,
-                                      ),
-                                      onPressed: () async {
-                                        await chatProvider.toggleModelBookmark(
-                                          modelId,
-                                        );
-                                        setDialogState(() {});
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () {
+                                        onSelected(model.id);
+                                        Navigator.pop(context);
                                       },
+                                      onLongPress: () => _showModelDetails(context, model, themeProvider),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 12,
+                                        ),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    model.name,
+                                                    style: TextStyle(
+                                                      color: isSelected ? themeProvider.appThemeColor : Colors.white,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: scaleProvider.systemFontSize,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    model.id,
+                                                    style: TextStyle(
+                                                      fontSize: scaleProvider.systemFontSize - 4,
+                                                      color: Colors.grey,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  if (model.contextLength.isNotEmpty)
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(top: 2),
+                                                      child: Text(
+                                                        "Max Context: ${_formatNumber(model.contextLength)}",
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.blueAccent,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  if (model.pricing.isNotEmpty)
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(top: 2),
+                                                      child: Text(
+                                                        _formatPricing(model.pricing),
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.greenAccent,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                InkWell(
+                                                  onTap: () => _showModelDetails(context, model, themeProvider),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  child: const Padding(
+                                                    padding: EdgeInsets.all(4.0),
+                                                    child: Icon(Icons.info_outline, color: Colors.white54, size: 28),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 16),
+                                                InkWell(
+                                                  onTap: () async {
+                                                    await chatProvider.toggleModelBookmark(
+                                                      model.id,
+                                                    );
+                                                    setDialogState(() {});
+                                                  },
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.all(4.0),
+                                                    child: Icon(
+                                                      isBookmarked
+                                                          ? Icons.bookmark
+                                                          : Icons.bookmark_border,
+                                                      color: isBookmarked
+                                                          ? Colors.amber
+                                                          : Colors.white30,
+                                                      size: 28,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                    onTap: () {
-                                      onSelected(modelId);
-                                      Navigator.pop(context);
-                                    },
                                   ),
                                 );
                               },
@@ -272,5 +373,90 @@ class ModelSelector extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _showModelDetails(BuildContext context, ModelInfo model, ThemeProvider themeProvider) {
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A2A),
+        title: Text(
+          model.name,
+          style: TextStyle(color: themeProvider.appThemeColor, fontSize: scaleProvider.systemFontSize),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _detailRow("ID:", model.id, scaleProvider),
+              if (model.contextLength.isNotEmpty)
+                _detailRow("Max Context:", _formatNumber(model.contextLength), scaleProvider),
+              if (model.pricing.isNotEmpty)
+                _detailRow("", _formatPricing(model.pricing), scaleProvider),
+              const Divider(color: Colors.white24),
+              Text(
+                model.description.isNotEmpty ? model.description : "No description available.",
+                style: TextStyle(color: Colors.white70, fontSize: scaleProvider.systemFontSize - 2),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, ScaleProvider scale) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (label.isNotEmpty)
+            Text("$label ", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: scale.systemFontSize - 2)),
+          Expanded(child: Text(value, style: TextStyle(color: Colors.white, fontSize: scale.systemFontSize - 2))),
+        ],
+      ),
+    );
+  }
+
+  String _formatNumber(String s) {
+    int? n = int.tryParse(s);
+    if (n == null) return s;
+    String str = n.toString();
+    String res = "";
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      res = str[i] + res;
+      count++;
+      if (count % 3 == 0 && i != 0) {
+        res = ",$res";
+      }
+    }
+    return res;
+  }
+
+  String _formatPricing(String p) {
+    try {
+      final parts = p.split(' / ');
+      if (parts.length != 2) return p;
+      double input = double.tryParse(parts[0]) ?? 0;
+      double output = double.tryParse(parts[1]) ?? 0;
+      
+      // Convert per token to per 1M tokens
+      double inputM = input * 1000000;
+      double outputM = output * 1000000;
+      
+      return "Input: \$${inputM.toStringAsFixed(2)}/M\nOutput: \$${outputM.toStringAsFixed(2)}/M";
+    } catch (e) {
+      return p;
+    }
   }
 }

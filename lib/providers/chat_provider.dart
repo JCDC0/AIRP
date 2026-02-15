@@ -44,21 +44,21 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  List<String> _geminiModelsList = [];
-  List<String> _openRouterModelsList = [];
-  List<String> _arliAiModelsList = [];
-  List<String> _nanoGptModelsList = [];
-  List<String> _openAiModelsList = [];
-  List<String> _huggingFaceModelsList = [];
-  List<String> _groqModelsList = [];
+  List<ModelInfo> _geminiModelsList = [];
+  List<ModelInfo> _openRouterModelsList = [];
+  List<ModelInfo> _arliAiModelsList = [];
+  List<ModelInfo> _nanoGptModelsList = [];
+  List<ModelInfo> _openAiModelsList = [];
+  List<ModelInfo> _huggingFaceModelsList = [];
+  List<ModelInfo> _groqModelsList = [];
 
-  List<String> get geminiModelsList => _geminiModelsList;
-  List<String> get openRouterModelsList => _openRouterModelsList;
-  List<String> get arliAiModelsList => _arliAiModelsList;
-  List<String> get nanoGptModelsList => _nanoGptModelsList;
-  List<String> get openAiModelsList => _openAiModelsList;
-  List<String> get huggingFaceModelsList => _huggingFaceModelsList;
-  List<String> get groqModelsList => _groqModelsList;
+  List<ModelInfo> get geminiModelsList => _geminiModelsList;
+  List<ModelInfo> get openRouterModelsList => _openRouterModelsList;
+  List<ModelInfo> get arliAiModelsList => _arliAiModelsList;
+  List<ModelInfo> get nanoGptModelsList => _nanoGptModelsList;
+  List<ModelInfo> get openAiModelsList => _openAiModelsList;
+  List<ModelInfo> get huggingFaceModelsList => _huggingFaceModelsList;
+  List<ModelInfo> get groqModelsList => _groqModelsList;
 
   bool _isLoadingGeminiModels = false;
   bool _isLoadingOpenRouterModels = false;
@@ -328,16 +328,27 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.gemini;
     }
 
-    _geminiModelsList = prefs.getStringList(ApiConstants.prefListGemini) ?? [];
-    _openRouterModelsList =
-        prefs.getStringList(ApiConstants.prefListOpenRouter) ?? [];
-    _arliAiModelsList = prefs.getStringList(ApiConstants.prefListArliAi) ?? [];
-    _nanoGptModelsList =
-        prefs.getStringList(ApiConstants.prefListNanoGpt) ?? [];
-    _openAiModelsList = prefs.getStringList(ApiConstants.prefListOpenAi) ?? [];
-    _huggingFaceModelsList =
-        prefs.getStringList(ApiConstants.prefListHuggingFace) ?? [];
-    _groqModelsList = prefs.getStringList(ApiConstants.prefListGroq) ?? [];
+    _geminiModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListGemini),
+    );
+    _openRouterModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListOpenRouter),
+    );
+    _arliAiModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListArliAi),
+    );
+    _nanoGptModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListNanoGpt),
+    );
+    _openAiModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListOpenAi),
+    );
+    _huggingFaceModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListHuggingFace),
+    );
+    _groqModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListGroq),
+    );
 
     _selectedGeminiModel =
         prefs.getString(ApiConstants.prefModelGemini) ??
@@ -1578,8 +1589,8 @@ class ChatProvider extends ChangeNotifier {
     required String apiKey,
     required String url,
     required String prefKey,
-    required List<String> Function(dynamic) parser,
-    required void Function(List<String>) updateList,
+    required List<ModelInfo> Function(dynamic) parser,
+    required void Function(List<ModelInfo>) updateList,
     required void Function(bool) updateLoading,
     Map<String, String>? headers,
     String? currentModel,
@@ -1602,11 +1613,13 @@ class ChatProvider extends ChangeNotifier {
       updateList(models);
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(prefKey, models);
+      final List<String> serializedModels =
+          models.map((m) => jsonEncode(m.toJson())).toList();
+      await prefs.setStringList(prefKey, serializedModels);
 
       if (currentModel != null && updateSelectedModel != null) {
-        if (!models.contains(currentModel) && models.isNotEmpty) {
-          updateSelectedModel(models.first);
+        if (!models.any((m) => m.id == currentModel) && models.isNotEmpty) {
+          updateSelectedModel(models.first.id);
         }
       }
     } catch (e) {
@@ -1631,7 +1644,14 @@ class ChatProvider extends ChangeNotifier {
               );
               return methods.contains('generateContent');
             })
-            .map<String>((m) => m['name'].toString())
+            .map<ModelInfo>((m) {
+              return ModelInfo(
+                id: m['name'].toString(),
+                name: m['displayName']?.toString() ?? m['name'].toString(),
+                description: m['description']?.toString() ?? "",
+                contextLength: m['inputTokenLimit']?.toString() ?? "",
+              );
+            })
             .toList();
       },
       updateList: (list) => _geminiModelsList = list,
@@ -1649,7 +1669,19 @@ class ChatProvider extends ChangeNotifier {
       prefKey: ApiConstants.prefListOpenRouter,
       parser: (json) {
         final List<dynamic> dataList = json['data'];
-        return dataList.map<String>((e) => e['id'].toString()).toList();
+        return dataList.map<ModelInfo>((e) {
+          final pricing = e['pricing'] ?? {};
+          final prompt = pricing['prompt'] ?? "0";
+          final completion = pricing['completion'] ?? "0";
+          return ModelInfo(
+            id: e['id'].toString(),
+            name: e['name']?.toString() ?? e['id'].toString(),
+            description: e['description']?.toString() ?? "",
+            contextLength: e['context_length']?.toString() ?? "",
+            pricing: "$prompt / $completion",
+            rawData: e,
+          );
+        }).toList();
       },
       updateList: (list) => _openRouterModelsList = list,
       updateLoading: (val) => _isLoadingOpenRouterModels = val,
@@ -1667,7 +1699,12 @@ class ChatProvider extends ChangeNotifier {
       prefKey: ApiConstants.prefListArliAi,
       parser: (json) {
         final List<dynamic> dataList = json['data'];
-        return dataList.map<String>((e) => e['id'].toString()).toList();
+        return dataList.map<ModelInfo>((e) {
+          return ModelInfo(
+            id: e['id'].toString(),
+            name: e['id'].toString(),
+          );
+        }).toList();
       },
       updateList: (list) => _arliAiModelsList = list,
       updateLoading: (val) => _isLoadingArliAiModels = val,
@@ -1681,7 +1718,12 @@ class ChatProvider extends ChangeNotifier {
       prefKey: ApiConstants.prefListNanoGpt,
       parser: (json) {
         final List<dynamic> dataList = json['data'] ?? [];
-        return dataList.map<String>((e) => e['id'].toString()).toList();
+        return dataList.map<ModelInfo>((e) {
+          return ModelInfo(
+            id: e['id'].toString(),
+            name: e['id'].toString(),
+          );
+        }).toList();
       },
       updateList: (list) => _nanoGptModelsList = list,
       updateLoading: (val) => _isLoadingNanoGptModels = val,
@@ -1702,7 +1744,12 @@ class ChatProvider extends ChangeNotifier {
       prefKey: ApiConstants.prefListOpenAi,
       parser: (json) {
         final List<dynamic> dataList = json['data'] ?? [];
-        return dataList.map<String>((e) => e['id'].toString()).toList();
+        return dataList.map<ModelInfo>((e) {
+          return ModelInfo(
+            id: e['id'].toString(),
+            name: e['id'].toString(),
+          );
+        }).toList();
       },
       updateList: (list) => _openAiModelsList = list,
       updateLoading: (val) => _isLoadingOpenAiModels = val,
@@ -1723,7 +1770,12 @@ class ChatProvider extends ChangeNotifier {
       prefKey: ApiConstants.prefListHuggingFace,
       parser: (json) {
         final List<dynamic> dataList = json;
-        return dataList.map<String>((e) => e['id'].toString()).toList();
+        return dataList.map<ModelInfo>((e) {
+          return ModelInfo(
+            id: e['id'].toString(),
+            name: e['id'].toString(),
+          );
+        }).toList();
       },
       updateList: (list) => _huggingFaceModelsList = list,
       updateLoading: (val) => _isLoadingHuggingFaceModels = val,
@@ -1744,7 +1796,12 @@ class ChatProvider extends ChangeNotifier {
       prefKey: ApiConstants.prefListGroq,
       parser: (json) {
         final List<dynamic> dataList = json['data'] ?? [];
-        return dataList.map<String>((e) => e['id'].toString()).toList();
+        return dataList.map<ModelInfo>((e) {
+          return ModelInfo(
+            id: e['id'].toString(),
+            name: e['id'].toString(),
+          );
+        }).toList();
       },
       updateList: (list) => _groqModelsList = list,
       updateLoading: (val) => _isLoadingGroqModels = val,
@@ -2055,6 +2112,47 @@ class ChatProvider extends ChangeNotifier {
         _savedSystemPrompts.add(prompt);
         existingTitles.add(prompt.title);
       }
+    }
+  }
+
+  List<ModelInfo> _deserializeModels(List<String>? serialized) {
+    if (serialized == null) return [];
+    return serialized.map<ModelInfo>((s) {
+      try {
+        final Map<String, dynamic> json = jsonDecode(s);
+        return ModelInfo.fromJson(json);
+      } catch (e) {
+        // Fallback for legacy plain string lists
+        return ModelInfo(id: s, name: s);
+      }
+    }).toList();
+  }
+
+  Future<void> refreshCurrentModels() async {
+    switch (_currentProvider) {
+      case AiProvider.gemini:
+        await fetchGeminiModels();
+        break;
+      case AiProvider.openRouter:
+        await fetchOpenRouterModels();
+        break;
+      case AiProvider.openAi:
+        await fetchOpenAiModels();
+        break;
+      case AiProvider.arliAi:
+        await fetchArliAiModels();
+        break;
+      case AiProvider.nanoGpt:
+        await fetchNanoGptModels();
+        break;
+      case AiProvider.huggingFace:
+        await fetchHuggingFaceModels();
+        break;
+      case AiProvider.groq:
+        await fetchGroqModels();
+        break;
+      case AiProvider.local:
+        break;
     }
   }
 }

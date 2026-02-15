@@ -205,3 +205,40 @@ class SystemPromptData {
     );
   }
 }
+
+/// Detailed information about an AI model.
+class ModelInfo {
+  final String id;
+  final String name;
+  final String description;
+  final String contextLength;
+  final String pricing; // e.g. "0.01 / 0.03 per 1M"
+  final Map<String, dynamic>? rawData;
+
+  ModelInfo({
+    required this.id,
+    required this.name,
+    this.description = "",
+    this.contextLength = "",
+    this.pricing = "",
+    this.rawData,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'description': description,
+    'contextLength': contextLength,
+    'pricing': pricing,
+    'rawData': rawData,
+  };
+
+  factory ModelInfo.fromJson(Map<String, dynamic> json) => ModelInfo(
+    id: json['id'] ?? "",
+    name: json['name'] ?? "",
+    description: json['description'] ?? "",
+    contextLength: json['contextLength']?.toString() ?? "",
+    pricing: json['pricing'] ?? "",
+    rawData: json['rawData'],
+  );
+}
