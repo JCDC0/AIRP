@@ -37,6 +37,15 @@ class MessageBubble extends StatelessWidget {
   /// Callback for deleting the message.
   final VoidCallback? onDelete;
 
+  /// Callback for navigating to next version.
+  final VoidCallback? onNextVersion;
+
+  /// Callback for navigating to previous version.
+  final VoidCallback? onPreviousVersion;
+
+  /// Callback for forking conversation from this message.
+  final VoidCallback? onFork;
+
   /// Whether to show an inline typing indicator inside this bubble.
   final bool showTypingIndicator;
 
@@ -49,6 +58,9 @@ class MessageBubble extends StatelessWidget {
     this.onEdit,
     this.onRegenerate,
     this.onDelete,
+    this.onNextVersion,
+    this.onPreviousVersion,
+    this.onFork,
     this.showTypingIndicator = false,
   });
 
@@ -156,7 +168,14 @@ class MessageBubble extends StatelessWidget {
         onRegenerate != null ||
         onCopy != null ||
         onEdit != null ||
-        onDelete != null;
+        onDelete != null ||
+        onNextVersion != null ||
+        onPreviousVersion != null ||
+        onFork != null;
+
+    final hasVersions = !msg.isUser && msg.regenerationVersions.isNotEmpty;
+    final totalVersions = hasVersions ? msg.regenerationVersions.length + 1 : 0;
+    final currentVersionNum = hasVersions ? msg.currentVersionIndex + 1 : 0;
 
     return Align(
       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -208,6 +227,59 @@ class MessageBubble extends StatelessWidget {
                       Icons.delete_outline,
                       "Delete",
                       onDelete!,
+                      textColor,
+                      25 * scaleProvider.iconScale,
+                    ),
+                  // Version navigation buttons
+                  if (hasVersions && onPreviousVersion != null)
+                    _buildIconBtn(
+                      Icons.arrow_back,
+                      "Previous version",
+                      onPreviousVersion!,
+                      textColor,
+                      25 * scaleProvider.iconScale,
+                    ),
+                  // Version counter
+                  if (hasVersions)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: textColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: textColor.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Text(
+                          "$currentVersionNum/$totalVersions",
+                          style: TextStyle(
+                            color: textColor.withOpacity(0.7),
+                            fontSize: 12 * scaleProvider.iconScale,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Next version button
+                  if (hasVersions && onNextVersion != null)
+                    _buildIconBtn(
+                      Icons.arrow_forward,
+                      "Next version",
+                      onNextVersion!,
+                      textColor,
+                      25 * scaleProvider.iconScale,
+                    ),
+                  // Fork button
+                  if (onFork != null)
+                    _buildIconBtn(
+                      Icons.call_split,
+                      "Fork conversation",
+                      onFork!,
                       textColor,
                       25 * scaleProvider.iconScale,
                     ),

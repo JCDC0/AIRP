@@ -268,7 +268,7 @@ class ChatMessagesList extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text("Regenerate?", style: TextStyle(color: Colors.white)),
         content: const Text(
-          "This will delete this message and all subsequent history, then retry the generation.",
+          "This will keep this message as a version and generate a new response. Previous responses will be accessible via the version counter.",
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -288,6 +288,52 @@ class ChatMessagesList extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _handleForkConversation(BuildContext context, int index) {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    
+    // Create new conversation from this message
+    final newSessionId = chatProvider.createConversationFromMessage(index);
+    
+    if (newSessionId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to fork conversation"),
+          duration: Duration(milliseconds: 1500),
+        ),
+      );
+      return;
+    }
+    
+    // Get the newly created session
+    final newSession = chatProvider.savedSessions.firstWhere(
+      (s) => s.id == newSessionId,
+      orElse: () => ChatSessionData(
+        id: newSessionId,
+        title: "Forked Conversation",
+        messages: [],
+        modelName: chatProvider.selectedModel,
+        tokenCount: 0,
+        systemInstruction: "",
+      ),
+    );
+    
+    // Show confirmation snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text("Conversation forked successfully!"),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 2000),
+        action: SnackBarAction(
+          label: "View",
+          onPressed: () {
+            // Switch to the new conversation
+            chatProvider.loadSession(newSession);
+          },
+        ),
       ),
     );
   }
@@ -384,6 +430,15 @@ class ChatMessagesList extends StatelessWidget {
                         onEdit: () => _showEditDialog(context, index),
                         onRegenerate: () => _confirmRegenerate(context, index),
                         onDelete: () => _confirmDeleteMessage(context, index),
+                        onNextVersion: message.regenerationVersions.isNotEmpty && !message.isUser
+                            ? () => chatProvider.nextMessageVersion(index)
+                            : null,
+                        onPreviousVersion: message.regenerationVersions.isNotEmpty && !message.isUser
+                            ? () => chatProvider.previousMessageVersion(index)
+                            : null,
+                        onFork: !message.isUser
+                            ? () => _handleForkConversation(context, index)
+                            : null,
                       );
                     },
                   ),

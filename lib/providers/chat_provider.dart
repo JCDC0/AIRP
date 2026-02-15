@@ -25,6 +25,9 @@ class ChatProvider extends ChangeNotifier {
   bool _nonStreamingLoading = false;
   Timer? _autoSaveTimer;
 
+  /// Stores regenerated versions to attach to the next generated message.
+  List<String> _pendingRegenerationVersions = [];
+
   bool get isLoading =>
       _activeStreams.containsKey(_currentSessionId) || _nonStreamingLoading;
   bool get isCancelled => _cancelledSessions.contains(_currentSessionId);
@@ -1161,8 +1164,16 @@ class ChatProvider extends ChangeNotifier {
         isUser: false,
         modelName: _selectedModel,
         contentNotifier: contentNotifier,
+        regenerationVersions: _pendingRegenerationVersions,
+        currentVersionIndex: _pendingRegenerationVersions.isNotEmpty 
+            ? _pendingRegenerationVersions.length - 1
+            : 0,
       ),
     );
+    
+    // Clear pending versions after using them
+    _pendingRegenerationVersions = [];
+    
     notifyListeners();
 
     // Register active stream tracking
@@ -1438,39 +1449,135 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Regenerate a response at the given index.
+  /// Keeps the previous response as a version in the message's regenerationVersions list.
   Future<void> regenerateResponse(int index) async {
     if (index < 0 || index >= _messages.length) return;
     final msg = _messages[index];
 
     String textToResend = "";
     List<String> imagesToResend = [];
+    int userMsgIndex = -1;
 
     if (!msg.isUser) {
-      int userMsgIndex = index - 1;
+      userMsgIndex = index - 1;
       if (userMsgIndex >= 0 && _messages[userMsgIndex].isUser) {
         final userMsg = _messages[userMsgIndex];
-        _safeDisposeMessageNotifiers(
-          _messages.getRange(userMsgIndex, _messages.length),
-        );
-        _messages.removeRange(userMsgIndex, _messages.length);
         textToResend = userMsg.text;
         imagesToResend = userMsg.imagePaths;
+
+        // Get current versions or create new list with current response
+        List<String> currentVersions = [...msg.regenerationVersions];
+        if (msg.text.isNotEmpty && !currentVersions.contains(msg.text)) {
+          currentVersions.add(msg.text);
+        }
+        
+        // Store versions for the next message that will be generated
+        _pendingRegenerationVersions = currentVersions;
+
+        // Remove BOTH user message and AI message to prevent duplication
+        // removeRange removes indices [userMsgIndex, index+1)
+        _safeDisposeMessageNotifiers(
+          _messages.getRange(userMsgIndex, index + 1),
+        );
+        _messages.removeRange(userMsgIndex, index + 1);
+
+        notifyListeners();
       } else {
         _safeDisposeMessageNotifiers([_messages[index]]);
         _messages.removeAt(index);
+        notifyListeners();
         return;
       }
     } else {
       final userMsg = _messages[index];
-      _safeDisposeMessageNotifiers(_messages.getRange(index, _messages.length));
-      _messages.removeRange(index, _messages.length);
       textToResend = userMsg.text;
       imagesToResend = userMsg.imagePaths;
+      _safeDisposeMessageNotifiers(_messages.getRange(index, _messages.length));
+      _messages.removeRange(index, _messages.length);
+      notifyListeners();
     }
 
-    notifyListeners();
     await initializeModel();
     sendMessage(textToResend, imagesToResend);
+  }
+
+  /// Select a different version of an AI response.
+  /// Updates the displayed message text to the selected version.
+  void selectMessageVersion(int messageIndex, int versionIndex) {
+    if (messageIndex < 0 || messageIndex >= _messages.length) return;
+    final msg = _messages[messageIndex];
+    
+    if (msg.isUser || msg.regenerationVersions.isEmpty) return;
+    if (versionIndex < 0 || versionIndex >= msg.regenerationVersions.length) return;
+
+    final selectedVersionText = msg.regenerationVersions[versionIndex];
+    _messages[messageIndex] = msg.copyWith(
+      text: selectedVersionText,
+      currentVersionIndex: versionIndex,
+    );
+    
+    _scheduleAutoSave();
+    notifyListeners();
+  }
+
+  /// Navigate to the next version of an AI response (forward).
+  void nextMessageVersion(int messageIndex) {
+    if (messageIndex < 0 || messageIndex >= _messages.length) return;
+    final msg = _messages[messageIndex];
+    
+    if (msg.isUser || msg.regenerationVersions.isEmpty) return;
+    
+    int nextIndex = msg.currentVersionIndex + 1;
+    if (nextIndex >= msg.regenerationVersions.length) {
+      nextIndex = 0; // Loop back to first
+    }
+    selectMessageVersion(messageIndex, nextIndex);
+  }
+
+  /// Navigate to the previous version of an AI response (backward).
+  void previousMessageVersion(int messageIndex) {
+    if (messageIndex < 0 || messageIndex >= _messages.length) return;
+    final msg = _messages[messageIndex];
+    
+    if (msg.isUser || msg.regenerationVersions.isEmpty) return;
+    
+    int prevIndex = msg.currentVersionIndex - 1;
+    if (prevIndex < 0) {
+      prevIndex = msg.regenerationVersions.length - 1; // Loop back to last
+    }
+    selectMessageVersion(messageIndex, prevIndex);
+  }
+
+  /// Creates a new conversation using the specified message as the starting point.
+  /// Returns the new session ID.
+  String createConversationFromMessage(int messageIndex) {
+    if (messageIndex < 0 || messageIndex >= _messages.length) return "";
+    
+    final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    // Start new conversation with the message that triggered fork
+    // and all messages up to that point
+    final forkedMessages = _messages.sublist(0, messageIndex + 1);
+    
+    final newSession = ChatSessionData(
+      id: newSessionId,
+      title: "Forked Conversation",
+      messages: forkedMessages,
+      modelName: _selectedModel,
+      tokenCount: 0,
+      systemInstruction: _systemInstruction,
+      backgroundImage: null,
+      provider: _currentProvider == AiProvider.gemini
+          ? 'gemini'
+          : (_currentProvider == AiProvider.openRouter
+              ? 'openRouter'
+              : 'openAi'),
+      isBookmarked: false,
+    );
+    
+    _savedSessions.insert(0, newSession);
+    return newSessionId;
   }
 
   Future<void> autoSaveCurrentSession({String? backgroundImagePath}) async {

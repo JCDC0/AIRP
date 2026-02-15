@@ -885,12 +885,59 @@ class _ChatInputAreaState extends State<ChatInputArea>
                     ),
                   ],
                 ),
+
+                // Version counter display below input
+                if (_getVersionCounterInfo(chatProvider).hasVersions) ...[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.history,
+                          size: 14,
+                          color: themeProvider.appThemeColor.withOpacity(0.6),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          "Response versions: ${_getVersionCounterInfo(chatProvider).currentVersion}/${_getVersionCounterInfo(chatProvider).totalVersions}",
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Helper to get version counter information from the last AI message.
+  _VersionCounterInfo _getVersionCounterInfo(ChatProvider chatProvider) {
+    if (chatProvider.messages.isEmpty) {
+      return _VersionCounterInfo(hasVersions: false, currentVersion: 0, totalVersions: 0);
+    }
+
+    // Find the last AI message with versions
+    for (int i = chatProvider.messages.length - 1; i >= 0; i--) {
+      final msg = chatProvider.messages[i];
+      if (!msg.isUser && msg.regenerationVersions.isNotEmpty) {
+        return _VersionCounterInfo(
+          hasVersions: true,
+          currentVersion: msg.currentVersionIndex + 1,
+          totalVersions: msg.regenerationVersions.length + 1,
+        );
+      }
+    }
+
+    return _VersionCounterInfo(hasVersions: false, currentVersion: 0, totalVersions: 0);
   }
 }
 
@@ -1042,3 +1089,17 @@ class _IconArcPainter extends CustomPainter {
   bool shouldRepaint(covariant _IconArcPainter oldDelegate) =>
       oldDelegate.progress != progress;
 }
+
+/// Helper class to hold version counter information.
+class _VersionCounterInfo {
+  final bool hasVersions;
+  final int currentVersion;
+  final int totalVersions;
+
+  _VersionCounterInfo({
+    required this.hasVersions,
+    required this.currentVersion,
+    required this.totalVersions,
+  });
+}
+

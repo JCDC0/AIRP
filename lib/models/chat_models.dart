@@ -109,6 +109,14 @@ class ChatMessage {
   /// A notifier for streaming message content.
   final ValueNotifier<String>? contentNotifier;
 
+  /// List of all regeneration versions of this AI response (for AI messages only).
+  /// Each version contains the full response text.
+  final List<String> regenerationVersions;
+
+  /// The current version index being displayed (0-based).
+  /// If message has 3 versions, this would be 0, 1, or 2.
+  final int currentVersionIndex;
+
   ChatMessage({
     required this.text,
     required this.isUser,
@@ -118,6 +126,8 @@ class ChatMessage {
     this.usage,
     this.thoughtSignature,
     this.contentNotifier,
+    this.regenerationVersions = const [],
+    this.currentVersionIndex = 0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -128,6 +138,8 @@ class ChatMessage {
     'modelName': modelName,
     'usage': usage,
     'thoughtSignature': thoughtSignature,
+    'regenerationVersions': regenerationVersions,
+    'currentVersionIndex': currentVersionIndex,
   };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -138,6 +150,8 @@ class ChatMessage {
     modelName: json['modelName'],
     usage: json['usage'],
     thoughtSignature: json['thoughtSignature'],
+    regenerationVersions: List<String>.from(json['regenerationVersions'] ?? []),
+    currentVersionIndex: json['currentVersionIndex'] ?? 0,
   );
 
   ChatMessage copyWith({
@@ -150,6 +164,8 @@ class ChatMessage {
     String? thoughtSignature,
     ValueNotifier<String>? contentNotifier,
     bool clearContentNotifier = false,
+    List<String>? regenerationVersions,
+    int? currentVersionIndex,
   }) {
     return ChatMessage(
       text: text ?? this.text,
@@ -160,6 +176,8 @@ class ChatMessage {
       usage: usage ?? this.usage,
       thoughtSignature: thoughtSignature ?? this.thoughtSignature,
       contentNotifier: clearContentNotifier ? null : (contentNotifier ?? this.contentNotifier),
+      regenerationVersions: regenerationVersions ?? this.regenerationVersions,
+      currentVersionIndex: currentVersionIndex ?? this.currentVersionIndex,
     );
   }
 }
