@@ -428,12 +428,14 @@ class ChatMessagesList extends StatelessWidget {
                           );
                         },
                         onEdit: () => _showEditDialog(context, index),
-                        onRegenerate: () => _confirmRegenerate(context, index),
+                        onRegenerate: !message.isUser
+                            ? () => _confirmRegenerate(context, index)
+                            : null,
                         onDelete: () => _confirmDeleteMessage(context, index),
-                        onNextVersion: message.regenerationVersions.isNotEmpty && !message.isUser
+                        onNextVersion: message.regenerationVersions.length > 1 && !message.isUser
                             ? () => chatProvider.nextMessageVersion(index)
                             : null,
-                        onPreviousVersion: message.regenerationVersions.isNotEmpty && !message.isUser
+                        onPreviousVersion: message.regenerationVersions.length > 1 && !message.isUser
                             ? () => chatProvider.previousMessageVersion(index)
                             : null,
                         onFork: !message.isUser

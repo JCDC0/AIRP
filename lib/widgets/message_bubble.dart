@@ -173,8 +173,8 @@ class MessageBubble extends StatelessWidget {
         onPreviousVersion != null ||
         onFork != null;
 
-    final hasVersions = !msg.isUser && msg.regenerationVersions.isNotEmpty;
-    final totalVersions = hasVersions ? msg.regenerationVersions.length + 1 : 0;
+    final hasVersions = !msg.isUser && msg.regenerationVersions.length > 1;
+    final totalVersions = hasVersions ? msg.regenerationVersions.length : 0;
     final currentVersionNum = hasVersions ? msg.currentVersionIndex + 1 : 0;
 
     return Align(

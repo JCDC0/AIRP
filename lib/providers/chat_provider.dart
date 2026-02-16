@@ -1305,8 +1305,22 @@ class ChatProvider extends ChangeNotifier {
         onDone: () async {
           if (!_cancelledSessions.contains(streamSessionId)) {
             if (_currentSessionId == streamSessionId) {
-              _messages.last = _messages.last.copyWith(
+              final lastMessage = _messages.last;
+              final updatedVersions = List<String>.from(
+                lastMessage.regenerationVersions,
+              );
+              if (updatedVersions.isNotEmpty &&
+                  fullText.isNotEmpty &&
+                  !updatedVersions.contains(fullText)) {
+                updatedVersions.add(fullText);
+              }
+
+              _messages.last = lastMessage.copyWith(
                 clearContentNotifier: true,
+                regenerationVersions: updatedVersions,
+                currentVersionIndex: updatedVersions.isNotEmpty
+                    ? updatedVersions.length - 1
+                    : lastMessage.currentVersionIndex,
               );
               notifyListeners();
               _scheduleAutoSave();
@@ -1364,9 +1378,20 @@ class ChatProvider extends ChangeNotifier {
 
     final messages = List<ChatMessage>.from(session.messages);
     if (messages.isNotEmpty && !messages.last.isUser) {
-      messages[messages.length - 1] = messages.last.copyWith(
+      final lastMessage = messages.last;
+      final updatedVersions = List<String>.from(lastMessage.regenerationVersions);
+      if (updatedVersions.isNotEmpty &&
+          finalText.isNotEmpty &&
+          !updatedVersions.contains(finalText)) {
+        updatedVersions.add(finalText);
+      }
+      messages[messages.length - 1] = lastMessage.copyWith(
         text: finalText,
         clearContentNotifier: true,
+        regenerationVersions: updatedVersions,
+        currentVersionIndex: updatedVersions.isNotEmpty
+            ? updatedVersions.length - 1
+            : lastMessage.currentVersionIndex,
       );
     }
 
@@ -1509,7 +1534,9 @@ class ChatProvider extends ChangeNotifier {
     final msg = _messages[messageIndex];
     
     if (msg.isUser || msg.regenerationVersions.isEmpty) return;
-    if (versionIndex < 0 || versionIndex >= msg.regenerationVersions.length) return;
+    if (versionIndex < 0 || versionIndex >= msg.regenerationVersions.length) {
+      return;
+    }
 
     final selectedVersionText = msg.regenerationVersions[versionIndex];
     _messages[messageIndex] = msg.copyWith(
@@ -1568,11 +1595,7 @@ class ChatProvider extends ChangeNotifier {
       tokenCount: 0,
       systemInstruction: _systemInstruction,
       backgroundImage: null,
-      provider: _currentProvider == AiProvider.gemini
-          ? 'gemini'
-          : (_currentProvider == AiProvider.openRouter
-              ? 'openRouter'
-              : 'openAi'),
+      provider: _currentProvider.name,
       isBookmarked: false,
     );
     
@@ -1596,17 +1619,6 @@ class ChatProvider extends ChangeNotifier {
 
     _currentSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
 
-    String providerStr = 'gemini';
-    if (_currentProvider == AiProvider.openRouter) {
-      providerStr = 'openRouter';
-    } else if (_currentProvider == AiProvider.local) {
-      providerStr = 'local';
-    } else if (_currentProvider == AiProvider.openAi) {
-      providerStr = 'openAi';
-    } else if (_currentProvider == AiProvider.groq) {
-      providerStr = 'groq';
-    }
-
     String finalSystemInstruction = _buildSystemInstruction();
 
     final sessionData = ChatSessionData(
@@ -1617,7 +1629,7 @@ class ChatProvider extends ChangeNotifier {
       tokenCount: _tokenCount,
       systemInstruction: finalSystemInstruction,
       backgroundImage: backgroundImagePath,
-      provider: providerStr,
+      provider: _currentProvider.name,
     );
 
     _savedSessions.removeWhere((s) => s.id == _currentSessionId);
