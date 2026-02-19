@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:math' show Random;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -854,23 +855,46 @@ class BorderGlowPainter extends CustomPainter {
   }
 }
 
-/// A custom painter that draws orbiting lines around the thinking bubble header.
+// ---------------------------------------------------------------------------
+// Thinking-bubble orbit helpers
+// ---------------------------------------------------------------------------
+
+/// Immutable config for a single orbiting line on the thinking bubble.
+class _ThinkOrbitLine {
+  final int speed;     // Whole-number speed multiplier (1–3)
+  final double offset; // Starting phase [0, 1)
+  final double length; // Arc fraction of total path [0.10, 0.35)
+  const _ThinkOrbitLine({required this.speed, required this.offset, required this.length});
+}
+
+/// Generates [count] randomised orbit lines with whole-number speeds.
+List<_ThinkOrbitLine> _generateThinkOrbitLines(Random rng, {int count = 2, int maxSpeed = 2}) {
+  final int c = count.clamp(2, 5);
+  final List<int> speeds = List.generate(c, (i) => (i % maxSpeed) + 1);
+  speeds.shuffle(rng);
+  return List.generate(c, (i) {
+    final double offset = (i / c) + rng.nextDouble() * 0.1;
+    final double length = 0.12 + rng.nextDouble() * 0.18;
+    return _ThinkOrbitLine(speed: speeds[i], offset: offset % 1.0, length: length);
+  });
+}
+
+/// Draws randomised animated lines orbiting the thinking bubble header.
 class _ThinkingOrbitPainter extends CustomPainter {
   final double progress;
   final Color color;
+  final List<_ThinkOrbitLine> lines;
 
   _ThinkingOrbitPainter({
     required this.progress,
     required this.color,
+    required this.lines,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final Rect rect = Offset.zero & size;
-    final RRect rrect = RRect.fromRectAndRadius(
-      rect,
-      const Radius.circular(4),
-    );
+    final RRect rrect = RRect.fromRectAndRadius(rect, const Radius.circular(4));
     final Path path = Path()..addRRect(rrect);
 
     final List<ui.PathMetric> metrics = path.computeMetrics().toList();
@@ -885,18 +909,10 @@ class _ThinkingOrbitPainter extends CustomPainter {
       ..strokeWidth = 1.5
       ..strokeCap = ui.StrokeCap.round;
 
-    final List<Map<String, dynamic>> lines = [
-      {'speed': 1.0, 'offset': 0.0, 'length': 0.25},
-      {'speed': 1.5, 'offset': 0.5, 'length': 0.2},
-    ];
-
-    for (var line in lines) {
-      double p =
-          (progress * (line['speed'] as double) + (line['offset'] as double)) %
-          1.0;
-
-      double startOffset = p * pathLength;
-      double segmentLength = (line['length'] as double) * pathLength;
+    for (final line in lines) {
+      final double p = (progress * line.speed + line.offset) % 1.0;
+      final double startOffset = p * pathLength;
+      final double segmentLength = line.length * pathLength;
 
       Path extract;
       if (startOffset + segmentLength <= pathLength) {
@@ -908,7 +924,6 @@ class _ThinkingOrbitPainter extends CustomPainter {
           Offset.zero,
         );
       }
-
       canvas.drawPath(extract, linePaint);
     }
   }
@@ -964,6 +979,7 @@ class _ReasoningViewState extends State<ReasoningView>
     with TickerProviderStateMixin {
   bool _isExpanded = false;
   late AnimationController _orbitController;
+  List<_ThinkOrbitLine> _orbitLines = [];
 
   @override
   void initState() {
@@ -973,6 +989,8 @@ class _ReasoningViewState extends State<ReasoningView>
       vsync: this,
       duration: const Duration(milliseconds: 4000),
     );
+    final rng = Random();
+    _orbitLines = _generateThinkOrbitLines(rng, count: rng.nextInt(3) + 2);
     if (!widget.isDone && widget.enableLoadingAnimation) {
       _orbitController.repeat();
     }
@@ -983,6 +1001,11 @@ class _ReasoningViewState extends State<ReasoningView>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.enableLoadingAnimation != widget.enableLoadingAnimation) {
       if (widget.enableLoadingAnimation && !widget.isDone && _isExpanded) {
+        // Re-randomise lines each time animation is enabled
+        final rng = Random();
+        setState(() {
+          _orbitLines = _generateThinkOrbitLines(rng, count: rng.nextInt(3) + 2);
+        });
         _orbitController.repeat();
       } else {
         _orbitController.stop();
@@ -1023,6 +1046,7 @@ class _ReasoningViewState extends State<ReasoningView>
                       ? _ThinkingOrbitPainter(
                           progress: _orbitController.value,
                           color: widget.textColor.withOpacity(0.6),
+                          lines: _orbitLines,
                         )
                       : null,
                   child: child,

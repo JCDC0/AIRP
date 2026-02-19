@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:math' show Random;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -31,6 +32,8 @@ class _ChatInputAreaState extends State<ChatInputArea>
   final List<String> _pendingImages = [];
   final ImagePicker _picker = ImagePicker();
   late AnimationController _orbitController;
+  List<_OrbitLine> _orbitLines = [];
+  List<_OrbitLine> _iconOrbitLines = [];
   bool _isSending = false;
 
   @override
@@ -40,6 +43,8 @@ class _ChatInputAreaState extends State<ChatInputArea>
       vsync: this,
       duration: const Duration(milliseconds: 4000),
     );
+    _orbitLines = _generateOrbitLines(Random(), lineCount: 3);
+    _iconOrbitLines = _generateOrbitLines(Random(), lineCount: 2, maxSpeed: 2);
   }
 
   @override
@@ -366,6 +371,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
           return CustomPaint(
             foregroundPainter: _IconArcPainter(
               progress: _orbitController.value,
+              lines: _iconOrbitLines,
               color: activeColor,
               strokeWidth: 2.5 * iconScale,
               enableBloom: useBloom,
@@ -397,6 +403,10 @@ class _ChatInputAreaState extends State<ChatInputArea>
 
     if (isLoading) {
       if (!_orbitController.isAnimating) {
+        // Re-randomise lines on every new AI response
+        final rng = Random();
+        _orbitLines = _generateOrbitLines(rng, lineCount: rng.nextInt(4) + 2);
+        _iconOrbitLines = _generateOrbitLines(Random(), lineCount: rng.nextInt(2) + 2, maxSpeed: 2);
         _orbitController.repeat();
       }
     } else {
@@ -700,6 +710,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                     return CustomPaint(
                                       foregroundPainter: _IconArcPainter(
                                         progress: _orbitController.value,
+                                        lines: _iconOrbitLines,
                                         color: reasoningColor ?? Colors.white,
                                         strokeWidth: 2.5 * iconScale,
                                         enableBloom: themeProvider.enableBloom,
@@ -782,6 +793,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                               foregroundPainter: isLoading && themeProvider.enableLoadingAnimation
                                   ? LineOrbitPainter(
                                       progress: _orbitController.value,
+                                      lines: _orbitLines,
                                       color: Colors.white,
                                       bloomColor: themeProvider.appThemeColor,
                                       enableBloom: themeProvider.enableBloom,
@@ -897,9 +909,50 @@ class _ChatInputAreaState extends State<ChatInputArea>
 
 /// A custom painter that draws orbiting lines around the input field.
 ///
-/// This is used as a loading indicator when an AI response is being generated.
+// ---------------------------------------------------------------------------
+// Orbit line data & generator
+// ---------------------------------------------------------------------------
+
+/// Immutable config for a single orbiting arc/line.
+class _OrbitLine {
+  final int speed;    // Whole-number speed multiplier (1, 2 or 3)
+  final double offset; // Starting phase offset [0, 1)
+  final double length; // Arc fraction of total path [0.1, 0.35)
+
+  const _OrbitLine({required this.speed, required this.offset, required this.length});
+}
+
+/// Generates [lineCount] randomised orbit lines with whole-number speeds so
+/// that every arc completes full cycles within one controller period,
+/// eliminating stutter at the repeat boundary.
+List<_OrbitLine> _generateOrbitLines(
+  Random rng, {
+  int lineCount = 3,
+  int maxSpeed = 3,
+}) {
+  final int count = lineCount.clamp(2, 5);
+  // Assign distinct speeds cycling through 1..maxSpeed
+  final List<int> speeds = List.generate(count, (i) => (i % maxSpeed) + 1);
+  // Shuffle so order isn't always ascending
+  speeds.shuffle(rng);
+
+  return List.generate(count, (i) {
+    final double offset = (i / count) + rng.nextDouble() * 0.1;
+    final double length = 0.10 + rng.nextDouble() * 0.20; // 10 %–30 %
+    return _OrbitLine(speed: speeds[i], offset: offset % 1.0, length: length);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Painters
+// ---------------------------------------------------------------------------
+
+/// Draws randomised animated lines orbiting the rounded-rectangle border of the
+/// chat text field. This is used as a loading indicator when an AI response is
+/// being generated.
 class LineOrbitPainter extends CustomPainter {
   final double progress;
+  final List<_OrbitLine> lines;
   final Color color;
   final Color bloomColor;
   final bool enableBloom;
@@ -907,6 +960,7 @@ class LineOrbitPainter extends CustomPainter {
 
   LineOrbitPainter({
     required this.progress,
+    required this.lines,
     required this.color,
     required this.bloomColor,
     required this.enableBloom,
@@ -941,35 +995,12 @@ class LineOrbitPainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3)
       ..strokeCap = ui.StrokeCap.round;
 
-    final List<Map<String, dynamic>> lines = [
-      {
-        'speed': 1.0,
-        'offset': 0.15,
-        'length': 0.2,
-        'curve': Curves.easeInOutSine,
-      },
-      {
-        'speed': 2.0,
-        'offset': 0.45,
-        'length': 0.15,
-        'curve': Curves.fastOutSlowIn,
-      },
-      {
-        'speed': 1.0,
-        'offset': 0.75,
-        'length': 0.25,
-        'curve': Curves.slowMiddle,
-      },
-    ];
+    for (final line in lines) {
+      final double p =
+          (progress * line.speed + line.offset) % 1.0;
 
-    for (var line in lines) {
-      double p =
-          (progress * (line['speed'] as double) + (line['offset'] as double)) %
-          1.0;
-      double curvedP = (line['curve'] as Curve).transform(p);
-
-      double startOffset = curvedP * pathLength;
-      double segmentLength = (line['length'] as double) * pathLength;
+      final double startOffset = p * pathLength;
+      final double segmentLength = line.length * pathLength;
 
       Path extract;
       if (startOffset + segmentLength <= pathLength) {
@@ -995,9 +1026,10 @@ class LineOrbitPainter extends CustomPainter {
       oldDelegate.enableBloom != enableBloom;
 }
 
-/// Draws a single animated arc around a circular icon button.
+/// Draws randomised animated arcs around a circular icon button.
 class _IconArcPainter extends CustomPainter {
   final double progress;
+  final List<_OrbitLine> lines;
   final Color color;
   final double strokeWidth;
   final bool enableBloom;
@@ -1005,6 +1037,7 @@ class _IconArcPainter extends CustomPainter {
 
   _IconArcPainter({
     required this.progress,
+    required this.lines,
     required this.color,
     required this.strokeWidth,
     required this.enableBloom,
@@ -1022,21 +1055,28 @@ class _IconArcPainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
-    // Single arc: 90 degrees, rotating
-    final double startAngle = progress * 2 * math.pi;
-    const double sweepAngle = math.pi / 2;
-
+    Paint? bloomPaint;
     if (enableBloom) {
-      final Paint bloomPaint = Paint()
+      bloomPaint = Paint()
         ..color = bloomColor.withValues(alpha: 0.4)
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth * 2.5
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
         ..strokeCap = StrokeCap.round;
-      canvas.drawArc(arcRect, startAngle, sweepAngle, false, bloomPaint);
     }
 
-    canvas.drawArc(arcRect, startAngle, sweepAngle, false, arcPaint);
+    for (final line in lines) {
+      // Full circle arc — sweep angle is a fraction of the circle
+      final double startAngle =
+          ((progress * line.speed + line.offset) % 1.0) * 2 * math.pi;
+      // Each line covers ~90°; shorter lines for higher-speed arcs feel snappier
+      final double sweepAngle = line.length * 2 * math.pi;
+
+      if (bloomPaint != null) {
+        canvas.drawArc(arcRect, startAngle, sweepAngle, false, bloomPaint);
+      }
+      canvas.drawArc(arcRect, startAngle, sweepAngle, false, arcPaint);
+    }
   }
 
   @override
