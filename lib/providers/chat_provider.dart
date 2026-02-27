@@ -8,6 +8,7 @@ import '../models/chat_models.dart';
 import '../models/character_card.dart';
 import '../services/chat_api_service.dart';
 import '../services/secure_storage_service.dart';
+import '../services/web_search_service.dart';
 import '../utils/constants.dart';
 
 /// Central provider for managing chat state, API communication, and settings.
@@ -202,6 +203,14 @@ class ChatProvider extends ChangeNotifier {
   bool _disableSafety = true;
   String _reasoningEffort = "none";
 
+  // Web Search (BYOK)
+  SearchProvider _searchProvider = SearchProvider.provider;
+  String _braveApiKey = '';
+  String _tavilyApiKey = '';
+  String _serperApiKey = '';
+  String _searxngUrl = '';
+  int _searchResultCount = 5;
+
   bool _enableSystemPrompt = true;
   bool _enableAdvancedSystemPrompt = true;
   bool _enableCharacterCard = true;
@@ -220,6 +229,14 @@ class ChatProvider extends ChangeNotifier {
   bool get enableUsage => _enableUsage;
   bool get disableSafety => _disableSafety;
   String get reasoningEffort => _reasoningEffort;
+
+  // Web Search (BYOK)
+  SearchProvider get searchProvider => _searchProvider;
+  String get braveApiKey => _braveApiKey;
+  String get tavilyApiKey => _tavilyApiKey;
+  String get serperApiKey => _serperApiKey;
+  String get searxngUrl => _searxngUrl;
+  int get searchResultCount => _searchResultCount;
 
   bool get enableSystemPrompt => _enableSystemPrompt;
   bool get enableAdvancedSystemPrompt => _enableAdvancedSystemPrompt;
@@ -461,6 +478,32 @@ class ChatProvider extends ChangeNotifier {
     if (_enableGrounding && _enableImageGen) {
       _enableImageGen = false;
     }
+
+    // Web Search (BYOK)
+    final providerName =
+        prefs.getString(ApiConstants.prefKeySearchProvider) ?? 'provider';
+    _searchProvider = SearchProvider.values.firstWhere(
+      (e) => e.name == providerName,
+      orElse: () => SearchProvider.provider,
+    );
+    _braveApiKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyBraveApiKey,
+      prefsKey: ApiConstants.prefKeyBraveApiKey,
+    );
+    _tavilyApiKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyTavilyApiKey,
+      prefsKey: ApiConstants.prefKeyTavilyApiKey,
+    );
+    _serperApiKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeySerperApiKey,
+      prefsKey: ApiConstants.prefKeySerperApiKey,
+    );
+    _searxngUrl = prefs.getString(ApiConstants.prefKeySearXNGUrl) ?? '';
+    _searchResultCount =
+        prefs.getInt(ApiConstants.prefSearchResultCount) ?? 5;
     _systemInstruction =
         prefs.getString('airp_default_system_instruction') ?? '';
     _advancedSystemInstruction =
@@ -690,6 +733,36 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSearchProvider(SearchProvider val) {
+    _searchProvider = val;
+    notifyListeners();
+  }
+
+  void setBraveApiKey(String val) {
+    _braveApiKey = val;
+    notifyListeners();
+  }
+
+  void setTavilyApiKey(String val) {
+    _tavilyApiKey = val;
+    notifyListeners();
+  }
+
+  void setSerperApiKey(String val) {
+    _serperApiKey = val;
+    notifyListeners();
+  }
+
+  void setSearxngUrl(String val) {
+    _searxngUrl = val;
+    notifyListeners();
+  }
+
+  void setSearchResultCount(int val) {
+    _searchResultCount = val;
+    notifyListeners();
+  }
+
   void setEnableImageGen(bool val) {
     _enableImageGen = val;
     if (val) _enableGrounding = false;
@@ -805,6 +878,31 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setBool(ApiConstants.prefEnableGrounding, _enableGrounding);
     await prefs.setBool(ApiConstants.prefEnableImageGen, _enableImageGen);
     await prefs.setBool(ApiConstants.prefDisableSafety, _disableSafety);
+    // Web Search (BYOK)
+    await prefs.setString(
+      ApiConstants.prefKeySearchProvider,
+      _searchProvider.name,
+    );
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyBraveApiKey,
+      prefsKey: ApiConstants.prefKeyBraveApiKey,
+      value: _braveApiKey,
+    );
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyTavilyApiKey,
+      prefsKey: ApiConstants.prefKeyTavilyApiKey,
+      value: _tavilyApiKey,
+    );
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeySerperApiKey,
+      prefsKey: ApiConstants.prefKeySerperApiKey,
+      value: _serperApiKey,
+    );
+    await prefs.setString(ApiConstants.prefKeySearXNGUrl, _searxngUrl);
+    await prefs.setInt(ApiConstants.prefSearchResultCount, _searchResultCount);
     await prefs.setString(
       'airp_default_system_instruction',
       _systemInstruction,
@@ -837,6 +935,71 @@ class ChatProvider extends ChangeNotifier {
     if (_currentProvider == AiProvider.gemini) {
       await initializeModel();
     }
+  }
+
+  /// Runs the configured BYOK search backend and returns a formatted context
+  /// block, or `null` if the provider is set to [SearchProvider.provider]
+  /// (i.e. delegate to the AI's native grounding) or if the search fails.
+  Future<String?> performByokWebSearch(String query) async {
+    if (_searchProvider == SearchProvider.provider) return null;
+
+    List<WebSearchResult> results = [];
+
+    switch (_searchProvider) {
+      case SearchProvider.brave:
+        if (_braveApiKey.isEmpty) {
+          debugPrint('[WebSearch] Brave key not set — skipping BYOK search.');
+          return null;
+        }
+        results = await WebSearchService.searchBrave(
+          query,
+          _braveApiKey,
+          resultCount: _searchResultCount,
+        );
+      case SearchProvider.searxng:
+        if (_searxngUrl.isEmpty) {
+          debugPrint('[WebSearch] SearXNG URL not set — skipping BYOK search.');
+          return null;
+        }
+        results = await WebSearchService.searchSearXNG(
+          query,
+          _searxngUrl,
+          resultCount: _searchResultCount,
+        );
+      case SearchProvider.tavily:
+        if (_tavilyApiKey.isEmpty) {
+          debugPrint('[WebSearch] Tavily key not set — skipping BYOK search.');
+          return null;
+        }
+        results = await WebSearchService.searchTavily(
+          query,
+          _tavilyApiKey,
+          resultCount: _searchResultCount,
+        );
+      case SearchProvider.serper:
+        if (_serperApiKey.isEmpty) {
+          debugPrint('[WebSearch] Serper key not set — skipping BYOK search.');
+          return null;
+        }
+        results = await WebSearchService.searchSerper(
+          query,
+          _serperApiKey,
+          resultCount: _searchResultCount,
+        );
+      case SearchProvider.duckduckgo:
+        results = await WebSearchService.searchDDG(
+          query,
+          resultCount: _searchResultCount,
+        );
+      case SearchProvider.provider:
+        return null;
+    }
+
+    if (results.isEmpty) return null;
+    return WebSearchService.formatResultsAsContextBlock(
+      results,
+      query: query,
+    );
   }
 
   /// Constructs the full system instruction including Main Prompt, Advanced Prompt, and Character Card.
@@ -1012,7 +1175,8 @@ class ChatProvider extends ChangeNotifier {
 
     if (_enableGrounding &&
         _currentProvider == AiProvider.gemini &&
-        imagesToSend.isEmpty) {
+        imagesToSend.isEmpty &&
+        _searchProvider == SearchProvider.provider) {
       try {
         _nonStreamingLoading = true;
         notifyListeners();
@@ -1158,6 +1322,23 @@ class ChatProvider extends ChangeNotifier {
     }
 
     final contentNotifier = ValueNotifier<String>("");
+
+    // ── BYOK Web Search ──────────────────────────────────────────────────────
+    // Fetch search context before streaming when the user has chosen a
+    // non-provider search backend. This runs regardless of AI provider.
+    String? byokWebContext;
+    if (_enableGrounding && _searchProvider != SearchProvider.provider) {
+      try {
+        _nonStreamingLoading = true;
+        notifyListeners();
+        byokWebContext = await performByokWebSearch(messageText);
+      } catch (e) {
+        debugPrint('[WebSearch] BYOK fetch failed during sendMessage: $e');
+      } finally {
+        _nonStreamingLoading = false;
+        notifyListeners();
+      }
+    }
     _messages.add(
       ChatMessage(
         text: "",
@@ -1185,9 +1366,15 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       if (_currentProvider == AiProvider.gemini) {
+        // For Gemini streaming, the model is already initialised with the
+        // base system instruction. Prepend any BYOK context to the user
+        // message so it reaches the model without requiring re-initialisation.
+        final String geminiMessage = byokWebContext != null
+            ? '$byokWebContext\n\n---\n\n$messageText'
+            : messageText;
         responseStream = ChatApiService.streamGeminiResponse(
           chatSession: _chat,
-          message: messageText,
+          message: geminiMessage,
           imagePaths: imagesToSend,
           modelName: _selectedModel,
         );
@@ -1240,6 +1427,13 @@ class ChatProvider extends ChangeNotifier {
 
         String finalSystemInstruction = _buildSystemInstruction();
 
+        // Prepend BYOK search context to user message (not system prompt)
+        // so each query gets its own fresh context and avoids mutating
+        // the session-level system instruction.
+        final String openAiUserMessage = byokWebContext != null
+            ? '$byokWebContext\n\n---\n\n$messageText'
+            : messageText;
+
         responseStream = ChatApiService.streamOpenAiCompatible(
           apiKey: apiKey,
           baseUrl: baseUrl,
@@ -1248,13 +1442,14 @@ class ChatProvider extends ChangeNotifier {
               : _selectedModel,
           history: limitedHistory,
           systemInstruction: finalSystemInstruction,
-          userMessage: messageText,
+          userMessage: openAiUserMessage,
           imagePaths: imagesToSend,
           temperature: _enableGenerationSettings ? _temperature : null,
           topP: _enableGenerationSettings ? _topP : null,
           topK: _enableGenerationSettings ? _topK : null,
           maxTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
-          enableGrounding: _enableGrounding,
+          // Only use native provider grounding when BYOK is not active
+          enableGrounding: _enableGrounding && _searchProvider == SearchProvider.provider,
           reasoningEffort: _enableReasoning ? _reasoningEffort : null,
           extraHeaders: headers,
           includeUsage: _enableUsage,

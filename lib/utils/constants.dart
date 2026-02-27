@@ -117,7 +117,29 @@ class ApiConstants {
   static const String prefEnableGrounding = 'airp_enable_grounding';
   static const String prefEnableImageGen = 'airp_enable_image_gen';
   static const String prefDisableSafety = 'airp_disable_safety';
+
+  // Web Search (BYOK)
+  static const String prefKeySearchProvider = 'airp_search_provider';
+  static const String prefKeyBraveApiKey = 'airp_key_brave_search';
+  static const String secureKeyBraveApiKey = 'secure_airp_key_brave_search';
+  static const String prefKeyTavilyApiKey = 'airp_key_tavily_search';
+  static const String secureKeyTavilyApiKey = 'secure_airp_key_tavily_search';
+  static const String prefKeySerperApiKey = 'airp_key_serper_search';
+  static const String secureKeySerperApiKey = 'secure_airp_key_serper_search';
+  static const String prefKeySearXNGUrl = 'airp_searxng_url';
+  static const String prefSearchResultCount = 'airp_search_result_count';
 }
+
+/// The web search backend to use when the grounding toggle is active.
+///
+/// - [provider]  : Delegate to the AI provider's native grounding feature
+///                 (e.g. Gemini Search, OpenRouter web plugin).
+/// - [brave]     : Brave Search API (BYOK).
+/// - [tavily]    : Tavily Search API — AI-optimised results (BYOK).
+/// - [serper]    : Serper.dev — Google Search results via clean JSON (BYOK).
+/// - [searxng]   : Self-hosted SearXNG instance.
+/// - [duckduckgo]: DuckDuckGo HTML scraping — free but may be unreliable.
+enum SearchProvider { provider, brave, tavily, serper, searxng, duckduckgo }
 
 /// Path to the default background asset.
 const String kDefaultBackground = 'assets/default.jpg';

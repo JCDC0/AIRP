@@ -9,6 +9,7 @@ import 'settings_panels/api_settings_panel.dart';
 import 'settings_panels/model_settings_panel.dart';
 import 'settings_panels/system_prompt_panel.dart';
 import 'settings_panels/generation_settings_panel.dart';
+import 'settings_panels/web_search_settings_panel.dart';
 import 'settings_panels/visual_settings_panel.dart';
 import 'settings_panels/scale_settings_panel.dart';
 import 'settings_panels/library_panel.dart';
@@ -342,6 +343,22 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     collapsedIconColor: themeProvider.appThemeColor,
                     iconColor: themeProvider.appThemeColor,
                     children: [const GenerationSettingsPanel()],
+                  ),
+
+                  ExpansionTile(
+                    key: Key('web_search_settings_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    title: Text(
+                      "Web Search",
+                      style: TextStyle(
+                        color: themeProvider.appThemeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
+                    collapsedIconColor: themeProvider.appThemeColor,
+                    iconColor: themeProvider.appThemeColor,
+                    children: [const WebSearchSettingsPanel()],
                   ),
 
                   ExpansionTile(
