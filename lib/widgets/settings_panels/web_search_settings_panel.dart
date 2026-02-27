@@ -120,48 +120,81 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
           ),
         ),
         const SizedBox(height: 6),
-        DropdownButton<SearchProvider>(
-          value: chatProvider.searchProvider,
-          isExpanded: true,
-          style: TextStyle(fontSize: fs - 1, color: Colors.white),
-          dropdownColor: Theme.of(context).cardColor,
-          underline: Container(
-            height: 1,
-            color: themeProvider.enableBloom
-                ? accent.withOpacity(0.5)
-                : Colors.white24,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: themeProvider.enableBloom
+                  ? accent.withOpacity(0.5)
+                  : Colors.white12,
+            ),
+            boxShadow: themeProvider.enableBloom
+                ? [
+                    BoxShadow(
+                      color: accent.withOpacity(0.1),
+                      blurRadius: 8,
+                    ),
+                  ]
+                : [],
           ),
-          items: const [
-            DropdownMenuItem(
-              value: SearchProvider.provider,
-              child: Text('Provider  (native grounding)'),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<SearchProvider>(
+              value: chatProvider.searchProvider,
+              isExpanded: true,
+              dropdownColor: const Color(0xFF2C2C2C),
+              icon: Icon(Icons.travel_explore, color: accent),
+              items: [
+                DropdownMenuItem(
+                  value: SearchProvider.provider,
+                  child: Text(
+                    'Provider  (native grounding)',
+                    style: TextStyle(fontSize: fs),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: SearchProvider.brave,
+                  child: Text(
+                    'Brave Web Search  (BYOK)',
+                    style: TextStyle(fontSize: fs),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: SearchProvider.tavily,
+                  child: Text(
+                    'Tavily  (AI-optimised, BYOK)',
+                    style: TextStyle(fontSize: fs),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: SearchProvider.serper,
+                  child: Text(
+                    'Serper.dev  (Google results, BYOK)',
+                    style: TextStyle(fontSize: fs),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: SearchProvider.searxng,
+                  child: Text(
+                    'SearXNG  (self-hosted)',
+                    style: TextStyle(fontSize: fs),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: SearchProvider.duckduckgo,
+                  child: Text(
+                    'DuckDuckGo  (free, scraping)',
+                    style: TextStyle(fontSize: fs),
+                  ),
+                ),
+              ],
+              onChanged: (val) {
+                if (val == null) return;
+                chatProvider.setSearchProvider(val);
+                chatProvider.saveSettings(showConfirmation: false);
+              },
             ),
-            DropdownMenuItem(
-              value: SearchProvider.brave,
-              child: Text('Brave Web Search  (BYOK)'),
-            ),
-            DropdownMenuItem(
-              value: SearchProvider.tavily,
-              child: Text('Tavily  (AI-optimised, BYOK)'),
-            ),
-            DropdownMenuItem(
-              value: SearchProvider.serper,
-              child: Text('Serper.dev  (Google results, BYOK)'),
-            ),
-            DropdownMenuItem(
-              value: SearchProvider.searxng,
-              child: Text('SearXNG  (self-hosted)'),
-            ),
-            DropdownMenuItem(
-              value: SearchProvider.duckduckgo,
-              child: Text('DuckDuckGo  (free, scraping)'),
-            ),
-          ],
-          onChanged: (val) {
-            if (val == null) return;
-            chatProvider.setSearchProvider(val);
-            chatProvider.saveSettings(showConfirmation: false);
-          },
+          ),
         ),
         const SizedBox(height: 4),
         Text(
