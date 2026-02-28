@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart';
 
 /// A customizable slider widget used for adjusting numeric settings.
 ///
@@ -47,6 +49,7 @@ class SettingsSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -69,12 +72,12 @@ class SettingsSlider extends StatelessWidget {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                style: TextStyle(fontSize: fontSize, color: Colors.white),
+                style: TextStyle(fontSize: fontSize, color: themeProvider.textColor),
                 textAlign: TextAlign.center,
                 decoration: InputDecoration(
                   contentPadding: EdgeInsets.zero,
                   filled: true,
-                  fillColor: Colors.white10,
+                  fillColor: themeProvider.dividerColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,

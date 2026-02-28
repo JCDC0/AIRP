@@ -236,6 +236,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
            if (warnings.isNotEmpty) {
              // Show warnings but allow proceeding
              if (!mounted) return;
+             final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
              await showDialog(
                context: context, 
                builder: (ctx) => AlertDialog(
@@ -243,12 +244,12 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                  content: Column(
                    mainAxisSize: MainAxisSize.min,
                    crossAxisAlignment: CrossAxisAlignment.start,
-                   children: warnings.map((w) => Text("• $w", style: const TextStyle(color: Colors.white70))).toList(),
+                   children: warnings.map((w) => Text("• $w", style: TextStyle(color: themeProvider.subtitleColor))).toList(),
                  ),
                  actions: [
                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
                  ],
-                 backgroundColor: const Color(0xFF2C2C2C),
+                 backgroundColor: themeProvider.dropdownColor,
                )
              );
            }
@@ -433,12 +434,13 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     if (title.isEmpty) return;
     
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2C),
+        backgroundColor: themeProvider.dropdownColor,
         title: Text("Delete '$title'?", style: TextStyle(color: Colors.redAccent, fontSize: scaleProvider.systemFontSize)),
-        content: Text("Are you sure you want to remove this preset from your library?", style: TextStyle(color: Colors.white70, fontSize: scaleProvider.systemFontSize * 0.8)),
+        content: Text("Are you sure you want to remove this preset from your library?", style: TextStyle(color: themeProvider.subtitleColor, fontSize: scaleProvider.systemFontSize * 0.8)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -482,6 +484,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
 
   void _editCustomRule(int index) {
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final rule = _customRules[index];
     final labelController = TextEditingController(text: rule['label']);
     final contentController = TextEditingController(text: rule['content']);
@@ -489,11 +492,11 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2C),
+        backgroundColor: themeProvider.dropdownColor,
         title: Text(
           "Edit Rule",
           style: TextStyle(
-            color: Colors.white,
+            color: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize,
           ),
         ),
@@ -502,13 +505,13 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           children: [
             TextField(
               controller: labelController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Rule Name",
                 filled: true,
-                fillColor: Colors.black12,
+                fillColor: themeProvider.containerFillDarkColor,
               ),
               style: TextStyle(
-                color: Colors.white,
+                color: themeProvider.textColor,
                 fontSize: scaleProvider.systemFontSize * 0.8,
               ),
             ),
@@ -516,13 +519,13 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             TextField(
               controller: contentController,
               maxLines: 4,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Rule Content",
                 filled: true,
-                fillColor: Colors.black12,
+                fillColor: themeProvider.containerFillDarkColor,
               ),
               style: TextStyle(
-                color: Colors.white,
+                color: themeProvider.textColor,
                 fontSize: scaleProvider.systemFontSize * 0.8,
               ),
             ),
@@ -564,11 +567,12 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
 
   void _confirmDeleteCustomRule(int index) {
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final rule = _customRules[index];
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2C),
+        backgroundColor: themeProvider.dropdownColor,
         title: Text(
           "Delete Rule?",
           style: TextStyle(
@@ -579,7 +583,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         content: Text(
           "Are you sure you want to delete '${rule['label']}'?\n\nThis cannot be undone.",
           style: TextStyle(
-            color: Colors.white70,
+            color: themeProvider.subtitleColor,
             fontSize: scaleProvider.systemFontSize * 0.8,
           ),
         ),
@@ -733,13 +737,13 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
               fontSize: scaleProvider.systemFontSize,
               fontWeight: FontWeight.bold,
               shadows: themeProvider.enableBloom
-                  ? [const Shadow(color: Colors.white, blurRadius: 10)]
+                  ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                   : [],
             ),
           ),
           trailing: Switch(
             value: chatProvider.enableSystemPrompt,
-            activeThumbColor: themeProvider.appThemeColor,
+            activeThumbColor: themeProvider.textColor,
             onChanged: (val) {
               chatProvider.setEnableSystemPrompt(val);
               chatProvider.saveSettings();
@@ -759,12 +763,12 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: Colors.black26,
+                          color: themeProvider.containerFillColor,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: themeProvider.enableBloom
-                                ? themeProvider.appThemeColor.withOpacity(0.5)
-                                : Colors.white12,
+                                ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                                : themeProvider.borderColor,
                           ),
                         ),
                         child: DropdownButtonHideUnderline(
@@ -777,10 +781,10 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                                 fontSize: scaleProvider.systemFontSize * 0.8,
                               ),
                             ),
-                            dropdownColor: const Color(0xFF2C2C2C),
+                            dropdownColor: themeProvider.dropdownColor,
                             icon: Icon(
                               Icons.arrow_drop_down,
-                              color: themeProvider.appThemeColor,
+                              color: themeProvider.textColor,
                             ),
                             value: null,
                             items: [
@@ -889,12 +893,12 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                         decoration: InputDecoration(
                           labelText: "Prompt Title",
                           labelStyle: TextStyle(
-                            color: themeProvider.appThemeColor,
+                            color: themeProvider.textColor,
                             fontSize: scaleProvider.systemFontSize * 0.8,
                           ),
                           border: const OutlineInputBorder(),
                           filled: true,
-                          fillColor: Colors.black12,
+                          fillColor: themeProvider.containerFillDarkColor,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           isDense: true,
                         ),
@@ -920,7 +924,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                           ),
                           border: const OutlineInputBorder(),
                           filled: true,
-                          fillColor: Colors.black26,
+                          fillColor: themeProvider.containerFillColor,
                         ),
                         style: TextStyle(
                            fontSize: scaleProvider.systemFontSize,
@@ -939,7 +943,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                               icon: Icon(
                                 Icons.copy_rounded,
                                 size: 18,
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.textColor,
                               ),
                               onPressed: _copyToClipboard,
                               tooltip: 'Copy to Clipboard',
@@ -958,8 +962,8 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                             const SizedBox(width: 8),
                             OutlinedButton(
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: themeProvider.appThemeColor,
-                                side: BorderSide(color: themeProvider.appThemeColor),
+                                foregroundColor: themeProvider.textColor,
+                                side: BorderSide(color: themeProvider.textColor),
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               ),
                               onPressed: _handleSavePreset,
@@ -1033,7 +1037,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                                )
                          ],
                        ),
-                       const Divider(color: Colors.white12),
+                       Divider(color: themeProvider.borderColor),
                        _buildCardField("Name", _cardNameController),
                        const SizedBox(height: 8),
                        _buildCardField("Description / Persona", _cardDescriptionController, maxLines: 3),
@@ -1071,15 +1075,15 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: scaleProvider.systemFontSize,
-              color: themeProvider.appThemeColor,
+              color: themeProvider.textColor,
               shadows: themeProvider.enableBloom
-                  ? [const Shadow(color: Colors.white, blurRadius: 10)]
+                  ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                   : [],
             ),
           ),
           trailing: Switch(
             value: chatProvider.enableAdvancedSystemPrompt,
-            activeThumbColor: themeProvider.appThemeColor,
+            activeThumbColor: themeProvider.textColor,
             onChanged: (val) {
               chatProvider.setEnableAdvancedSystemPrompt(val);
               chatProvider.saveSettings();
@@ -1092,9 +1096,9 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                  absorbing: !chatProvider.enableAdvancedSystemPrompt,
                  child: Container(
                    decoration: BoxDecoration(
-                     color: Colors.black26,
+                     color: themeProvider.containerFillColor,
                      borderRadius: BorderRadius.circular(8),
-                     border: Border.all(color: Colors.white12),
+                     border: Border.all(color: themeProvider.borderColor),
                    ),
                    child: Column(
                      crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1104,12 +1108,12 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
-                            color: Colors.black26,
+                            color: themeProvider.containerFillColor,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: themeProvider.enableBloom
-                                  ? themeProvider.appThemeColor.withOpacity(0.5)
-                                  : Colors.white12,
+                                  ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                                  : themeProvider.borderColor,
                             ),
                           ),
                           child: DropdownButtonHideUnderline(
@@ -1122,10 +1126,10 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                                   fontSize: scaleProvider.systemFontSize * 0.8,
                                 ),
                               ),
-                              dropdownColor: const Color(0xFF2C2C2C),
+                              dropdownColor: themeProvider.dropdownColor,
                               icon: Icon(
                                 Icons.arrow_drop_down,
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.textColor,
                               ),
                               value: null,
                               items: chatProvider.savedSystemPrompts.map((prompt) {
@@ -1169,7 +1173,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                              title: Text(
                                rule['label'],
                                style: TextStyle(
-                                 color: Colors.white70,
+                                 color: themeProvider.subtitleColor,
                                  fontSize: scaleProvider.systemFontSize * 0.8,
                                ),
                                maxLines: 1,
@@ -1179,7 +1183,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                                (rule['content'] as String).replaceAll('\n', ' '),
                                maxLines: 1,
                                overflow: TextOverflow.ellipsis,
-                               style: const TextStyle(color: Colors.white30, fontSize: 10),
+                               style: TextStyle(color: themeProvider.faintColor, fontSize: 10),
                              ),
                              leading: IconButton(
                                icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 16),
@@ -1189,7 +1193,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                                mainAxisSize: MainAxisSize.min,
                                children: [
                                  IconButton(
-                                   icon: const Icon(Icons.close, color: Colors.white24, size: 16),
+                                   icon: Icon(Icons.close, color: themeProvider.faintestColor, size: 16),
                                    onPressed: () => _confirmDeleteCustomRule(index),
                                  ),
                                  Switch(
@@ -1207,7 +1211,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                            );
                        }),
                        
-                       const Divider(color: Colors.white12),
+                       Divider(color: themeProvider.borderColor),
                        
                        // Add New Rule
                         Padding(
@@ -1217,12 +1221,12 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                             children: [
                               TextField(
                                 controller: _ruleLabelController,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: "Rule Name",
                                   hintText: "Name",
                                   isDense: true,
                                   filled: true,
-                                  fillColor: Colors.black12,
+                                  fillColor: themeProvider.containerFillDarkColor,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -1238,7 +1242,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                                   ),
                                   border: const OutlineInputBorder(),
                                   filled: true,
-                                  fillColor: Colors.black26,
+                                  fillColor: themeProvider.containerFillColor,
                                 ),
                                 style: TextStyle(
                                   fontSize: scaleProvider.systemFontSize,
@@ -1253,7 +1257,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                                     icon: Icon(
                                       Icons.copy_rounded,
                                       size: 18,
-                                      color: themeProvider.appThemeColor,
+                                      color: themeProvider.textColor,
                                     ),
                                     onPressed: _copyRuleContentToClipboard,
                                     tooltip: 'Copy Rule Content',
@@ -1295,12 +1299,12 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                                 controller: widget.advancedPromptController,
                                 readOnly: true, // It is generated from rules
                                 maxLines: 5,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   filled: true, 
-                                  fillColor: Colors.black12,
-                                  border: OutlineInputBorder(),
+                                  fillColor: themeProvider.containerFillDarkColor,
+                                  border: const OutlineInputBorder(),
                                 ),
-                                style: const TextStyle(fontSize: 12, color: Colors.white70),
+                                style: TextStyle(fontSize: 12, color: themeProvider.subtitleColor),
                               ),
                             )
                           ],
@@ -1355,7 +1359,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             labelText: label,
             isDense: true,
             filled: true,
-            fillColor: Colors.black12,
+            fillColor: themeProvider.containerFillDarkColor,
             border: const OutlineInputBorder(),
           ),
           style: const TextStyle(fontSize: 13),
@@ -1369,7 +1373,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                 icon: Icon(
                   Icons.copy_rounded,
                   size: 16,
-                  color: themeProvider.appThemeColor,
+                  color: themeProvider.textColor,
                 ),
                 onPressed: () => _copyCardFieldToClipboard(controller, label),
                 tooltip: 'Copy $label',

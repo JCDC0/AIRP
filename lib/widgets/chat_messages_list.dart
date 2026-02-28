@@ -38,7 +38,7 @@ class ChatMessagesList extends StatelessWidget {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: themeProvider.surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -59,8 +59,8 @@ class ChatMessagesList extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2),
                     boxShadow: useBloom
                         ? [
-                            const BoxShadow(
-                              color: Colors.white24,
+                            BoxShadow(
+                    color: themeProvider.faintestColor,
                               blurRadius: 6,
                             ),
                           ]
@@ -74,7 +74,8 @@ class ChatMessagesList extends StatelessWidget {
                     _buildMenuIcon(
                       icon: Icons.copy,
                       label: "Copy",
-                      color: themeProvider.appThemeColor,
+                      color: themeProvider.textColor,
+                      themeProvider: themeProvider,
                       useBloom: useBloom,
                       onTap: () {
                         Navigator.pop(context);
@@ -92,6 +93,7 @@ class ChatMessagesList extends StatelessWidget {
                       icon: Icons.edit,
                       label: "Edit",
                       color: Colors.orangeAccent,
+                      themeProvider: themeProvider,
                       useBloom: useBloom,
                       onTap: () {
                         Navigator.pop(context);
@@ -105,6 +107,7 @@ class ChatMessagesList extends StatelessWidget {
                         icon: Icons.refresh,
                         label: "Retry",
                         color: Colors.greenAccent,
+                        themeProvider: themeProvider,
                         useBloom: useBloom,
                         onTap: isLastMessage
                             ? () {
@@ -119,6 +122,7 @@ class ChatMessagesList extends StatelessWidget {
                       icon: Icons.delete,
                       label: "Delete",
                       color: Colors.redAccent,
+                      themeProvider: themeProvider,
                       useBloom: useBloom,
                       onTap: () {
                         Navigator.pop(context);
@@ -139,6 +143,7 @@ class ChatMessagesList extends StatelessWidget {
     required IconData icon,
     required String label,
     required Color color,
+    required ThemeProvider themeProvider,
     VoidCallback? onTap,
     bool useBloom = false,
   }) {
@@ -165,7 +170,7 @@ class ChatMessagesList extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.grey[400],
+            color: themeProvider.subtitleColor,
             fontSize: 12,
             shadows: useBloom ? [Shadow(color: color, blurRadius: 8)] : [],
           ),
@@ -184,19 +189,19 @@ class ChatMessagesList extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2C),
-        title: const Text(
+        backgroundColor: themeProvider.dropdownColor,
+        title: Text(
           "Edit Message",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: themeProvider.textColor),
         ),
         content: TextField(
           controller: editController,
           maxLines: null,
-          style: const TextStyle(color: Colors.white70),
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          style: TextStyle(color: themeProvider.subtitleColor),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
             filled: true,
-            fillColor: Colors.black26,
+            fillColor: themeProvider.containerFillColor,
           ),
         ),
         actions: [
@@ -211,7 +216,7 @@ class ChatMessagesList extends StatelessWidget {
             },
             child: Text(
               "Save",
-              style: TextStyle(color: themeProvider.appThemeColor),
+              style: TextStyle(color: themeProvider.textColor),
             ),
           ),
         ],
@@ -221,18 +226,19 @@ class ChatMessagesList extends StatelessWidget {
 
   void _confirmDeleteMessage(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2C),
+        backgroundColor: themeProvider.dropdownColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           "Delete Message?",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: themeProvider.textColor),
         ),
-        content: const Text(
+        content: Text(
           "This cannot be undone.",
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: themeProvider.subtitleColor),
         ),
         actions: [
           TextButton(
@@ -261,15 +267,16 @@ class ChatMessagesList extends StatelessWidget {
 
   void _confirmRegenerate(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2C),
+        backgroundColor: themeProvider.dropdownColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Regenerate?", style: TextStyle(color: Colors.white)),
-        content: const Text(
+        title: Text("Regenerate?", style: TextStyle(color: themeProvider.textColor)),
+        content: Text(
           "This will keep this message as a version and generate a new response. Previous responses will be accessible via the version counter.",
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: themeProvider.subtitleColor),
         ),
         actions: [
           TextButton(
@@ -282,9 +289,9 @@ class ChatMessagesList extends StatelessWidget {
               Navigator.pop(context);
               chatProvider.regenerateResponse(index);
             },
-            child: const Text(
+            child: Text(
               "Regenerate",
-              style: TextStyle(color: Colors.black),
+              style: TextStyle(color: themeProvider.onAccentColor),
             ),
           ),
         ],
@@ -377,7 +384,7 @@ class ChatMessagesList extends StatelessWidget {
               showMotes: themeProvider.enableMotes,
               showRain: themeProvider.enableRain,
               showFireflies: themeProvider.enableFireflies,
-              effectColor: themeProvider.appThemeColor,
+              effectColor: themeProvider.bloomGlowColor,
               motesDensity: themeProvider.motesDensity.toDouble(),
               rainIntensity: themeProvider.rainIntensity.toDouble(),
               firefliesCount: themeProvider.firefliesCount.toDouble(),

@@ -62,27 +62,27 @@ class ModelSettingsPanel extends StatelessWidget {
           "Conversation Title",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: themeProvider.appThemeColor,
+            color: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize,
             shadows: themeProvider.enableBloom
-                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)]
+                ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
         ),
         const SizedBox(height: 5),
         Container(
           decoration: BoxDecoration(
-            color: Colors.black26,
+            color: themeProvider.containerFillColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: themeProvider.enableBloom
-                  ? themeProvider.appThemeColor.withOpacity(0.5)
-                  : Colors.white12,
+                  ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                  : themeProvider.borderColor,
             ),
             boxShadow: themeProvider.enableBloom
                 ? [
                     BoxShadow(
-                      color: themeProvider.appThemeColor.withOpacity(0.1),
+                      color: themeProvider.bloomGlowColor.withOpacity(0.1),
                       blurRadius: 8,
                     ),
                   ]
@@ -91,14 +91,14 @@ class ModelSettingsPanel extends StatelessWidget {
           child: TextField(
             controller: titleController,
             style: TextStyle(
-              color: Colors.white,
+              color: themeProvider.textColor,
               fontWeight: FontWeight.bold,
               fontSize: scaleProvider.systemFontSize,
             ),
             decoration: InputDecoration(
               hintText: "Type a title...",
               hintStyle: TextStyle(
-                color: Colors.white24,
+                color: themeProvider.faintestColor,
                 fontSize: scaleProvider.systemFontSize,
               ),
               border: InputBorder.none,
@@ -109,7 +109,7 @@ class ModelSettingsPanel extends StatelessWidget {
               suffixIcon: Icon(
                 Icons.edit,
                 size: 16,
-                color: themeProvider.appThemeColor,
+                color: themeProvider.textColor,
               ),
             ),
           ),
@@ -122,7 +122,7 @@ class ModelSettingsPanel extends StatelessWidget {
             fontWeight: FontWeight.bold,
             fontSize: scaleProvider.systemFontSize,
             shadows: themeProvider.enableBloom
-                ? [const Shadow(color: Colors.white, blurRadius: 10)]
+                ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
         ),
@@ -243,7 +243,7 @@ class ModelSettingsPanel extends StatelessWidget {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
                         blurRadius: 20,
                       ),
                     ]
@@ -285,7 +285,7 @@ class ModelSettingsPanel extends StatelessWidget {
                 shadows: themeProvider.enableBloom
                     ? [
                         Shadow(
-                          color: themeProvider.appThemeColor.withOpacity(0.9),
+                          color: themeProvider.bloomGlowColor.withOpacity(0.9),
                           blurRadius: 20,
                         ),
                       ]
@@ -317,7 +317,7 @@ class ModelSettingsPanel extends StatelessWidget {
                 shadows: themeProvider.enableBloom
                     ? [
                         Shadow(
-                          color: themeProvider.appThemeColor.withOpacity(0.9),
+                          color: themeProvider.bloomGlowColor.withOpacity(0.9),
                           blurRadius: 20,
                         ),
                       ]

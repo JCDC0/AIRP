@@ -502,8 +502,7 @@ class ChatProvider extends ChangeNotifier {
       prefsKey: ApiConstants.prefKeySerperApiKey,
     );
     _searxngUrl = prefs.getString(ApiConstants.prefKeySearXNGUrl) ?? '';
-    _searchResultCount =
-        prefs.getInt(ApiConstants.prefSearchResultCount) ?? 5;
+    _searchResultCount = prefs.getInt(ApiConstants.prefSearchResultCount) ?? 5;
     _systemInstruction =
         prefs.getString('airp_default_system_instruction') ?? '';
     _advancedSystemInstruction =
@@ -581,7 +580,6 @@ class ChatProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('enable_character_card', _enableCharacterCard);
   }
-
 
   void setCharacterCard(CharacterCard card) {
     _characterCard = card;
@@ -995,11 +993,10 @@ class ChatProvider extends ChangeNotifier {
         return null;
     }
 
-    if (results.isEmpty) return null;
-    return WebSearchService.formatResultsAsContextBlock(
-      results,
-      query: query,
-    );
+    if (results.isEmpty) {
+      return "\n\n*** SYSTEM NOTICE ***\nA web search for \"$query\" was attempted via ${_searchProvider.name}, but it returned 0 results or was blocked by the provider.\n\nPlease inform the user that the search failed or found nothing, and try answering their question using your knowledge if possible.\n*** END SYSTEM NOTICE ***\n\n";
+    }
+    return WebSearchService.formatResultsAsContextBlock(results, query: query);
   }
 
   /// Constructs the full system instruction including Main Prompt, Advanced Prompt, and Character Card.
@@ -1012,39 +1009,42 @@ class ChatProvider extends ChangeNotifier {
     }
 
     // Append Character Card data if present AND enabled
-    if (_enableCharacterCard && (_characterCard.name.isNotEmpty || _characterCard.description.isNotEmpty || _characterCard.personality.isNotEmpty)) {
-       if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
-       
-       final StringBuffer cardBuffer = StringBuffer();
-       cardBuffer.writeln("--- Character Information ---");
-       
-       if (_characterCard.name.isNotEmpty) {
-         cardBuffer.writeln("Name: ${_characterCard.name}");
-       }
-       
-       if (_characterCard.description.isNotEmpty) {
-         cardBuffer.writeln("Details/Persona: ${_characterCard.description}");
-       }
+    if (_enableCharacterCard &&
+        (_characterCard.name.isNotEmpty ||
+            _characterCard.description.isNotEmpty ||
+            _characterCard.personality.isNotEmpty)) {
+      if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
 
-        if (_characterCard.personality.isNotEmpty) {
-         cardBuffer.writeln("Personality: ${_characterCard.personality}");
-       }
-       
-       if (_characterCard.scenario.isNotEmpty) {
-         cardBuffer.writeln("Scenario: ${_characterCard.scenario}");
-       }
-       
-       if (_characterCard.mesExample.isNotEmpty) {
-         cardBuffer.writeln("Dialogue Examples:\n${_characterCard.mesExample}");
-       }
+      final StringBuffer cardBuffer = StringBuffer();
+      cardBuffer.writeln("--- Character Information ---");
 
-       if (_characterCard.systemPrompt.isNotEmpty) {
-          cardBuffer.writeln("Instructions: ${_characterCard.systemPrompt}");
-       }
+      if (_characterCard.name.isNotEmpty) {
+        cardBuffer.writeln("Name: ${_characterCard.name}");
+      }
 
-       finalSystemInstruction += cardBuffer.toString();
+      if (_characterCard.description.isNotEmpty) {
+        cardBuffer.writeln("Details/Persona: ${_characterCard.description}");
+      }
+
+      if (_characterCard.personality.isNotEmpty) {
+        cardBuffer.writeln("Personality: ${_characterCard.personality}");
+      }
+
+      if (_characterCard.scenario.isNotEmpty) {
+        cardBuffer.writeln("Scenario: ${_characterCard.scenario}");
+      }
+
+      if (_characterCard.mesExample.isNotEmpty) {
+        cardBuffer.writeln("Dialogue Examples:\n${_characterCard.mesExample}");
+      }
+
+      if (_characterCard.systemPrompt.isNotEmpty) {
+        cardBuffer.writeln("Instructions: ${_characterCard.systemPrompt}");
+      }
+
+      finalSystemInstruction += cardBuffer.toString();
     }
-    
+
     return finalSystemInstruction;
   }
 
@@ -1223,12 +1223,15 @@ class ChatProvider extends ChangeNotifier {
               ),
             );
           } else {
-            _addMessageToSavedSession(streamSessionId, ChatMessage(
-              text: result['text'] ?? "Error",
-              isUser: false,
-              modelName: _selectedModel,
-              thoughtSignature: result['thoughtSignature'],
-            ));
+            _addMessageToSavedSession(
+              streamSessionId,
+              ChatMessage(
+                text: result['text'] ?? "Error",
+                isUser: false,
+                modelName: _selectedModel,
+                thoughtSignature: result['thoughtSignature'],
+              ),
+            );
           }
         } else {
           if (_currentSessionId == streamSessionId) {
@@ -1346,15 +1349,15 @@ class ChatProvider extends ChangeNotifier {
         modelName: _selectedModel,
         contentNotifier: contentNotifier,
         regenerationVersions: _pendingRegenerationVersions,
-        currentVersionIndex: _pendingRegenerationVersions.isNotEmpty 
+        currentVersionIndex: _pendingRegenerationVersions.isNotEmpty
             ? _pendingRegenerationVersions.length - 1
             : 0,
       ),
     );
-    
+
     // Clear pending versions after using them
     _pendingRegenerationVersions = [];
-    
+
     notifyListeners();
 
     // Register active stream tracking
@@ -1449,7 +1452,8 @@ class ChatProvider extends ChangeNotifier {
           topK: _enableGenerationSettings ? _topK : null,
           maxTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
           // Only use native provider grounding when BYOK is not active
-          enableGrounding: _enableGrounding && _searchProvider == SearchProvider.provider,
+          enableGrounding:
+              _enableGrounding && _searchProvider == SearchProvider.provider,
           reasoningEffort: _enableReasoning ? _reasoningEffort : null,
           extraHeaders: headers,
           includeUsage: _enableUsage,
@@ -1574,7 +1578,9 @@ class ChatProvider extends ChangeNotifier {
     final messages = List<ChatMessage>.from(session.messages);
     if (messages.isNotEmpty && !messages.last.isUser) {
       final lastMessage = messages.last;
-      final updatedVersions = List<String>.from(lastMessage.regenerationVersions);
+      final updatedVersions = List<String>.from(
+        lastMessage.regenerationVersions,
+      );
       if (updatedVersions.isNotEmpty &&
           finalText.isNotEmpty &&
           !updatedVersions.contains(finalText)) {
@@ -1637,11 +1643,13 @@ class ChatProvider extends ChangeNotifier {
     final modelName = _activeStreamModels[sessionId] ?? session.modelName;
     final preview = text.length > 120 ? "${text.substring(0, 120)}..." : text;
 
-    _pendingNotifications.add(BackgroundNotification(
-      sessionTitle: session.title,
-      messagePreview: preview,
-      modelName: modelName,
-    ));
+    _pendingNotifications.add(
+      BackgroundNotification(
+        sessionTitle: session.title,
+        messagePreview: preview,
+        modelName: modelName,
+      ),
+    );
     notifyListeners();
   }
 
@@ -1691,7 +1699,7 @@ class ChatProvider extends ChangeNotifier {
         if (msg.text.isNotEmpty && !currentVersions.contains(msg.text)) {
           currentVersions.add(msg.text);
         }
-        
+
         // Store versions for the next message that will be generated
         _pendingRegenerationVersions = currentVersions;
 
@@ -1727,7 +1735,7 @@ class ChatProvider extends ChangeNotifier {
   void selectMessageVersion(int messageIndex, int versionIndex) {
     if (messageIndex < 0 || messageIndex >= _messages.length) return;
     final msg = _messages[messageIndex];
-    
+
     if (msg.isUser || msg.regenerationVersions.isEmpty) return;
     if (versionIndex < 0 || versionIndex >= msg.regenerationVersions.length) {
       return;
@@ -1738,7 +1746,7 @@ class ChatProvider extends ChangeNotifier {
       text: selectedVersionText,
       currentVersionIndex: versionIndex,
     );
-    
+
     _scheduleAutoSave();
     notifyListeners();
   }
@@ -1747,9 +1755,9 @@ class ChatProvider extends ChangeNotifier {
   void nextMessageVersion(int messageIndex) {
     if (messageIndex < 0 || messageIndex >= _messages.length) return;
     final msg = _messages[messageIndex];
-    
+
     if (msg.isUser || msg.regenerationVersions.isEmpty) return;
-    
+
     int nextIndex = msg.currentVersionIndex + 1;
     if (nextIndex >= msg.regenerationVersions.length) {
       nextIndex = 0; // Loop back to first
@@ -1761,9 +1769,9 @@ class ChatProvider extends ChangeNotifier {
   void previousMessageVersion(int messageIndex) {
     if (messageIndex < 0 || messageIndex >= _messages.length) return;
     final msg = _messages[messageIndex];
-    
+
     if (msg.isUser || msg.regenerationVersions.isEmpty) return;
-    
+
     int prevIndex = msg.currentVersionIndex - 1;
     if (prevIndex < 0) {
       prevIndex = msg.regenerationVersions.length - 1; // Loop back to last
@@ -1775,13 +1783,13 @@ class ChatProvider extends ChangeNotifier {
   /// Returns the new session ID.
   String createConversationFromMessage(int messageIndex) {
     if (messageIndex < 0 || messageIndex >= _messages.length) return "";
-    
+
     final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
-    
+
     // Start new conversation with the message that triggered fork
     // and all messages up to that point
     final forkedMessages = _messages.sublist(0, messageIndex + 1);
-    
+
     final newSession = ChatSessionData(
       id: newSessionId,
       title: "Forked Conversation",
@@ -1793,14 +1801,19 @@ class ChatProvider extends ChangeNotifier {
       provider: _currentProvider.name,
       isBookmarked: false,
     );
-    
+
     _savedSessions.insert(0, newSession);
     return newSessionId;
   }
 
-  Future<void> autoSaveCurrentSession({String? backgroundImagePath}) async {
+  Future<void> autoSaveCurrentSession({
+    String? backgroundImagePath,
+    bool clearBackground = false,
+  }) async {
     if (_messages.isEmpty && _currentTitle.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
+
+    _currentSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
+    final sessionId = _currentSessionId!;
 
     String title = _currentTitle;
     if (title.isEmpty && _messages.isNotEmpty) {
@@ -1812,25 +1825,36 @@ class ChatProvider extends ChangeNotifier {
     }
     if (title.isEmpty) title = "New Conversation";
 
-    _currentSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
+    final messagesSnapshot = List<ChatMessage>.from(_messages);
+    final tokenCountSnapshot = _tokenCount;
+    final modelNameSnapshot = _selectedModel;
+    final providerNameSnapshot = _currentProvider.name;
+    final finalSystemInstruction = _buildSystemInstruction();
 
-    String finalSystemInstruction = _buildSystemInstruction();
+    String? currentBg = backgroundImagePath;
+    if (!clearBackground && currentBg == null) {
+      final existingIndex = _savedSessions.indexWhere((s) => s.id == sessionId);
+      if (existingIndex != -1) {
+        currentBg = _savedSessions[existingIndex].backgroundImage;
+      }
+    }
 
     final sessionData = ChatSessionData(
-      id: _currentSessionId!,
+      id: sessionId,
       title: title,
-      messages: List.from(_messages),
-      modelName: _selectedModel,
-      tokenCount: _tokenCount,
+      messages: messagesSnapshot,
+      modelName: modelNameSnapshot,
+      tokenCount: tokenCountSnapshot,
       systemInstruction: finalSystemInstruction,
-      backgroundImage: backgroundImagePath,
-      provider: _currentProvider.name,
+      backgroundImage: currentBg,
+      provider: providerNameSnapshot,
     );
 
-    _savedSessions.removeWhere((s) => s.id == _currentSessionId);
+    _savedSessions.removeWhere((s) => s.id == sessionId);
     _savedSessions.insert(0, sessionData);
     notifyListeners();
 
+    final prefs = await SharedPreferences.getInstance();
     final String data = jsonEncode(
       _savedSessions.map((s) => s.toJson()).toList(),
     );
@@ -2011,8 +2035,9 @@ class ChatProvider extends ChangeNotifier {
       updateList(models);
 
       final prefs = await SharedPreferences.getInstance();
-      final List<String> serializedModels =
-          models.map((m) => jsonEncode(m.toJson())).toList();
+      final List<String> serializedModels = models
+          .map((m) => jsonEncode(m.toJson()))
+          .toList();
       await prefs.setStringList(prefKey, serializedModels);
 
       if (currentModel != null && updateSelectedModel != null) {
@@ -2103,12 +2128,15 @@ class ChatProvider extends ChangeNotifier {
           final pricing = e['pricing'] ?? {};
           final prompt = pricing['prompt'] ?? "0";
           final completion = pricing['completion'] ?? "0";
-          
+
           return ModelInfo(
             id: rawId,
             name: e['name']?.toString() ?? cleanModelName(rawId),
-            description: e['description']?.toString() ?? "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            contextLength: (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            description:
+                e['description']?.toString() ??
+                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
+            contextLength:
+                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
             pricing: (pricing.isNotEmpty) ? "$prompt / $completion" : "",
             created: e['created'],
             rawData: e,
@@ -2129,21 +2157,26 @@ class ChatProvider extends ChangeNotifier {
         final List<dynamic> dataList = json['data'] ?? [];
         return dataList.map<ModelInfo>((e) {
           final pricing = e['pricing'] ?? {};
-          double prompt = double.tryParse(pricing['prompt']?.toString() ?? "0") ?? 0;
-          double completion = double.tryParse(pricing['completion']?.toString() ?? "0") ?? 0;
-          
+          double prompt =
+              double.tryParse(pricing['prompt']?.toString() ?? "0") ?? 0;
+          double completion =
+              double.tryParse(pricing['completion']?.toString() ?? "0") ?? 0;
+
           // NanoGPT returns per 1M tokens, normalize to per token
           // so that the UI formatter (which multiplies by 1M) works correctly.
           if (prompt > 0) prompt /= 1000000;
           if (completion > 0) completion /= 1000000;
-          
+
           final rawId = e['id'].toString();
-          
+
           return ModelInfo(
             id: rawId,
             name: e['name']?.toString() ?? cleanModelName(rawId),
-            description: e['description']?.toString() ?? "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            contextLength: (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            description:
+                e['description']?.toString() ??
+                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
+            contextLength:
+                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
             pricing: "$prompt / $completion",
             created: e['created'],
             rawData: e,
@@ -2174,12 +2207,15 @@ class ChatProvider extends ChangeNotifier {
           final pricing = e['pricing'] ?? {};
           final prompt = pricing['prompt'] ?? "0";
           final completion = pricing['completion'] ?? "0";
-          
+
           return ModelInfo(
             id: rawId,
             name: e['name']?.toString() ?? cleanModelName(rawId),
-            description: e['description']?.toString() ?? "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            contextLength: (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            description:
+                e['description']?.toString() ??
+                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
+            contextLength:
+                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
             pricing: (pricing.isNotEmpty) ? "$prompt / $completion" : "",
             created: e['created'],
             rawData: e,
@@ -2238,12 +2274,15 @@ class ChatProvider extends ChangeNotifier {
           final pricing = e['pricing'] ?? {};
           final prompt = pricing['prompt'] ?? "0";
           final completion = pricing['completion'] ?? "0";
-          
+
           return ModelInfo(
             id: rawId,
             name: e['name']?.toString() ?? cleanModelName(rawId),
-            description: e['description']?.toString() ?? "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            contextLength: (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            description:
+                e['description']?.toString() ??
+                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
+            contextLength:
+                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
             pricing: (pricing.isNotEmpty) ? "$prompt / $completion" : "",
             created: e['created'],
             rawData: e,
@@ -2437,8 +2476,7 @@ class ChatProvider extends ChangeNotifier {
       'localModelName': _localModelName,
       'systemInstruction': _systemInstruction,
       'advancedSystemInstruction': _advancedSystemInstruction,
-      'systemPrompts':
-          _savedSystemPrompts.map((p) => p.toJson()).toList(),
+      'systemPrompts': _savedSystemPrompts.map((p) => p.toJson()).toList(),
       'sessions': _savedSessions.map((s) => s.toJson()).toList(),
     };
   }
@@ -2455,8 +2493,7 @@ class ChatProvider extends ChangeNotifier {
     _maxOutputTokens =
         (gen['maxOutputTokens'] as num?)?.toInt() ?? _maxOutputTokens;
     _historyLimit = (gen['historyLimit'] as num?)?.toInt() ?? _historyLimit;
-    _reasoningEffort =
-        gen['reasoningEffort'] as String? ?? _reasoningEffort;
+    _reasoningEffort = gen['reasoningEffort'] as String? ?? _reasoningEffort;
 
     final tog = data['toggles'] as Map<String, dynamic>? ?? {};
     _enableSystemPrompt =
@@ -2464,19 +2501,14 @@ class ChatProvider extends ChangeNotifier {
     _enableAdvancedSystemPrompt =
         tog['enableAdvancedSystemPrompt'] as bool? ??
         _enableAdvancedSystemPrompt;
-    _enableMsgHistory =
-        tog['enableMsgHistory'] as bool? ?? _enableMsgHistory;
-    _enableReasoning =
-        tog['enableReasoning'] as bool? ?? _enableReasoning;
+    _enableMsgHistory = tog['enableMsgHistory'] as bool? ?? _enableMsgHistory;
+    _enableReasoning = tog['enableReasoning'] as bool? ?? _enableReasoning;
     _enableGenerationSettings =
-        tog['enableGenerationSettings'] as bool? ??
-        _enableGenerationSettings;
+        tog['enableGenerationSettings'] as bool? ?? _enableGenerationSettings;
     _enableMaxOutputTokens =
         tog['enableMaxOutputTokens'] as bool? ?? _enableMaxOutputTokens;
-    _enableGrounding =
-        tog['enableGrounding'] as bool? ?? _enableGrounding;
-    _enableImageGen =
-        tog['enableImageGen'] as bool? ?? _enableImageGen;
+    _enableGrounding = tog['enableGrounding'] as bool? ?? _enableGrounding;
+    _enableImageGen = tog['enableImageGen'] as bool? ?? _enableImageGen;
     _enableUsage = tog['enableUsage'] as bool? ?? _enableUsage;
     _disableSafety = tog['disableSafety'] as bool? ?? _disableSafety;
 
@@ -2490,15 +2522,12 @@ class ChatProvider extends ChangeNotifier {
     }
 
     final models = data['models'] as Map<String, dynamic>? ?? {};
-    _selectedGeminiModel =
-        models['gemini'] as String? ?? _selectedGeminiModel;
-    _openRouterModel =
-        models['openRouter'] as String? ?? _openRouterModel;
+    _selectedGeminiModel = models['gemini'] as String? ?? _selectedGeminiModel;
+    _openRouterModel = models['openRouter'] as String? ?? _openRouterModel;
     _arliAiModel = models['arliAi'] as String? ?? _arliAiModel;
     _nanoGptModel = models['nanoGpt'] as String? ?? _nanoGptModel;
     _openAiModel = models['openAi'] as String? ?? _openAiModel;
-    _huggingFaceModel =
-        models['huggingFace'] as String? ?? _huggingFaceModel;
+    _huggingFaceModel = models['huggingFace'] as String? ?? _huggingFaceModel;
     _groqModel = models['groq'] as String? ?? _groqModel;
     _selectedModel = _getProviderModel(_currentProvider);
 

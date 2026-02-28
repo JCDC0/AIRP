@@ -108,11 +108,11 @@ class _ChatInputAreaState extends State<ChatInputArea>
   void _showAttachmentMenu() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final bool useBloom = themeProvider.enableBloom;
-    final Color themeColor = themeProvider.appThemeColor;
+    final Color themeColor = themeProvider.textColor;
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: themeProvider.surfaceColor,
       builder: (context) {
         return SafeArea(
           child: Wrap(
@@ -128,7 +128,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                 title: Text(
                   'Image from Gallery',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: themeProvider.textColor,
                     shadows: useBloom
                         ? [Shadow(color: themeColor, blurRadius: 8)]
                         : [],
@@ -155,7 +155,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                 title: Text(
                   'Document / File',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: themeProvider.textColor,
                     shadows: useBloom
                         ? [Shadow(color: themeColor, blurRadius: 8)]
                         : [],
@@ -177,14 +177,14 @@ class _ChatInputAreaState extends State<ChatInputArea>
   void _sendMessage() {
     // Prevent double sends
     if (_isSending) return;
-    
+
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final messageText = _textController.text;
 
     if (messageText.isEmpty && _pendingImages.isEmpty) return;
 
     _isSending = true;
-    
+
     final List<String> imagesToSend = List.from(_pendingImages);
 
     chatProvider.sendMessage(messageText, imagesToSend);
@@ -195,7 +195,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     });
 
     _scrollToBottom();
-    
+
     // Reset the sending flag after a short delay to allow the state to update
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
@@ -234,6 +234,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
 
   /// Displays a floating status popup.
   void _showStatusPopup(String message) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -244,7 +245,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
         ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.black87,
+        backgroundColor: themeProvider.overlayDarkColor,
         duration: const Duration(milliseconds: 800),
         margin: const EdgeInsets.only(bottom: 80, left: 60, right: 60),
       ),
@@ -256,7 +257,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     required IconData icon,
     required VoidCallback? onPressed,
     Color? color,
-    Color backgroundColor = Colors.black,
+    Color backgroundColor = Colors.transparent,
     String? tooltip,
     bool isActive = false,
     ThemeProvider? themeProvider,
@@ -284,12 +285,15 @@ class _ChatInputAreaState extends State<ChatInputArea>
                 ]
               : [],
           border: isActive
-              ? Border.all(color: color ?? Colors.white, width: 0.5 * iconScale)
+              ? Border.all(
+                  color: color ?? themeProvider?.textColor ?? Colors.white,
+                  width: 0.5 * iconScale,
+                )
               : null,
         ),
         child: IconButton(
           icon: Icon(icon),
-          color: color ?? Colors.white,
+          color: color ?? themeProvider?.textColor ?? Colors.white,
           tooltip: tooltip,
           onPressed: onPressed,
           iconSize: 20 * iconScale,
@@ -322,14 +326,15 @@ class _ChatInputAreaState extends State<ChatInputArea>
     final bool useBloom = themeProvider.enableBloom;
     final double iconScale = scaleProvider.iconScale;
     final double containerSize = 40 * iconScale;
-    final Color iconColor = isActive ? activeColor : (Colors.grey[400] ?? Colors.grey);
+    final Color iconColor = isActive
+        ? activeColor
+        : (Colors.grey[400] ?? Colors.grey);
 
-    // Build the core button content
     Widget buttonContent = Container(
       width: containerSize,
       height: containerSize,
       decoration: BoxDecoration(
-        color: Colors.black,
+        color: themeProvider.inputFillColor,
         shape: BoxShape.circle,
         boxShadow: isActive && useBloom
             ? [
@@ -375,7 +380,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
               color: activeColor,
               strokeWidth: 2.5 * iconScale,
               enableBloom: useBloom,
-              bloomColor: themeProvider.appThemeColor,
+              bloomColor: themeProvider.bloomGlowColor,
             ),
             child: child,
           );
@@ -406,7 +411,11 @@ class _ChatInputAreaState extends State<ChatInputArea>
         // Re-randomise lines on every new AI response
         final rng = Random();
         _orbitLines = _generateOrbitLines(rng, lineCount: rng.nextInt(4) + 2);
-        _iconOrbitLines = _generateOrbitLines(Random(), lineCount: rng.nextInt(2) + 2, maxSpeed: 2);
+        _iconOrbitLines = _generateOrbitLines(
+          Random(),
+          lineCount: rng.nextInt(2) + 2,
+          maxSpeed: 2,
+        );
         _orbitController.repeat();
       }
     } else {
@@ -493,13 +502,13 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                       : Container(
                                           width: 50,
                                           height: 50,
-                                          color: Colors.white12,
+                                          color: themeProvider.borderColor,
                                           alignment: Alignment.center,
                                           child: Icon(
                                             ext == 'pdf'
                                                 ? Icons.picture_as_pdf
                                                 : Icons.insert_drive_file,
-                                            color: Colors.white70,
+                                            color: themeProvider.subtitleColor,
                                             size: 24,
                                           ),
                                         ),
@@ -542,7 +551,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                     children: [
                       _buildCircularButton(
                         icon: Icons.attach_file,
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         tooltip: "Add Attachment",
                         onPressed: isLoading ? null : _showAttachmentMenu,
                         themeProvider: themeProvider,
@@ -612,127 +621,144 @@ class _ChatInputAreaState extends State<ChatInputArea>
                         themeProvider: themeProvider,
                         scaleProvider: scaleProvider,
                       ),
-                          Builder(
-                            builder: (context) {
-                              Color? reasoningColor;
-                              bool isActive =
-                                  chatProvider.reasoningEffort != 'none';
+                      Builder(
+                        builder: (context) {
+                          Color? reasoningColor;
+                          bool isActive =
+                              chatProvider.reasoningEffort != 'none';
 
-                              if (chatProvider.reasoningEffort == 'low') {
-                                reasoningColor = Colors.grey[600];
-                              } else if (chatProvider.reasoningEffort == 'medium') {
-                                reasoningColor = Colors.grey[400];
-                              } else if (chatProvider.reasoningEffort == 'high') {
-                                reasoningColor = Colors.white;
-                              }
+                          if (chatProvider.reasoningEffort == 'low') {
+                            reasoningColor = Colors.grey[600];
+                          } else if (chatProvider.reasoningEffort == 'medium') {
+                            reasoningColor = Colors.grey[400];
+                          } else if (chatProvider.reasoningEffort == 'high') {
+                            reasoningColor = themeProvider.textColor;
+                          }
 
-                              final Color iconColor = isActive
-                                  ? (reasoningColor ?? Colors.grey[400]!)
-                                  : (Colors.grey[400] ?? Colors.grey);
-                              final double iconScale = scaleProvider.iconScale;
-                              final double containerSize = 40 * iconScale;
+                          final Color iconColor = isActive
+                              ? (reasoningColor ?? Colors.grey[400]!)
+                              : (Colors.grey[400] ?? Colors.grey);
+                          final double iconScale = scaleProvider.iconScale;
+                          final double containerSize = 40 * iconScale;
 
-                              Widget buttonContent = Container(
-                                width: containerSize,
-                                height: containerSize,
-                                decoration: BoxDecoration(
-                                  color: Colors.black,
-                                  shape: BoxShape.circle,
-                                  boxShadow: isActive && themeProvider.enableBloom && reasoningColor != null
-                                      ? [
-                                          BoxShadow(
-                                            color: reasoningColor.withValues(alpha: 0.6),
-                                            blurRadius: 8 * iconScale,
-                                            spreadRadius: 1 * iconScale,
-                                          ),
-                                        ]
-                                      : [],
-                                  border: isActive
-                                      ? Border.all(color: reasoningColor ?? Colors.white, width: 0.5 * iconScale)
-                                      : null,
-                                ),
-                                child: IconButton(
-                                  icon: const Icon(Icons.psychology),
-                                  color: iconColor,
-                                  tooltip: "Reasoning Effort: ${chatProvider.reasoningEffort}",
-                                  onPressed: isLoading
-                                      ? null
-                                      : () async {
-                                          String nextState;
-                                          String statusMsg;
-                                          switch (chatProvider.reasoningEffort) {
-                                            case 'none':
-                                              nextState = 'low';
-                                              statusMsg = "Reasoning: LOW";
-                                              break;
-                                            case 'low':
-                                              nextState = 'medium';
-                                              statusMsg = "Reasoning: MEDIUM";
-                                              break;
-                                            case 'medium':
-                                              nextState = 'high';
-                                              statusMsg = "Reasoning: HIGH";
-                                              break;
-                                            case 'high':
-                                              nextState = 'none';
-                                              statusMsg = "Reasoning: OFF";
-                                              break;
-                                            default:
-                                              nextState = 'low';
-                                              statusMsg = "Reasoning: LOW";
-                                          }
-                                          chatProvider.setReasoningEffort(nextState);
-                                          await chatProvider.saveSettings(
-                                            showConfirmation: false,
-                                          );
-                                          _showStatusPopup(statusMsg);
-                                        },
-                                  iconSize: 20 * iconScale,
-                                  constraints: BoxConstraints(
-                                    minWidth: containerSize,
-                                    minHeight: containerSize,
-                                    maxWidth: containerSize,
-                                    maxHeight: containerSize,
-                                  ),
-                                  padding: EdgeInsets.zero,
-                                  style: IconButton.styleFrom(
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              );
-
-                              // Animate if active, loading, and loading animation enabled
-                              if (isActive && isLoading && themeProvider.enableLoadingAnimation) {
-                                buttonContent = AnimatedBuilder(
-                                  animation: _orbitController,
-                                  builder: (context, child) {
-                                    return CustomPaint(
-                                      foregroundPainter: _IconArcPainter(
-                                        progress: _orbitController.value,
-                                        lines: _iconOrbitLines,
-                                        color: reasoningColor ?? Colors.white,
-                                        strokeWidth: 2.5 * iconScale,
-                                        enableBloom: themeProvider.enableBloom,
-                                        bloomColor: themeProvider.appThemeColor,
+                          Widget buttonContent = Container(
+                            width: containerSize,
+                            height: containerSize,
+                            decoration: BoxDecoration(
+                              color: themeProvider.inputFillColor,
+                              shape: BoxShape.circle,
+                              boxShadow:
+                                  isActive &&
+                                      themeProvider.enableBloom &&
+                                      reasoningColor != null
+                                  ? [
+                                      BoxShadow(
+                                        color: reasoningColor.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                        blurRadius: 8 * iconScale,
+                                        spreadRadius: 1 * iconScale,
                                       ),
-                                      child: child,
-                                    );
-                                  },
-                                  child: buttonContent,
-                                );
-                              }
+                                    ]
+                                  : [],
+                              border: isActive
+                                  ? Border.all(
+                                      color:
+                                          reasoningColor ??
+                                          themeProvider.textColor,
+                                      width: 0.5 * iconScale,
+                                    )
+                                  : null,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.psychology),
+                              color: iconColor,
+                              tooltip:
+                                  "Reasoning Effort: ${chatProvider.reasoningEffort}",
+                              onPressed: isLoading
+                                  ? null
+                                  : () async {
+                                      String nextState;
+                                      String statusMsg;
+                                      switch (chatProvider.reasoningEffort) {
+                                        case 'none':
+                                          nextState = 'low';
+                                          statusMsg = "Reasoning: LOW";
+                                          break;
+                                        case 'low':
+                                          nextState = 'medium';
+                                          statusMsg = "Reasoning: MEDIUM";
+                                          break;
+                                        case 'medium':
+                                          nextState = 'high';
+                                          statusMsg = "Reasoning: HIGH";
+                                          break;
+                                        case 'high':
+                                          nextState = 'none';
+                                          statusMsg = "Reasoning: OFF";
+                                          break;
+                                        default:
+                                          nextState = 'low';
+                                          statusMsg = "Reasoning: LOW";
+                                      }
+                                      chatProvider.setReasoningEffort(
+                                        nextState,
+                                      );
+                                      await chatProvider.saveSettings(
+                                        showConfirmation: false,
+                                      );
+                                      _showStatusPopup(statusMsg);
+                                    },
+                              iconSize: 20 * iconScale,
+                              constraints: BoxConstraints(
+                                minWidth: containerSize,
+                                minHeight: containerSize,
+                                maxWidth: containerSize,
+                                maxHeight: containerSize,
+                              ),
+                              padding: EdgeInsets.zero,
+                              style: IconButton.styleFrom(
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                padding: EdgeInsets.zero,
+                              ),
+                            ),
+                          );
 
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: SizedBox(
-                                  width: containerSize,
-                                  height: containerSize,
-                                  child: buttonContent,
-                                ),
-                              );
-                            },
-                          ),
+                          // Animate if active, loading, and loading animation enabled
+                          if (isActive &&
+                              isLoading &&
+                              themeProvider.enableLoadingAnimation) {
+                            buttonContent = AnimatedBuilder(
+                              animation: _orbitController,
+                              builder: (context, child) {
+                                return CustomPaint(
+                                  foregroundPainter: _IconArcPainter(
+                                    progress: _orbitController.value,
+                                    lines: _iconOrbitLines,
+                                    color:
+                                        reasoningColor ??
+                                        themeProvider.textColor,
+                                    strokeWidth: 2.5 * iconScale,
+                                    enableBloom: themeProvider.enableBloom,
+                                    bloomColor: themeProvider.bloomGlowColor,
+                                  ),
+                                  child: child,
+                                );
+                              },
+                              child: buttonContent,
+                            );
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: SizedBox(
+                              width: containerSize,
+                              height: containerSize,
+                              child: buttonContent,
+                            ),
+                          );
+                        },
+                      ),
 
                       const SizedBox(width: 12),
                       Container(width: 1, height: 24, color: Colors.grey[800]),
@@ -766,10 +792,10 @@ class _ChatInputAreaState extends State<ChatInputArea>
                         onKey: (node, event) {
                           // Handle Ctrl+Enter or Cmd+Enter to send message
                           if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
-                            final isCtrlOrCmd = HardwareKeyboard.instance
-                                    .isLogicalKeyPressed(
-                                      LogicalKeyboardKey.controlLeft,
-                                    ) ||
+                            final isCtrlOrCmd =
+                                HardwareKeyboard.instance.isLogicalKeyPressed(
+                                  LogicalKeyboardKey.controlLeft,
+                                ) ||
                                 HardwareKeyboard.instance.isLogicalKeyPressed(
                                   LogicalKeyboardKey.controlRight,
                                 ) ||
@@ -790,12 +816,14 @@ class _ChatInputAreaState extends State<ChatInputArea>
                           animation: _orbitController,
                           builder: (context, child) {
                             return CustomPaint(
-                              foregroundPainter: isLoading && themeProvider.enableLoadingAnimation
+                              foregroundPainter:
+                                  isLoading &&
+                                      themeProvider.enableLoadingAnimation
                                   ? LineOrbitPainter(
                                       progress: _orbitController.value,
                                       lines: _orbitLines,
-                                      color: Colors.white,
-                                      bloomColor: themeProvider.appThemeColor,
+                                      color: themeProvider.textColor,
+                                      bloomColor: themeProvider.bloomGlowColor,
                                       enableBloom: themeProvider.enableBloom,
                                       borderRadius: 24.0,
                                     )
@@ -803,7 +831,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                               child: Container(
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(24),
-                                  color: Colors.black,
+                                  color: themeProvider.inputFillColor,
                                 ),
                                 child: child,
                               ),
@@ -814,7 +842,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                             minLines: 1,
                             maxLines: scaleProvider.inputAreaScale.toInt(),
                             style: TextStyle(
-                              color: Colors.white,
+                              color: themeProvider.textColor,
                               fontSize: scaleProvider.chatFontSize,
                             ),
                             decoration: InputDecoration(
@@ -852,14 +880,14 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                 borderSide: BorderSide(
                                   color: isLoading
                                       ? Colors.transparent
-                                      : themeProvider.appThemeColor.withValues(
+                                      : themeProvider.textColor.withValues(
                                           alpha: 0.5,
                                         ),
                                   width: 1,
                                 ),
                               ),
                               filled: true,
-                              fillColor: Colors.black,
+                              fillColor: themeProvider.inputFillColor,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 10,
@@ -875,10 +903,10 @@ class _ChatInputAreaState extends State<ChatInputArea>
                     IconButton.filled(
                       style: IconButton.styleFrom(
                         backgroundColor: isLoading
-                            ? themeProvider.appThemeColor.withValues(alpha: 0.2)
+                            ? themeProvider.textColor.withValues(alpha: 0.2)
                             : (chatProvider.enableGrounding
                                   ? Colors.green
-                                  : themeProvider.appThemeColor),
+                                  : themeProvider.textColor),
                         fixedSize: Size(
                           40 * scaleProvider.iconScale,
                           40 * scaleProvider.iconScale,
@@ -890,14 +918,13 @@ class _ChatInputAreaState extends State<ChatInputArea>
                       icon: Icon(
                         isLoading ? Icons.stop_circle_outlined : Icons.send,
                         color: isLoading
-                            ? themeProvider.appThemeColor
-                            : Colors.black,
+                            ? themeProvider.textColor
+                            : themeProvider.onAccentColor,
                         size: 20 * scaleProvider.iconScale,
                       ),
                     ),
                   ],
                 ),
-
               ],
             ),
           ),
@@ -915,11 +942,15 @@ class _ChatInputAreaState extends State<ChatInputArea>
 
 /// Immutable config for a single orbiting arc/line.
 class _OrbitLine {
-  final int speed;    // Whole-number speed multiplier (1, 2 or 3)
+  final int speed; // Whole-number speed multiplier (1, 2 or 3)
   final double offset; // Starting phase offset [0, 1)
   final double length; // Arc fraction of total path [0.1, 0.35)
 
-  const _OrbitLine({required this.speed, required this.offset, required this.length});
+  const _OrbitLine({
+    required this.speed,
+    required this.offset,
+    required this.length,
+  });
 }
 
 /// Generates [lineCount] randomised orbit lines with whole-number speeds so
@@ -996,8 +1027,7 @@ class LineOrbitPainter extends CustomPainter {
       ..strokeCap = ui.StrokeCap.round;
 
     for (final line in lines) {
-      final double p =
-          (progress * line.speed + line.offset) % 1.0;
+      final double p = (progress * line.speed + line.offset) % 1.0;
 
       final double startOffset = p * pathLength;
       final double segmentLength = line.length * pathLength;
@@ -1047,7 +1077,12 @@ class _IconArcPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final double inset = strokeWidth / 2;
-    final Rect arcRect = Rect.fromLTWH(inset, inset, size.width - strokeWidth, size.height - strokeWidth);
+    final Rect arcRect = Rect.fromLTWH(
+      inset,
+      inset,
+      size.width - strokeWidth,
+      size.height - strokeWidth,
+    );
 
     final Paint arcPaint = Paint()
       ..color = color
@@ -1083,4 +1118,3 @@ class _IconArcPainter extends CustomPainter {
   bool shouldRepaint(covariant _IconArcPainter oldDelegate) =>
       oldDelegate.progress != progress;
 }
-

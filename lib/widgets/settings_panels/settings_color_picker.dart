@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/scale_provider.dart';
+import '../../providers/scale_provider.dart';
+import '../../providers/theme_provider.dart';
 
 /// A widget that displays a color swatch and opens a color picker dialog.
 ///
@@ -27,18 +28,19 @@ class SettingsColorPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scaleProvider = Provider.of<ScaleProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Column(
       children: [
         GestureDetector(
           onTap: () =>
-              _showColorPickerDialog(context, color, onSave, scaleProvider),
+              _showColorPickerDialog(context, color, onSave, scaleProvider, themeProvider),
           child: Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
+              border: Border.all(color: themeProvider.textColor, width: 2),
               boxShadow: [
                 BoxShadow(color: color.withOpacity(0.5), blurRadius: 8),
               ],
@@ -62,6 +64,7 @@ class SettingsColorPicker extends StatelessWidget {
     Color initialColor,
     Function(Color) onSave,
     ScaleProvider scaleProvider,
+    ThemeProvider themeProvider,
   ) {
     Color tempColor = initialColor;
     showDialog(
@@ -69,11 +72,11 @@ class SettingsColorPicker extends StatelessWidget {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            backgroundColor: const Color(0xFF2C2C2C),
+            backgroundColor: themeProvider.dropdownColor,
             title: Text(
               "Pick a Color",
               style: TextStyle(
-                color: Colors.white,
+                color: themeProvider.textColor,
                 fontSize: scaleProvider.systemFontSize,
               ),
             ),

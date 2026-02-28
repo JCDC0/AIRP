@@ -278,17 +278,19 @@ class WebSearchService {
     int resultCount = 5,
   }) async {
     try {
-      final uri = Uri.https('html.duckduckgo.com', '/html/', {'q': query});
+      final uri = Uri.https('lite.duckduckgo.com', '/lite/', {});
 
       final response = await http
-          .get(
+          .post(
             uri,
             headers: {
               'User-Agent':
                   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
                   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
               'Accept': 'text/html',
+              'Content-Type': 'application/x-www-form-urlencoded',
             },
+            body: 'q=$query',
           )
           .timeout(_timeout);
 

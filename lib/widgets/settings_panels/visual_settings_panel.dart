@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../utils/constants.dart';
 import 'settings_color_picker.dart';
@@ -26,17 +27,47 @@ class VisualSettingsPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 30),
         Text(
           "Visuals & Atmosphere",
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize + 10,
             fontWeight: FontWeight.bold,
-            color: themeProvider.appThemeColor,
+            color: themeProvider.textColor,
             shadows: themeProvider.enableBloom
-                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)]
+                ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
+        ),
+        const Divider(height: 10),
+
+        // ── Light Mode Toggle ──────────────────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                "Light Mode",
+                style: TextStyle(
+                  fontSize: scaleProvider.systemFontSize,
+                  fontWeight: FontWeight.bold,
+                  color: themeProvider.textColor,
+                  shadows: themeProvider.enableBloom
+                      ? [
+                          Shadow(
+                            color: themeProvider.bloomGlowColor,
+                            blurRadius: 10,
+                          ),
+                        ]
+                      : [],
+                ),
+              ),
+            ),
+            Switch(
+              value: themeProvider.isLightMode,
+              activeThumbColor: themeProvider.textColor,
+              onChanged: (v) => themeProvider.toggleLightMode(v),
+            ),
+          ],
         ),
         const Divider(height: 10),
 
@@ -45,26 +76,26 @@ class VisualSettingsPanel extends StatelessWidget {
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize,
             fontWeight: FontWeight.bold,
-            color: themeProvider.appThemeColor,
+            color: themeProvider.textColor,
             shadows: themeProvider.enableBloom
-                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)]
+                ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.black26,
+            color: themeProvider.containerFillColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: themeProvider.enableBloom
-                  ? themeProvider.appThemeColor.withOpacity(0.5)
-                  : Colors.white12,
+                  ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                  : themeProvider.borderColor,
             ),
             boxShadow: themeProvider.enableBloom
                 ? [
                     BoxShadow(
-                      color: themeProvider.appThemeColor.withOpacity(0.1),
+                      color: themeProvider.bloomGlowColor.withOpacity(0.1),
                       blurRadius: 8,
                     ),
                   ]
@@ -74,8 +105,8 @@ class VisualSettingsPanel extends StatelessWidget {
             child: DropdownButton<String>(
               isExpanded: true,
               value: themeProvider.fontStyle,
-              dropdownColor: const Color(0xFF2C2C2C),
-              icon: Icon(Icons.text_fields, color: themeProvider.appThemeColor),
+              dropdownColor: themeProvider.dropdownColor,
+              icon: Icon(Icons.text_fields, color: themeProvider.textColor),
               items: [
                 DropdownMenuItem(
                   value: 'Default',
@@ -203,22 +234,15 @@ class VisualSettingsPanel extends StatelessWidget {
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize,
             fontWeight: FontWeight.bold,
-            color: themeProvider.appThemeColor,
+            color: themeProvider.textColor,
             shadows: themeProvider.enableBloom
-                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)]
+                ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
         ),
         Column(
           children: [
             const SizedBox(height: 15),
-            SettingsColorPicker(
-              label: "App Theme",
-              color: themeProvider.appThemeColor,
-              onSave: (c) => themeProvider.updateColor('appTheme', c),
-            ),
-            const SizedBox(height: 15),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -273,7 +297,7 @@ class VisualSettingsPanel extends StatelessWidget {
                     "${(themeProvider.userBubbleColor.a * 100).toInt()}%",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: themeProvider.appThemeColor,
+                      color: themeProvider.textColor,
                       fontSize: scaleProvider.systemFontSize * 0.8,
                     ),
                   ),
@@ -310,7 +334,7 @@ class VisualSettingsPanel extends StatelessWidget {
                     "${(themeProvider.aiBubbleColor.a * 100).toInt()}%",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: themeProvider.appThemeColor,
+                      color: themeProvider.textColor,
                       fontSize: scaleProvider.systemFontSize * 0.8,
                     ),
                   ),
@@ -346,14 +370,14 @@ class VisualSettingsPanel extends StatelessWidget {
                   showDialog(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      backgroundColor: const Color(0xFF2C2C2C),
-                      title: const Text(
+                      backgroundColor: themeProvider.dropdownColor,
+                      title: Text(
                         "Reset Theme?",
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: themeProvider.textColor),
                       ),
-                      content: const Text(
+                      content: Text(
                         "This will revert all colors and visual settings.",
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(color: themeProvider.subtitleColor),
                       ),
                       actions: [
                         TextButton(
@@ -390,7 +414,9 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.appThemeColor.withOpacity(0.9),
+                            color: themeProvider.bloomGlowColor.withOpacity(
+                              0.9,
+                            ),
                             blurRadius: 20,
                           ),
                         ]
@@ -405,7 +431,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 ),
               ),
               value: themeProvider.enableBloom,
-              activeThumbColor: themeProvider.appThemeColor,
+              activeThumbColor: themeProvider.textColor,
               onChanged: (val) => themeProvider.toggleBloom(val),
             ),
             SwitchListTile(
@@ -417,7 +443,9 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.appThemeColor.withOpacity(0.9),
+                            color: themeProvider.bloomGlowColor.withOpacity(
+                              0.9,
+                            ),
                             blurRadius: 20,
                           ),
                         ]
@@ -432,7 +460,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 ),
               ),
               value: themeProvider.enableLoadingAnimation,
-              activeThumbColor: themeProvider.appThemeColor,
+              activeThumbColor: themeProvider.textColor,
               onChanged: (val) => themeProvider.toggleLoadingAnimation(val),
             ),
             const Divider(),
@@ -441,11 +469,11 @@ class VisualSettingsPanel extends StatelessWidget {
               style: TextStyle(
                 fontSize: scaleProvider.systemFontSize,
                 fontWeight: FontWeight.bold,
-                color: themeProvider.appThemeColor.withOpacity(0.8),
+                color: themeProvider.textColor,
                 shadows: themeProvider.enableBloom
                     ? [
                         Shadow(
-                          color: themeProvider.appThemeColor.withOpacity(0.9),
+                          color: themeProvider.bloomGlowColor.withOpacity(0.9),
                           blurRadius: 20,
                         ),
                       ]
@@ -461,7 +489,9 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.appThemeColor.withOpacity(0.9),
+                            color: themeProvider.bloomGlowColor.withOpacity(
+                              0.9,
+                            ),
                             blurRadius: 20,
                           ),
                         ]
@@ -476,7 +506,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 ),
               ),
               value: themeProvider.enableMotes,
-              activeThumbColor: themeProvider.appThemeColor,
+              activeThumbColor: themeProvider.textColor,
               onChanged: (val) => themeProvider.toggleMotes(val),
             ),
             SwitchListTile(
@@ -488,7 +518,9 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.appThemeColor.withOpacity(0.9),
+                            color: themeProvider.bloomGlowColor.withOpacity(
+                              0.9,
+                            ),
                             blurRadius: 20,
                           ),
                         ]
@@ -503,7 +535,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 ),
               ),
               value: themeProvider.enableRain,
-              activeThumbColor: themeProvider.appThemeColor,
+              activeThumbColor: themeProvider.textColor,
               onChanged: (val) => themeProvider.toggleRain(val),
             ),
             SwitchListTile(
@@ -515,7 +547,9 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.appThemeColor.withOpacity(0.9),
+                            color: themeProvider.bloomGlowColor.withOpacity(
+                              0.9,
+                            ),
                             blurRadius: 20,
                           ),
                         ]
@@ -530,7 +564,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 ),
               ),
               value: themeProvider.enableFireflies,
-              activeThumbColor: themeProvider.appThemeColor,
+              activeThumbColor: themeProvider.textColor,
               onChanged: (val) => themeProvider.toggleFireflies(val),
             ),
             const Divider(),
@@ -541,7 +575,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 min: 1,
                 max: 150,
                 isInt: true,
-                activeColor: themeProvider.appThemeColor,
+                activeColor: themeProvider.textColor,
                 fontSize: scaleProvider.systemFontSize * 0.8,
                 onChanged: (val) => themeProvider.setMotesDensity(val.toInt()),
               ),
@@ -552,7 +586,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 min: 1,
                 max: 200,
                 isInt: true,
-                activeColor: themeProvider.appThemeColor,
+                activeColor: themeProvider.textColor,
                 fontSize: scaleProvider.systemFontSize * 0.8,
                 onChanged: (val) => themeProvider.setRainIntensity(val.toInt()),
               ),
@@ -563,7 +597,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 min: 1,
                 max: 100,
                 isInt: true,
-                activeColor: themeProvider.appThemeColor,
+                activeColor: themeProvider.textColor,
                 fontSize: scaleProvider.systemFontSize * 0.8,
                 onChanged: (val) =>
                     themeProvider.setFirefliesCount(val.toInt()),
@@ -577,8 +611,13 @@ class VisualSettingsPanel extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   InkWell(
-                    onTap: () =>
-                        themeProvider.setBackgroundImage(null),
+                    onTap: () {
+                      themeProvider.setBackgroundImage(null);
+                      Provider.of<ChatProvider>(
+                        context,
+                        listen: false,
+                      ).autoSaveCurrentSession(clearBackground: true);
+                    },
                     child: const Text(
                       "RESET TO DEFAULT",
                       style: TextStyle(fontSize: 15, color: Colors.redAccent),
@@ -591,9 +630,9 @@ class VisualSettingsPanel extends StatelessWidget {
             Container(
               height: 250,
               decoration: BoxDecoration(
-                color: Colors.black26,
+                color: themeProvider.containerFillColor,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white10),
+                border: Border.all(color: themeProvider.dividerColor),
               ),
               child: GridView.builder(
                 padding: const EdgeInsets.all(8),
@@ -620,12 +659,12 @@ class VisualSettingsPanel extends StatelessWidget {
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          color: themeProvider.appThemeColor.withAlpha(
+                          color: themeProvider.textColor.withAlpha(
                             (0.1 * 255).round(),
                           ),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: themeProvider.appThemeColor.withAlpha(
+                            color: themeProvider.textColor.withAlpha(
                               (0.5 * 255).round(),
                             ),
                           ),
@@ -635,13 +674,13 @@ class VisualSettingsPanel extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.add_photo_alternate,
-                              color: themeProvider.appThemeColor,
+                              color: themeProvider.textColor,
                             ),
                             Text(
                               "Add",
                               style: TextStyle(
                                 fontSize: scaleProvider.systemFontSize * 0.7,
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.textColor,
                               ),
                             ),
                           ],
@@ -667,7 +706,13 @@ class VisualSettingsPanel extends StatelessWidget {
                       themeProvider.backgroundImagePath == path;
 
                   return InkWell(
-                    onTap: () => themeProvider.setBackgroundImage(path),
+                    onTap: () {
+                      themeProvider.setBackgroundImage(path);
+                      Provider.of<ChatProvider>(
+                        context,
+                        listen: false,
+                      ).autoSaveCurrentSession(backgroundImagePath: path);
+                    },
                     onLongPress: isCustom
                         ? () {
                             HapticFeedback.mediumImpact();
@@ -701,7 +746,7 @@ class VisualSettingsPanel extends StatelessWidget {
                           Container(
                             decoration: BoxDecoration(
                               border: Border.all(
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.textColor,
                                 width: 2,
                               ),
                               borderRadius: BorderRadius.circular(8),
@@ -709,7 +754,7 @@ class VisualSettingsPanel extends StatelessWidget {
                             child: Center(
                               child: Icon(
                                 Icons.check_circle,
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.textColor,
                               ),
                             ),
                           ),
@@ -732,7 +777,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 value: themeProvider.backgroundOpacity,
                 min: 0.0,
                 max: 0.95,
-                activeColor: themeProvider.appThemeColor,
+                activeColor: themeProvider.textColor,
                 inactiveColor: Colors.grey[800],
                 onChanged: (val) => themeProvider.setBackgroundOpacity(val),
               ),

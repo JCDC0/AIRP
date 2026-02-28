@@ -246,9 +246,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     return Material(
       elevation: themeProvider.enableBloom ? 30 : 16,
       shadowColor: themeProvider.enableBloom
-          ? themeProvider.appThemeColor.withOpacity(0.9)
+          ? themeProvider.bloomGlowColor.withOpacity(0.9)
           : null,
-      color: const Color.fromARGB(255, 0, 0, 0),
+      color: themeProvider.scaffoldBackgroundColor,
       child: SizedBox(
         width:
             scaleProvider.drawerWidth +
@@ -269,13 +269,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     title: Text(
                       "API & Connectivity",
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
-                    collapsedIconColor: themeProvider.appThemeColor,
-                    iconColor: themeProvider.appThemeColor,
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
                     children: [
                       ApiSettingsPanel(
                         apiKeyController: _apiKeyController,
@@ -290,13 +290,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     title: Text(
                       "Model Configuration",
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
-                    collapsedIconColor: themeProvider.appThemeColor,
-                    iconColor: themeProvider.appThemeColor,
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
                     children: [
                       ModelSettingsPanel(
                         titleController: _titleController,
@@ -312,13 +312,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     title: Text(
                       "System Prompt",
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
-                    collapsedIconColor: themeProvider.appThemeColor,
-                    iconColor: themeProvider.appThemeColor,
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
                     children: [
                       SystemPromptPanel(
                         mainPromptController: _mainPromptController,
@@ -335,13 +335,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     title: Text(
                       "Generation Parameters",
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
-                    collapsedIconColor: themeProvider.appThemeColor,
-                    iconColor: themeProvider.appThemeColor,
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
                     children: [const GenerationSettingsPanel()],
                   ),
 
@@ -351,13 +351,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     title: Text(
                       "Web Search",
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
-                    collapsedIconColor: themeProvider.appThemeColor,
-                    iconColor: themeProvider.appThemeColor,
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
                     children: [const WebSearchSettingsPanel()],
                   ),
 
@@ -372,13 +372,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     title: Text(
                       "Layout & Scaling",
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                         shadows: scaleProvider.shouldGlow
                             ? [
                                 Shadow(
-                                  color: themeProvider.appThemeColor,
+                                  color: themeProvider.bloomGlowColor,
                                   blurRadius: 15,
                                   offset: const Offset(0, 0),
                                 ),
@@ -386,15 +386,15 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                             : null,
                       ),
                     ),
-                    collapsedIconColor: themeProvider.appThemeColor,
-                    iconColor: themeProvider.appThemeColor,
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
                     leading: scaleProvider.shouldGlow
                         ? Icon(
                             Icons.new_releases,
-                            color: themeProvider.appThemeColor,
+                            color: themeProvider.textColor,
                             shadows: [
                               Shadow(
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.bloomGlowColor,
                                 blurRadius: 10,
                               ),
                             ],
@@ -409,13 +409,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     title: Text(
                       "Visuals & Atmosphere",
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
-                    collapsedIconColor: themeProvider.appThemeColor,
-                    iconColor: themeProvider.appThemeColor,
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
                     children: [const VisualSettingsPanel()],
                   ),
 
@@ -425,13 +425,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     title: Text(
                       "Save & Load Library",
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
-                    collapsedIconColor: themeProvider.appThemeColor,
-                    iconColor: themeProvider.appThemeColor,
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
                     children: [const LibraryPanel()],
                   ),
 
@@ -451,8 +451,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 width: 56 * scaleProvider.iconScale,
                 height: 56 * scaleProvider.iconScale,
                 child: FloatingActionButton(
-                  backgroundColor: themeProvider.appThemeColor,
-                  foregroundColor: Colors.black,
+                  backgroundColor: themeProvider.textColor,
+                  foregroundColor: themeProvider.onAccentColor,
                   onPressed: _handleSaveSettings,
                   elevation: 10,
                   child: Icon(Icons.save, size: 24 * scaleProvider.iconScale),

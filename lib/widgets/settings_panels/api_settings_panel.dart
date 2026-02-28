@@ -35,10 +35,10 @@ class ApiSettingsPanel extends StatelessWidget {
           "API Key (BYOK)",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: themeProvider.appThemeColor,
+            color: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize,
             shadows: themeProvider.enableBloom
-                ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 10)]
+                ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
         ),
@@ -52,13 +52,13 @@ class ApiSettingsPanel extends StatelessWidget {
               hintText: "Paste AI Studio Key...",
               border: OutlineInputBorder(
                 borderSide: themeProvider.enableBloom
-                    ? BorderSide(color: themeProvider.appThemeColor)
+                    ? BorderSide(color: themeProvider.bloomGlowColor)
                     : const BorderSide(),
               ),
               enabledBorder: themeProvider.enableBloom
                   ? OutlineInputBorder(
                       borderSide: BorderSide(
-                        color: themeProvider.appThemeColor.withOpacity(0.5),
+                        color: themeProvider.bloomGlowColor.withOpacity(0.5),
                       ),
                     )
                   : const OutlineInputBorder(),

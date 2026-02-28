@@ -160,16 +160,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: AnimationDefaults.zoomResetDuration,
     );
-    final animation =
-        Matrix4Tween(
-          begin: _transformationController.value,
-          end: Matrix4.identity(),
-        ).animate(
-          CurvedAnimation(
-            parent: controller,
-            curve: Curves.easeOut,
-          ),
-        );
+    final animation = Matrix4Tween(
+      begin: _transformationController.value,
+      end: Matrix4.identity(),
+    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
 
     animation.addListener(() {
       _transformationController.value = animation.value;
@@ -200,7 +194,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final bool isDesktop = scaleProvider.deviceType == DeviceType.desktop;
 
-    if (!themeProvider.enableLoadingAnimation && _zoomBorderController.isAnimating) {
+    if (!themeProvider.enableLoadingAnimation &&
+        _zoomBorderController.isAnimating) {
       _zoomBorderController.stop();
     }
 
@@ -225,7 +220,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: const Color.fromARGB(255, 0, 0, 0),
+          backgroundColor: themeProvider.scaffoldBackgroundColor,
           resizeToAvoidBottomInset: true,
           drawer: null,
           endDrawer: null,
@@ -263,14 +258,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       builder: (context, child) {
                         return CustomPaint(
                           foregroundPainter:
-                            _isZoomMode &&
-                              isDesktop &&
-                              themeProvider.enableLoadingAnimation
+                              _isZoomMode &&
+                                  isDesktop &&
+                                  themeProvider.enableLoadingAnimation
                               ? _ZoomArcPainter(
                                   progress: _zoomBorderController.value,
-                                  color: Colors.white,
+                                  color: themeProvider.textColor,
                                   enableBloom: themeProvider.enableBloom,
-                                  bloomColor: themeProvider.appThemeColor,
+                                  bloomColor: themeProvider.bloomGlowColor,
                                 )
                               : null,
                           child: child,
@@ -279,17 +274,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.black87,
+                          color: themeProvider.overlayDarkColor,
                           border: Border.all(
-                            color: Colors.white,
+                            color: themeProvider.textColor,
                             width: 0.5,
                           ),
                           boxShadow: themeProvider.enableBloom
                               ? [
                                   BoxShadow(
-                                    color: themeProvider.appThemeColor.withOpacity(
-                                      0.6,
-                                    ),
+                                    color: themeProvider.bloomGlowColor
+                                        .withOpacity(0.6),
                                     blurRadius: 20,
                                     spreadRadius: 0,
                                   ),
@@ -308,18 +302,21 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                             child: Center(
                               child: Icon(
                                 isDesktop
-                                    ? (_isZoomMode ? Icons.zoom_out_map : Icons.zoom_in)
+                                    ? (_isZoomMode
+                                          ? Icons.zoom_out_map
+                                          : Icons.zoom_in)
                                     : Icons.zoom_out_map,
                                 size: fabIconSize,
-                                color: Colors.white,
+                                color: themeProvider.textColor,
                                 shadows: themeProvider.enableBloom
                                     ? [
                                         Shadow(
-                                          color: Colors.white.withOpacity(0.7),
+                                          color: themeProvider.textColor
+                                              .withOpacity(0.7),
                                           blurRadius: 4,
                                         ),
                                         Shadow(
-                                          color: themeProvider.appThemeColor
+                                          color: themeProvider.bloomGlowColor
                                               .withOpacity(0.7),
                                           blurRadius: 8,
                                         ),
@@ -353,7 +350,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             return opacity > 0
                 ? GestureDetector(
                     onTap: _closeDrawers,
-                    child: Container(color: Colors.black.withOpacity(opacity)),
+                    child: Container(
+                      color: Colors.black.withOpacity(opacity),
+                    ), // Overlay always dark
                   )
                 : const SizedBox.shrink();
           },
@@ -430,7 +429,12 @@ class _ZoomArcPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     const double strokeWidth = 2.0;
     const double inset = strokeWidth / 2;
-    final Rect arcRect = Rect.fromLTWH(inset, inset, size.width - strokeWidth, size.height - strokeWidth);
+    final Rect arcRect = Rect.fromLTWH(
+      inset,
+      inset,
+      size.width - strokeWidth,
+      size.height - strokeWidth,
+    );
 
     final Paint arcPaint = Paint()
       ..color = color

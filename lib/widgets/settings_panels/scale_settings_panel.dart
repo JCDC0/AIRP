@@ -15,7 +15,7 @@ class ScaleSettingsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final themeColor = themeProvider.appThemeColor;
+    final themeColor = themeProvider.textColor;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -131,13 +131,14 @@ class ScaleSettingsPanel extends StatelessWidget {
     Color activeColor,
   ) {
     final bool isActive = provider.deviceType == type;
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Expanded(
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: isActive
               ? activeColor.withOpacity(0.2)
-              : Colors.black26,
+              : themeProvider.containerFillColor,
           foregroundColor: isActive ? activeColor : Colors.grey,
           side: BorderSide(
             color: isActive ? activeColor : Colors.transparent,

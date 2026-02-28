@@ -47,7 +47,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     final int maxContext = chatProvider.getMaxContext();
     final int currentTokens = chatProvider.tokenCount;
     
-    Color tokenColor = themeProvider.appThemeColor;
+    Color tokenColor = themeProvider.textColor;
     if (currentTokens >= maxContext) {
       tokenColor = Colors.redAccent;
     } else if (currentTokens >= (maxContext * 2 / 3)) {
@@ -83,16 +83,16 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       toolbarHeight: scaledToolbarHeight,
       backgroundColor: themeProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha(0)
-          : const Color.fromARGB(255, 0, 0, 0),
+          : themeProvider.scaffoldBackgroundColor,
       leading: IconButton(
         icon: Icon(Icons.menu, size: scaleProvider.iconScale * 24),
         onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
       ),
       title: PopupMenuButton<AiProvider>(
         initialValue: chatProvider.currentProvider,
-        color: const Color(0xFF2C2C2C),
+        color: themeProvider.dropdownColor,
         shadowColor: themeProvider.enableBloom
-            ? themeProvider.appThemeColor.withOpacity(0.5)
+            ? themeProvider.bloomGlowColor.withOpacity(0.5)
             : null,
         elevation: themeProvider.enableBloom ? 12 : 8,
         onSelected: (AiProvider result) {
@@ -107,7 +107,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.gemini,
             child: Row(
               children: [
-                Icon(Icons.auto_awesome, color: themeProvider.appThemeColor),
+                Icon(Icons.auto_awesome, color: themeProvider.textColor),
                 const SizedBox(width: 8),
                 Text(
                   'Gemini',
@@ -121,7 +121,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.openRouter,
             child: Row(
               children: [
-                Icon(Icons.router, color: themeProvider.appThemeColor),
+                Icon(Icons.router, color: themeProvider.textColor),
                 const SizedBox(width: 8),
                 Text(
                   'OpenRouter',
@@ -135,7 +135,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.arliAi,
             child: Row(
               children: [
-                Icon(Icons.alternate_email, color: themeProvider.appThemeColor),
+                Icon(Icons.alternate_email, color: themeProvider.textColor),
                 const SizedBox(width: 8),
                 Text(
                   'ArliAI',
@@ -149,7 +149,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.nanoGpt,
             child: Row(
               children: [
-                Icon(Icons.bolt, color: themeProvider.appThemeColor),
+                Icon(Icons.bolt, color: themeProvider.textColor),
                 const SizedBox(width: 8),
                 Text(
                   'NanoGPT',
@@ -163,7 +163,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.local,
             child: Row(
               children: [
-                Icon(Icons.laptop_mac, color: themeProvider.appThemeColor),
+                Icon(Icons.laptop_mac, color: themeProvider.textColor),
                 const SizedBox(width: 8),
                 Text(
                   'Local',
@@ -179,7 +179,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
               children: [
                 Icon(
                   Icons.auto_awesome_mosaic,
-                  color: themeProvider.appThemeColor,
+                  color: themeProvider.textColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -194,7 +194,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.huggingFace,
             child: Row(
               children: [
-                Icon(Icons.emoji_emotions, color: themeProvider.appThemeColor),
+                Icon(Icons.emoji_emotions, color: themeProvider.textColor),
                 const SizedBox(width: 8),
                 Text(
                   'HuggingFace',
@@ -208,7 +208,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.groq,
             child: Row(
               children: [
-                Icon(Icons.speed, color: themeProvider.appThemeColor),
+                Icon(Icons.speed, color: themeProvider.textColor),
                 const SizedBox(width: 8),
                 Text(
                   'Groq',
@@ -252,13 +252,13 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                       maxLines: 1,
                       softWrap: false,
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize + 4,
                         shadows: themeProvider.enableBloom
                             ? [
                                 Shadow(
-                                  color: themeProvider.appThemeColor,
+                                  color: themeProvider.bloomGlowColor,
                                   blurRadius: 8,
                                 ),
                               ]
@@ -268,7 +268,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     const SizedBox(width: 4),
                     Icon(
                       Icons.arrow_drop_down,
-                      color: themeProvider.appThemeColor,
+                      color: themeProvider.textColor,
                       size: 18,
                     ),
                   ],
@@ -311,7 +311,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              themeProvider.appThemeColor.withOpacity(0.7),
+                              themeProvider.bloomGlowColor.withOpacity(0.7),
                             ),
                           ),
                         ),
@@ -322,7 +322,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                         icon: Icon(
                           Icons.refresh,
                           size: 20,
-                          color: themeProvider.appThemeColor.withOpacity(0.7),
+                          color: themeProvider.textColor.withOpacity(0.7),
                         ),
                         onPressed: chatProvider.isLoading 
                             ? null 
@@ -403,17 +403,17 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.black26,
+            color: themeProvider.containerFillColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: themeProvider.enableBloom
-                  ? themeProvider.appThemeColor.withOpacity(0.5)
-                  : Colors.white12,
+                  ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                  : themeProvider.borderColor,
             ),
             boxShadow: themeProvider.enableBloom
                 ? [
                     BoxShadow(
-                      color: themeProvider.appThemeColor.withOpacity(0.1),
+                      color: themeProvider.bloomGlowColor.withOpacity(0.1),
                       blurRadius: 8,
                     ),
                   ]
@@ -427,13 +427,13 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                       ? chatProvider.localModelName
                       : "Local Model",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: themeProvider.textColor,
                     fontSize: scaleProvider.systemFontSize + 1,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Icon(Icons.computer, color: Colors.white70, size: 16),
+              Icon(Icons.computer, color: themeProvider.subtitleColor, size: 16),
             ],
           ),
         );

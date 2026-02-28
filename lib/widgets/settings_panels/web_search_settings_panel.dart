@@ -77,10 +77,10 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
-    final Color accent = themeProvider.appThemeColor;
+    final Color accent = themeProvider.textColor;
     final double fs = scaleProvider.systemFontSize;
     final List<Shadow> bloomShadow = themeProvider.enableBloom
-        ? [Shadow(color: accent.withOpacity(0.9), blurRadius: 20)]
+        ? [Shadow(color: themeProvider.bloomGlowColor.withOpacity(0.9), blurRadius: 20)]
         : [];
 
     InputDecoration buildFieldDecoration({
@@ -127,7 +127,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
             border: Border.all(
               color: themeProvider.enableBloom
                   ? accent.withOpacity(0.5)
-                  : Colors.white12,
+                  : themeProvider.borderColor,
             ),
             boxShadow: themeProvider.enableBloom
                 ? [
@@ -142,7 +142,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
             child: DropdownButton<SearchProvider>(
               value: chatProvider.searchProvider,
               isExpanded: true,
-              dropdownColor: const Color(0xFF2C2C2C),
+              dropdownColor: themeProvider.dropdownColor,
               icon: Icon(Icons.travel_explore, color: accent),
               items: [
                 DropdownMenuItem(
@@ -629,6 +629,7 @@ class _DDGWarning extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -645,7 +646,7 @@ class _DDGWarning extends StatelessWidget {
           Expanded(
             child: Text.rich(
               TextSpan(
-                style: TextStyle(fontSize: fs * 0.85, color: Colors.white70),
+                style: TextStyle(fontSize: fs * 0.85, color: themeProvider.subtitleColor),
                 children: const [
                   TextSpan(
                     text: "DuckDuckGo scraping is unreliable. ",

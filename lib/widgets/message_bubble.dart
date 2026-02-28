@@ -130,7 +130,7 @@ class MessageBubble extends StatelessWidget {
         : themeProvider.aiTextColor;
     final borderColor = msg.isUser
         ? themeProvider.userBubbleColor.withAlpha(128)
-        : Colors.white10;
+        : themeProvider.dividerColor;
     final useBloom = themeProvider.enableBloom;
 
     Widget bubble;
@@ -328,7 +328,7 @@ class MessageBubble extends StatelessWidget {
   ) {
     final codeStyle = TextStyle(
       color: textColor,
-      backgroundColor: Colors.black26,
+      backgroundColor: themeProvider.containerFillColor,
       shadows: useBloom
           ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)]
           : [],
@@ -356,12 +356,12 @@ class MessageBubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.black26,
+                color: themeProvider.containerFillColor,
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: useBloom
                     ? [
-                        const BoxShadow(
-                          color: Color.fromARGB(26, 255, 255, 255),
+                        BoxShadow(
+                          color: themeProvider.containerFillColor,
                           blurRadius: 4,
                         ),
                       ]
@@ -428,7 +428,7 @@ class MessageBubble extends StatelessWidget {
         if (hasVisibleText)
           MarkdownBody(
             data: visibleText,
-            builders: {'code': CodeElementBuilder(context, codeStyle)},
+            builders: {'code': CodeElementBuilder(context, codeStyle, themeProvider)},
             styleSheet: MarkdownStyleSheet(
               codeblockPadding: EdgeInsets.zero,
               codeblockDecoration: const BoxDecoration(
@@ -488,12 +488,12 @@ class MessageBubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.black26,
+                color: themeProvider.containerFillColor,
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: useBloom
                     ? [
-                        const BoxShadow(
-                          color: Color.fromARGB(26, 255, 255, 255),
+                        BoxShadow(
+                          color: themeProvider.containerFillColor,
                           blurRadius: 4,
                         ),
                       ]
@@ -528,7 +528,7 @@ class MessageBubble extends StatelessWidget {
               painter: BorderGlowPainter(
                 backgroundColor: bubbleColor,
                 borderColor: borderColor,
-                glowColor: (msg.isUser ? bubbleColor : Colors.white)
+                glowColor: (msg.isUser ? bubbleColor : themeProvider.textColor)
                     .withOpacity(0.15),
                 radius: 12.0,
                 strokeWidth: 2.0,
@@ -583,7 +583,7 @@ class MessageBubble extends StatelessWidget {
                 child: Container(
                   width: 150,
                   height: 150,
-                  color: Colors.black26,
+                  color: themeProvider.containerFillColor,
                   child: Image.file(File(path), fit: BoxFit.cover),
                 ),
               ),
@@ -595,7 +595,7 @@ class MessageBubble extends StatelessWidget {
             child: Container(
               width: 150,
               height: 150,
-              color: Colors.black26,
+              color: themeProvider.containerFillColor,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -606,7 +606,7 @@ class MessageBubble extends StatelessWidget {
                         ? Icons.description
                         : Icons.insert_drive_file,
                     size: 50,
-                    color: Colors.white54,
+                    color: themeProvider.hintColor,
                   ),
                   Positioned(
                     bottom: 8,
@@ -615,9 +615,9 @@ class MessageBubble extends StatelessWidget {
                     child: Text(
                       path.split('/').last,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
-                        color: Colors.white70,
+                        color: themeProvider.subtitleColor,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -663,6 +663,7 @@ class _InlineTypingDotsState extends State<_InlineTypingDots>
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
@@ -686,7 +687,7 @@ class _InlineTypingDotsState extends State<_InlineTypingDots>
                   width: dotSize,
                   height: dotSize,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.7),
+                    color: themeProvider.textColor.withOpacity(0.7),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -702,8 +703,9 @@ class _InlineTypingDotsState extends State<_InlineTypingDots>
 class CodeElementBuilder extends MarkdownElementBuilder {
   final BuildContext context;
   final TextStyle textStyle;
+  final ThemeProvider themeProvider;
 
-  CodeElementBuilder(this.context, this.textStyle);
+  CodeElementBuilder(this.context, this.textStyle, this.themeProvider);
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
@@ -725,9 +727,9 @@ class CodeElementBuilder extends MarkdownElementBuilder {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.black26,
+          color: themeProvider.containerFillColor,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.white12),
+          border: Border.all(color: themeProvider.borderColor),
         ),
         child: Text(
           element.textContent,
@@ -739,18 +741,18 @@ class CodeElementBuilder extends MarkdownElementBuilder {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black26,
+        color: themeProvider.containerFillColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: themeProvider.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: const BoxDecoration(
-              color: Colors.white10,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+            decoration: BoxDecoration(
+              color: themeProvider.dividerColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -758,8 +760,8 @@ class CodeElementBuilder extends MarkdownElementBuilder {
                 if (language.isNotEmpty)
                   Text(
                     language.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white70,
+                    style: TextStyle(
+                      color: themeProvider.subtitleColor,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -776,13 +778,13 @@ class CodeElementBuilder extends MarkdownElementBuilder {
                       ),
                     );
                   },
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.copy, color: Colors.white70, size: 14),
-                      SizedBox(width: 6),
+                      Icon(Icons.copy, color: themeProvider.subtitleColor, size: 14),
+                      const SizedBox(width: 6),
                       Text(
                         "Copy Code",
-                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                        style: TextStyle(color: themeProvider.subtitleColor, fontSize: 11),
                       ),
                     ],
                   ),
@@ -1055,7 +1057,7 @@ class _ReasoningViewState extends State<ReasoningView>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black12,
+                  color: widget.textColor.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: widget.textColor.withOpacity(0.1)),
                 ),
@@ -1093,7 +1095,7 @@ class _ReasoningViewState extends State<ReasoningView>
               padding: const EdgeInsets.all(8),
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.black26,
+                color: widget.textColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(6),
                 border: Border(
                   left: BorderSide(

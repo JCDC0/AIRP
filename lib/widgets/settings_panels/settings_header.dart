@@ -23,11 +23,11 @@ class SettingsHeader extends StatelessWidget {
           style: TextStyle(
             fontSize: scaleProvider.systemFontSize + 10,
             fontWeight: FontWeight.bold,
-            color: themeProvider.appThemeColor,
+            color: themeProvider.textColor,
             shadows: themeProvider.enableBloom
                 ? [
                     Shadow(
-                      color: themeProvider.appThemeColor.withOpacity(0.9),
+                      color: themeProvider.bloomGlowColor.withOpacity(0.9),
                       blurRadius: 20,
                     ),
                   ]

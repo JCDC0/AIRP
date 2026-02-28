@@ -18,6 +18,7 @@ class ThemeProvider extends ChangeNotifier {
   bool _enableMotes = false;
   bool _enableRain = false;
   bool _enableFireflies = false;
+  bool _isLightMode = false;
 
   int _motesDensity = 75;
   int _rainIntensity = 100;
@@ -50,6 +51,78 @@ class ThemeProvider extends ChangeNotifier {
   Color get aiBubbleColor => _aiBubbleColor;
   Color get aiTextColor => _aiTextColor;
   Color get appThemeColor => _appThemeColor;
+  bool get isLightMode => _isLightMode;
+
+  // ── Semantic colors (adapt to light / dark mode) ──────────────────────
+
+  /// The overall brightness used by MaterialApp / ColorScheme.
+  Brightness get brightness => _isLightMode ? Brightness.light : Brightness.dark;
+
+  /// Scaffold / page background.
+  Color get scaffoldBackgroundColor =>
+      _isLightMode ? const Color(0xFFFAFAFA) : const Color.fromARGB(255, 0, 0, 0);
+
+  /// Primary surface (drawers, input areas, bottom sheets).
+  Color get surfaceColor =>
+      _isLightMode ? const Color(0xFFF0F0F0) : const Color(0xFF1E1E1E);
+
+  /// Deeper surface variant.
+  Color get surfaceDimColor =>
+      _isLightMode ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A1A);
+
+  /// Dropdown menus, dialog backgrounds.
+  Color get dropdownColor =>
+      _isLightMode ? const Color(0xFFE0E0E0) : const Color(0xFF2C2C2C);
+
+  /// Alternate dialog background (slightly different shade).
+  Color get dialogBackgroundColor =>
+      _isLightMode ? const Color(0xFFE8E8E8) : const Color(0xFF2A2A2A);
+
+  /// Primary text / icon color.
+  Color get textColor => _isLightMode ? Colors.black : Colors.white;
+
+  /// Subtitle / secondary text.
+  Color get subtitleColor => _isLightMode ? Colors.black87 : Colors.white70;
+
+  /// Hint / placeholder text.
+  Color get hintColor => _isLightMode ? Colors.black54 : Colors.white54;
+
+  /// Dim text.
+  Color get dimTextColor => _isLightMode ? Colors.black38 : Colors.white38;
+
+  /// Faint text / icons.
+  Color get faintColor => _isLightMode ? Colors.black26 : Colors.white30;
+
+  /// Faintest visible elements.
+  Color get faintestColor => _isLightMode ? Colors.black26 : Colors.white24;
+
+  /// Borders.
+  Color get borderColor => _isLightMode ? Colors.black12 : Colors.white12;
+
+  /// Dividers.
+  Color get dividerColor => _isLightMode ? Colors.black12 : Colors.white10;
+
+  /// Container background fill (cards, chips, tag pills).
+  Color get containerFillColor =>
+      _isLightMode ? Colors.black.withOpacity(0.06) : Colors.black26;
+
+  /// Deeper container fill.
+  Color get containerFillDarkColor =>
+      _isLightMode ? Colors.black.withOpacity(0.04) : Colors.black12;
+
+  /// Input field fill colour.
+  Color get inputFillColor => _isLightMode ? Colors.white : Colors.black;
+
+  /// Semi-opaque dark overlay.
+  Color get overlayDarkColor =>
+      _isLightMode ? Colors.black.withOpacity(0.06) : Colors.black87;
+
+  /// Foreground colour on coloured buttons.
+  Color get onAccentColor => _isLightMode ? Colors.white : Colors.black;
+
+  /// Bloom shadow colour that works on both backgrounds.
+  Color get bloomGlowColor =>
+      _isLightMode ? appThemeColor : Colors.white;
 
   ThemeProvider() {
     _loadPreferences();
@@ -69,8 +142,10 @@ class ThemeProvider extends ChangeNotifier {
 
   /// Generates the [TextTheme] based on the selected font style.
   TextTheme get currentTextTheme {
-    const baseColor = Colors.white;
-    final baseTheme = ThemeData.dark().textTheme.apply(
+    final baseColor = textColor;
+    final baseTheme = (_isLightMode ? ThemeData.light() : ThemeData.dark())
+        .textTheme
+        .apply(
       bodyColor: baseColor,
       displayColor: baseColor,
     );
@@ -108,6 +183,14 @@ class ThemeProvider extends ChangeNotifier {
       default:
         return baseTheme;
     }
+  }
+
+  /// Toggles between light and dark mode.
+  Future<void> toggleLightMode(bool value) async {
+    _isLightMode = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_light_mode', value);
   }
 
   /// Sets the background image path and persists the change.
@@ -229,6 +312,7 @@ class ThemeProvider extends ChangeNotifier {
     _enableMotes = false;
     _enableRain = false;
     _enableFireflies = false;
+    _isLightMode = false;
     _backgroundOpacity = AppDefaults.backgroundOpacity;
     _motesDensity = AppDefaults.motesDensity;
     _rainIntensity = AppDefaults.rainIntensity;
@@ -243,6 +327,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_motes', false);
     await prefs.setBool('app_enable_rain', false);
     await prefs.setBool('app_enable_fireflies', false);
+    await prefs.setBool('app_light_mode', false);
     await prefs.setDouble('app_bg_opacity', AppDefaults.backgroundOpacity);
     await prefs.setInt('vfx_motes_density', AppDefaults.motesDensity);
     await prefs.setInt('vfx_rain_intensity', AppDefaults.rainIntensity);
@@ -303,6 +388,7 @@ class ThemeProvider extends ChangeNotifier {
     _enableMotes = prefs.getBool('app_enable_motes') ?? false;
     _enableRain = prefs.getBool('app_enable_rain') ?? false;
     _enableFireflies = prefs.getBool('app_enable_fireflies') ?? false;
+    _isLightMode = prefs.getBool('app_light_mode') ?? false;
     _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
 
     _motesDensity =
@@ -358,6 +444,7 @@ class ThemeProvider extends ChangeNotifier {
       'motes': _enableMotes,
       'rain': _enableRain,
       'fireflies': _enableFireflies,
+      'lightMode': _isLightMode,
       'motesDensity': _motesDensity,
       'rainIntensity': _rainIntensity,
       'firefliesCount': _firefliesCount,
@@ -382,6 +469,7 @@ class ThemeProvider extends ChangeNotifier {
     _enableMotes = data['motes'] as bool? ?? _enableMotes;
     _enableRain = data['rain'] as bool? ?? _enableRain;
     _enableFireflies = data['fireflies'] as bool? ?? _enableFireflies;
+    _isLightMode = data['lightMode'] as bool? ?? _isLightMode;
     _motesDensity = (data['motesDensity'] as num?)?.toInt() ?? _motesDensity;
     _rainIntensity =
         (data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity;
@@ -421,6 +509,7 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_motes', _enableMotes);
     await prefs.setBool('app_enable_rain', _enableRain);
     await prefs.setBool('app_enable_fireflies', _enableFireflies);
+    await prefs.setBool('app_light_mode', _isLightMode);
     await prefs.setInt('vfx_motes_density', _motesDensity);
     await prefs.setInt('vfx_rain_intensity', _rainIntensity);
     await prefs.setInt('vfx_fireflies_count', _firefliesCount);

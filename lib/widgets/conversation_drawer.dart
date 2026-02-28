@@ -49,9 +49,9 @@ class _ConversationDrawerState extends State<ConversationDrawer>
     return Material(
       elevation: themeProvider.enableBloom ? 20 : 16,
       shadowColor: themeProvider.enableBloom
-          ? themeProvider.appThemeColor.withOpacity(0.3)
+          ? themeProvider.bloomGlowColor.withOpacity(0.3)
           : null,
-      color: const Color.fromARGB(255, 0, 0, 0),
+      color: themeProvider.scaffoldBackgroundColor,
       child: SizedBox(
         width: scaleProvider.drawerWidth,
         height: double.infinity,
@@ -61,7 +61,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
               children: [
             Container(
               padding: const EdgeInsets.fromLTRB(16, 50, 16, 0),
-              color: Colors.black26,
+              color: themeProvider.containerFillColor,
               width: double.infinity,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,11 +71,11 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                     style: TextStyle(
                       fontSize: scaleProvider.systemFontSize + 8,
                       fontWeight: FontWeight.bold,
-                      color: themeProvider.appThemeColor,
+                      color: themeProvider.textColor,
                       shadows: themeProvider.enableBloom
                           ? [
                               Shadow(
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.bloomGlowColor,
                                 blurRadius: 10,
                               ),
                             ]
@@ -125,17 +125,17 @@ class _ConversationDrawerState extends State<ConversationDrawer>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(20),
+                  color: themeProvider.textColor.withAlpha(20),
                   borderRadius: BorderRadius.circular(20),
                   border: themeProvider.enableBloom
                       ? Border.all(
-                          color: themeProvider.appThemeColor.withOpacity(0.3),
+                          color: themeProvider.bloomGlowColor.withOpacity(0.3),
                         )
                       : null,
                   boxShadow: themeProvider.enableBloom
                       ? [
                           BoxShadow(
-                            color: themeProvider.appThemeColor.withOpacity(0.1),
+                            color: themeProvider.bloomGlowColor.withOpacity(0.1),
                             blurRadius: 6,
                           ),
                         ]
@@ -143,23 +143,23 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                 ),
                 child: TextField(
                   style: TextStyle(
-                    color: Colors.white,
+                    color: themeProvider.textColor,
                     fontSize: scaleProvider.systemFontSize,
                   ),
                   decoration: InputDecoration(
                     hintText: "Find conversation...",
                     hintStyle: TextStyle(
-                      color: Colors.white38,
+                      color: themeProvider.dimTextColor,
                       fontSize: scaleProvider.systemFontSize - 1,
                     ),
                     prefixIcon: Icon(
                       Icons.search,
-                      color: themeProvider.appThemeColor,
+                      color: themeProvider.textColor,
                       size: 18,
                       shadows: themeProvider.enableBloom
                           ? [
                               Shadow(
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.bloomGlowColor,
                                 blurRadius: 6,
                               ),
                             ]
@@ -209,14 +209,14 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                             child: Text(
                               "Starred",
                               style: TextStyle(
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.textColor,
                                 fontWeight: FontWeight.bold,
                                 fontSize: scaleProvider.systemFontSize,
                                 letterSpacing: 1.2,
                                 shadows: themeProvider.enableBloom
                                     ? [
                                         Shadow(
-                                          color: themeProvider.appThemeColor,
+                                          color: themeProvider.bloomGlowColor,
                                           blurRadius: 6,
                                         ),
                                       ]
@@ -224,7 +224,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                               ),
                             ),
                           ),
-                          const Divider(color: Colors.white10, height: 1),
+                          Divider(color: themeProvider.dividerColor, height: 1),
                           ...bookmarkedSessions.map(
                             (session) => _buildSessionItem(
                               context,
@@ -246,14 +246,14 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                             child: Text(
                               "Recent",
                               style: TextStyle(
-                                color: themeProvider.appThemeColor,
+                                color: themeProvider.textColor,
                                 fontWeight: FontWeight.bold,
                                 fontSize: scaleProvider.systemFontSize,
                                 letterSpacing: 1.2,
                                 shadows: themeProvider.enableBloom
                                     ? [
                                         Shadow(
-                                          color: themeProvider.appThemeColor,
+                                          color: themeProvider.bloomGlowColor,
                                           blurRadius: 6,
                                         ),
                                       ]
@@ -261,7 +261,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                               ),
                             ),
                           ),
-                          const Divider(color: Colors.white10, height: 1),
+                          Divider(color: themeProvider.dividerColor, height: 1),
                           const SizedBox(height: 8),
                           ...recentSessions.map(
                             (session) => _buildSessionItem(
@@ -320,16 +320,16 @@ class _ConversationDrawerState extends State<ConversationDrawer>
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
         color: isActive
-            ? themeProvider.appThemeColor.withAlpha((0.05 * 255).round())
+            ? themeProvider.textColor.withAlpha((0.05 * 255).round())
             : Colors.transparent,
         border: isActive
-            ? Border.all(color: themeProvider.appThemeColor, width: 1.5)
+            ? Border.all(color: themeProvider.textColor, width: 1.5)
             : null,
         borderRadius: BorderRadius.circular(12),
         boxShadow: (isActive && themeProvider.enableBloom)
             ? [
                 BoxShadow(
-                  color: themeProvider.appThemeColor.withOpacity(0.2),
+                  color: themeProvider.bloomGlowColor.withOpacity(0.2),
                   blurRadius: 8,
                   spreadRadius: 1,
                 ),
@@ -341,7 +341,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
         visualDensity: const VisualDensity(horizontal: 0, vertical: -4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        splashColor: themeProvider.appThemeColor.withAlpha((0.1 * 255).round()),
+        splashColor: themeProvider.textColor.withAlpha((0.1 * 255).round()),
 
         leading: GestureDetector(
           onTap: () {
@@ -367,11 +367,11 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: isActive ? themeProvider.appThemeColor : Colors.grey[300],
+                  color: isActive ? themeProvider.textColor : themeProvider.subtitleColor,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                   fontSize: scaleProvider.systemFontSize + 1,
                   shadows: (isActive && themeProvider.enableBloom)
-                      ? [Shadow(color: themeProvider.appThemeColor, blurRadius: 8)]
+                      ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 8)]
                       : [],
                 ),
               ),
@@ -384,7 +384,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    themeProvider.appThemeColor,
+                    themeProvider.textColor,
                   ),
                 ),
               ),
@@ -399,12 +399,14 @@ class _ConversationDrawerState extends State<ConversationDrawer>
           ),
         ),
         onTap: () {
+          // Save outgoing session's background before switching
+          chatProvider.autoSaveCurrentSession(backgroundImagePath: themeProvider.backgroundImagePath);
           chatProvider.loadSession(session);
 
           if (session.backgroundImage != null) {
             themeProvider.setBackgroundImage(session.backgroundImage!);
           } else {
-            themeProvider.setBackgroundImage('assets/default.jpg');
+            themeProvider.setBackgroundImage(null);
           }
 
           widget.onClose?.call();
@@ -415,7 +417,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF2C2C2C),
+              backgroundColor: themeProvider.dropdownColor,
               title: const Row(
                 children: [
                   Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
@@ -425,7 +427,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
               ),
               content: Text(
                 "Permanently deletes ${session.title}",
-                style: const TextStyle(color: Colors.white70),
+                style: TextStyle(color: themeProvider.subtitleColor),
               ),
               actions: [
                 TextButton(
@@ -532,23 +534,23 @@ class _BackgroundNotificationCardState
           margin: const EdgeInsets.only(bottom: 6),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A),
+            color: theme.surfaceDimColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.appThemeColor.withOpacity(0.4),
+              color: theme.bloomGlowColor.withOpacity(0.4),
               width: 1,
             ),
             boxShadow: theme.enableBloom
                 ? [
                     BoxShadow(
-                      color: theme.appThemeColor.withOpacity(0.2),
+                      color: theme.bloomGlowColor.withOpacity(0.2),
                       blurRadius: 12,
                       spreadRadius: 1,
                     ),
                   ]
                 : [
-                    const BoxShadow(
-                      color: Colors.black54,
+                    BoxShadow(
+                      color: theme.containerFillColor,
                       blurRadius: 8,
                     ),
                   ],
@@ -574,11 +576,11 @@ class _BackgroundNotificationCardState
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: theme.appThemeColor,
+                        color: theme.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scale.systemFontSize,
                         shadows: theme.enableBloom
-                            ? [Shadow(color: theme.appThemeColor, blurRadius: 6)]
+                            ? [Shadow(color: theme.bloomGlowColor, blurRadius: 6)]
                             : [],
                       ),
                     ),
@@ -603,7 +605,7 @@ class _BackgroundNotificationCardState
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.grey[400],
+                  color: theme.subtitleColor,
                   fontSize: scale.systemFontSize - 2,
                 ),
               ),

@@ -36,7 +36,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
                         blurRadius: 20,
                       ),
                     ]
@@ -102,7 +102,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
                         blurRadius: 20,
                       ),
                     ]
@@ -140,7 +140,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                     fontWeight: FontWeight.bold,
                     fontSize: scaleProvider.systemFontSize,
                     shadows: themeProvider.enableBloom
-                        ? [const Shadow(color: Colors.white, blurRadius: 10)]
+                        ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                         : [],
                   ),
                 ),
@@ -148,17 +148,17 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: Colors.black26,
+                    color: themeProvider.containerFillColor,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: themeProvider.enableBloom
-                          ? themeProvider.appThemeColor.withOpacity(0.5)
-                          : Colors.white12,
+                          ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                          : themeProvider.borderColor,
                     ),
                     boxShadow: themeProvider.enableBloom
                         ? [
                             BoxShadow(
-                              color: themeProvider.appThemeColor.withOpacity(
+                              color: themeProvider.bloomGlowColor.withOpacity(
                                 0.1,
                               ),
                               blurRadius: 8,
@@ -170,10 +170,10 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                     child: DropdownButton<String>(
                       isExpanded: true,
                       value: chatProvider.reasoningEffort,
-                      dropdownColor: const Color(0xFF2C2C2C),
+                      dropdownColor: themeProvider.dropdownColor,
                       icon: Icon(
                         Icons.psychology,
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                       ),
                       items: [
                         DropdownMenuItem(
@@ -246,7 +246,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
                         blurRadius: 20,
                       ),
                     ]
@@ -331,7 +331,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.appThemeColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
                         blurRadius: 20,
                       ),
                     ]

@@ -121,8 +121,8 @@ class _LibraryPanelState extends State<LibraryPanel> {
           width: double.infinity,
           child: OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              foregroundColor: themeProvider.appThemeColor,
-              side: BorderSide(color: themeProvider.appThemeColor),
+              foregroundColor: themeProvider.textColor,
+              side: BorderSide(color: themeProvider.textColor),
               padding:
                   const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               textStyle: TextStyle(
@@ -163,10 +163,10 @@ class _LibraryPanelState extends State<LibraryPanel> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
       title: Text(
         label,
-        style: TextStyle(fontSize: fontSize * 0.85, color: Colors.white70),
+        style: TextStyle(fontSize: fontSize * 0.85, color: themeProvider.subtitleColor),
       ),
       value: value,
-      activeThumbColor: themeProvider.appThemeColor,
+      activeThumbColor: themeProvider.textColor,
       onChanged: onChanged,
     );
   }
@@ -359,14 +359,14 @@ class _LibraryPanelState extends State<LibraryPanel> {
     final fontSize = scaleProvider.systemFontSize;
 
     return AlertDialog(
-      backgroundColor: const Color(0xFF2C2C2C),
+      backgroundColor: themeProvider.dropdownColor,
       title: Row(
         children: [
-          Icon(Icons.preview, color: themeProvider.appThemeColor, size: fontSize * 1.5),
+          Icon(Icons.preview, color: themeProvider.textColor, size: fontSize * 1.5),
           const SizedBox(width: 8),
           Text(
             "Import Preview",
-            style: TextStyle(color: Colors.white, fontSize: fontSize + 2),
+            style: TextStyle(color: themeProvider.textColor, fontSize: fontSize + 2),
           ),
         ],
       ),
@@ -391,7 +391,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
               _buildSectionHeader("Conversations", fontSize, themeProvider),
               Text(
                 "• ${preview.conversationCount} conversation${preview.conversationCount == 1 ? '' : 's'}",
-                style: TextStyle(color: Colors.white70, fontSize: fontSize * 0.9),
+                style: TextStyle(color: themeProvider.subtitleColor, fontSize: fontSize * 0.9),
               ),
               if (preview.conversationTitles.isNotEmpty) ...[
                 const SizedBox(height: 4),
@@ -400,7 +400,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
                       child: Text(
                         "→ $title",
                         style: TextStyle(
-                          color: Colors.white54,
+                          color: themeProvider.hintColor,
                           fontSize: fontSize * 0.85,
                         ),
                         maxLines: 1,
@@ -413,7 +413,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
                     child: Text(
                       "...and ${preview.conversationCount - 3} more",
                       style: TextStyle(
-                        color: Colors.white38,
+                        color: themeProvider.dimTextColor,
                         fontSize: fontSize * 0.85,
                         fontStyle: FontStyle.italic,
                       ),
@@ -427,7 +427,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
             if (preview.systemPromptsCount > 0) ...[
               Text(
                 "• ${preview.systemPromptsCount} saved system prompt${preview.systemPromptsCount == 1 ? '' : 's'}",
-                style: TextStyle(color: Colors.white70, fontSize: fontSize * 0.9),
+                style: TextStyle(color: themeProvider.subtitleColor, fontSize: fontSize * 0.9),
               ),
               const SizedBox(height: 12),
             ],
@@ -446,7 +446,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
                           child: Text(
                             section,
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: themeProvider.subtitleColor,
                               fontSize: fontSize * 0.9,
                             ),
                           ),
@@ -458,7 +458,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
             ],
 
             // Warning message
-            const Divider(color: Colors.white24),
+            Divider(color: themeProvider.faintestColor),
             const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,7 +505,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
       child: Text(
         title,
         style: TextStyle(
-          color: themeProvider.appThemeColor,
+          color: themeProvider.textColor,
           fontSize: fontSize * 0.95,
           fontWeight: FontWeight.bold,
         ),

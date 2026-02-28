@@ -57,17 +57,17 @@ class ModelSelector extends StatelessWidget {
           vertical: isCompact ? 6 : 12,
         ),
         decoration: BoxDecoration(
-          color: Colors.black26,
+          color: themeProvider.containerFillColor,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: themeProvider.enableBloom
-                ? themeProvider.appThemeColor.withOpacity(0.5)
-                : Colors.white12,
+                ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                : themeProvider.borderColor,
           ),
           boxShadow: themeProvider.enableBloom
               ? [
                   BoxShadow(
-                    color: themeProvider.appThemeColor.withOpacity(0.1),
+                    color: themeProvider.bloomGlowColor.withOpacity(0.1),
                     blurRadius: 8,
                   ),
                 ]
@@ -82,13 +82,13 @@ class ModelSelector extends StatelessWidget {
                     ? selectedModelInfo.name 
                     : placeholder,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: themeProvider.textColor,
                   fontSize: Provider.of<ScaleProvider>(context).systemFontSize,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(Icons.arrow_drop_down, color: Colors.white70),
+            Icon(Icons.arrow_drop_down, color: themeProvider.subtitleColor),
           ],
         ),
       ),
@@ -160,14 +160,14 @@ class ModelSelector extends StatelessWidget {
             });
 
             return AlertDialog(
-              backgroundColor: const Color(0xFF1E1E1E),
+              backgroundColor: themeProvider.surfaceColor,
               title: Row(
                 children: [
                   Expanded(
                     child: Text(
                       "Select Model (${filteredModels.length})",
                       style: TextStyle(
-                        color: themeProvider.appThemeColor,
+                        color: themeProvider.textColor,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
@@ -183,14 +183,14 @@ class ModelSelector extends StatelessWidget {
                     )
                   else
                     IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.white70),
+                      icon: Icon(Icons.refresh, color: themeProvider.subtitleColor),
                       onPressed: () async {
                         await chatProvider.refreshCurrentModels();
                         setDialogState(() {});
                       },
                     ),
                   PopupMenuButton<String>(
-                    icon: const Icon(Icons.sort, color: Colors.white70),
+                    icon: Icon(Icons.sort, color: themeProvider.subtitleColor),
                     onSelected: (val) {
                       setDialogState(() {
                         sortMode = val;
@@ -225,7 +225,7 @@ class ModelSelector extends StatelessWidget {
                           color: Colors.grey,
                         ),
                         filled: true,
-                        fillColor: Colors.black26,
+                        fillColor: themeProvider.containerFillColor,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
@@ -236,7 +236,7 @@ class ModelSelector extends StatelessWidget {
                         ),
                       ),
                       style: TextStyle(
-                        color: Colors.white,
+                        color: themeProvider.textColor,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
@@ -264,15 +264,15 @@ class ModelSelector extends StatelessWidget {
                                   margin: const EdgeInsets.only(bottom: 8),
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? themeProvider.appThemeColor
+                                        ? themeProvider.textColor
                                               .withOpacity(0.15)
-                                        : Colors.white.withOpacity(0.03),
+                                        : themeProvider.textColor.withOpacity(0.03),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isSelected
-                                          ? themeProvider.appThemeColor
+                                          ? themeProvider.textColor
                                                 .withOpacity(0.5)
-                                          : Colors.white10,
+                                          : themeProvider.dividerColor,
                                     ),
                                   ),
                                   child: Material(
@@ -299,7 +299,7 @@ class ModelSelector extends StatelessWidget {
                                                   Text(
                                                     model.name,
                                                     style: TextStyle(
-                                                      color: isSelected ? themeProvider.appThemeColor : Colors.white,
+                                                      color: isSelected ? themeProvider.textColor : themeProvider.textColor,
                                                       fontWeight: FontWeight.bold,
                                                       fontSize: scaleProvider.systemFontSize,
                                                     ),
@@ -347,9 +347,9 @@ class ModelSelector extends StatelessWidget {
                                                 InkWell(
                                                   onTap: () => _showModelDetails(context, model, themeProvider),
                                                   borderRadius: BorderRadius.circular(12),
-                                                  child: const Padding(
-                                                    padding: EdgeInsets.all(4.0),
-                                                    child: Icon(Icons.info_outline, color: Colors.white54, size: 28),
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.all(4.0),
+                                                    child: Icon(Icons.info_outline, color: themeProvider.hintColor, size: 28),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 16),
@@ -369,7 +369,7 @@ class ModelSelector extends StatelessWidget {
                                                           : Icons.bookmark_border,
                                                       color: isBookmarked
                                                           ? Colors.amber
-                                                          : Colors.white30,
+                                                          : themeProvider.faintColor,
                                                       size: 28,
                                                     ),
                                                   ),
@@ -409,27 +409,27 @@ class ModelSelector extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A2A),
+        backgroundColor: themeProvider.dialogBackgroundColor,
         title: Text(
           model.name,
-          style: TextStyle(color: themeProvider.appThemeColor, fontSize: scaleProvider.systemFontSize),
+          style: TextStyle(color: themeProvider.textColor, fontSize: scaleProvider.systemFontSize),
         ),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _detailRow("ID:", model.id, scaleProvider),
+              _detailRow("ID:", model.id, scaleProvider, themeProvider),
               if (model.created != null)
-                _detailRow("Created:", _formatTimestamp(model.created!), scaleProvider),
+                _detailRow("Created:", _formatTimestamp(model.created!), scaleProvider, themeProvider),
               if (model.contextLength.isNotEmpty)
-                _detailRow("Max Context:", _formatNumber(model.contextLength), scaleProvider),
+                _detailRow("Max Context:", _formatNumber(model.contextLength), scaleProvider, themeProvider),
               if (model.pricing.isNotEmpty)
-                _detailRow("", _formatPricing(model.pricing), scaleProvider),
+                _detailRow("", _formatPricing(model.pricing), scaleProvider, themeProvider),
               const Divider(color: Colors.white24),
               Text(
                 model.description.isNotEmpty ? model.description : "No description available.",
-                style: TextStyle(color: Colors.white70, fontSize: scaleProvider.systemFontSize - 2),
+                style: TextStyle(color: themeProvider.subtitleColor, fontSize: scaleProvider.systemFontSize - 2),
               ),
             ],
           ),
@@ -444,7 +444,7 @@ class ModelSelector extends StatelessWidget {
     );
   }
 
-  Widget _detailRow(String label, String value, ScaleProvider scale) {
+  Widget _detailRow(String label, String value, ScaleProvider scale, ThemeProvider themeProvider) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
@@ -452,7 +452,7 @@ class ModelSelector extends StatelessWidget {
         children: [
           if (label.isNotEmpty)
             Text("$label ", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: scale.systemFontSize - 2)),
-          Expanded(child: Text(value, style: TextStyle(color: Colors.white, fontSize: scale.systemFontSize - 2))),
+          Expanded(child: Text(value, style: TextStyle(color: themeProvider.textColor, fontSize: scale.systemFontSize - 2))),
         ],
       ),
     );
