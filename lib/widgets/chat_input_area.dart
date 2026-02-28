@@ -273,7 +273,9 @@ class _ChatInputAreaState extends State<ChatInputArea>
         width: containerSize,
         height: containerSize,
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: backgroundColor != Colors.transparent
+              ? backgroundColor
+              : (themeProvider?.inputFillColor ?? Colors.black),
           shape: BoxShape.circle,
           boxShadow: isActive && useBloom && color != null
               ? [
@@ -289,7 +291,10 @@ class _ChatInputAreaState extends State<ChatInputArea>
                   color: color ?? themeProvider?.textColor ?? Colors.white,
                   width: 0.5 * iconScale,
                 )
-              : null,
+              : Border.all(
+                  color: themeProvider?.textColor ?? Colors.white,
+                  width: 0.5 * iconScale,
+                ),
         ),
         child: IconButton(
           icon: Icon(icon),
@@ -900,27 +905,44 @@ class _ChatInputAreaState extends State<ChatInputArea>
                     ),
                     const SizedBox(width: 8),
 
-                    IconButton.filled(
-                      style: IconButton.styleFrom(
-                        backgroundColor: isLoading
-                            ? themeProvider.textColor.withValues(alpha: 0.2)
-                            : (chatProvider.enableGrounding
-                                  ? Colors.green
-                                  : themeProvider.textColor),
-                        fixedSize: Size(
-                          40 * scaleProvider.iconScale,
-                          40 * scaleProvider.iconScale,
+                    Container(
+                      width: 40 * scaleProvider.iconScale,
+                      height: 40 * scaleProvider.iconScale,
+                      decoration: BoxDecoration(
+                        color: themeProvider.inputFillColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isLoading
+                              ? themeProvider.textColor.withValues(alpha: 0.3)
+                              : (chatProvider.enableGrounding
+                                    ? Colors.green
+                                    : themeProvider.textColor),
+                          width: 0.5 * scaleProvider.iconScale,
                         ),
                       ),
-                      onPressed: isLoading
-                          ? chatProvider.cancelGeneration
-                          : _sendMessage,
-                      icon: Icon(
-                        isLoading ? Icons.stop_circle_outlined : Icons.send,
-                        color: isLoading
-                            ? themeProvider.textColor
-                            : themeProvider.onAccentColor,
-                        size: 20 * scaleProvider.iconScale,
+                      child: IconButton(
+                        onPressed: isLoading
+                            ? chatProvider.cancelGeneration
+                            : _sendMessage,
+                        icon: Icon(
+                          isLoading ? Icons.stop_circle_outlined : Icons.send,
+                          color: isLoading
+                              ? themeProvider.textColor.withValues(alpha: 0.5)
+                              : themeProvider.textColor,
+                          size: 20 * scaleProvider.iconScale,
+                        ),
+                        iconSize: 20 * scaleProvider.iconScale,
+                        constraints: BoxConstraints(
+                          minWidth: 40 * scaleProvider.iconScale,
+                          minHeight: 40 * scaleProvider.iconScale,
+                          maxWidth: 40 * scaleProvider.iconScale,
+                          maxHeight: 40 * scaleProvider.iconScale,
+                        ),
+                        padding: EdgeInsets.zero,
+                        style: IconButton.styleFrom(
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: EdgeInsets.zero,
+                        ),
                       ),
                     ),
                   ],

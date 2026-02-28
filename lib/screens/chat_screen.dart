@@ -274,7 +274,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: themeProvider.overlayDarkColor,
+                          color: themeProvider.inputFillColor,
                           border: Border.all(
                             color: themeProvider.textColor,
                             width: 0.5,

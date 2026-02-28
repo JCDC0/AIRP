@@ -42,6 +42,7 @@ This document outlines the planned progression for AIRP, transitioning from its 
 - **Semantic Color System:** 20+ adaptive color getters in ThemeProvider (textColor, surfaceColor, dropdownColor, borderColor, containerFillColor, etc.) that swap between light and dark palettes. [COMPLETE]
 - **Full Codebase Coverage:** Replaced ~170 hardcoded color references across 21 files (screens, widgets, settings panels) with semantic getters. [COMPLETE]
 - **Settings Integration:** Light mode state included in export/import and reset-to-defaults flows. [COMPLETE]
+- **Icon Consistency Fix:** Applied circular `inputFillColor` backgrounds with static borders to attachment, scroll-to-top, scroll-to-bottom, and zoom buttons matching the style of image gen, web search, and reasoning toggles. Converted send button from `IconButton.filled` to Container-based circular styling with proper light/dark mode color adaptation. [COMPLETE]
 
 ### 📦 v0.5.12 - Total Codebase Overhaul: Optimization & High Efficiency
 *Focus: Deep architectural restructuring, addressing technical debt, eliminating redundancies, and maximizing app-wide performance.*
@@ -64,7 +65,7 @@ This document outlines the planned progression for AIRP, transitioning from its 
  **Phased Instructions:**
 1. **[COMPLETE] Phase 1 (v0.5.8-v0.5.9):** Enhanced ModelSelector with refresh button, long-press descriptions, and cost sorting using OpenRouter metadata. Response versioning and conversation forking implemented.
 2. **[COMPLETE] Phase 2 (v0.5.10):** Built `WebSearchService` implementing Brave, Tavily, Serper.dev, SearXNG, and DDG backends. Added `WebSearchSettingsPanel` beneath Generation Parameters in the drawer. Context injected as `[WEB_CONTEXT]` blocks prepended to user message before AI calls.
-3. **Phase 3 (v0.5.11):** Light mode system with full codebase color adaptation.
+3. **[COMPLETE] Phase 3 (v0.5.11):** Light mode system with full codebase color adaptation. Implemented 20+ semantic color getters in ThemeProvider, replaced ~170 hardcoded color references across 21 files. Fixed icon consistency (circular backgrounds with static borders for attachment, scroll, zoom, and send buttons).
 4. **Phase 4 (v0.5.12):** Execute a complete codebase efficiency overhaul. Break apart God-classes (`ChatProvider.dart`, monolithic UI components) into atomic, decoupled services. Audit the entire project for duplicated logic, streamline API and networking code, minimize widget rebuilds with granular `Selector` models, and decouple storage I/O from state updates for zero-lag interactions.
 5. **Phase 5 (v0.6.0):** Implement a `LorebookParser` and `RegexEngine`. Update the prompt construction logic to inject Lorebook entries based on recent message keywords. Note: `CharacterCard` model already supports V2 specs.
 
@@ -76,3 +77,5 @@ This document outlines the planned progression for AIRP, transitioning from its 
 
 - **Content Summary** - Outline all the changes made or all the features implemented, for better understanding, use git diff or other methods to find the changes or additions in the codebase in the terminal for an understanding of all changes or all features implemented
 - **No Markdown Formatting** - Don't use markdown formatting with bullet points, asterisks, this is to make the text more easily copy pastable.
+
+- **FOR THE LLM READING THIS** - Please ensure that the commit message is concise yet comprehensive, providing a clear overview of the changes made. The title should be brief and to the point, while the content summary should give enough detail to understand the scope and impact of the changes without needing to refer back to the code. Avoid using technical jargon or abbreviations that may not be universally understood, and focus on the practical implications of the changes for users and developers alike. Do not perform any git operations, just generate the commit message based on the changes made in the codebase.
