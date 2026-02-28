@@ -297,7 +297,13 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _loadModelBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
-    _bookmarkedModels = prefs.getStringList('bookmarked_models')?.toSet() ?? {};
+    // Migration: rename legacy key to airp_ prefixed key
+    if (prefs.containsKey('bookmarked_models') && !prefs.containsKey('airp_bookmarked_models')) {
+      final legacy = prefs.getStringList('bookmarked_models')!;
+      await prefs.setStringList('airp_bookmarked_models', legacy);
+      await prefs.remove('bookmarked_models');
+    }
+    _bookmarkedModels = prefs.getStringList('airp_bookmarked_models')?.toSet() ?? {};
     notifyListeners();
   }
 
@@ -309,7 +315,7 @@ class ChatProvider extends ChangeNotifier {
     }
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('bookmarked_models', _bookmarkedModels.toList());
+    await prefs.setStringList('airp_bookmarked_models', _bookmarkedModels.toList());
   }
 
   Future<void> _loadSessions() async {
@@ -511,7 +517,13 @@ class ChatProvider extends ChangeNotifier {
     _enableSystemPrompt = prefs.getBool('airp_enable_system_prompt') ?? true;
     _enableAdvancedSystemPrompt =
         prefs.getBool('airp_enable_advanced_system_prompt') ?? true;
-    _enableCharacterCard = prefs.getBool('enable_character_card') ?? true;
+    // Migration: rename legacy key to airp_ prefixed key
+    if (prefs.containsKey('enable_character_card')) {
+      final legacy = prefs.getBool('enable_character_card')!;
+      await prefs.setBool('airp_enable_character_card', legacy);
+      await prefs.remove('enable_character_card');
+    }
+    _enableCharacterCard = prefs.getBool('airp_enable_character_card') ?? true;
     _enableMsgHistory = prefs.getBool('airp_enable_msg_history') ?? true;
     _enableReasoning = prefs.getBool('airp_enable_reasoning') ?? false;
     _enableGenerationSettings =
@@ -578,7 +590,7 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _saveEnableCharacterCard() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('enable_character_card', _enableCharacterCard);
+    await prefs.setBool('airp_enable_character_card', _enableCharacterCard);
   }
 
   void setCharacterCard(CharacterCard card) {
@@ -2536,7 +2548,7 @@ class ChatProvider extends ChangeNotifier {
       _bookmarkedModels = bookmarks.map((e) => e.toString()).toSet();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
-        'bookmarked_models',
+        'airp_bookmarked_models',
         _bookmarkedModels.toList(),
       );
     }

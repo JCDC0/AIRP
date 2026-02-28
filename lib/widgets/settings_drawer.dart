@@ -8,6 +8,10 @@ import 'settings_panels/settings_header.dart';
 import 'settings_panels/api_settings_panel.dart';
 import 'settings_panels/model_settings_panel.dart';
 import 'settings_panels/system_prompt_panel.dart';
+import 'settings_panels/character_card_panel.dart';
+import 'settings_panels/preset_panel.dart';
+import 'settings_panels/regex_panel.dart';
+import 'settings_panels/formatting_panel.dart';
 import 'settings_panels/generation_settings_panel.dart';
 import 'settings_panels/web_search_settings_panel.dart';
 import 'settings_panels/visual_settings_panel.dart';
@@ -306,16 +310,28 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     ],
                   ),
 
+                  // --- Main System Prompt ---
                   ExpansionTile(
                     key: Key('system_prompt_${widget.resetVersion}'),
                     initiallyExpanded: false,
                     title: Text(
-                      "System Prompt",
+                      "Main System Prompt",
                       style: TextStyle(
                         color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
+                        shadows: themeProvider.enableBloom
+                            ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                            : [],
                       ),
+                    ),
+                    trailing: Switch(
+                      value: chatProvider.enableSystemPrompt,
+                      activeThumbColor: themeProvider.textColor,
+                      onChanged: (val) {
+                        chatProvider.setEnableSystemPrompt(val);
+                        chatProvider.saveSettings();
+                      },
                     ),
                     collapsedIconColor: themeProvider.textColor,
                     iconColor: themeProvider.textColor,
@@ -327,6 +343,106 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         onPromptChanged: _checkForChanges,
                       ),
                     ],
+                  ),
+
+                  // --- Character Card ---
+                  ExpansionTile(
+                    key: Key('character_card_${widget.resetVersion}'),
+                    initiallyExpanded: chatProvider.characterCard.name.isNotEmpty,
+                    title: Text(
+                      "Character Card",
+                      style: TextStyle(
+                        color: Colors.orangeAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
+                    subtitle: Text(
+                      chatProvider.characterCard.name.isNotEmpty
+                          ? "Active: ${chatProvider.characterCard.name}"
+                          : "Import V1/V2 PNG or JSON cards",
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    trailing: Switch(
+                      value: chatProvider.enableCharacterCard,
+                      activeThumbColor: Colors.orangeAccent,
+                      onChanged: (val) {
+                        chatProvider.setEnableCharacterCard(val);
+                        chatProvider.saveSettings();
+                      },
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const CharacterCardPanel()],
+                  ),
+
+                  // --- Custom Rules & Presets ---
+                  ExpansionTile(
+                    key: Key('preset_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    title: Text(
+                      "Custom Rules & Presets",
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                        shadows: themeProvider.enableBloom
+                            ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                            : [],
+                      ),
+                    ),
+                    trailing: Switch(
+                      value: chatProvider.enableAdvancedSystemPrompt,
+                      activeThumbColor: themeProvider.textColor,
+                      onChanged: (val) {
+                        chatProvider.setEnableAdvancedSystemPrompt(val);
+                        chatProvider.saveSettings();
+                      },
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [
+                      PresetPanel(
+                        mainPromptController: _mainPromptController,
+                        advancedPromptController: _advancedPromptController,
+                        promptTitleController: _promptTitleController,
+                        onPromptChanged: _checkForChanges,
+                      ),
+                    ],
+                  ),
+
+                  // --- Regex Scripts ---
+                  ExpansionTile(
+                    key: Key('regex_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    title: Text(
+                      "Regex Scripts",
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const RegexPanel()],
+                  ),
+
+                  // --- Advanced Formatting ---
+                  ExpansionTile(
+                    key: Key('formatting_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    title: Text(
+                      "Advanced Formatting",
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const FormattingPanel()],
                   ),
 
                   ExpansionTile(
