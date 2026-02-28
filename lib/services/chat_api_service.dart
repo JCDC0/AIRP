@@ -141,6 +141,7 @@ class ChatApiService {
     String? reasoningEffort,
     Map<String, String>? extraHeaders,
     bool includeUsage = false,
+    List<Map<String, dynamic>>? depthMessages,
   }) async* {
     final cleanKey = apiKey.trim();
     List<Map<String, dynamic>> messagesPayload = [];
@@ -213,6 +214,23 @@ class ChatApiService {
         }
       }
       messagesPayload.add({"role": "user", "content": contentParts});
+    }
+
+    // Inject depth-positioned messages (lorebook at-depth, depth prompt, etc.)
+    // Depth 0 = just before the final user message, depth N = N messages back.
+    if (depthMessages != null && depthMessages.isNotEmpty) {
+      for (final dm in depthMessages) {
+        final depth = dm['depth'] as int? ?? 0;
+        final content = dm['content'] as String? ?? '';
+        final role = dm['role'] as String? ?? 'system';
+        if (content.isEmpty) continue;
+
+        // Insert position: count back from the end of messagesPayload.
+        // depth 0 → second-to-last (before the final user message).
+        final insertIdx =
+            (messagesPayload.length - depth).clamp(1, messagesPayload.length);
+        messagesPayload.insert(insertIdx, {'role': role, 'content': content});
+      }
     }
 
     final Map<String, dynamic> bodyMap = {

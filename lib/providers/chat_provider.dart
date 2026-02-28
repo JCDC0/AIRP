@@ -6,7 +6,14 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_models.dart';
 import '../models/character_card.dart';
+import '../models/formatting_models.dart';
+import '../models/lorebook_models.dart';
+import '../models/regex_models.dart';
 import '../services/chat_api_service.dart';
+import '../services/lorebook_service.dart';
+import '../services/macro_service.dart';
+import '../services/prompt_pipeline_service.dart';
+import '../services/regex_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/web_search_service.dart';
 import '../utils/constants.dart';
@@ -219,6 +226,14 @@ class ChatProvider extends ChangeNotifier {
   bool _enableGenerationSettings = true;
   bool _enableMaxOutputTokens = true;
 
+  // --- Lorebook / Regex / Formatting state ---
+  Lorebook _globalLorebook = Lorebook(name: 'Global');
+  List<RegexScript> _globalRegexScripts = [];
+  FormattingTemplate? _formattingTemplate;
+  bool _enableLorebook = true;
+  bool _enableRegex = true;
+  bool _enableFormatting = false;
+
   double get temperature => _temperature;
   double get topP => _topP;
   int get topK => _topK;
@@ -245,6 +260,30 @@ class ChatProvider extends ChangeNotifier {
   bool get enableReasoning => _enableReasoning;
   bool get enableGenerationSettings => _enableGenerationSettings;
   bool get enableMaxOutputTokens => _enableMaxOutputTokens;
+
+  // --- Lorebook / Regex / Formatting getters ---
+  Lorebook get globalLorebook => _globalLorebook;
+  List<RegexScript> get globalRegexScripts => _globalRegexScripts;
+  FormattingTemplate? get formattingTemplate => _formattingTemplate;
+  bool get enableLorebook => _enableLorebook;
+  bool get enableRegex => _enableRegex;
+  bool get enableFormatting => _enableFormatting;
+
+  /// Returns the character-scoped lorebook (from the active character card),
+  /// or `null` if no card is loaded or the card has no embedded lorebook.
+  Lorebook? get characterLorebook => _characterCard.characterBook;
+
+  /// Returns the character-scoped regex scripts (from the active character card).
+  List<RegexScript> get characterRegexScripts => _characterCard.regexScripts;
+
+  /// All currently active regex scripts (global + character-scoped).
+  List<RegexScript> get activeRegexScripts {
+    if (!_enableRegex) return [];
+    return [
+      ..._globalRegexScripts,
+      if (_enableCharacterCard) ..._characterCard.regexScripts,
+    ];
+  }
 
   List<ChatMessage> _messages = [];
   List<ChatSessionData> _savedSessions = [];
@@ -532,6 +571,7 @@ class ChatProvider extends ChangeNotifier {
         prefs.getBool('airp_enable_max_output_tokens') ?? true;
 
     await _loadCharacterCard();
+    await _loadSillyTavernState();
 
     notifyListeners();
 
@@ -579,6 +619,44 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // --- Lorebook / Regex / Formatting setters ---
+
+  void setGlobalLorebook(Lorebook lorebook) {
+    _globalLorebook = lorebook;
+    notifyListeners();
+    _saveSillyTavernState();
+  }
+
+  void setGlobalRegexScripts(List<RegexScript> scripts) {
+    _globalRegexScripts = scripts;
+    notifyListeners();
+    _saveSillyTavernState();
+  }
+
+  void setFormattingTemplate(FormattingTemplate? template) {
+    _formattingTemplate = template;
+    notifyListeners();
+    _saveSillyTavernState();
+  }
+
+  void setEnableLorebook(bool enable) {
+    _enableLorebook = enable;
+    notifyListeners();
+    _saveSillyTavernState();
+  }
+
+  void setEnableRegex(bool enable) {
+    _enableRegex = enable;
+    notifyListeners();
+    _saveSillyTavernState();
+  }
+
+  void setEnableFormatting(bool enable) {
+    _enableFormatting = enable;
+    notifyListeners();
+    _saveSillyTavernState();
+  }
+
   void setEnableCharacterCard(bool enable) {
     _enableCharacterCard = enable;
     notifyListeners();
@@ -593,8 +671,80 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setBool('airp_enable_character_card', _enableCharacterCard);
   }
 
+  /// Persists lorebook, regex, formatting state to SharedPreferences.
+  Future<void> _saveSillyTavernState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'airp_global_lorebook',
+      jsonEncode(_globalLorebook.toJson()),
+    );
+    await prefs.setString(
+      'airp_global_regex_scripts',
+      jsonEncode(_globalRegexScripts.map((s) => s.toJson()).toList()),
+    );
+    if (_formattingTemplate != null) {
+      await prefs.setString(
+        'airp_formatting_template',
+        jsonEncode(_formattingTemplate!.toJson()),
+      );
+    } else {
+      await prefs.remove('airp_formatting_template');
+    }
+    await prefs.setBool('airp_enable_lorebook', _enableLorebook);
+    await prefs.setBool('airp_enable_regex', _enableRegex);
+    await prefs.setBool('airp_enable_formatting', _enableFormatting);
+  }
+
+  /// Loads lorebook, regex, formatting state from SharedPreferences.
+  Future<void> _loadSillyTavernState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final lorebookData = prefs.getString('airp_global_lorebook');
+    if (lorebookData != null) {
+      try {
+        _globalLorebook = Lorebook.fromJson(jsonDecode(lorebookData));
+      } catch (e) {
+        debugPrint('Error loading global lorebook: $e');
+      }
+    }
+
+    final regexData = prefs.getString('airp_global_regex_scripts');
+    if (regexData != null) {
+      try {
+        final List<dynamic> jsonList = jsonDecode(regexData);
+        _globalRegexScripts = jsonList
+            .map((j) => RegexScript.fromJson(Map<String, dynamic>.from(j)))
+            .toList();
+      } catch (e) {
+        debugPrint('Error loading global regex scripts: $e');
+      }
+    }
+
+    final formattingData = prefs.getString('airp_formatting_template');
+    if (formattingData != null) {
+      try {
+        _formattingTemplate =
+            FormattingTemplate.fromJson(jsonDecode(formattingData));
+      } catch (e) {
+        debugPrint('Error loading formatting template: $e');
+      }
+    }
+
+    _enableLorebook = prefs.getBool('airp_enable_lorebook') ?? true;
+    _enableRegex = prefs.getBool('airp_enable_regex') ?? true;
+    _enableFormatting = prefs.getBool('airp_enable_formatting') ?? false;
+  }
+
   void setCharacterCard(CharacterCard card) {
     _characterCard = card;
+
+    // Auto-load embedded character book and regex scripts.
+    // The characterBook and regexScripts are stored on the card itself and
+    // accessed via getters (characterLorebook, characterRegexScripts), so
+    // no additional state assignment is needed — they become active
+    // automatically when _enableCharacterCard and _enableLorebook/_enableRegex
+    // are true.
+
     notifyListeners();
     _saveCharacterCard();
     if (_currentProvider == AiProvider.gemini) {
@@ -938,6 +1088,9 @@ class ChatProvider extends ChangeNotifier {
       _enableMaxOutputTokens,
     );
 
+    // Persist lorebook / regex / formatting state alongside main settings
+    await _saveSillyTavernState();
+
     if (_currentSessionId != null) {
       _scheduleAutoSave();
     }
@@ -1011,60 +1164,86 @@ class ChatProvider extends ChangeNotifier {
     return WebSearchService.formatResultsAsContextBlock(results, query: query);
   }
 
-  /// Constructs the full system instruction including Main Prompt, Advanced Prompt, and Character Card.
-  String _buildSystemInstruction() {
-    String finalSystemInstruction = "";
-    if (_enableSystemPrompt) finalSystemInstruction += _systemInstruction;
-    if (_enableAdvancedSystemPrompt && _advancedSystemInstruction.isNotEmpty) {
-      if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
-      finalSystemInstruction += _advancedSystemInstruction;
+  // -------------------------------------------------------------------------
+  // Lorebook / Regex / Formatting helpers
+  // -------------------------------------------------------------------------
+
+  /// Builds a [MacroContext] from the current provider state.
+  MacroContext _buildMacroContext() {
+    return MacroContext(
+      char: _characterCard.name,
+      user: 'User',
+      description: _characterCard.description,
+      personality: _characterCard.personality,
+      scenario: _characterCard.scenario,
+      mesExamples: _characterCard.mesExample,
+      model: _selectedModel,
+      lastMessageId: _messages.length,
+      lastMessage: _messages.isNotEmpty ? _messages.last.text : '',
+    );
+  }
+
+  /// Public accessor for the current macro context (used by display widgets).
+  MacroContext get macroContext => _buildMacroContext();
+
+  /// Evaluates all active lorebooks against [recentMessages] and returns
+  /// a merged [LorebookEvalResult].
+  ///
+  /// [recentMessages] should be ordered newest-first.
+  LorebookEvalResult _evaluateLorebooks(List<String> recentMessages) {
+    if (!_enableLorebook) {
+      return const LorebookEvalResult(byPosition: {}, estimatedTokens: 0);
     }
 
-    // Append Character Card data if present AND enabled
-    if (_enableCharacterCard &&
-        (_characterCard.name.isNotEmpty ||
-            _characterCard.description.isNotEmpty ||
-            _characterCard.personality.isNotEmpty)) {
-      if (finalSystemInstruction.isNotEmpty) finalSystemInstruction += "\n\n";
+    final lorebooks = <Lorebook>[
+      if (_globalLorebook.entries.isNotEmpty) _globalLorebook,
+      if (_enableCharacterCard && _characterCard.characterBook != null)
+        _characterCard.characterBook!,
+    ];
 
-      final StringBuffer cardBuffer = StringBuffer();
-      cardBuffer.writeln("--- Character Information ---");
+    return PromptPipelineService.evaluateLorebooks(
+      lorebooks: lorebooks,
+      recentMessages: recentMessages,
+      characterName: _characterCard.name,
+    );
+  }
 
-      if (_characterCard.name.isNotEmpty) {
-        cardBuffer.writeln("Name: ${_characterCard.name}");
-      }
+  /// Collects depth-positioned entries from lorebook results and the character
+  /// card into a flat list of `{content, depth, role}` maps.
+  List<Map<String, dynamic>> _collectDepthEntries(
+    LorebookEvalResult lorebookResult,
+  ) {
+    return PromptPipelineService.collectDepthEntries(
+      lorebookResult: lorebookResult,
+      characterCard: _characterCard,
+      enableCharacterCard: _enableCharacterCard,
+    );
+  }
 
-      if (_characterCard.description.isNotEmpty) {
-        cardBuffer.writeln("Details/Persona: ${_characterCard.description}");
-      }
-
-      if (_characterCard.personality.isNotEmpty) {
-        cardBuffer.writeln("Personality: ${_characterCard.personality}");
-      }
-
-      if (_characterCard.scenario.isNotEmpty) {
-        cardBuffer.writeln("Scenario: ${_characterCard.scenario}");
-      }
-
-      if (_characterCard.mesExample.isNotEmpty) {
-        cardBuffer.writeln("Dialogue Examples:\n${_characterCard.mesExample}");
-      }
-
-      if (_characterCard.systemPrompt.isNotEmpty) {
-        cardBuffer.writeln("Instructions: ${_characterCard.systemPrompt}");
-      }
-
-      finalSystemInstruction += cardBuffer.toString();
-    }
-
-    return finalSystemInstruction;
+  /// Constructs the full system instruction including Main Prompt, Advanced
+  /// Prompt, Character Card, and optionally lorebook entries.
+  ///
+  /// When [lorebookResult] is provided, activated entries are injected at
+  /// their declared positions (beforeCharDefs, afterCharDefs, etc.).
+  /// `atDepth` entries are NOT included here — use [_collectDepthEntries]
+  /// for those.
+  String _buildSystemInstruction({LorebookEvalResult? lorebookResult}) {
+    return PromptPipelineService.buildSystemInstruction(
+      systemInstruction: _systemInstruction,
+      advancedSystemInstruction: _advancedSystemInstruction,
+      enableSystemPrompt: _enableSystemPrompt,
+      enableAdvancedSystemPrompt: _enableAdvancedSystemPrompt,
+      enableCharacterCard: _enableCharacterCard,
+      characterCard: _characterCard,
+      lorebookResult: lorebookResult,
+    );
   }
 
   /// Initializes the generative model based on the current provider and settings.
   ///
   /// This configures safety settings, system instructions, and generation
   /// parameters. It also rebuilds the chat history for the Gemini provider.
-  Future<void> initializeModel() async {
+  Future<void> initializeModel({String? systemInstructionOverride}) async {
     String activeKey = _getProviderKey(_currentProvider);
     if (_currentProvider == AiProvider.gemini && activeKey.isEmpty) {
       activeKey = _defaultApiKey;
@@ -1093,7 +1272,8 @@ class ChatProvider extends ChangeNotifier {
             ]
           : [];
 
-      final String baseSystemInstruction = _buildSystemInstruction();
+      final String baseSystemInstruction =
+          systemInstructionOverride ?? _buildSystemInstruction();
       String finalSystemInstruction = baseSystemInstruction;
 
       if (_currentProvider == AiProvider.gemini &&
@@ -1185,6 +1365,39 @@ class ChatProvider extends ChangeNotifier {
 
     _scheduleAutoSave();
 
+    // --- Pre-send: apply user input regex ---
+    final macroCtx = _buildMacroContext();
+    final scripts = activeRegexScripts;
+    if (scripts.isNotEmpty) {
+      final permanentText = await RegexService.applyPermanent(
+        text: messageText,
+        scripts: scripts,
+        target: RegexTarget.userInput,
+        macroContext: macroCtx,
+      );
+      if (permanentText != messageText) {
+        messageText = permanentText;
+        _messages.last = _messages.last.copyWith(text: permanentText);
+        notifyListeners();
+      }
+    }
+
+    // Build prompt-only version of user text (used when sending to AI).
+    String sentUserText = messageText;
+    if (scripts.isNotEmpty) {
+      sentUserText = await RegexService.applyPromptOnly(
+        text: messageText,
+        scripts: scripts,
+        target: RegexTarget.userInput,
+        macroContext: macroCtx,
+      );
+    }
+
+    // --- Evaluate lorebooks ---
+    final recentMsgs = _messages.reversed.map((m) => m.text).toList();
+    final lorebookResult = _evaluateLorebooks(recentMsgs);
+    final depthEntries = _collectDepthEntries(lorebookResult);
+
     if (_enableGrounding &&
         _currentProvider == AiProvider.gemini &&
         imagesToSend.isEmpty &&
@@ -1206,13 +1419,21 @@ class ChatProvider extends ChangeNotifier {
           }
         }
 
-        String finalSystemInstruction = _buildSystemInstruction();
+        String finalSystemInstruction =
+            _buildSystemInstruction(lorebookResult: lorebookResult);
+
+        // Append depth entries to system instruction for Gemini grounding
+        if (depthEntries.isNotEmpty) {
+          for (final de in depthEntries) {
+            finalSystemInstruction += '\n\n${de['content']}';
+          }
+        }
 
         final result = await ChatApiService.performGeminiGrounding(
           apiKey: activeKey,
           model: _selectedModel,
           history: _messages.sublist(0, _messages.length - 1),
-          userMessage: messageText,
+          userMessage: sentUserText,
           systemInstruction: finalSystemInstruction,
           disableSafety: _disableSafety,
           thoughtSignature: previousSignature,
@@ -1381,12 +1602,22 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       if (_currentProvider == AiProvider.gemini) {
-        // For Gemini streaming, the model is already initialised with the
-        // base system instruction. Prepend any BYOK context to the user
-        // message so it reaches the model without requiring re-initialisation.
+        // Re-initialise model with lorebook-enriched system instruction
+        // so the chat session reflects the full prompt context.
+        String geminiSysInstruction =
+            _buildSystemInstruction(lorebookResult: lorebookResult);
+        if (depthEntries.isNotEmpty) {
+          for (final de in depthEntries) {
+            geminiSysInstruction += '\n\n${de['content']}';
+          }
+        }
+        await initializeModel(
+            systemInstructionOverride: geminiSysInstruction);
+
+        // Prepend any BYOK context to the user message.
         final String geminiMessage = byokWebContext != null
-            ? '$byokWebContext\n\n---\n\n$messageText'
-            : messageText;
+            ? '$byokWebContext\n\n---\n\n$sentUserText'
+            : sentUserText;
         responseStream = ChatApiService.streamGeminiResponse(
           chatSession: _chat,
           message: geminiMessage,
@@ -1440,14 +1671,15 @@ class ChatProvider extends ChangeNotifier {
           apiKey = "local-key";
         }
 
-        String finalSystemInstruction = _buildSystemInstruction();
+        String finalSystemInstruction =
+            _buildSystemInstruction(lorebookResult: lorebookResult);
 
         // Prepend BYOK search context to user message (not system prompt)
         // so each query gets its own fresh context and avoids mutating
         // the session-level system instruction.
         final String openAiUserMessage = byokWebContext != null
-            ? '$byokWebContext\n\n---\n\n$messageText'
-            : messageText;
+            ? '$byokWebContext\n\n---\n\n$sentUserText'
+            : sentUserText;
 
         responseStream = ChatApiService.streamOpenAiCompatible(
           apiKey: apiKey,
@@ -1469,6 +1701,8 @@ class ChatProvider extends ChangeNotifier {
           reasoningEffort: _enableReasoning ? _reasoningEffort : null,
           extraHeaders: headers,
           includeUsage: _enableUsage,
+          depthMessages:
+              depthEntries.isNotEmpty ? depthEntries : null,
         );
       }
 
@@ -1515,6 +1749,19 @@ class ChatProvider extends ChangeNotifier {
         },
         onDone: () async {
           if (!_cancelledSessions.contains(streamSessionId)) {
+            // --- Post-stream: apply permanent AI output regex ---
+            if (scripts.isNotEmpty && fullText.isNotEmpty) {
+              final regexedOutput = await RegexService.applyPermanent(
+                text: fullText,
+                scripts: scripts,
+                target: RegexTarget.aiOutput,
+                macroContext: macroCtx,
+              );
+              if (regexedOutput != fullText) {
+                fullText = regexedOutput;
+              }
+            }
+
             if (_currentSessionId == streamSessionId) {
               final lastMessage = _messages.last;
               final updatedVersions = List<String>.from(
@@ -1527,6 +1774,7 @@ class ChatProvider extends ChangeNotifier {
               }
 
               _messages.last = lastMessage.copyWith(
+                text: fullText,
                 clearContentNotifier: true,
                 regenerationVersions: updatedVersions,
                 currentVersionIndex: updatedVersions.isNotEmpty
