@@ -358,21 +358,19 @@ class ChatMessagesList extends StatelessWidget {
       maxScale: 5.0,
       child: Stack(
         children: [
-          if (themeProvider.backgroundImagePath != null)
-            Positioned.fill(
-              child: Image(
-                image: themeProvider.currentImageProvider,
-                fit: BoxFit.cover,
+          Positioned.fill(
+            child: Image(
+              image: themeProvider.currentImageProvider,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withAlpha(
+                (themeProvider.backgroundOpacity * 255).round(),
               ),
             ),
-          if (themeProvider.backgroundImagePath != null)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withAlpha(
-                  (themeProvider.backgroundOpacity * 255).round(),
-                ),
-              ),
-            ),
+          ),
 
           Positioned.fill(
             child: EffectsOverlay(

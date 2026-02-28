@@ -570,16 +570,17 @@ class VisualSettingsPanel extends StatelessWidget {
               ),
 
             const SizedBox(height: 10),
-            if (themeProvider.backgroundImagePath != null) ...[
+            if (themeProvider.backgroundImagePath != null &&
+                themeProvider.backgroundImagePath != kDefaultBackground) ...[
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   InkWell(
                     onTap: () =>
-                        themeProvider.setBackgroundImage("assets/default.jpg"),
+                        themeProvider.setBackgroundImage(null),
                     child: const Text(
-                      "CLEAR BACKGROUND",
+                      "RESET TO DEFAULT",
                       style: TextStyle(fontSize: 15, color: Colors.redAccent),
                     ),
                   ),
@@ -718,7 +719,7 @@ class VisualSettingsPanel extends StatelessWidget {
                 },
               ),
             ),
-            if (themeProvider.backgroundImagePath != null) ...[
+            ...[
               const SizedBox(height: 5),
               Text(
                 "Dimmer: ${(themeProvider.backgroundOpacity * 100).toInt()}%",

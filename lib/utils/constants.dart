@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+/// DISCLAIMER: AI-Generated Assets
+/// ================================
+/// The background images and visual assets referenced in this file were generated
+/// using ComfyUI with the model: novaAnimeXL_ilV160.safetensors
+/// These images are AI-generated and retain no copyrighted material from third parties.
+/// Model source: https://huggingface.co/
+/// Created with: ComfyUI (https://github.com/comfyanonymous/ComfyUI)
+
 /// Cleans and formats a raw model ID into a user-friendly display name.
 ///
 /// This removes vendor prefixes, handles special suffixes like ':free',
@@ -142,35 +150,75 @@ class ApiConstants {
 enum SearchProvider { provider, brave, tavily, serper, searxng, duckduckgo }
 
 /// Path to the default background asset.
-const String kDefaultBackground = 'assets/default.jpg';
+const String kDefaultBackground = 'assets/Minimalist_MoonlightBeachAlt_Portrait.png';
 
 /// List of available background image assets.
+/// All images are AI-generated using ComfyUI with novaAnimeXL_ilV160.safetensors model.
 const List<String> kAssetBackgrounds = [
-  'assets/67_horror.jpg',
-  'assets/Backrooms_2.jpg',
-  'assets/beach_morning.jpg',
-  'assets/beach_night.jpg',
-  'assets/building.jpg',
-  'assets/cafe.jpg',
-  'assets/city.jpg',
-  'assets/classroom_afternoon.jpg',
-  'assets/classroom_morning.jpg',
-  'assets/classroom_night.png',
-  'assets/dark_hallway.jpg',
-  'assets/default.jpg',
-  'assets/du_street.jpg',
-  'assets/gym_pool.jpg',
-  'assets/horror_dark.jpg',
-  'assets/hoshinoBG.jpg',
-  'assets/japan_river.jpg',
-  'assets/judgement_hall.jpg',
-  'assets/kivotos.png',
-  'assets/military_park.jpg',
-  'assets/minecraft_lake.jpg',
-  'assets/nightsky.jpg',
-  'assets/starrysky.jpg',
-  'assets/soothingsea.jpg',
-  'assets/soothingsky.jpg',
-  'assets/trainer_office.jpg',
-  'assets/turf.jpeg',
+  'assets/Apocalyptic_DesertCamp_Landscape.png',
+  'assets/Apocalyptic_DesertCamp_Portrait.png',
+  'assets/Apocalyptic_OvergrownCity_Landscape.png',
+  'assets/Apocalyptic_OvergrownCity_Portrait.png',
+  'assets/Castle_Library_Landscape.png',
+  'assets/Castle_Library_Portrait.png',
+  'assets/Castle_ThroneRoom_Landscape.png',
+  'assets/Castle_ThroneRoom_Portrait.png',
+  'assets/ComfyUI_00003_.png',
+  'assets/ComfyUI_00004_.png',
+  'assets/Cyberpunk_Apartment_Landscape.png',
+  'assets/Cyberpunk_Apartment_Portrait.png',
+  'assets/DnD_Cavern_Landscape.png',
+  'assets/DnD_Cavern_Portrait.png',
+  'assets/DnD_DragonsHoard_Landscape.png',
+  'assets/DnD_DragonsHoard_Portrait.png',
+  'assets/Fantasy_CrystalForest_Landscape.png',
+  'assets/Fantasy_CrystalForest_Portrait.png',
+  'assets/Fantasy_Tavern_Landscape.png',
+  'assets/Fantasy_Tavern_Portrait.png',
+  'assets/Horror_Graveyard_Landscape.png',
+  'assets/Horror_Graveyard_Portrait.png',
+  'assets/Horror_Mansion_Landscape.png',
+  'assets/Horror_Mansion_Portrait.png',
+  'assets/Japan_Shrine_Landscape.png',
+  'assets/Japan_Shrine_Portrait.png',
+  'assets/Japan_Village_Landscape.png',
+  'assets/Japan_Village_Portrait.png',
+  'assets/Liminal_DarkHallway_Landscape.png',
+  'assets/Liminal_DarkHallway_Portrait.png',
+  'assets/Liminal_YellowHallway_Landscape.png',
+  'assets/Liminal_YellowHallway_Portrait.png',
+  'assets/Minimalist_AnimeSky_Landscape.png',
+  'assets/Minimalist_AnimeSky_Portrait.png',
+  'assets/Minimalist_BlurredClassroom_Landscape.png',
+  'assets/Minimalist_BlurredClassroom_Portrait.png',
+  'assets/Minimalist_DarkStarfield_Landscape.png',
+  'assets/Minimalist_DarkStarfield_Portrait.png',
+  'assets/Minimalist_EmptyZenRoom_Landscape.png',
+  'assets/Minimalist_EmptyZenRoom_Portrait.png',
+  'assets/Minimalist_MoonlightBeach_Landscape.png',
+  'assets/Minimalist_MoonlightBeach_Portrait.png',
+  'assets/Minimalist_MoonlightBeachAlt_Landscape.png',
+  'assets/Minimalist_MoonlightBeachAlt_Portrait.png',
+  'assets/Minimalist_PastelFlower_Landscape.png',
+  'assets/Minimalist_PastelFlower_Portrait.png',
+  'assets/Minimalist_SciFiWhiteRoom_Landscape.png',
+  'assets/Minimalist_SciFiWhiteRoom_Portrait.png',
+  'assets/Minimalist_SunsetBeach_Landscape.png',
+  'assets/Minimalist_SunsetBeach_Portrait.png',
+  'assets/Modern_Bedroom_Landscape.png',
+  'assets/Modern_Bedroom_Portrait.png',
+  'assets/Modern_SchoolRooftop_Landscape.png',
+  'assets/Modern_SchoolRooftop_Portrait.png',
+  'assets/Sakura_Tree_Clouds_Landscape.png',
+  'assets/Sakura_Tree_Clouds_Portrait.png',
+  'assets/Sakura_Tree_Landscape.png',
+  'assets/Sakura_Tree_Portrait.png',
+  'assets/Space_AlienPlanet_Landscape.png',
+  'assets/Space_AlienPlanet_Portrait.png',
+  'assets/Space_SpaceshipBridge_Landscape.png',
+  'assets/Space_SpaceshipBridge_Portrait.png',
+  'assets/Steampunk_ClockworkCity_Landscape.png',
+  'assets/Steampunk_ClockworkCity_Portrait.png',
+  'assets/Steampunk_Workshop_Landscape.png',
+  'assets/Steampunk_Workshop_Portrait.png',
 ];
