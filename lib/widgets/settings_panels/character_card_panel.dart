@@ -9,6 +9,7 @@ import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/character_card.dart';
+import '../../models/lorebook_models.dart';
 import '../../services/character_card_service.dart';
 import '../../services/library_service.dart';
 
@@ -17,6 +18,11 @@ import '../../services/library_service.dart';
 /// Provides import/export of character card files (PNG with tEXt/iTXt chunks
 /// or JSON), inline field editing with debounced auto-save, and clipboard
 /// helpers for each card field.
+///
+/// V2 fields supported: name, description, personality, scenario, firstMessage,
+/// mesExample, systemPrompt, postHistoryInstructions, creatorNotes, creator,
+/// characterVersion, alternateGreetings, tags, depthPrompt (text/depth/role),
+/// and an embedded lorebook sub-section.
 class CharacterCardPanel extends StatefulWidget {
   const CharacterCardPanel({super.key});
 
@@ -33,6 +39,12 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
   late TextEditingController _cardFirstMesController;
   late TextEditingController _cardMesExampleController;
   late TextEditingController _cardSystemPromptController;
+  late TextEditingController _cardPostHistoryController;
+  late TextEditingController _cardCreatorNotesController;
+  late TextEditingController _cardCreatorController;
+  late TextEditingController _cardVersionController;
+  late TextEditingController _cardDepthPromptTextController;
+  late TextEditingController _cardDepthPromptDepthController;
 
   /// Debounce timer for auto-saving card edits back to ChatProvider.
   Timer? _cardSaveTimer;
@@ -47,6 +59,12 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     _cardFirstMesController = TextEditingController();
     _cardMesExampleController = TextEditingController();
     _cardSystemPromptController = TextEditingController();
+    _cardPostHistoryController = TextEditingController();
+    _cardCreatorNotesController = TextEditingController();
+    _cardCreatorController = TextEditingController();
+    _cardVersionController = TextEditingController();
+    _cardDepthPromptTextController = TextEditingController();
+    _cardDepthPromptDepthController = TextEditingController();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
@@ -66,6 +84,12 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     _cardFirstMesController.dispose();
     _cardMesExampleController.dispose();
     _cardSystemPromptController.dispose();
+    _cardPostHistoryController.dispose();
+    _cardCreatorNotesController.dispose();
+    _cardCreatorController.dispose();
+    _cardVersionController.dispose();
+    _cardDepthPromptTextController.dispose();
+    _cardDepthPromptDepthController.dispose();
     super.dispose();
   }
 
@@ -78,6 +102,12 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     _cardFirstMesController.text = card.firstMessage;
     _cardMesExampleController.text = card.mesExample;
     _cardSystemPromptController.text = card.systemPrompt;
+    _cardPostHistoryController.text = card.postHistoryInstructions;
+    _cardCreatorNotesController.text = card.creatorNotes;
+    _cardCreatorController.text = card.creator;
+    _cardVersionController.text = card.characterVersion;
+    _cardDepthPromptTextController.text = card.depthPromptText;
+    _cardDepthPromptDepthController.text = card.depthPromptDepth.toString();
   }
 
   /// Debounced sync from controllers back to ChatProvider's character card.
@@ -98,6 +128,13 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
         personality: _cardPersonalityController.text,
         mesExample: _cardMesExampleController.text,
         systemPrompt: _cardSystemPromptController.text,
+        postHistoryInstructions: _cardPostHistoryController.text,
+        creatorNotes: _cardCreatorNotesController.text,
+        creator: _cardCreatorController.text,
+        characterVersion: _cardVersionController.text,
+        depthPromptText: _cardDepthPromptTextController.text,
+        depthPromptDepth:
+            int.tryParse(_cardDepthPromptDepthController.text) ?? 4,
       );
 
       chatProvider.setCharacterCard(updatedCard);
@@ -175,10 +212,6 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
   }
 
   /// Exports the current character card to a .json file.
-  ///
-  /// FIX: Previously called LibraryService.exportCharacterCard twice — once to
-  /// generate bytes for FilePicker, and again inside the `if (outputFile)`
-  /// block. Now only serialises once and reuses the result.
   Future<void> _handleExportCharacterCard() async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final card = chatProvider.characterCard;
@@ -274,6 +307,142 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
   }
 
   // ---------------------------------------------------------------------------
+  // Alternate Greetings helpers
+  // ---------------------------------------------------------------------------
+
+  void _addAlternateGreeting() {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    final ctrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: themeProvider.dropdownColor,
+        title: Text('Add Alternate Greeting',
+            style: TextStyle(
+                color: themeProvider.textColor,
+                fontSize: scaleProvider.systemFontSize)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLines: 4,
+          minLines: 2,
+          style: TextStyle(
+              color: themeProvider.textColor,
+              fontSize: scaleProvider.systemFontSize * 0.85),
+          decoration: InputDecoration(
+            hintText: 'Alternate first message...',
+            filled: true,
+            fillColor: themeProvider.containerFillDarkColor,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+              child: Text('Cancel',
+                  style: TextStyle(
+                      fontSize: scaleProvider.systemFontSize * 0.8)),
+              onPressed: () => Navigator.pop(ctx)),
+          TextButton(
+            child: Text('Add',
+                style: TextStyle(
+                    color: Colors.blueAccent,
+                    fontSize: scaleProvider.systemFontSize * 0.8)),
+            onPressed: () {
+              final val = ctrl.text.trim();
+              if (val.isNotEmpty) {
+                final card = chatProvider.characterCard;
+                final updated = card.copyWith(
+                  alternateGreetings: [...card.alternateGreetings, val],
+                );
+                chatProvider.setCharacterCard(updated);
+              }
+              Navigator.pop(ctx);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editAlternateGreeting(int index) {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    final card = chatProvider.characterCard;
+    if (index >= card.alternateGreetings.length) return;
+
+    final ctrl =
+        TextEditingController(text: card.alternateGreetings[index]);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: themeProvider.dropdownColor,
+        title: Text('Edit Greeting #${index + 1}',
+            style: TextStyle(
+                color: themeProvider.textColor,
+                fontSize: scaleProvider.systemFontSize)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLines: 4,
+          minLines: 2,
+          style: TextStyle(
+              color: themeProvider.textColor,
+              fontSize: scaleProvider.systemFontSize * 0.85),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: themeProvider.containerFillDarkColor,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+              child: Text('Cancel',
+                  style: TextStyle(
+                      fontSize: scaleProvider.systemFontSize * 0.8)),
+              onPressed: () => Navigator.pop(ctx)),
+          TextButton(
+            child: Text('Save',
+                style: TextStyle(
+                    color: Colors.blueAccent,
+                    fontSize: scaleProvider.systemFontSize * 0.8)),
+            onPressed: () {
+              final greetings = List<String>.from(card.alternateGreetings);
+              greetings[index] = ctrl.text.trim();
+              chatProvider
+                  .setCharacterCard(card.copyWith(alternateGreetings: greetings));
+              Navigator.pop(ctx);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removeAlternateGreeting(int index) {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final card = chatProvider.characterCard;
+    final greetings = List<String>.from(card.alternateGreetings);
+    greetings.removeAt(index);
+    chatProvider
+        .setCharacterCard(card.copyWith(alternateGreetings: greetings));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Depth prompt role setter
+  // ---------------------------------------------------------------------------
+
+  void _setDepthPromptRole(LorebookRole role) {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final card = chatProvider.characterCard;
+    chatProvider.setCharacterCard(card.copyWith(depthPromptRole: role));
+  }
+
+  // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
 
@@ -282,6 +451,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
+    final card = chatProvider.characterCard;
 
     return Opacity(
       opacity: chatProvider.enableCharacterCard ? 1.0 : 0.5,
@@ -318,7 +488,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
               ),
               Divider(color: themeProvider.borderColor),
 
-              // Card fields
+              // --- Primary Card Fields ---
               _buildCardField("Name", _cardNameController),
               const SizedBox(height: 8),
               _buildCardField(
@@ -329,7 +499,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                   maxLines: 3),
               const SizedBox(height: 8),
 
-              // Collapsible secondary fields
+              // --- More Fields (collapsible) ---
               ExpansionTile(
                 title: Text(
                   "More Fields (Scenario, Examples, etc.)",
@@ -353,8 +523,227 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                   _buildCardField(
                       "Character System Prompt", _cardSystemPromptController,
                       maxLines: 2),
+                  const SizedBox(height: 8),
+                  _buildCardField("Post-History Instructions",
+                      _cardPostHistoryController,
+                      maxLines: 2),
                 ],
               ),
+
+              // --- V2 Extended Fields (collapsible) ---
+              ExpansionTile(
+                title: Text(
+                  "V2 Extended Fields",
+                  style: TextStyle(
+                    fontSize: scaleProvider.systemFontSize * 0.85,
+                    color: themeProvider.subtitleColor,
+                  ),
+                ),
+                dense: true,
+                children: [
+                  _buildCardField(
+                      "Creator Notes", _cardCreatorNotesController,
+                      maxLines: 3),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                          child: _buildCardField(
+                              "Creator", _cardCreatorController)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: _buildCardField(
+                              "Version", _cardVersionController)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // --- Tags ---
+                  if (card.tags.isNotEmpty) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Tags',
+                          style: TextStyle(
+                              color: themeProvider.subtitleColor,
+                              fontSize:
+                                  scaleProvider.systemFontSize * 0.8)),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: card.tags
+                          .map((t) => Chip(
+                                label: Text(t,
+                                    style: TextStyle(
+                                        fontSize: scaleProvider
+                                                .systemFontSize *
+                                            0.7,
+                                        color: themeProvider.textColor)),
+                                backgroundColor:
+                                    themeProvider.containerFillColor,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                              ))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ],
+              ),
+
+              // --- Alternate Greetings (collapsible) ---
+              ExpansionTile(
+                title: Text(
+                  "Alternate Greetings (${card.alternateGreetings.length})",
+                  style: TextStyle(
+                    fontSize: scaleProvider.systemFontSize * 0.85,
+                    color: themeProvider.subtitleColor,
+                  ),
+                ),
+                dense: true,
+                children: [
+                  ...card.alternateGreetings.asMap().entries.map((e) {
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        e.value.length > 80
+                            ? '${e.value.substring(0, 80)}...'
+                            : e.value,
+                        style: TextStyle(
+                            color: themeProvider.textColor,
+                            fontSize:
+                                scaleProvider.systemFontSize * 0.8),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        'Greeting #${e.key + 1}',
+                        style: TextStyle(
+                            color: themeProvider.faintColor,
+                            fontSize:
+                                scaleProvider.systemFontSize * 0.65),
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(Icons.close,
+                            color: themeProvider.faintestColor,
+                            size: 16),
+                        onPressed: () =>
+                            _removeAlternateGreeting(e.key),
+                      ),
+                      onTap: () => _editAlternateGreeting(e.key),
+                    );
+                  }),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    child: OutlinedButton.icon(
+                      onPressed: _addAlternateGreeting,
+                      icon: const Icon(Icons.add, size: 14),
+                      label: Text('Add Greeting',
+                          style: TextStyle(
+                              fontSize:
+                                  scaleProvider.systemFontSize * 0.8)),
+                    ),
+                  ),
+                ],
+              ),
+
+              // --- Depth Prompt (collapsible) ---
+              ExpansionTile(
+                title: Text(
+                  "Depth Prompt",
+                  style: TextStyle(
+                    fontSize: scaleProvider.systemFontSize * 0.85,
+                    color: themeProvider.subtitleColor,
+                  ),
+                ),
+                dense: true,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildCardField("Depth Prompt Text",
+                            _cardDepthPromptTextController,
+                            maxLines: 3),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCardField("Depth (int)",
+                                  _cardDepthPromptDepthController,
+                                  keyboardType: TextInputType.number),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text('Role',
+                                      style: TextStyle(
+                                          color: themeProvider
+                                              .subtitleColor,
+                                          fontSize: scaleProvider
+                                                  .systemFontSize *
+                                              0.8)),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: themeProvider
+                                          .containerFillDarkColor,
+                                      borderRadius:
+                                          BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color:
+                                              themeProvider.borderColor),
+                                    ),
+                                    child: DropdownButton<LorebookRole>(
+                                      value: card.depthPromptRole,
+                                      isExpanded: true,
+                                      dropdownColor:
+                                          themeProvider.dropdownColor,
+                                      underline: const SizedBox(),
+                                      style: TextStyle(
+                                          color:
+                                              themeProvider.textColor,
+                                          fontSize: scaleProvider
+                                                  .systemFontSize *
+                                              0.8),
+                                      items: LorebookRole.values
+                                          .map((r) =>
+                                              DropdownMenuItem<
+                                                  LorebookRole>(
+                                                value: r,
+                                                child: Text(r.name),
+                                              ))
+                                          .toList(),
+                                      onChanged: (v) {
+                                        if (v != null) {
+                                          _setDepthPromptRole(v);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // --- Lorebook Sub-section (collapsible) ---
+              _buildLorebookSection(card, themeProvider, scaleProvider),
             ],
           ),
         ),
@@ -362,10 +751,160 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Lorebook sub-section
+  // ---------------------------------------------------------------------------
+
+  Widget _buildLorebookSection(
+    CharacterCard card,
+    ThemeProvider themeProvider,
+    ScaleProvider scaleProvider,
+  ) {
+    final book = card.characterBook;
+    final entryCount = book?.entries.length ?? 0;
+
+    return ExpansionTile(
+      title: Text(
+        'Lorebook ($entryCount entries)',
+        style: TextStyle(
+          fontSize: scaleProvider.systemFontSize * 0.85,
+          color: themeProvider.subtitleColor,
+        ),
+      ),
+      dense: true,
+      children: [
+        if (book == null || book.entries.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Icon(Icons.auto_stories,
+                    size: 36, color: themeProvider.faintColor),
+                const SizedBox(height: 8),
+                Text(
+                  'No embedded lorebook.',
+                  style: TextStyle(
+                      color: themeProvider.faintColor,
+                      fontSize: scaleProvider.systemFontSize * 0.85),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Import a character card with a lorebook to see entries here.',
+                  style: TextStyle(
+                      color: themeProvider.faintestColor,
+                      fontSize: scaleProvider.systemFontSize * 0.7),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        if (book != null && book.entries.isNotEmpty) ...[
+          // Lorebook metadata
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: themeProvider.containerFillDarkColor,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: themeProvider.borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (book.name.isNotEmpty)
+                    Text(book.name,
+                        style: TextStyle(
+                            color: themeProvider.textColor,
+                            fontSize:
+                                scaleProvider.systemFontSize * 0.85,
+                            fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Scan: ${book.scanDepth}  \u2022  '
+                    'Budget: ${book.tokenBudget} tok  \u2022  '
+                    'Recursion: ${book.recursionSteps}',
+                    style: TextStyle(
+                        color: themeProvider.faintColor,
+                        fontSize:
+                            scaleProvider.systemFontSize * 0.7),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Entry list
+          ...book.entries.asMap().entries.map((e) {
+            final entry = e.value;
+            final keywords = entry.keys.isNotEmpty
+                ? entry.keys.join(', ')
+                : '(no keywords)';
+            final snippet = entry.content.length > 100
+                ? '${entry.content.substring(0, 100)}...'
+                : entry.content;
+
+            return ListTile(
+              dense: true,
+              leading: Icon(
+                entry.enabled
+                    ? Icons.bookmark
+                    : Icons.bookmark_border,
+                size: 16,
+                color: entry.enabled
+                    ? Colors.blueAccent
+                    : themeProvider.faintestColor,
+              ),
+              title: Text(
+                entry.comment.isNotEmpty
+                    ? entry.comment
+                    : 'Entry ${e.key + 1}',
+                style: TextStyle(
+                    color: themeProvider.subtitleColor,
+                    fontSize: scaleProvider.systemFontSize * 0.8),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    keywords,
+                    style: TextStyle(
+                        color: Colors.orangeAccent.withAlpha(180),
+                        fontSize:
+                            scaleProvider.systemFontSize * 0.65),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (snippet.isNotEmpty)
+                    Text(
+                      snippet,
+                      style: TextStyle(
+                          color: themeProvider.faintColor,
+                          fontSize:
+                              scaleProvider.systemFontSize * 0.6),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reusable card field builder
+  // ---------------------------------------------------------------------------
+
   /// Builds a labelled text field for one character card property with
   /// copy/paste helper buttons underneath.
   Widget _buildCardField(String label, TextEditingController controller,
-      {int maxLines = 1}) {
+      {int maxLines = 1, TextInputType? keyboardType}) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Column(
@@ -374,6 +913,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
         TextField(
           controller: controller,
           maxLines: maxLines,
+          keyboardType: keyboardType,
           onChanged: (_) => _syncCardFromControllers(),
           decoration: InputDecoration(
             labelText: label,
