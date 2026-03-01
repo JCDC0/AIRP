@@ -22,7 +22,6 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '0.5.12.11'
 
       - name: Install dependencies
         run: flutter pub get
