@@ -421,7 +421,17 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
+                        shadows: themeProvider.enableBloom
+                            ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                            : [],
                       ),
+                    ),
+                    trailing: Switch(
+                      value: chatProvider.enableRegex,
+                      activeThumbColor: themeProvider.textColor,
+                      onChanged: (val) {
+                        chatProvider.setEnableRegex(val);
+                      },
                     ),
                     collapsedIconColor: themeProvider.textColor,
                     iconColor: themeProvider.textColor,
@@ -438,7 +448,17 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
+                        shadows: themeProvider.enableBloom
+                            ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                            : [],
                       ),
+                    ),
+                    trailing: Switch(
+                      value: chatProvider.enableFormatting,
+                      activeThumbColor: themeProvider.textColor,
+                      onChanged: (val) {
+                        chatProvider.setEnableFormatting(val);
+                      },
                     ),
                     collapsedIconColor: themeProvider.textColor,
                     iconColor: themeProvider.textColor,
