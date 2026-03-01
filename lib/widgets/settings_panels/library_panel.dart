@@ -28,6 +28,8 @@ class _LibraryPanelState extends State<LibraryPanel> {
   bool _exportGenerationParams = true;
   bool _exportLayoutScaling = true;
   bool _exportVisualsAtmosphere = true;
+  bool _exportCharacterCard = true;
+  bool _exportSillyTavernState = true;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +115,20 @@ class _LibraryPanelState extends State<LibraryPanel> {
           themeProvider,
           fontSize,
         ),
+        _buildSwitch(
+          "Character Card",
+          _exportCharacterCard,
+          (v) => setState(() => _exportCharacterCard = v),
+          themeProvider,
+          fontSize,
+        ),
+        _buildSwitch(
+          "Lorebook / Regex / Formatting",
+          _exportSillyTavernState,
+          (v) => setState(() => _exportSillyTavernState = v),
+          themeProvider,
+          fontSize,
+        ),
 
         const Divider(height: 24),
 
@@ -186,6 +202,8 @@ class _LibraryPanelState extends State<LibraryPanel> {
         generationParams: _exportGenerationParams,
         layoutScaling: _exportLayoutScaling,
         visualsAtmosphere: _exportVisualsAtmosphere,
+        characterCard: _exportCharacterCard,
+        sillyTavernState: _exportSillyTavernState,
       );
 
       final jsonString = await LibraryService.exportLibraryAsync(

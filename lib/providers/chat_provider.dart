@@ -2738,6 +2738,17 @@ class ChatProvider extends ChangeNotifier {
       'advancedSystemInstruction': _advancedSystemInstruction,
       'systemPrompts': _savedSystemPrompts.map((p) => p.toJson()).toList(),
       'sessions': _savedSessions.map((s) => s.toJson()).toList(),
+      'characterCard': _characterCard.toJson(),
+      'enableCharacterCard': _enableCharacterCard,
+      'sillyTavernState': {
+        'globalLorebook': _globalLorebook.toJson(),
+        'globalRegexScripts':
+            _globalRegexScripts.map((s) => s.toJson()).toList(),
+        'formattingTemplate': _formattingTemplate?.toJson(),
+        'enableLorebook': _enableLorebook,
+        'enableRegex': _enableRegex,
+        'enableFormatting': _enableFormatting,
+      },
     };
   }
 
@@ -2823,6 +2834,50 @@ class ChatProvider extends ChangeNotifier {
           .map((j) => ChatSessionData.fromJson(j))
           .toList();
       mergeSessions(imported);
+    }
+
+    // Character card
+    if (data['characterCard'] != null) {
+      try {
+        _characterCard = CharacterCard.fromJson(
+            Map<String, dynamic>.from(data['characterCard']));
+        _saveCharacterCard();
+      } catch (e) {
+        debugPrint('Error importing character card: $e');
+      }
+    }
+    if (data['enableCharacterCard'] != null) {
+      _enableCharacterCard = data['enableCharacterCard'] as bool;
+    }
+
+    // SillyTavern state (lorebook, regex, formatting)
+    if (data['sillyTavernState'] != null) {
+      try {
+        final st =
+            Map<String, dynamic>.from(data['sillyTavernState']);
+        if (st['globalLorebook'] != null) {
+          _globalLorebook = Lorebook.fromJson(
+              Map<String, dynamic>.from(st['globalLorebook']));
+        }
+        if (st['globalRegexScripts'] != null) {
+          _globalRegexScripts = (st['globalRegexScripts'] as List)
+              .map((j) =>
+                  RegexScript.fromJson(Map<String, dynamic>.from(j)))
+              .toList();
+        }
+        if (st['formattingTemplate'] != null) {
+          _formattingTemplate = FormattingTemplate.fromJson(
+              Map<String, dynamic>.from(st['formattingTemplate']));
+        } else {
+          _formattingTemplate = null;
+        }
+        _enableLorebook = st['enableLorebook'] as bool? ?? true;
+        _enableRegex = st['enableRegex'] as bool? ?? true;
+        _enableFormatting = st['enableFormatting'] as bool? ?? false;
+        _saveSillyTavernState();
+      } catch (e) {
+        debugPrint('Error importing SillyTavern state: $e');
+      }
     }
 
     notifyListeners();

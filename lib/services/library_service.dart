@@ -16,6 +16,8 @@ class ExportOptions {
   final bool generationParams;
   final bool layoutScaling;
   final bool visualsAtmosphere;
+  final bool characterCard;
+  final bool sillyTavernState;
 
   const ExportOptions({
     this.conversations = true,
@@ -24,6 +26,8 @@ class ExportOptions {
     this.generationParams = true,
     this.layoutScaling = true,
     this.visualsAtmosphere = true,
+    this.characterCard = true,
+    this.sillyTavernState = true,
   });
 }
 
@@ -82,6 +86,17 @@ class LibraryService {
 
     if (options.conversations) {
       library['sessions'] = chatExport['sessions'];
+    }
+
+    // --- Character Card ---
+    if (options.characterCard) {
+      library['characterCard'] = chatExport['characterCard'];
+      library['enableCharacterCard'] = chatExport['enableCharacterCard'];
+    }
+
+    // --- SillyTavern State (lorebook, regex, formatting) ---
+    if (options.sillyTavernState) {
+      library['sillyTavernState'] = chatExport['sillyTavernState'];
     }
 
     // --- Theme ---
@@ -151,6 +166,19 @@ class LibraryService {
       }
       if (data.containsKey('sessions')) {
         chatSettings['sessions'] = data['sessions'];
+      }
+
+      // Character card
+      if (data.containsKey('characterCard')) {
+        chatSettings['characterCard'] = data['characterCard'];
+      }
+      if (data.containsKey('enableCharacterCard')) {
+        chatSettings['enableCharacterCard'] = data['enableCharacterCard'];
+      }
+
+      // SillyTavern state (lorebook, regex, formatting)
+      if (data.containsKey('sillyTavernState')) {
+        chatSettings['sillyTavernState'] = data['sillyTavernState'];
       }
 
       if (chatSettings.isNotEmpty) {
