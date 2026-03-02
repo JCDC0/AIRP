@@ -257,6 +257,7 @@ class ChatProvider extends ChangeNotifier {
     if (_currentProvider == AiProvider.nanoGptImage) return true;
     return ModelInfo.detectImageGen(_selectedModel, null);
   }
+
   bool get disableSafety => _disableSafety;
   String get reasoningEffort => _reasoningEffort;
 
@@ -352,12 +353,14 @@ class ChatProvider extends ChangeNotifier {
   Future<void> _loadModelBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
     // Migration: rename legacy key to airp_ prefixed key
-    if (prefs.containsKey('bookmarked_models') && !prefs.containsKey('airp_bookmarked_models')) {
+    if (prefs.containsKey('bookmarked_models') &&
+        !prefs.containsKey('airp_bookmarked_models')) {
       final legacy = prefs.getStringList('bookmarked_models')!;
       await prefs.setStringList('airp_bookmarked_models', legacy);
       await prefs.remove('bookmarked_models');
     }
-    _bookmarkedModels = prefs.getStringList('airp_bookmarked_models')?.toSet() ?? {};
+    _bookmarkedModels =
+        prefs.getStringList('airp_bookmarked_models')?.toSet() ?? {};
     notifyListeners();
   }
 
@@ -369,7 +372,10 @@ class ChatProvider extends ChangeNotifier {
     }
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('airp_bookmarked_models', _bookmarkedModels.toList());
+    await prefs.setStringList(
+      'airp_bookmarked_models',
+      _bookmarkedModels.toList(),
+    );
   }
 
   Future<void> _loadSessions() async {
@@ -736,8 +742,9 @@ class ChatProvider extends ChangeNotifier {
     final formattingData = prefs.getString('airp_formatting_template');
     if (formattingData != null) {
       try {
-        _formattingTemplate =
-            FormattingTemplate.fromJson(jsonDecode(formattingData));
+        _formattingTemplate = FormattingTemplate.fromJson(
+          jsonDecode(formattingData),
+        );
       } catch (e) {
         debugPrint('Error loading formatting template: $e');
       }
@@ -842,7 +849,7 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.arliAi:
         return _arliAiKey;
       case AiProvider.nanoGpt:
-      case AiProvider.nanoGptImage:  // Shared key
+      case AiProvider.nanoGptImage: // Shared key
         return _nanoGptKey;
       case AiProvider.huggingFace:
         return _huggingFaceKey;
@@ -868,7 +875,7 @@ class ChatProvider extends ChangeNotifier {
         _arliAiKey = key;
         break;
       case AiProvider.nanoGpt:
-      case AiProvider.nanoGptImage:  // Shared key
+      case AiProvider.nanoGptImage: // Shared key
         _nanoGptKey = key;
         break;
       case AiProvider.huggingFace:
@@ -1432,8 +1439,9 @@ class ChatProvider extends ChangeNotifier {
           }
         }
 
-        String finalSystemInstruction =
-            _buildSystemInstruction(lorebookResult: lorebookResult);
+        String finalSystemInstruction = _buildSystemInstruction(
+          lorebookResult: lorebookResult,
+        );
 
         // Append depth entries to system instruction for Gemini grounding
         if (depthEntries.isNotEmpty) {
@@ -1647,15 +1655,15 @@ class ChatProvider extends ChangeNotifier {
       if (_currentProvider == AiProvider.gemini) {
         // Re-initialise model with lorebook-enriched system instruction
         // so the chat session reflects the full prompt context.
-        String geminiSysInstruction =
-            _buildSystemInstruction(lorebookResult: lorebookResult);
+        String geminiSysInstruction = _buildSystemInstruction(
+          lorebookResult: lorebookResult,
+        );
         if (depthEntries.isNotEmpty) {
           for (final de in depthEntries) {
             geminiSysInstruction += '\n\n${de['content']}';
           }
         }
-        await initializeModel(
-            systemInstructionOverride: geminiSysInstruction);
+        await initializeModel(systemInstructionOverride: geminiSysInstruction);
 
         // Prepend any BYOK context to the user message.
         final String geminiMessage = byokWebContext != null
@@ -1714,8 +1722,9 @@ class ChatProvider extends ChangeNotifier {
           apiKey = "local-key";
         }
 
-        String finalSystemInstruction =
-            _buildSystemInstruction(lorebookResult: lorebookResult);
+        String finalSystemInstruction = _buildSystemInstruction(
+          lorebookResult: lorebookResult,
+        );
 
         // Prepend BYOK search context to user message (not system prompt)
         // so each query gets its own fresh context and avoids mutating
@@ -1744,8 +1753,7 @@ class ChatProvider extends ChangeNotifier {
           reasoningEffort: _enableReasoning ? _reasoningEffort : null,
           extraHeaders: headers,
           includeUsage: _enableUsage,
-          depthMessages:
-              depthEntries.isNotEmpty ? depthEntries : null,
+          depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
         );
       }
 
@@ -2787,7 +2795,7 @@ class ChatProvider extends ChangeNotifier {
         'enableGenerationSettings': _enableGenerationSettings,
         'enableMaxOutputTokens': _enableMaxOutputTokens,
         'enableGrounding': _enableGrounding,
-        'enableImageGen': _enableImageGen,
+        // enableImageGen intentionally omitted — image gen is model-driven.
         'enableUsage': _enableUsage,
         'disableSafety': _disableSafety,
       },
@@ -2812,8 +2820,9 @@ class ChatProvider extends ChangeNotifier {
       'enableCharacterCard': _enableCharacterCard,
       'sillyTavernState': {
         'globalLorebook': _globalLorebook.toJson(),
-        'globalRegexScripts':
-            _globalRegexScripts.map((s) => s.toJson()).toList(),
+        'globalRegexScripts': _globalRegexScripts
+            .map((s) => s.toJson())
+            .toList(),
         'formattingTemplate': _formattingTemplate?.toJson(),
         'enableLorebook': _enableLorebook,
         'enableRegex': _enableRegex,
@@ -2849,7 +2858,7 @@ class ChatProvider extends ChangeNotifier {
     _enableMaxOutputTokens =
         tog['enableMaxOutputTokens'] as bool? ?? _enableMaxOutputTokens;
     _enableGrounding = tog['enableGrounding'] as bool? ?? _enableGrounding;
-    _enableImageGen = tog['enableImageGen'] as bool? ?? _enableImageGen;
+    // enableImageGen is no longer stored — image gen is model-driven.
     _enableUsage = tog['enableUsage'] as bool? ?? _enableUsage;
     _disableSafety = tog['disableSafety'] as bool? ?? _disableSafety;
 
@@ -2910,7 +2919,8 @@ class ChatProvider extends ChangeNotifier {
     if (data['characterCard'] != null) {
       try {
         _characterCard = CharacterCard.fromJson(
-            Map<String, dynamic>.from(data['characterCard']));
+          Map<String, dynamic>.from(data['characterCard']),
+        );
         _saveCharacterCard();
       } catch (e) {
         debugPrint('Error importing character card: $e');
@@ -2923,21 +2933,21 @@ class ChatProvider extends ChangeNotifier {
     // SillyTavern state (lorebook, regex, formatting)
     if (data['sillyTavernState'] != null) {
       try {
-        final st =
-            Map<String, dynamic>.from(data['sillyTavernState']);
+        final st = Map<String, dynamic>.from(data['sillyTavernState']);
         if (st['globalLorebook'] != null) {
           _globalLorebook = Lorebook.fromJson(
-              Map<String, dynamic>.from(st['globalLorebook']));
+            Map<String, dynamic>.from(st['globalLorebook']),
+          );
         }
         if (st['globalRegexScripts'] != null) {
           _globalRegexScripts = (st['globalRegexScripts'] as List)
-              .map((j) =>
-                  RegexScript.fromJson(Map<String, dynamic>.from(j)))
+              .map((j) => RegexScript.fromJson(Map<String, dynamic>.from(j)))
               .toList();
         }
         if (st['formattingTemplate'] != null) {
           _formattingTemplate = FormattingTemplate.fromJson(
-              Map<String, dynamic>.from(st['formattingTemplate']));
+            Map<String, dynamic>.from(st['formattingTemplate']),
+          );
         } else {
           _formattingTemplate = null;
         }

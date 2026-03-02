@@ -846,7 +846,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                   ? 'Add a caption...'
                                   : (chatProvider.enableGrounding
                                         ? 'Search web...'
-                                        : (chatProvider.enableImageGen
+                                        : (chatProvider.isImageGenModel
                                               ? 'Describe image...'
                                               : 'Message...')),
                               hintStyle: TextStyle(
