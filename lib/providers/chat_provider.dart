@@ -59,6 +59,7 @@ class ChatProvider extends ChangeNotifier {
   List<ModelInfo> _openRouterModelsList = [];
   List<ModelInfo> _arliAiModelsList = [];
   List<ModelInfo> _nanoGptModelsList = [];
+  List<ModelInfo> _nanoGptImageModelsList = [];
   List<ModelInfo> _openAiModelsList = [];
   List<ModelInfo> _huggingFaceModelsList = [];
   List<ModelInfo> _groqModelsList = [];
@@ -67,6 +68,7 @@ class ChatProvider extends ChangeNotifier {
   List<ModelInfo> get openRouterModelsList => _openRouterModelsList;
   List<ModelInfo> get arliAiModelsList => _arliAiModelsList;
   List<ModelInfo> get nanoGptModelsList => _nanoGptModelsList;
+  List<ModelInfo> get nanoGptImageModelsList => _nanoGptImageModelsList;
   List<ModelInfo> get openAiModelsList => _openAiModelsList;
   List<ModelInfo> get huggingFaceModelsList => _huggingFaceModelsList;
   List<ModelInfo> get groqModelsList => _groqModelsList;
@@ -122,6 +124,7 @@ class ChatProvider extends ChangeNotifier {
   String _openRouterModel = 'z-ai/glm-4.5-air:free';
   String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
   String _nanoGptModel = 'gpt-4o';
+  String _nanoGptImageModel = 'nano-banana';
   String _openAiModel = 'gpt-4o';
   String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
   String _groqModel = 'llama3-8b-8192';
@@ -131,6 +134,7 @@ class ChatProvider extends ChangeNotifier {
   String get openRouterModel => _openRouterModel;
   String get arliAiModel => _arliAiModel;
   String get nanoGptModel => _nanoGptModel;
+  String get nanoGptImageModel => _nanoGptImageModel;
   String get openAiModel => _openAiModel;
   String get huggingFaceModel => _huggingFaceModel;
   String get groqModel => _groqModel;
@@ -157,6 +161,10 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.nanoGpt:
         currentList = _nanoGptModelsList;
         currentId = _nanoGptModel;
+        break;
+      case AiProvider.nanoGptImage:
+        currentList = _nanoGptImageModelsList;
+        currentId = _nanoGptImageModel;
         break;
       case AiProvider.openAi:
         currentList = _openAiModelsList;
@@ -205,7 +213,6 @@ class ChatProvider extends ChangeNotifier {
   int _maxOutputTokens = ChatDefaults.maxOutputTokens;
   int _historyLimit = ChatDefaults.historyLimit;
   bool _enableGrounding = false;
-  bool _enableImageGen = false;
   bool _enableUsage = false;
   bool _disableSafety = true;
   String _reasoningEffort = "none";
@@ -240,8 +247,16 @@ class ChatProvider extends ChangeNotifier {
   int get maxOutputTokens => _maxOutputTokens;
   int get historyLimit => _historyLimit;
   bool get enableGrounding => _enableGrounding;
-  bool get enableImageGen => _enableImageGen;
   bool get enableUsage => _enableUsage;
+
+  /// True when the currently selected model/provider is an image-generation route.
+  ///
+  /// Used by the UI and sendMessage() to skip the normal chat pipeline and
+  /// call the appropriate images API instead.
+  bool get isImageGenModel {
+    if (_currentProvider == AiProvider.nanoGptImage) return true;
+    return ModelInfo.detectImageGen(_selectedModel, null);
+  }
   bool get disableSafety => _disableSafety;
   String get reasoningEffort => _reasoningEffort;
 
@@ -457,6 +472,8 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.arliAi;
     } else if (providerString == 'nanoGpt') {
       _currentProvider = AiProvider.nanoGpt;
+    } else if (providerString == 'nanoGptImage') {
+      _currentProvider = AiProvider.nanoGptImage;
     } else if (providerString == 'huggingFace') {
       _currentProvider = AiProvider.huggingFace;
     } else if (providerString == 'groq') {
@@ -517,12 +534,8 @@ class ChatProvider extends ChangeNotifier {
     _enableUsage = prefs.getBool('airp_enable_usage') ?? false;
     _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
     _enableGrounding = prefs.getBool(ApiConstants.prefEnableGrounding) ?? false;
-    _enableImageGen = prefs.getBool(ApiConstants.prefEnableImageGen) ?? false;
     _disableSafety = prefs.getBool(ApiConstants.prefDisableSafety) ?? true;
-
-    if (_enableGrounding && _enableImageGen) {
-      _enableImageGen = false;
-    }
+    // prefEnableImageGen is no longer read — image gen is driven by the selected model.
 
     // Web Search (BYOK)
     final providerName =
@@ -774,6 +787,8 @@ class ChatProvider extends ChangeNotifier {
         return _arliAiModel;
       case AiProvider.nanoGpt:
         return _nanoGptModel;
+      case AiProvider.nanoGptImage:
+        return _nanoGptImageModel;
       case AiProvider.openAi:
         return _openAiModel;
       case AiProvider.huggingFace:
@@ -798,6 +813,9 @@ class ChatProvider extends ChangeNotifier {
         break;
       case AiProvider.nanoGpt:
         _nanoGptModel = model;
+        break;
+      case AiProvider.nanoGptImage:
+        _nanoGptImageModel = model;
         break;
       case AiProvider.openAi:
         _openAiModel = model;
@@ -824,6 +842,7 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.arliAi:
         return _arliAiKey;
       case AiProvider.nanoGpt:
+      case AiProvider.nanoGptImage:  // Shared key
         return _nanoGptKey;
       case AiProvider.huggingFace:
         return _huggingFaceKey;
@@ -849,6 +868,7 @@ class ChatProvider extends ChangeNotifier {
         _arliAiKey = key;
         break;
       case AiProvider.nanoGpt:
+      case AiProvider.nanoGptImage:  // Shared key
         _nanoGptKey = key;
         break;
       case AiProvider.huggingFace:
@@ -889,7 +909,6 @@ class ChatProvider extends ChangeNotifier {
 
   void setEnableGrounding(bool val) {
     _enableGrounding = val;
-    if (val) _enableImageGen = false;
     notifyListeners();
   }
 
@@ -920,12 +939,6 @@ class ChatProvider extends ChangeNotifier {
 
   void setSearchResultCount(int val) {
     _searchResultCount = val;
-    notifyListeners();
-  }
-
-  void setEnableImageGen(bool val) {
-    _enableImageGen = val;
-    if (val) _enableGrounding = false;
     notifyListeners();
   }
 
@@ -1036,7 +1049,7 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setBool('airp_enable_usage', _enableUsage);
     await prefs.setString('airp_reasoning_effort', _reasoningEffort);
     await prefs.setBool(ApiConstants.prefEnableGrounding, _enableGrounding);
-    await prefs.setBool(ApiConstants.prefEnableImageGen, _enableImageGen);
+    // prefEnableImageGen intentionally not written — image gen is now model-driven.
     await prefs.setBool(ApiConstants.prefDisableSafety, _disableSafety);
     // Web Search (BYOK)
     await prefs.setString(
@@ -1487,39 +1500,49 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    if (_enableImageGen) {
+    if (isImageGenModel) {
       try {
         _nonStreamingLoading = true;
         notifyListeners();
 
-        String activeKey = '';
-        String provider = 'openai';
+        String? base64Result;
 
-        if (_currentProvider == AiProvider.openRouter) {
-          activeKey = _openRouterKey;
-          provider = 'openrouter';
-        } else if (_currentProvider == AiProvider.openAi) {
-          activeKey = _openAiKey;
-          provider = 'openai';
-        } else {
-          _messages.add(
-            ChatMessage(
-              text:
-                  "Image Gen currently only supported for OpenRouter/OpenAI in this mode.",
-              isUser: false,
-              modelName: "System",
-            ),
+        if (_currentProvider == AiProvider.gemini &&
+            ModelInfo.detectImageGen(_selectedModel, null)) {
+          // Gemini Imagen — returns base64 directly
+          base64Result = await ChatApiService.generateImageGemini(
+            apiKey: _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey,
+            prompt: messageText,
+            model: _selectedModel.replaceAll('models/', ''),
           );
-          _nonStreamingLoading = false;
-          notifyListeners();
-          return;
-        }
+        } else {
+          String activeKey;
+          String provider;
 
-        final imageUrl = await ChatApiService.generateImage(
-          apiKey: activeKey,
-          prompt: messageText,
-          provider: provider,
-        );
+          switch (_currentProvider) {
+            case AiProvider.openRouter:
+              activeKey = _openRouterKey;
+              provider = 'openrouter';
+            case AiProvider.openAi:
+              activeKey = _openAiKey;
+              provider = 'openai';
+            case AiProvider.nanoGptImage:
+              activeKey = _nanoGptKey;
+              provider = 'nanogpt';
+            default:
+              // For any other provider with an image-gen model selected,
+              // attempt via OpenAI-compatible images endpoint using their key.
+              activeKey = _getProviderKey(_currentProvider);
+              provider = 'openai'; // fallback shape
+          }
+
+          base64Result = await ChatApiService.generateImage(
+            apiKey: activeKey,
+            prompt: messageText,
+            model: _selectedModel,
+            provider: provider,
+          );
+        }
 
         if (_cancelledSessions.contains(streamSessionId)) {
           _nonStreamingLoading = false;
@@ -1527,28 +1550,48 @@ class ChatProvider extends ChangeNotifier {
           return;
         }
 
-        if (imageUrl != null && imageUrl.startsWith('http')) {
-          _messages.add(
-            ChatMessage(text: imageUrl, isUser: false, modelName: "Image Gen"),
-          );
+        if (base64Result != null && !base64Result.startsWith('Error')) {
+          if (_currentSessionId == streamSessionId) {
+            _messages.add(
+              ChatMessage(
+                text: '',
+                isUser: false,
+                modelName: _selectedModel,
+                aiImage: base64Result,
+              ),
+            );
+          } else {
+            _addMessageToSavedSession(
+              streamSessionId,
+              ChatMessage(
+                text: '',
+                isUser: false,
+                modelName: _selectedModel,
+                aiImage: base64Result,
+              ),
+            );
+          }
         } else {
-          _messages.add(
-            ChatMessage(
-              text: "Image Gen Failed: $imageUrl",
-              isUser: false,
-              modelName: "System",
-            ),
-          );
+          if (_currentSessionId == streamSessionId) {
+            _messages.add(
+              ChatMessage(
+                text: base64Result ?? 'Image generation failed.',
+                isUser: false,
+                modelName: 'System',
+              ),
+            );
+          }
         }
         _nonStreamingLoading = false;
         notifyListeners();
+        _scheduleAutoSave();
         return;
       } catch (e) {
         _messages.add(
           ChatMessage(
-            text: "Error generating image: $e",
+            text: 'Image generation error: $e',
             isUser: false,
-            modelName: "System",
+            modelName: 'System',
           ),
         );
         _nonStreamingLoading = false;
@@ -2453,6 +2496,33 @@ class ChatProvider extends ChangeNotifier {
         }
       },
     );
+
+    // Populate image models list from the subset that are image-gen capable.
+    _nanoGptImageModelsList = _nanoGptModelsList
+        .where((m) => ModelInfo.detectImageGen(m.id, m.rawData))
+        .toList();
+
+    // If the image list is empty (server didn't flag any), fall back to a
+    // hard-coded default so the picker is never empty.
+    if (_nanoGptImageModelsList.isEmpty) {
+      _nanoGptImageModelsList = [
+        ModelInfo(
+          id: 'nano-banana',
+          name: 'Nano Banana (FLUX.1)',
+          description: 'NanoGPT image generation model',
+        ),
+      ];
+    }
+
+    // Keep the selected nanoGptImage model pointing at something valid.
+    if (!_nanoGptImageModelsList.any((m) => m.id == _nanoGptImageModel)) {
+      _nanoGptImageModel = _nanoGptImageModelsList.first.id;
+      if (_currentProvider == AiProvider.nanoGptImage) {
+        _selectedModel = _nanoGptImageModel;
+      }
+    }
+
+    notifyListeners();
   }
 
   Future<void> fetchOpenAiModels() async {
@@ -2934,6 +3004,7 @@ class ChatProvider extends ChangeNotifier {
         await fetchArliAiModels();
         break;
       case AiProvider.nanoGpt:
+      case AiProvider.nanoGptImage:
         await fetchNanoGptModels();
         break;
       case AiProvider.huggingFace:

@@ -83,6 +83,7 @@ class ApiConstants {
   static const String openRouterBaseUrl = "https://openrouter.ai/api/v1/models";
   static const String arliAiBaseUrl = "https://api.arliai.com/v1/models";
   static const String nanoGptBaseUrl = "https://nano-gpt.com/api/v1/models?detailed=true";
+  static const String nanoGptImageGenUrl = "https://nano-gpt.com/api/v1/images/generations";
   static const String openAiBaseUrl = "https://api.openai.com/v1/models";
   static const String huggingFaceBaseUrl =
       "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100";
@@ -123,6 +124,8 @@ class ApiConstants {
   static const String prefLocalIp = 'airp_local_ip';
   static const String prefLocalModelName = 'airp_local_model_name';
   static const String prefEnableGrounding = 'airp_enable_grounding';
+  // ignore: deprecated_member_use_from_same_package
+  @Deprecated('Image gen is now model-driven; this key is no longer written. Safe to ignore on read.')
   static const String prefEnableImageGen = 'airp_enable_image_gen';
   static const String prefDisableSafety = 'airp_disable_safety';
 

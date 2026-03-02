@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:math' show Random;
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:markdown/markdown.dart' as md;
 import '../models/chat_models.dart';
@@ -68,7 +69,7 @@ class MessageBubble extends StatelessWidget {
     this.showTypingIndicator = false,
   });
 
-  void _showImageZoom(BuildContext context, ImageProvider provider) {
+  void _showImageZoom(BuildContext context, ImageProvider imageProvider, {Uint8List? rawBytes}) {
     showDialog(
       context: context,
       barrierColor: const Color.fromARGB(255, 0, 0, 0),
@@ -78,7 +79,7 @@ class MessageBubble extends StatelessWidget {
             child: InteractiveViewer(
               minScale: 0.5,
               maxScale: 4.0,
-              child: Image(image: provider, fit: BoxFit.contain),
+              child: Image(image: imageProvider, fit: BoxFit.contain),
             ),
           ),
           Positioned(
@@ -92,31 +93,50 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Material(
-                color: Colors.transparent,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white24,
-                    foregroundColor: Colors.white,
+          if (rawBytes != null)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Material(
+                  color: Colors.transparent,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white24,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () async {
+                      try {
+                        final dir = await getDownloadsDirectory() ??
+                            await getApplicationDocumentsDirectory();
+                        final timestamp = DateTime.now().millisecondsSinceEpoch;
+                        final file = File(
+                          '${dir.path}/airp_image_$timestamp.png',
+                        );
+                        await file.writeAsBytes(rawBytes);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Saved to ${file.path}'),
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Save failed: $e')),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('Download'),
                   ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Image saved to Gallery (Simulated)"),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.download),
-                  label: const Text("Download"),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -453,10 +473,14 @@ class MessageBubble extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 8.0),
             child: GestureDetector(
-              onTap: () => _showImageZoom(
-                context,
-                MemoryImage(base64Decode(msg.aiImage!)),
-              ),
+              onTap: () {
+                final bytes = base64Decode(msg.aiImage!);
+                _showImageZoom(
+                  context,
+                  MemoryImage(bytes),
+                  rawBytes: bytes,
+                );
+              },
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.memory(

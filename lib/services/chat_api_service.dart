@@ -459,44 +459,115 @@ class ChatApiService {
     return null;
   }
 
-  /// Generates an image based on a text prompt using DALL-E or Flux.
+  /// Generates an image based on a text prompt using an OpenAI-compatible
+  /// images endpoint (OpenAI DALL-E, OpenRouter image models, NanoGPT).
+  ///
+  /// Returns the image as a base64-encoded string on success,
+  /// or an error message string starting with "Error:" on failure.
   static Future<String?> generateImage({
     required String apiKey,
     required String prompt,
+    required String model,
     String provider = 'openai',
+    String size = '1024x1024',
   }) async {
-    final url = Uri.parse(
-      provider == 'openai'
-          ? 'https://api.openai.com/v1/images/generations'
-          : 'https://openrouter.ai/api/v1/images/generations',
-    );
+    final String url;
+    switch (provider) {
+      case 'openrouter':
+        url = 'https://openrouter.ai/api/v1/images/generations';
+      case 'nanogpt':
+        url = 'https://nano-gpt.com/api/v1/images/generations';
+      case 'openai':
+      default:
+        url = 'https://api.openai.com/v1/images/generations';
+    }
+
     final body = jsonEncode({
-      "model": provider == 'openai'
-          ? "dall-e-3"
-          : "stabilityai/stable-diffusion-xl-base-1.0",
-      "prompt": prompt,
-      "n": 1,
-      "size": "1024x1024",
+      'model': model,
+      'prompt': prompt,
+      'n': 1,
+      'size': size,
+      'response_format': 'url',
     });
 
     try {
       final response = await http.post(
-        url,
+        Uri.parse(url),
         headers: {
-          "Authorization": "Bearer $apiKey",
-          "Content-Type": "application/json",
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
         },
         body: body,
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['data'][0]['url'];
+        final imageUrl = data['data']?[0]?['url'];
+        if (imageUrl == null) return 'Error: No URL in response';
+        return await _downloadImageAsBase64(imageUrl);
       } else {
-        return "Error: ${response.body}";
+        return 'Error: ${response.statusCode} – ${response.body}';
       }
     } catch (e) {
-      return "Connection Error: $e";
+      return 'Error: $e';
+    }
+  }
+
+  /// Downloads an image from [url] and returns it as a base64-encoded string.
+  ///
+  /// Returns null if the download fails.
+  static Future<String?> _downloadImageAsBase64(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        return base64Encode(response.bodyBytes);
+      }
+    } catch (e) {
+      _logWarning('Image download failed: $e');
+    }
+    return null;
+  }
+
+  /// Generates an image using Google's Imagen 3 model via the Gemini REST API.
+  ///
+  /// Returns the image as a base64-encoded string on success,
+  /// or an error message string starting with "Error:" on failure.
+  static Future<String?> generateImageGemini({
+    required String apiKey,
+    required String prompt,
+    String model = 'imagen-3.0-generate-002',
+    String aspectRatio = '1:1',
+  }) async {
+    final url = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/$model:predict?key=$apiKey',
+    );
+    final body = jsonEncode({
+      'instances': [
+        {'prompt': prompt},
+      ],
+      'parameters': {
+        'sampleCount': 1,
+        'aspectRatio': aspectRatio,
+      },
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final b64 =
+            data['predictions']?[0]?['bytesBase64Encoded'] as String?;
+        return b64; // Already base64 — no download needed.
+      } else {
+        return 'Error: ${response.statusCode} – ${response.body}';
+      }
+    } catch (e) {
+      return 'Error: $e';
     }
   }
 

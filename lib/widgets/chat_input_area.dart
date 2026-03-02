@@ -562,27 +562,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                         themeProvider: themeProvider,
                         scaleProvider: scaleProvider,
                       ),
-                      _buildFeatureSwitch(
-                        icon: Icons.image,
-                        isActive: chatProvider.enableImageGen,
-                        activeColor: Colors.purpleAccent,
-                        isLoading: isLoading,
-                        onToggle: () async {
-                          chatProvider.setEnableImageGen(
-                            !chatProvider.enableImageGen,
-                          );
-                          await chatProvider.saveSettings(
-                            showConfirmation: false,
-                          );
-                          _showStatusPopup(
-                            chatProvider.enableImageGen
-                                ? "Image Gen ON"
-                                : "Image Gen OFF",
-                          );
-                        },
-                        themeProvider: themeProvider,
-                        scaleProvider: scaleProvider,
-                      ),
+
                       if (chatProvider.currentProvider == AiProvider.openRouter)
                         _buildFeatureSwitch(
                           icon: Icons.data_usage,
@@ -605,26 +585,37 @@ class _ChatInputAreaState extends State<ChatInputArea>
                           themeProvider: themeProvider,
                           scaleProvider: scaleProvider,
                         ),
-                      _buildFeatureSwitch(
-                        icon: Icons.public,
-                        isActive: chatProvider.enableGrounding,
-                        activeColor: Colors.blueAccent,
-                        isLoading: isLoading,
-                        onToggle: () async {
-                          chatProvider.setEnableGrounding(
-                            !chatProvider.enableGrounding,
-                          );
-                          await chatProvider.saveSettings(
-                            showConfirmation: false,
-                          );
-                          _showStatusPopup(
-                            chatProvider.enableGrounding
-                                ? "Web Search ON"
-                                : "Web Search OFF",
-                          );
-                        },
-                        themeProvider: themeProvider,
-                        scaleProvider: scaleProvider,
+                      Tooltip(
+                        message: chatProvider.isImageGenModel
+                            ? 'Web search unavailable for image models'
+                            : '',
+                        child: IgnorePointer(
+                          ignoring: chatProvider.isImageGenModel,
+                          child: Opacity(
+                            opacity: chatProvider.isImageGenModel ? 0.4 : 1.0,
+                            child: _buildFeatureSwitch(
+                              icon: Icons.public,
+                              isActive: chatProvider.enableGrounding,
+                              activeColor: Colors.blueAccent,
+                              isLoading: isLoading,
+                              onToggle: () async {
+                                chatProvider.setEnableGrounding(
+                                  !chatProvider.enableGrounding,
+                                );
+                                await chatProvider.saveSettings(
+                                  showConfirmation: false,
+                                );
+                                _showStatusPopup(
+                                  chatProvider.enableGrounding
+                                      ? 'Web Search ON'
+                                      : 'Web Search OFF',
+                                );
+                              },
+                              themeProvider: themeProvider,
+                              scaleProvider: scaleProvider,
+                            ),
+                          ),
+                        ),
                       ),
                       Builder(
                         builder: (context) {

@@ -58,20 +58,22 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     final String providerName =
         chatProvider.currentProvider == AiProvider.gemini
-            ? "Gemini"
+            ? 'Gemini'
             : chatProvider.currentProvider == AiProvider.openRouter
-            ? "OpenRouter"
+            ? 'OpenRouter'
             : chatProvider.currentProvider == AiProvider.arliAi
-            ? "ArliAI"
+            ? 'ArliAI'
             : chatProvider.currentProvider == AiProvider.nanoGpt
-            ? "NanoGPT"
+            ? 'NanoGPT'
+            : chatProvider.currentProvider == AiProvider.nanoGptImage
+            ? 'NanoGPT Image'
             : chatProvider.currentProvider == AiProvider.local
-            ? "Local"
+            ? 'Local'
             : chatProvider.currentProvider == AiProvider.openAi
-            ? "OpenAI"
+            ? 'OpenAI'
             : chatProvider.currentProvider == AiProvider.groq
-            ? "Groq"
-            : "HuggingFace";
+            ? 'Groq'
+            : 'HuggingFace';
 
     const double baseToolbarHeight = 60.0;
     const double baseBottomHeight = 40.0;
@@ -153,6 +155,20 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 const SizedBox(width: 8),
                 Text(
                   'NanoGPT',
+                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuItem<AiProvider>(
+            height: scaleProvider.systemFontSize * 2.5,
+            value: AiProvider.nanoGptImage,
+            child: Row(
+              children: [
+                Icon(Icons.image_outlined, color: Colors.purpleAccent),
+                const SizedBox(width: 8),
+                Text(
+                  'NanoGPT Image',
                   style: TextStyle(fontSize: scaleProvider.systemFontSize),
                 ),
               ],
@@ -372,7 +388,15 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           modelsList: chatProvider.nanoGptModelsList,
           selectedModel: chatProvider.nanoGptModel,
           onSelected: chatProvider.setModel,
-          placeholder: "Select NanoGPT Model",
+          placeholder: 'Select NanoGPT Model',
+          isCompact: true,
+        );
+      case AiProvider.nanoGptImage:
+        return ModelSelector(
+          modelsList: chatProvider.nanoGptImageModelsList,
+          selectedModel: chatProvider.nanoGptImageModel,
+          onSelected: chatProvider.setModel,
+          placeholder: 'Select NanoGPT Image Model',
           isCompact: true,
         );
       case AiProvider.openAi:
@@ -380,7 +404,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           modelsList: chatProvider.openAiModelsList,
           selectedModel: chatProvider.openAiModel,
           onSelected: chatProvider.setModel,
-          placeholder: "Select OpenAI Model",
+          placeholder: 'Select OpenAI Model',
           isCompact: true,
         );
       case AiProvider.huggingFace:
@@ -388,7 +412,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           modelsList: chatProvider.huggingFaceModelsList,
           selectedModel: chatProvider.huggingFaceModel,
           onSelected: chatProvider.setModel,
-          placeholder: "Select HuggingFace Model",
+          placeholder: 'Select HuggingFace Model',
           isCompact: true,
         );
       case AiProvider.groq:
@@ -396,7 +420,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           modelsList: chatProvider.groqModelsList,
           selectedModel: chatProvider.groqModel,
           onSelected: chatProvider.setModel,
-          placeholder: "Select Groq Model",
+          placeholder: 'Select Groq Model',
           isCompact: true,
         );
       case AiProvider.local:

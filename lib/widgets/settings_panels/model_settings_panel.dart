@@ -38,6 +38,8 @@ class ModelSettingsPanel extends StatelessWidget {
         return provider.arliAiModelsList.length;
       case AiProvider.nanoGpt:
         return provider.nanoGptModelsList.length;
+      case AiProvider.nanoGptImage:
+        return provider.nanoGptImageModelsList.length;
       case AiProvider.openAi:
         return provider.openAiModelsList.length;
       case AiProvider.huggingFace:
@@ -188,10 +190,21 @@ class ModelSettingsPanel extends StatelessWidget {
             modelsList: chatProvider.nanoGptModelsList,
             selectedModel: chatProvider.nanoGptModel,
             onSelected: chatProvider.setModel,
-            placeholder: "aion-labs/aion-rp-llama-3.1-8b",
+            placeholder: 'aion-labs/aion-rp-llama-3.1-8b',
             isLoading: chatProvider.isLoadingNanoGptModels,
             onRefresh: chatProvider.fetchNanoGptModels,
             refreshButtonColor: Colors.yellowAccent,
+          ),
+
+        if (chatProvider.currentProvider == AiProvider.nanoGptImage)
+          ProviderModelSelector(
+            modelsList: chatProvider.nanoGptImageModelsList,
+            selectedModel: chatProvider.nanoGptImageModel,
+            onSelected: chatProvider.setModel,
+            placeholder: 'nano-banana',
+            isLoading: chatProvider.isLoadingNanoGptModels,
+            onRefresh: chatProvider.fetchNanoGptModels,
+            refreshButtonColor: Colors.purpleAccent,
           ),
 
         if (chatProvider.currentProvider == AiProvider.openAi)

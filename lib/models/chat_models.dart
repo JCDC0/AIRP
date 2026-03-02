@@ -8,6 +8,7 @@ enum AiProvider {
   local,
   arliAi,
   nanoGpt,
+  nanoGptImage,
   huggingFace,
   groq,
 }
@@ -234,6 +235,9 @@ class ModelInfo {
   final int? created; // Unix timestamp
   final Map<String, dynamic>? rawData;
 
+  /// Whether this model is an image generation model.
+  final bool isImageGen;
+
   ModelInfo({
     required this.id,
     required this.name,
@@ -242,7 +246,37 @@ class ModelInfo {
     this.pricing = "",
     this.created,
     this.rawData,
+    this.isImageGen = false,
   });
+
+  /// Returns true if the given model ID or rawData indicates an image-gen model.
+  ///
+  /// Checks OpenRouter's `architecture.modality == "image"` first, then falls
+  /// back to substring matching against known image model name fragments.
+  static bool detectImageGen(String modelId, Map<String, dynamic>? rawData) {
+    // OpenRouter metadata check
+    try {
+      final modality = rawData?['architecture']?['modality'];
+      if (modality != null && modality.toString().contains('image')) return true;
+    } catch (_) {}
+
+    // Substring fallback for providers without metadata
+    final lower = modelId.toLowerCase();
+    const fragments = [
+      'imagen',
+      'dall-e',
+      'flux',
+      'stable-diffusion',
+      'sdxl',
+      'recraft',
+      'ideogram',
+      'midjourney',
+      'nano-banana',
+      'nano-flux',
+      'nano-imagen',
+    ];
+    return fragments.any((f) => lower.contains(f));
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -252,15 +286,21 @@ class ModelInfo {
     'pricing': pricing,
     'created': created,
     'rawData': rawData,
+    'isImageGen': isImageGen,
   };
 
-  factory ModelInfo.fromJson(Map<String, dynamic> json) => ModelInfo(
-    id: json['id'] ?? "",
-    name: json['name'] ?? "",
-    description: json['description'] ?? "",
-    contextLength: json['contextLength']?.toString() ?? "",
-    pricing: json['pricing'] ?? "",
-    created: json['created'],
-    rawData: json['rawData'],
-  );
+  factory ModelInfo.fromJson(Map<String, dynamic> json) {
+    final rawData = json['rawData'] as Map<String, dynamic>?;
+    final id = json['id'] as String? ?? '';
+    return ModelInfo(
+      id: id,
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      contextLength: json['contextLength']?.toString() ?? '',
+      pricing: json['pricing'] as String? ?? '',
+      created: json['created'] as int?,
+      rawData: rawData,
+      isImageGen: json['isImageGen'] as bool? ?? ModelInfo.detectImageGen(id, rawData),
+    );
+  }
 }
