@@ -1,13 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../services/library_service.dart';
+import '../../services/file_io_helper.dart';
 
 /// A panel that lets users export all app state to a `.airp` file
 /// and import a previously exported library.
@@ -213,23 +212,15 @@ class _LibraryPanelState extends State<LibraryPanel> {
         options: options,
       );
 
-      final bytes = utf8.encode(jsonString);
+      final bytes = Uint8List.fromList(utf8.encode(jsonString));
 
-      // saveFile with bytes works on all platforms (Android, iOS, desktop)
-      final String? outputPath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save AIRP Library',
+      final saved = await FileIOHelper.saveFile(
+        bytes: bytes,
         fileName: 'airp_library.airp',
-        type: FileType.any,
-        bytes: Uint8List.fromList(bytes),
+        dialogTitle: 'Save AIRP Library',
       );
 
-      if (outputPath == null) return; // User cancelled
-
-      // On desktop, FilePicker may not write bytes automatically
-      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-        final file = File(outputPath);
-        await file.writeAsBytes(bytes);
-      }
+      if (!saved) return; // User cancelled
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -254,21 +245,11 @@ class _LibraryPanelState extends State<LibraryPanel> {
   // ─── Import ─────────────────────────────────────────────────────────────
 
   Future<void> _handleImport(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
+    final fileContent = await FileIOHelper.pickAndReadString(
       dialogTitle: 'Select AIRP Library File',
-      type: FileType.any,
-      allowMultiple: false,
     );
 
-    if (result == null || result.files.isEmpty) return;
-
-    final filePath = result.files.single.path;
-    if (filePath == null) return;
-
-    final file = File(filePath);
-    if (!await file.exists()) return;
-
-    final fileContent = await file.readAsString();
+    if (fileContent == null) return;
 
     // Parse the file to generate preview
     if (!context.mounted) return;

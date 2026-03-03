@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:math' show Random;
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +11,7 @@ import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../models/chat_models.dart';
+import '../services/file_io_helper.dart';
 
 /// A widget that provides the input interface for the chat.
 ///
@@ -30,6 +31,9 @@ class _ChatInputAreaState extends State<ChatInputArea>
     with TickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final List<String> _pendingImages = [];
+  /// On web, file paths are unavailable. This map stores the raw bytes
+  /// keyed by the pseudo-path stored in [_pendingImages].
+  final Map<String, Uint8List> _pendingImageBytes = {};
   final ImagePicker _picker = ImagePicker();
   late AnimationController _orbitController;
   List<_OrbitLine> _orbitLines = [];
@@ -59,9 +63,18 @@ class _ChatInputAreaState extends State<ChatInputArea>
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        setState(() {
-          _pendingImages.add(image.path);
-        });
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          final key = 'web_img_${DateTime.now().millisecondsSinceEpoch}_${image.name}';
+          _pendingImageBytes[key] = bytes;
+          setState(() {
+            _pendingImages.add(key);
+          });
+        } else {
+          setState(() {
+            _pendingImages.add(image.path);
+          });
+        }
       }
     } catch (e) {
       debugPrint("Error picking image: $e");
@@ -83,13 +96,25 @@ class _ChatInputAreaState extends State<ChatInputArea>
           'doc',
           'docx',
         ],
+        withData: kIsWeb,
       );
 
-      if (result != null && result.files.single.path != null) {
-        final path = result.files.single.path!;
-        setState(() {
-          _pendingImages.add(path);
-        });
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.single;
+        if (kIsWeb) {
+          final bytes = file.bytes;
+          if (bytes != null) {
+            final key = 'web_file_${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+            _pendingImageBytes[key] = bytes;
+            setState(() {
+              _pendingImages.add(key);
+            });
+          }
+        } else if (file.path != null) {
+          setState(() {
+            _pendingImages.add(file.path!);
+          });
+        }
       }
     } catch (e) {
       debugPrint("Error picking file: $e");
@@ -187,10 +212,18 @@ class _ChatInputAreaState extends State<ChatInputArea>
 
     final List<String> imagesToSend = List.from(_pendingImages);
 
-    chatProvider.sendMessage(messageText, imagesToSend);
+    // On web, pass the in-memory bytes alongside the pseudo-paths.
+    final Map<String, Uint8List>? bytesToSend =
+        kIsWeb && _pendingImageBytes.isNotEmpty
+            ? Map.from(_pendingImageBytes)
+            : null;
+
+    chatProvider.sendMessage(messageText, imagesToSend,
+        attachmentBytes: bytesToSend);
 
     setState(() {
       _pendingImages.clear();
+      _pendingImageBytes.clear();
       _textController.clear();
     });
 
@@ -455,6 +488,14 @@ class _ChatInputAreaState extends State<ChatInputArea>
                           'webp',
                           'heic',
                         ].contains(ext);
+                        final Uint8List? webBytes = _pendingImageBytes[path];
+
+                        Widget buildImageWidget({BoxFit fit = BoxFit.cover, double? width, double? height}) {
+                          if (webBytes != null) {
+                            return Image.memory(webBytes, fit: fit, width: width, height: height);
+                          }
+                          return FileIOHelper.imageWidgetFromPath(path, fit: fit);
+                        }
 
                         return Padding(
                           padding: const EdgeInsets.only(right: 6.0),
@@ -474,7 +515,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                               children: [
                                                 InteractiveViewer(
                                                   maxScale: 5.0,
-                                                  child: Image.file(File(path)),
+                                                  child: buildImageWidget(),
                                                 ),
                                                 Positioned(
                                                   top: 40,
@@ -498,12 +539,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
                                   child: isImage
-                                      ? Image.file(
-                                          File(path),
-                                          width: 50,
-                                          height: 50,
-                                          fit: BoxFit.cover,
-                                        )
+                                      ? buildImageWidget(width: 50, height: 50, fit: BoxFit.cover)
                                       : Container(
                                           width: 50,
                                           height: 50,
@@ -523,9 +559,10 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                 right: -4,
                                 top: -4,
                                 child: InkWell(
-                                  onTap: () => setState(
-                                    () => _pendingImages.removeAt(index),
-                                  ),
+                                  onTap: () => setState(() {
+                                    final removed = _pendingImages.removeAt(index);
+                                    _pendingImageBytes.remove(removed);
+                                  }),
                                   child: Container(
                                     decoration: const BoxDecoration(
                                       color: Colors.red,

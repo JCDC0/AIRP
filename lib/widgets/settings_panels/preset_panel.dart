@@ -3,13 +3,12 @@ import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/preset_model.dart';
 import '../../services/library_service.dart';
+import '../../services/file_io_helper.dart';
 
 /// A panel for managing custom rules and importable presets.
 ///
@@ -135,14 +134,11 @@ class _PresetPanelState extends State<PresetPanel> {
 
   Future<void> _handleImportPreset() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
+      final content = await FileIOHelper.pickAndReadString(
+        extensions: ['json'],
       );
 
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final content = await file.readAsString();
+      if (content != null) {
         final jsonMap = jsonDecode(content);
         final preset = SystemPreset.fromJson(jsonMap);
 
@@ -207,24 +203,18 @@ class _PresetPanelState extends State<PresetPanel> {
       final jsonStr = await LibraryService.exportPreset(preset);
       final bytes = Uint8List.fromList(utf8.encode(jsonStr));
 
-      String? outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export Preset',
+      final saved = await FileIOHelper.saveFile(
+        bytes: bytes,
         fileName:
             '${preset.name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.json',
-        allowedExtensions: ['json'],
-        type: FileType.custom,
-        bytes: bytes,
+        extensions: ['json'],
+        dialogTitle: 'Export Preset',
       );
 
-      if (outputFile != null) {
-        final file = File(outputFile);
-        await file.writeAsString(jsonStr);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Exported to $outputFile")),
-          );
-        }
+      if (saved && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Preset exported!")),
+        );
       }
     } catch (e) {
       debugPrint("Export failed: $e");

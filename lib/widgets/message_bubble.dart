@@ -1,17 +1,17 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'dart:io';
 import 'dart:convert';
 import 'dart:math' show Random;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:markdown/markdown.dart' as md;
 import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
+import '../services/file_io_helper.dart';
 import '../services/formatting_service.dart';
 import '../services/regex_service.dart';
 import '../utils/constants.dart';
@@ -107,18 +107,38 @@ class MessageBubble extends StatelessWidget {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () async {
+                      if (kIsWeb) {
+                        // On web, use file save picker
+                        try {
+                          await FileIOHelper.saveFile(
+                            bytes: rawBytes,
+                            fileName: 'airp_image_${DateTime.now().millisecondsSinceEpoch}.png',
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Image saved'),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Save failed: $e')),
+                            );
+                          }
+                        }
+                      } else {
                       try {
-                        final dir = await getDownloadsDirectory() ??
-                            await getApplicationDocumentsDirectory();
-                        final timestamp = DateTime.now().millisecondsSinceEpoch;
-                        final file = File(
-                          '${dir.path}/airp_image_$timestamp.png',
+                        final savedPath = await FileIOHelper.saveToDownloads(
+                          bytes: rawBytes,
+                          filename: 'airp_image_${DateTime.now().millisecondsSinceEpoch}.png',
                         );
-                        await file.writeAsBytes(rawBytes);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Saved to ${file.path}'),
+                              content: Text('Saved to $savedPath'),
                               duration: const Duration(seconds: 3),
                             ),
                           );
@@ -129,6 +149,7 @@ class MessageBubble extends StatelessWidget {
                             SnackBar(content: Text('Save failed: $e')),
                           );
                         }
+                      }
                       }
                     },
                     icon: const Icon(Icons.download),
@@ -648,15 +669,18 @@ class MessageBubble extends StatelessWidget {
           ].contains(ext);
 
           if (isImage) {
+            final imageProvider = FileIOHelper.imageProviderFromPath(path);
             return GestureDetector(
-              onTap: () => _showImageZoom(context, FileImage(File(path))),
+              onTap: imageProvider != null
+                  ? () => _showImageZoom(context, imageProvider)
+                  : null,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   width: 150,
                   height: 150,
                   color: themeProvider.containerFillColor,
-                  child: Image.file(File(path), fit: BoxFit.cover),
+                  child: FileIOHelper.imageWidgetFromPath(path, fit: BoxFit.cover),
                 ),
               ),
             );

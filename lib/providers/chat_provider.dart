@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../services/file_io_helper.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_models.dart';
@@ -1334,8 +1335,8 @@ class ChatProvider extends ChangeNotifier {
           List<Part> parts = [];
           if (msg.text.isNotEmpty) parts.add(TextPart(msg.text));
           for (String path in msg.imagePaths) {
-            if (await File(path).exists()) {
-              final bytes = await File(path).readAsBytes();
+            if (await FileIOHelper.fileExists(path)) {
+              final bytes = await FileIOHelper.readBytes(path);
               final mimeType = path.toLowerCase().endsWith('.png')
                   ? 'image/png'
                   : 'image/jpeg';
@@ -1369,8 +1370,9 @@ class ChatProvider extends ChangeNotifier {
   /// when the user switches conversations mid-response.
   Future<void> sendMessage(
     String messageText,
-    List<String> imagesToSend,
-  ) async {
+    List<String> imagesToSend, {
+    Map<String, Uint8List>? attachmentBytes,
+  }) async {
     if (messageText.isEmpty && imagesToSend.isEmpty) return;
 
     // Ensure session ID exists before sending
@@ -1674,6 +1676,7 @@ class ChatProvider extends ChangeNotifier {
           message: geminiMessage,
           imagePaths: imagesToSend,
           modelName: _selectedModel,
+          attachmentBytes: attachmentBytes,
         );
       } else {
         String baseUrl = "";
@@ -1754,6 +1757,7 @@ class ChatProvider extends ChangeNotifier {
           extraHeaders: headers,
           includeUsage: _enableUsage,
           depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
+          attachmentBytes: attachmentBytes,
         );
       }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:io';
+import '../services/file_io_helper.dart';
 import '../utils/constants.dart';
 
 /// Provider for managing the application's visual theme and special effects.
@@ -136,7 +136,8 @@ class ThemeProvider extends ChangeNotifier {
     if (_backgroundImagePath!.startsWith('assets/')) {
       return AssetImage(_backgroundImagePath!);
     } else {
-      return FileImage(File(_backgroundImagePath!));
+      return FileIOHelper.imageProviderFromPath(_backgroundImagePath!) ??
+          const AssetImage(kDefaultBackground);
     }
   }
 

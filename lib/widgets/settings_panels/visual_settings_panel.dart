@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
+import '../../services/file_io_helper.dart';
 import '../../utils/constants.dart';
 import 'settings_color_picker.dart';
 import 'settings_slider.dart';
@@ -739,7 +739,7 @@ class VisualSettingsPanel extends StatelessWidget {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: isCustom
-                              ? Image.file(File(path), fit: BoxFit.cover)
+                              ? FileIOHelper.imageWidgetFromPath(path, fit: BoxFit.cover)
                               : Image.asset(path, fit: BoxFit.cover),
                         ),
                         if (isSelected)

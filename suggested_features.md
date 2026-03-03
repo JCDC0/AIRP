@@ -98,9 +98,23 @@ This document outlines the planned progression for AIRP, transitioning from its 
   - Library export/import (`.airp` format) extended with lorebook, regex scripts, and formatting template sections.
   - Character card JSON export embeds `character_book` and scoped regex into V2 format. Import round-trips all spec fields.
 
-### 📦 v0.5.13 - Image Gen Fixes & Attachment Improvements [PENDING]
+### 📦 v0.5.13 - Image Gen Fixes & Attachment Improvements [IN PROGRESS]
 
-*Focus: Making the image generation button actually display generated images, and fixing silent failures in the attachment pipeline.*
+*Focus: Making the image generation button actually display generated images, fixing silent failures in the attachment pipeline, and web compatibility.*
+
+**Web Import/Export Rework:** [COMPLETE]
+
+- **Centralized FileIOHelper:** Created `file_io_helper.dart` with conditional imports (`file_io_native.dart` / `file_io_web.dart`) to eliminate all direct `dart:io` usage from UI and service layers. All file picking, saving, reading, and image display now routes through `FileIOHelper`, which uses `kIsWeb` guards and in-memory `Uint8List` bytes on web instead of filesystem paths.
+- **Refactored all import/export panels:** Library, Character Card, Preset, Regex, and Formatting panels all use `FileIOHelper.pickAndReadString()` / `pickFileData()` / `saveFile()` instead of `dart:io` `File` + `FilePicker`.
+- **Web-safe chat attachments:** `chat_input_area.dart` stores picked image/file bytes in a `Map<String, Uint8List>` on web, passes them through `ChatProvider.sendMessage()` → `ChatApiService` so the API can read attachment content without filesystem access.
+- **Web-safe message display:** `message_bubble.dart` uses `FileIOHelper.imageWidgetFromPath()` / `imageProviderFromPath()` instead of `Image.file()` / `FileImage()`. AI image saving uses `FileIOHelper.saveToDownloads()` on native, `FileIOHelper.saveFile()` (browser download) on web.
+- **Web-safe theming:** `theme_provider.dart` and `visual_settings_panel.dart` use `FileIOHelper` for custom background images instead of `dart:io`.
+
+**Device Detection & Layout Defaults:** [COMPLETE]
+
+- **Improved device detection:** `ScaleProvider.initializeDeviceType()` now uses `defaultTargetPlatform` for definitive native desktop detection, `shortestSide >= 600dp` (Material Design breakpoint) for tablet detection (orientation-independent), and width >= 1100 for web desktop fallback.
+- **Updated default scaling:** Phone (19/18/250/1.15/4), Tablet (20/20/450/1.5/6), Desktop (21/18/600/1.5/10).
+- **Input Area Scale slider max increased to 12.**
 
 **Image Generation Fixes:**
 
@@ -117,31 +131,51 @@ This document outlines the planned progression for AIRP, transitioning from its 
 
 ---
 
-### 📦 v0.5.14 - Stability, UX Polish & Core Audit [PENDING]
+### 📦 v0.5.14 - Stability, Architecture & UX Polish [PENDING]
 
-*Focus: Systematic stability pass, caught-edge-case fixes, and quality-of-life improvements ahead of 1.0.0.*
+*Focus: Systematic stability pass, code architecture improvements from the full codebase audit, and quality-of-life refinements ahead of 1.0.0.*
+
+**Code Architecture (from codebase audit):**
+
+- **`chat_provider.dart` — God Class decomposition (3036 lines, HIGH priority):** Extract responsibilities into focused services: [PENDING]
+  - `SessionService` — session CRUD, auto-save, merge, fork, switch (`_loadSessions`, `autoSaveCurrentSession`, `mergeSessions`, `switchSession`, `deleteSession`, `forkConversation`).
+  - `ModelRegistryService` — model list state, 7× `fetchXxxModels()` methods, `refreshCurrentModels`, model list deserialization. Deduplicate the per-provider parser lambdas via a `ModelInfoMapper` config object.
+  - `ApiKeyService` — secure storage migration, `_loadApiKeyFromStorage`, `_persistApiKey`, `_getProviderKey`, `_setProviderKey`. Decouple from UI provider.
+  - Import/export consolidation — `exportSettingsMap`, `importSettingsMap`, `mergeSystemPrompts` partially duplicate `LibraryService`; unify them.
+- **`chat_provider.dart` — `sendMessage()` breakdown (~500 lines, MEDIUM priority):** Split into helper methods: `_handleGeminiGrounding`, `_handleImageGeneration`, `_handleByokWebSearch`, `_handleStreamingResponse`, `_handlePostStreamProcessing`. [PENDING]
+- **`ChatSessionData` — add `copyWith` method (MEDIUM priority):** `_finalizeBackgroundSession` and `_addMessageToSavedSession` manually reconstruct the data class with all 9 fields. A `copyWith` would eliminate this boilerplate. [PENDING]
+- **`effects_overlay.dart` — particle widget deduplication (LOW priority):** `MotesEffect`, `RainEffect`, and `FirefliesEffect` share identical scaffolding (~350 lines). Extract a shared `_ParticleEffect<T>` base widget. [PENDING]
+
+**Code Quality (from codebase audit):**
+
+- **Comment quality:** Full audit of all 52+ Dart files confirmed consistently excellent `///` doc comments, section headers, and inline explanations. **No comment changes needed.**
+- **Provider enum dispatch:** Replace `if/else if` string chain in `_loadSettings()` with `AiProvider.values.firstWhere((e) => e.name == providerString, orElse: () => AiProvider.gemini)`. [PENDING]
+- **`getMaxContext()` simplification:** Replace lengthy per-provider switch with a `Map<AiProvider, ...>` lookup or helper returning the current list/ID pair. [PENDING]
+- **Duplicate `_formatNumber`:** Exists in both `ModelSelector` and `ChatProvider`. Move to shared utility `utils/formatting.dart`. [PENDING]
+- **`settings_drawer.dart` controller sprawl:** 15 manually-synced `TextEditingController`s. Group into data classes or use a more reactive sync pattern. [PENDING]
+- **`web_search_service.dart` URL normalization:** `_normalizeUrl` silently prepends `http://`. Default to HTTPS or warn the user. [PENDING]
 
 **Stability & Bug Fixes:**
 
-- **Attachment area improvements:** The pending attachment preview strip only renders images; PDFs and other files show a generic icon but are clickable for nothing. Add tap-to-preview for PDFs (open print/share dialog or in-app viewer) and indicate document type more clearly. [PENDING]
-- **Image gen + grounding mutual exclusion:** The code already prevents both being active simultaneously (`_enableGrounding && _enableImageGen` → disables image gen on load). Make this more explicit in the UI: show a tooltip or warning snackbar when the user attempts to enable both. [PENDING]
-- **`doc`/`docx` in `_buildAttachmentGrid`:** The message bubble already has icon handling for `doc/docx` files, but they are never passed to the API. Align the file picker, API service, and message bubble so they consistently support the same file types. [PENDING]
-- **Web: `image_picker` and `file_picker` on web:** These packages have different behaviour on Flutter web. Add a web-safe fallback or feature flag to hide attachment buttons that don't work on web. [PENDING]
+- **Attachment area improvements:** Pending attachment preview strip only renders images; PDFs and other files show a generic icon but are clickable for nothing. Add tap-to-preview for PDFs and indicate document type more clearly. [PENDING]
+- **Image gen + web search mutual exclusion:** Make the mutual exclusion more explicit in the UI: show a tooltip or warning snackbar when the user attempts to enable both on an image-gen model. [PENDING]
+- **`doc`/`docx` pipeline alignment:** The message bubble has icon handling for doc/docx but they are never passed to the API. Align the file picker, API service, and message bubble so they consistently support the same file types. [PENDING]
+- **Web: `image_picker` behaviour:** v0.5.13 FileIOHelper rework handles `file_picker` on web; `image_picker` web behaviour still needs testing and possible fallback. [PENDING]
 
 **UX / Quality of Life:**
 
-- **Session title auto-generation:** Currently session titles default to the first message text truncated. Consider auto-generating a brief title via the AI (one-shot, non-streamed call) after the first exchange. [PENDING]
+- **Session title auto-generation:** Currently session titles default to truncated first message text. Auto-generate a brief title via the AI (one-shot, non-streamed call) after the first exchange. [PENDING]
 - **Scroll-to-bottom auto-trigger:** After the AI finishes streaming, the chat view doesn't always scroll to show the final message. Add a reliable post-stream scroll. [PENDING]
 - **Empty-state screen:** When no messages exist and no session is loaded, show a branded empty state instead of a blank background. [PENDING]
-- **Error message UX:** API errors are appended inline in the chat bubble as raw markdown. Format them in a distinct error bubble style with a retry button. [PENDING]
+- **Error message UX:** API errors are appended inline as raw markdown. Format them in a distinct error bubble style with a retry button. [PENDING]
 
 ---
 
 ### 📦 v1.0.0 - Total Codebase Overhaul: Optimization, High Efficiency & Release [PENDING]
 
-*Focus: Deep architectural restructuring, addressing technical debt, eliminating redundancies, and maximizing app-wide performance. Final release version. Requires v0.5.13 and v0.5.14 to be completed first.*
+*Focus: Deep architectural restructuring, addressing remaining technical debt, eliminating redundancies, and maximizing app-wide performance. Final release version. Requires v0.5.13 and v0.5.14 to be completed first.*
 
-- **Comprehensive State Refactoring:** Move beyond just breaking up the 2000+ line `ChatProvider.dart`. Re-evaluate all top-level providers (`ChatProvider`, `ThemeProvider`, `ScaleProvider`), extracting heavy complex logic into precise, atomic services (e.g., `ConversationService`, `WebSearchManager`, `TokenTrackingService`, `AIStreamingOrchestrator`). [PENDING]
+- **Comprehensive State Refactoring:** Building on v0.5.14 decomposition, re-evaluate all top-level providers (`ChatProvider`, `ThemeProvider`, `ScaleProvider`), extracting remaining heavy logic into precise, atomic services (e.g., `WebSearchManager`, `TokenTrackingService`, `AIStreamingOrchestrator`). [PENDING]
 - **API & Networking Efficiency:** Consolidate HTTP, streaming logic, and serialization across all AI APIs and web search endpoints. Implement aggressive deduplication of request formatting and unified retry/error pipelines (rate limits, bot challenges like DDG blocking). [PENDING]
 - **Widget-Tree Optimization & Rebuild Isolation:** Audit the entire UI layer (`screens/`, `widgets/`, `settings_panels/`) to strictly eliminate unnecessary deep-tree rebuilds. Transition monolithic `Consumer` and `StatefulWidget` states over to fine-grained `Selector` models for pure UI responsiveness. [PENDING]
 - **VFX Optimization:** Consolidate `EffectsOverlay` logic to use a single `CustomPainter` or a lightweight particle system for better performance on mobile. [COMPLETE - Uses CustomPainter]
@@ -155,9 +189,9 @@ This document outlines the planned progression for AIRP, transitioning from its 
 2. **[COMPLETE] Phase 2 (v0.5.10):** Built `WebSearchService` implementing Brave, Tavily, Serper.dev, SearXNG, and DDG backends. Added `WebSearchSettingsPanel` beneath Generation Parameters in the drawer. Context injected as `[WEB_CONTEXT]` blocks prepended to user message before AI calls.
 3. **[COMPLETE] Phase 3 (v0.5.11):** Light mode system with full codebase color adaptation. Implemented 20+ semantic color getters in ThemeProvider, replaced ~170 hardcoded color references across 21 files. Fixed icon consistency (circular backgrounds with static borders for attachment, scroll, zoom, and send buttons).
 4. **[COMPLETE] Phase 4 (v0.5.12):** Implemented Lorebook system with full SillyTavern Character Book V2 parity, Regex Engine with ephemeral modes, Macro Engine as shared foundation, Advanced Formatting templates, and importable Preset packs. Updated CharacterCard model with V2 spec fields (creatorNotes, tags, characterBook, postHistoryInstructions, alternateGreetings, depth_prompt). Split system_prompt_panel.dart into 5 panel widgets. Fixed 7 bugs. Settings drawer expanded to 12 tiles. Library export/import extended with character card and SillyTavern state persistence. Incremental commits 0.5.12.1 through 0.5.12.11.
-5. **Phase 5 (v0.5.13):** Fix image gen to actually render generated images (download bytes → store in `ChatMessage.aiImage` → render via `Image.memory`). Fix PDF, doc/docx, and video attachment pipeline inconsistencies. Improve image gen provider guard UI.
-6. **Phase 6 (v0.5.14):** Stability and UX polish pass. Fix scroll-to-bottom after stream, add empty-state screen, improve error bubble formatting, address web platform attachment compatibility, and add session title auto-generation.
-7. **Phase 7 (v1.0.0):** Execute a complete codebase efficiency overhaul. Break apart God-classes (`ChatProvider.dart`, monolithic UI components) into atomic, decoupled services. Audit the entire project for duplicated logic, streamline API and networking code, minimize widget rebuilds with granular `Selector` models, and decouple storage I/O from state updates for zero-lag interactions. Produce final release build for GitHub distribution.
+5. **[IN PROGRESS] Phase 5 (v0.5.13):** [DONE] Eliminated all `dart:io` from UI/service layers via centralized `FileIOHelper` with conditional imports; web-safe import/export, chat attachments, message display, and theming. [DONE] Improved device detection using `defaultTargetPlatform` + `shortestSide` breakpoint; updated layout defaults for phone/tablet/desktop. [PENDING] Fix image gen to actually render generated images (download bytes → store in `ChatMessage.aiImage` → render via `Image.memory`). [PENDING] Fix PDF, doc/docx, and video attachment pipeline inconsistencies. [PENDING] Improve image gen provider guard UI.
+6. **Phase 6 (v0.5.14):** Architecture and stability pass. Decompose `ChatProvider` into `SessionService`, `ModelRegistryService`, and `ApiKeyService`. Break down `sendMessage()` into helper methods. Add `ChatSessionData.copyWith`. Deduplicate particle effects, format utilities, and provider dispatch. Fix scroll-to-bottom after stream, add empty-state screen, improve error bubble formatting, address web platform attachment compatibility, and add session title auto-generation.
+7. **Phase 7 (v1.0.0):** Execute a complete codebase efficiency overhaul. Build on v0.5.14 decomposition to further extract atomic services. Audit the entire project for remaining duplicated logic, streamline API and networking code, minimize widget rebuilds with granular `Selector` models, and decouple storage I/O from state updates for zero-lag interactions. Produce final release build for GitHub distribution.
 
 **Constraint:** Ensure all UI changes respect `ScaleProvider` and `ThemeProvider` for consistent Material 3 styling and responsive scaling.
 

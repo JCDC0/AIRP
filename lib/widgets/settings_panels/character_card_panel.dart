@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:async';
-import 'package:file_picker/file_picker.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
@@ -12,6 +10,7 @@ import '../../models/character_card.dart';
 import '../../models/lorebook_models.dart';
 import '../../services/character_card_service.dart';
 import '../../services/library_service.dart';
+import '../../services/file_io_helper.dart';
 
 /// A panel for managing the AI character card (SillyTavern V1/V2 compatible).
 ///
@@ -148,14 +147,12 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
   /// Lets the user pick a .png or .json file and imports it as a character card.
   Future<void> _handleImportCharacterCard() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['png', 'json'],
+      final data = await FileIOHelper.pickFileData(
+        extensions: ['png', 'json'],
       );
 
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final card = await CharacterCardService.parseFile(file);
+      if (data != null) {
+        final card = await CharacterCardService.parseFileData(data.name, data.bytes);
 
         if (card != null) {
           final warnings = CharacterCardService.validate(card);
@@ -229,25 +226,18 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
       final jsonStr = await LibraryService.exportCharacterCard(card);
       final bytes = Uint8List.fromList(utf8.encode(jsonStr));
 
-      String? outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export Character Card',
+      final saved = await FileIOHelper.saveFile(
+        bytes: bytes,
         fileName:
             '${card.name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.json',
-        allowedExtensions: ['json'],
-        type: FileType.custom,
-        bytes: bytes,
+        extensions: ['json'],
+        dialogTitle: 'Export Character Card',
       );
 
-      if (outputFile != null) {
-        // On desktop, FilePicker may not write bytes — write manually.
-        final file = File(outputFile);
-        await file.writeAsString(jsonStr);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Exported to $outputFile")),
-          );
-        }
+      if (saved && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Character card exported!")),
+        );
       }
     } catch (e) {
       debugPrint("Export failed: $e");

@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/chat_models.dart';
+import 'file_io_helper.dart';
 
 /// A service class that handles communication with various AI provider APIs.
 ///
@@ -24,6 +24,7 @@ class ChatApiService {
     required String message,
     required List<String> imagePaths,
     required String modelName,
+    Map<String, Uint8List>? attachmentBytes,
   }) async* {
     final List<Part> parts = [];
     String accumulatedText = message;
@@ -47,7 +48,13 @@ class ChatApiService {
           'java',
         ].contains(ext)) {
           try {
-            final String fileContent = await File(path).readAsString();
+            String fileContent;
+            final webBytes = attachmentBytes?[path];
+            if (webBytes != null) {
+              fileContent = utf8.decode(webBytes);
+            } else {
+              fileContent = await FileIOHelper.readString(path);
+            }
             accumulatedText +=
                 "\n\n--- Attached File: ${path.split('/').last} ---\n$fileContent\n--- End File ---\n";
           } catch (e) {
@@ -55,7 +62,13 @@ class ChatApiService {
           }
         } else {
           try {
-            final bytes = await File(path).readAsBytes();
+            Uint8List bytes;
+            final webBytes = attachmentBytes?[path];
+            if (webBytes != null) {
+              bytes = webBytes;
+            } else {
+              bytes = await FileIOHelper.readBytes(path);
+            }
             String? mimeType;
             if (['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'].contains(ext)) {
               mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
@@ -142,6 +155,7 @@ class ChatApiService {
     Map<String, String>? extraHeaders,
     bool includeUsage = false,
     List<Map<String, dynamic>>? depthMessages,
+    Map<String, Uint8List>? attachmentBytes,
   }) async* {
     final cleanKey = apiKey.trim();
     List<Map<String, dynamic>> messagesPayload = [];
@@ -187,7 +201,13 @@ class ChatApiService {
           'yml',
         ].contains(ext)) {
           try {
-            final String fileContent = await File(path).readAsString();
+            String fileContent;
+            final webBytes = attachmentBytes?[path];
+            if (webBytes != null) {
+              fileContent = utf8.decode(webBytes);
+            } else {
+              fileContent = await FileIOHelper.readString(path);
+            }
             contentParts.add({
               "type": "text",
               "text":
@@ -198,7 +218,13 @@ class ChatApiService {
           }
         } else if (['png', 'jpg', 'jpeg', 'webp', 'gif'].contains(ext)) {
           try {
-            final bytes = await File(path).readAsBytes();
+            Uint8List bytes;
+            final webBytes = attachmentBytes?[path];
+            if (webBytes != null) {
+              bytes = webBytes;
+            } else {
+              bytes = await FileIOHelper.readBytes(path);
+            }
             final base64Img = base64Encode(bytes);
             String mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
             if (ext == 'webp') mimeType = 'image/webp';

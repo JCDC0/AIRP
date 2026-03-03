@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
-import 'dart:io';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/regex_models.dart';
 import '../../services/regex_service.dart';
+import '../../services/file_io_helper.dart';
 
 /// Panel for managing global and character-scoped regex scripts.
 ///
@@ -603,14 +602,11 @@ class _RegexPanelState extends State<RegexPanel> {
   Future<void> _handleImport() async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
+      final content = await FileIOHelper.pickAndReadString(
+        extensions: ['json'],
       );
-      if (result == null || result.files.single.path == null) return;
+      if (content == null) return;
 
-      final file = File(result.files.single.path!);
-      final content = await file.readAsString();
       final decoded = jsonDecode(content);
 
       List<RegexScript> imported = [];
@@ -676,21 +672,17 @@ class _RegexPanelState extends State<RegexPanel> {
           .convert(scripts.map((s) => s.toJson()).toList());
       final bytes = Uint8List.fromList(utf8.encode(jsonStr));
 
-      final outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export Regex Scripts',
-        fileName: 'regex_scripts.json',
-        allowedExtensions: ['json'],
-        type: FileType.custom,
+      final saved = await FileIOHelper.saveFile(
         bytes: bytes,
+        fileName: 'regex_scripts.json',
+        extensions: ['json'],
+        dialogTitle: 'Export Regex Scripts',
       );
 
-      if (outputFile != null) {
-        await File(outputFile).writeAsString(jsonStr);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Exported to $outputFile')),
-          );
-        }
+      if (saved && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Regex scripts exported!')),
+        );
       }
     } catch (e) {
       debugPrint('Regex export failed: $e');

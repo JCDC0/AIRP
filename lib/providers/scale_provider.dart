@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,11 +11,11 @@ enum DeviceType { phone, tablet, desktop }
 /// and allows fine-grained control over individual scaling parameters.
 class ScaleProvider extends ChangeNotifier {
   DeviceType _deviceType = DeviceType.phone;
-  double _chatFontSize = 14.0;
-  double _systemFontSize = 12.0;
-  double _drawerWidth = 300.0;
-  double _iconScale = 1.0;
-  double _inputAreaScale = 1.0;
+  double _chatFontSize = 19.0;
+  double _systemFontSize = 18.0;
+  double _drawerWidth = 250.0;
+  double _iconScale = 1.15;
+  double _inputAreaScale = 4.0;
   bool _shouldGlow = false;
   bool _isFirstRun = true;
 
@@ -40,11 +41,11 @@ class ScaleProvider extends ChangeNotifier {
       final deviceTypeIndex = prefs.getInt('scale_device_type') ?? 0;
       _deviceType = DeviceType.values[deviceTypeIndex];
 
-      _chatFontSize = prefs.getDouble('scale_chat_font_size') ?? 14.0;
-      _systemFontSize = prefs.getDouble('scale_system_font_size') ?? 12.0;
-      _drawerWidth = prefs.getDouble('scale_drawer_width') ?? 300.0;
-      _iconScale = prefs.getDouble('scale_icon_scale') ?? 1.0;
-      _inputAreaScale = prefs.getDouble('scale_input_area_scale') ?? 1.0;
+      _chatFontSize = prefs.getDouble('scale_chat_font_size') ?? 19.0;
+      _systemFontSize = prefs.getDouble('scale_system_font_size') ?? 18.0;
+      _drawerWidth = prefs.getDouble('scale_drawer_width') ?? 250.0;
+      _iconScale = prefs.getDouble('scale_icon_scale') ?? 1.15;
+      _inputAreaScale = prefs.getDouble('scale_input_area_scale') ?? 4.0;
 
       _shouldGlow = !(prefs.getBool('scale_settings_seen') ?? false);
     } else {
@@ -58,12 +59,33 @@ class ScaleProvider extends ChangeNotifier {
   Future<void> initializeDeviceType(BuildContext context) async {
     if (!_isFirstRun) return;
 
-    final width = MediaQuery.of(context).size.width;
+    final size = MediaQuery.of(context).size;
+    final shortestSide = size.shortestSide;
+    final width = size.width;
     DeviceType detectedType;
 
-    if (width >= 1100) {
+    // Native desktop platforms are always desktop regardless of window size.
+    if (!kIsWeb) {
+      final platform = defaultTargetPlatform;
+      if (platform == TargetPlatform.linux ||
+          platform == TargetPlatform.windows ||
+          platform == TargetPlatform.macOS) {
+        detectedType = DeviceType.desktop;
+        await setDeviceType(detectedType);
+        _isFirstRun = false;
+        notifyListeners();
+        return;
+      }
+    }
+
+    // Web on a wide viewport is treated as desktop.
+    if (kIsWeb && width >= 1100) {
       detectedType = DeviceType.desktop;
-    } else if (width >= 600) {
+    }
+    // shortestSide >= 600dp is the Material Design tablet breakpoint.
+    // This works regardless of orientation: a phone in landscape still has
+    // a short side of ~360-420dp, while a tablet always has ~600dp+.
+    else if (shortestSide >= 600) {
       detectedType = DeviceType.tablet;
     } else {
       detectedType = DeviceType.phone;
@@ -79,24 +101,24 @@ class ScaleProvider extends ChangeNotifier {
 
     switch (type) {
       case DeviceType.phone:
-        _chatFontSize = 14.0;
-        _systemFontSize = 12.0;
-        _drawerWidth = 300.0;
-        _iconScale = 1.0;
+        _chatFontSize = 19.0;
+        _systemFontSize = 18.0;
+        _drawerWidth = 250.0;
+        _iconScale = 1.15;
         _inputAreaScale = 4;
         break;
       case DeviceType.tablet:
-        _chatFontSize = 16.0;
-        _systemFontSize = 14.0;
+        _chatFontSize = 20.0;
+        _systemFontSize = 20.0;
         _drawerWidth = 450.0;
-        _iconScale = 1.2;
-        _inputAreaScale = 7;
+        _iconScale = 1.5;
+        _inputAreaScale = 6;
         break;
       case DeviceType.desktop:
         _chatFontSize = 21.0;
         _systemFontSize = 18.0;
         _drawerWidth = 600.0;
-        _iconScale = 2.0;
+        _iconScale = 1.5;
         _inputAreaScale = 10;
         break;
     }

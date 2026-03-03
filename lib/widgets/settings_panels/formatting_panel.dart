@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
-import 'dart:io';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/formatting_models.dart';
 import '../../services/formatting_service.dart';
+import '../../services/file_io_helper.dart';
 
 /// Panel for managing the active [FormattingTemplate] and its rules.
 ///
@@ -395,14 +394,11 @@ class _FormattingPanelState extends State<FormattingPanel> {
   Future<void> _handleImport() async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
+      final content = await FileIOHelper.pickAndReadString(
+        extensions: ['json'],
       );
-      if (result == null || result.files.single.path == null) return;
+      if (content == null) return;
 
-      final file = File(result.files.single.path!);
-      final content = await file.readAsString();
       final decoded = jsonDecode(content);
 
       if (decoded is! Map) {
@@ -454,21 +450,17 @@ class _FormattingPanelState extends State<FormattingPanel> {
           .convert(template.toJson());
       final bytes = Uint8List.fromList(utf8.encode(jsonStr));
 
-      final outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export Formatting Template',
-        fileName: '${template.name.isNotEmpty ? template.name : "template"}.json',
-        allowedExtensions: ['json'],
-        type: FileType.custom,
+      final saved = await FileIOHelper.saveFile(
         bytes: bytes,
+        fileName: '${template.name.isNotEmpty ? template.name : "template"}.json',
+        extensions: ['json'],
+        dialogTitle: 'Export Formatting Template',
       );
 
-      if (outputFile != null) {
-        await File(outputFile).writeAsString(jsonStr);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Exported to $outputFile')),
-          );
-        }
+      if (saved && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Formatting template exported!')),
+        );
       }
     } catch (e) {
       debugPrint('Template export failed: $e');

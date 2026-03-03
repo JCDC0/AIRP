@@ -1,23 +1,27 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import '../models/character_card.dart';
+import 'file_io_native.dart' if (dart.library.html) 'file_io_web.dart'
+    as platform_io;
 
 class CharacterCardService {
   CharacterCardService._();
 
-  /// Parses a character card from a file (PNG or JSON).
-  static Future<CharacterCard?> parseFile(File file) async {
-    final path = file.path.toLowerCase();
-    
-    if (path.endsWith('.json')) {
-      final content = await file.readAsString();
+  /// Parses a character card from raw file data.
+  ///
+  /// [filename] is used to determine the format (PNG or JSON).
+  /// [bytes] is the raw file content.
+  static Future<CharacterCard?> parseFileData(String filename, Uint8List bytes) async {
+    final name = filename.toLowerCase();
+
+    if (name.endsWith('.json')) {
+      final content = utf8.decode(bytes);
       return parseJson(content);
-    } else if (path.endsWith('.png')) {
-      final bytes = await file.readAsBytes();
+    } else if (name.endsWith('.png')) {
       return parsePng(bytes);
     }
-    
+
     throw FormatException("Unsupported file type. Please provide a .json or .png file.");
   }
 
@@ -94,7 +98,7 @@ class CharacterCardService {
 
               if (compressionFlag == 1) {
                 // zlib-compressed iTXt
-                textContent = utf8.decode(zlib.decode(textBytes));
+                textContent = utf8.decode(platform_io.zlibDecode(textBytes));
               } else {
                 textContent = utf8.decode(textBytes);
               }
