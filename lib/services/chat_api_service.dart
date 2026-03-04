@@ -253,8 +253,10 @@ class ChatApiService {
 
         // Insert position: count back from the end of messagesPayload.
         // depth 0 → second-to-last (before the final user message).
-        final insertIdx =
-            (messagesPayload.length - depth).clamp(1, messagesPayload.length);
+        final insertIdx = (messagesPayload.length - depth).clamp(
+          1,
+          messagesPayload.length,
+        );
         messagesPayload.insert(insertIdx, {'role': role, 'content': content});
       }
     }
@@ -541,17 +543,19 @@ class ChatApiService {
 
   /// Downloads an image from [url] and returns it as a base64-encoded string.
   ///
-  /// Returns null if the download fails.
-  static Future<String?> _downloadImageAsBase64(String url) async {
+  /// Returns an error string starting with "Error:" if the download fails.
+  static Future<String> _downloadImageAsBase64(String url) async {
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         return base64Encode(response.bodyBytes);
+      } else {
+        return 'Error: Failed to download image (HTTP ${response.statusCode})';
       }
     } catch (e) {
       _logWarning('Image download failed: $e');
+      return 'Error: Failed to download image ($e)';
     }
-    return null;
   }
 
   /// Generates an image using Google's Imagen 3 model via the Gemini REST API.
@@ -571,10 +575,7 @@ class ChatApiService {
       'instances': [
         {'prompt': prompt},
       ],
-      'parameters': {
-        'sampleCount': 1,
-        'aspectRatio': aspectRatio,
-      },
+      'parameters': {'sampleCount': 1, 'aspectRatio': aspectRatio},
     });
 
     try {
@@ -586,8 +587,7 @@ class ChatApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final b64 =
-            data['predictions']?[0]?['bytesBase64Encoded'] as String?;
+        final b64 = data['predictions']?[0]?['bytesBase64Encoded'] as String?;
         return b64; // Already base64 — no download needed.
       } else {
         return 'Error: ${response.statusCode} – ${response.body}';

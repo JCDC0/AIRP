@@ -125,7 +125,7 @@ class ChatProvider extends ChangeNotifier {
   String _openRouterModel = 'z-ai/glm-4.5-air:free';
   String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
   String _nanoGptModel = 'gpt-4o';
-  String _nanoGptImageModel = 'nano-banana';
+  String _nanoGptImageModel = 'hidream';
   String _openAiModel = 'gpt-4o';
   String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
   String _groqModel = 'llama3-8b-8192';
@@ -541,7 +541,7 @@ class ChatProvider extends ChangeNotifier {
         'Mistral-Nemo-12B-Instruct-v1';
     _nanoGptModel = prefs.getString(ApiConstants.prefModelNanoGpt) ?? 'gpt-4o';
     _nanoGptImageModel =
-        prefs.getString('airp_model_nanogpt_image') ?? 'nano-banana';
+        prefs.getString('airp_model_nanogpt_image') ?? 'hidream';
     _openAiModel = prefs.getString(ApiConstants.prefModelOpenAi) ?? 'gpt-4o';
     _huggingFaceModel =
         prefs.getString(ApiConstants.prefModelHuggingFace) ??
@@ -1575,7 +1575,9 @@ class ChatProvider extends ChangeNotifier {
           base64Result = await ChatApiService.generateImage(
             apiKey: activeKey,
             prompt: messageText,
-            model: _selectedModel,
+            model: _currentProvider == AiProvider.nanoGptImage
+                ? _nanoGptImageModel
+                : _selectedModel,
             provider: provider,
             size: '${_imageGenWidth}x${_imageGenHeight}',
           );
@@ -1587,13 +1589,17 @@ class ChatProvider extends ChangeNotifier {
           return;
         }
 
+        final imageModelName = _currentProvider == AiProvider.nanoGptImage
+            ? _nanoGptImageModel
+            : _selectedModel;
+
         if (base64Result != null && !base64Result.startsWith('Error')) {
           if (_currentSessionId == streamSessionId) {
             _messages.add(
               ChatMessage(
                 text: '',
                 isUser: false,
-                modelName: _selectedModel,
+                modelName: imageModelName,
                 aiImage: base64Result,
               ),
             );
@@ -1603,7 +1609,7 @@ class ChatProvider extends ChangeNotifier {
               ChatMessage(
                 text: '',
                 isUser: false,
-                modelName: _selectedModel,
+                modelName: imageModelName,
                 aiImage: base64Result,
               ),
             );
@@ -1614,7 +1620,7 @@ class ChatProvider extends ChangeNotifier {
               ChatMessage(
                 text: base64Result ?? 'Image generation failed.',
                 isUser: false,
-                modelName: 'System',
+                modelName: imageModelName,
               ),
             );
           }
@@ -2589,11 +2595,10 @@ class ChatProvider extends ChangeNotifier {
     // so the picker is never empty.
     if (_nanoGptImageModelsList.isEmpty) {
       _nanoGptImageModelsList = [
-        ModelInfo(
-          id: 'nano-banana',
-          name: 'Nano Banana (FLUX.1)',
-          description: 'NanoGPT image generation model',
-        ),
+        ModelInfo(id: 'hidream', name: 'HiDream'),
+        ModelInfo(id: 'chroma', name: 'Chroma'),
+        ModelInfo(id: 'z-image-turbo', name: 'Z Image Turbo'),
+        ModelInfo(id: 'qwen-image', name: 'Qwen Image'),
       ];
       if (!_nanoGptImageModelsList.any((m) => m.id == _nanoGptImageModel)) {
         _nanoGptImageModel = _nanoGptImageModelsList.first.id;
