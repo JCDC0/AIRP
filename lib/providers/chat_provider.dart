@@ -501,6 +501,9 @@ class ChatProvider extends ChangeNotifier {
     _nanoGptModelsList = _deserializeModels(
       prefs.getStringList(ApiConstants.prefListNanoGpt),
     );
+    _nanoGptImageModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListNanoGptImage),
+    );
     _openAiModelsList = _deserializeModels(
       prefs.getStringList(ApiConstants.prefListOpenAi),
     );
@@ -521,6 +524,8 @@ class ChatProvider extends ChangeNotifier {
         prefs.getString(ApiConstants.prefModelArliAi) ??
         'Mistral-Nemo-12B-Instruct-v1';
     _nanoGptModel = prefs.getString(ApiConstants.prefModelNanoGpt) ?? 'gpt-4o';
+    _nanoGptImageModel =
+        prefs.getString('airp_model_nanogpt_image') ?? 'nano-banana';
     _openAiModel = prefs.getString(ApiConstants.prefModelOpenAi) ?? 'gpt-4o';
     _huggingFaceModel =
         prefs.getString(ApiConstants.prefModelHuggingFace) ??
@@ -1046,6 +1051,7 @@ class ChatProvider extends ChangeNotifier {
     );
     await prefs.setString(ApiConstants.prefModelArliAi, _arliAiModel);
     await prefs.setString(ApiConstants.prefModelNanoGpt, _nanoGptModel);
+    await prefs.setString('airp_model_nanogpt_image', _nanoGptImageModel);
     await prefs.setString(ApiConstants.prefModelOpenAi, _openAiModel);
     await prefs.setString(ApiConstants.prefModelHuggingFace, _huggingFaceModel);
     await prefs.setString(ApiConstants.prefModelGroq, _groqModel);
@@ -2509,13 +2515,57 @@ class ChatProvider extends ChangeNotifier {
       },
     );
 
-    // Populate image models list from the subset that are image-gen capable.
-    _nanoGptImageModelsList = _nanoGptModelsList
-        .where((m) => ModelInfo.detectImageGen(m.id, m.rawData))
-        .toList();
+    // Fetch image models from the dedicated NanoGPT image-models endpoint.
+    // This endpoint is public (no auth required) and returns all available
+    // image generation models with rich metadata and per-image pricing.
+    await _fetchProviderModels(
+      apiKey: '',
+      url: ApiConstants.nanoGptImageModelsUrl,
+      prefKey: ApiConstants.prefListNanoGptImage,
+      parser: (json) {
+        final List<dynamic> dataList = json['data'] ?? [];
+        return dataList.map<ModelInfo>((e) {
+          final rawId = e['id'].toString();
 
-    // If the image list is empty (server didn't flag any), fall back to a
-    // hard-coded default so the picker is never empty.
+          // NanoGPT image models use per-image pricing instead of per-token.
+          // Extract a representative price string from the pricing map.
+          String pricingStr = '';
+          final pricingData = e['pricing'];
+          if (pricingData is Map) {
+            final perImage = pricingData['per_image'];
+            if (perImage is Map && perImage.isNotEmpty) {
+              // Use the first resolution's price as the representative cost.
+              final firstPrice = perImage.values.first;
+              pricingStr = '\$$firstPrice/image';
+            }
+          }
+
+          return ModelInfo(
+            id: rawId,
+            name: e['name']?.toString() ?? cleanModelName(rawId),
+            description:
+                e['description']?.toString() ??
+                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
+            pricing: pricingStr,
+            created: e['created'],
+            rawData: e,
+          );
+        }).toList();
+      },
+      updateList: (list) => _nanoGptImageModelsList = list,
+      updateLoading: (_) {}, // Shares loading state with text models above.
+      headers: {}, // No auth required for this public endpoint.
+      currentModel: _nanoGptImageModel,
+      updateSelectedModel: (val) {
+        _nanoGptImageModel = val;
+        if (_currentProvider == AiProvider.nanoGptImage) {
+          _selectedModel = _nanoGptImageModel;
+        }
+      },
+    );
+
+    // If the fetch failed or returned empty, fall back to a hard-coded default
+    // so the picker is never empty.
     if (_nanoGptImageModelsList.isEmpty) {
       _nanoGptImageModelsList = [
         ModelInfo(
@@ -2524,13 +2574,11 @@ class ChatProvider extends ChangeNotifier {
           description: 'NanoGPT image generation model',
         ),
       ];
-    }
-
-    // Keep the selected nanoGptImage model pointing at something valid.
-    if (!_nanoGptImageModelsList.any((m) => m.id == _nanoGptImageModel)) {
-      _nanoGptImageModel = _nanoGptImageModelsList.first.id;
-      if (_currentProvider == AiProvider.nanoGptImage) {
-        _selectedModel = _nanoGptImageModel;
+      if (!_nanoGptImageModelsList.any((m) => m.id == _nanoGptImageModel)) {
+        _nanoGptImageModel = _nanoGptImageModelsList.first.id;
+        if (_currentProvider == AiProvider.nanoGptImage) {
+          _selectedModel = _nanoGptImageModel;
+        }
       }
     }
 

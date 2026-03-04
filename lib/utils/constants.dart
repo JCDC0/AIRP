@@ -82,8 +82,12 @@ class ApiConstants {
       "https://generativelanguage.googleapis.com/v1beta/models";
   static const String openRouterBaseUrl = "https://openrouter.ai/api/v1/models";
   static const String arliAiBaseUrl = "https://api.arliai.com/v1/models";
-  static const String nanoGptBaseUrl = "https://nano-gpt.com/api/v1/models?detailed=true";
-  static const String nanoGptImageGenUrl = "https://nano-gpt.com/api/v1/images/generations";
+  static const String nanoGptBaseUrl =
+      "https://nano-gpt.com/api/v1/models?detailed=true";
+  static const String nanoGptImageModelsUrl =
+      "https://nano-gpt.com/api/v1/image-models";
+  static const String nanoGptImageGenUrl =
+      "https://nano-gpt.com/api/v1/images/generations";
   static const String openAiBaseUrl = "https://api.openai.com/v1/models";
   static const String huggingFaceBaseUrl =
       "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100";
@@ -93,6 +97,7 @@ class ApiConstants {
   static const String prefListOpenRouter = 'airp_list_openrouter';
   static const String prefListArliAi = 'airp_list_arliai';
   static const String prefListNanoGpt = 'airp_list_nanogpt';
+  static const String prefListNanoGptImage = 'airp_list_nanogpt_image';
   static const String prefListOpenAi = 'airp_list_openai';
   static const String prefListHuggingFace = 'airp_list_huggingface';
   static const String prefListGroq = 'airp_list_groq';
@@ -125,7 +130,9 @@ class ApiConstants {
   static const String prefLocalModelName = 'airp_local_model_name';
   static const String prefEnableGrounding = 'airp_enable_grounding';
   // ignore: deprecated_member_use_from_same_package
-  @Deprecated('Image gen is now model-driven; this key is no longer written. Safe to ignore on read.')
+  @Deprecated(
+    'Image gen is now model-driven; this key is no longer written. Safe to ignore on read.',
+  )
   static const String prefEnableImageGen = 'airp_enable_image_gen';
   static const String prefDisableSafety = 'airp_disable_safety';
 
@@ -153,7 +160,8 @@ class ApiConstants {
 enum SearchProvider { provider, brave, tavily, serper, searxng, duckduckgo }
 
 /// Path to the default background asset.
-const String kDefaultBackground = 'assets/Minimalist_MoonlightBeachAlt_Portrait.png';
+const String kDefaultBackground =
+    'assets/Minimalist_MoonlightBeachAlt_Portrait.png';
 
 /// List of available background image assets.
 /// All images are AI-generated using ComfyUI with novaAnimeXL_ilV160.safetensors model.
