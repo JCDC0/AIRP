@@ -43,10 +43,10 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
-    
+
     final int maxContext = chatProvider.getMaxContext();
     final int currentTokens = chatProvider.tokenCount;
-    
+
     Color tokenColor = themeProvider.textColor;
     if (currentTokens >= maxContext) {
       tokenColor = Colors.redAccent;
@@ -58,22 +58,22 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     final String providerName =
         chatProvider.currentProvider == AiProvider.gemini
-            ? 'Gemini'
-            : chatProvider.currentProvider == AiProvider.openRouter
-            ? 'OpenRouter'
-            : chatProvider.currentProvider == AiProvider.arliAi
-            ? 'ArliAI'
-            : chatProvider.currentProvider == AiProvider.nanoGpt
-            ? 'NanoGPT'
-            : chatProvider.currentProvider == AiProvider.nanoGptImage
-            ? 'NanoGPT Image'
-            : chatProvider.currentProvider == AiProvider.local
-            ? 'Local'
-            : chatProvider.currentProvider == AiProvider.openAi
-            ? 'OpenAI'
-            : chatProvider.currentProvider == AiProvider.groq
-            ? 'Groq'
-            : 'HuggingFace';
+        ? 'Gemini'
+        : chatProvider.currentProvider == AiProvider.openRouter
+        ? 'OpenRouter'
+        : chatProvider.currentProvider == AiProvider.arliAi
+        ? 'ArliAI'
+        : chatProvider.currentProvider == AiProvider.nanoGpt
+        ? 'NanoGPT'
+        : chatProvider.currentProvider == AiProvider.nanoGptImage
+        ? 'NanoGPT Image'
+        : chatProvider.currentProvider == AiProvider.local
+        ? 'Local'
+        : chatProvider.currentProvider == AiProvider.openAi
+        ? 'OpenAI'
+        : chatProvider.currentProvider == AiProvider.groq
+        ? 'Groq'
+        : 'HuggingFace';
 
     const double baseToolbarHeight = 60.0;
     const double baseBottomHeight = 40.0;
@@ -165,7 +165,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.nanoGptImage,
             child: Row(
               children: [
-                Icon(Icons.image_outlined, color: Colors.purpleAccent),
+                Icon(Icons.image_outlined, color: themeProvider.textColor),
                 const SizedBox(width: 8),
                 Text(
                   'NanoGPT Image',
@@ -193,10 +193,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: AiProvider.openAi,
             child: Row(
               children: [
-                Icon(
-                  Icons.auto_awesome_mosaic,
-                  color: themeProvider.textColor,
-                ),
+                Icon(Icons.auto_awesome_mosaic, color: themeProvider.textColor),
                 const SizedBox(width: 8),
                 Text(
                   'OpenAI',
@@ -340,8 +337,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                           size: 20,
                           color: themeProvider.textColor.withOpacity(0.7),
                         ),
-                        onPressed: chatProvider.isLoading 
-                            ? null 
+                        onPressed: chatProvider.isLoading
+                            ? null
                             : () => chatProvider.refreshCurrentModels(),
                       ),
               ),
@@ -457,7 +454,11 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(Icons.computer, color: themeProvider.subtitleColor, size: 16),
+              Icon(
+                Icons.computer,
+                color: themeProvider.subtitleColor,
+                size: 16,
+              ),
             ],
           ),
         );

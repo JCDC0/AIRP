@@ -259,6 +259,22 @@ class ChatProvider extends ChangeNotifier {
     return ModelInfo.detectImageGen(_selectedModel, null);
   }
 
+  // --- Image generation resolution state ---
+  int _imageGenWidth = 1024;
+  int _imageGenHeight = 1024;
+  int get imageGenWidth => _imageGenWidth;
+  int get imageGenHeight => _imageGenHeight;
+
+  void setImageGenWidth(int value) {
+    _imageGenWidth = value.clamp(256, 4096);
+    notifyListeners();
+  }
+
+  void setImageGenHeight(int value) {
+    _imageGenHeight = value.clamp(256, 4096);
+    notifyListeners();
+  }
+
   bool get disableSafety => _disableSafety;
   String get reasoningEffort => _reasoningEffort;
 
@@ -547,6 +563,8 @@ class ChatProvider extends ChangeNotifier {
     _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
     _enableGrounding = prefs.getBool(ApiConstants.prefEnableGrounding) ?? false;
     _disableSafety = prefs.getBool(ApiConstants.prefDisableSafety) ?? true;
+    _imageGenWidth = prefs.getInt('airp_image_gen_width') ?? 1024;
+    _imageGenHeight = prefs.getInt('airp_image_gen_height') ?? 1024;
     // prefEnableImageGen is no longer read — image gen is driven by the selected model.
 
     // Web Search (BYOK)
@@ -1060,6 +1078,8 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setInt('airp_max_output', _maxOutputTokens);
     await prefs.setInt('airp_history_limit', _historyLimit);
     await prefs.setDouble('airp_temperature', _temperature);
+    await prefs.setInt('airp_image_gen_width', _imageGenWidth);
+    await prefs.setInt('airp_image_gen_height', _imageGenHeight);
     await prefs.setBool('airp_enable_usage', _enableUsage);
     await prefs.setString('airp_reasoning_effort', _reasoningEffort);
     await prefs.setBool(ApiConstants.prefEnableGrounding, _enableGrounding);
@@ -1557,6 +1577,7 @@ class ChatProvider extends ChangeNotifier {
             prompt: messageText,
             model: _selectedModel,
             provider: provider,
+            size: '${_imageGenWidth}x${_imageGenHeight}',
           );
         }
 

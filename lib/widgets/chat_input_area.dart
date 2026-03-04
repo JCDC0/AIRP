@@ -31,6 +31,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
     with TickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final List<String> _pendingImages = [];
+
   /// On web, file paths are unavailable. This map stores the raw bytes
   /// keyed by the pseudo-path stored in [_pendingImages].
   final Map<String, Uint8List> _pendingImageBytes = {};
@@ -65,7 +66,8 @@ class _ChatInputAreaState extends State<ChatInputArea>
       if (image != null) {
         if (kIsWeb) {
           final bytes = await image.readAsBytes();
-          final key = 'web_img_${DateTime.now().millisecondsSinceEpoch}_${image.name}';
+          final key =
+              'web_img_${DateTime.now().millisecondsSinceEpoch}_${image.name}';
           _pendingImageBytes[key] = bytes;
           setState(() {
             _pendingImages.add(key);
@@ -104,7 +106,8 @@ class _ChatInputAreaState extends State<ChatInputArea>
         if (kIsWeb) {
           final bytes = file.bytes;
           if (bytes != null) {
-            final key = 'web_file_${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+            final key =
+                'web_file_${DateTime.now().millisecondsSinceEpoch}_${file.name}';
             _pendingImageBytes[key] = bytes;
             setState(() {
               _pendingImages.add(key);
@@ -215,11 +218,14 @@ class _ChatInputAreaState extends State<ChatInputArea>
     // On web, pass the in-memory bytes alongside the pseudo-paths.
     final Map<String, Uint8List>? bytesToSend =
         kIsWeb && _pendingImageBytes.isNotEmpty
-            ? Map.from(_pendingImageBytes)
-            : null;
+        ? Map.from(_pendingImageBytes)
+        : null;
 
-    chatProvider.sendMessage(messageText, imagesToSend,
-        attachmentBytes: bytesToSend);
+    chatProvider.sendMessage(
+      messageText,
+      imagesToSend,
+      attachmentBytes: bytesToSend,
+    );
 
     setState(() {
       _pendingImages.clear();
@@ -490,11 +496,23 @@ class _ChatInputAreaState extends State<ChatInputArea>
                         ].contains(ext);
                         final Uint8List? webBytes = _pendingImageBytes[path];
 
-                        Widget buildImageWidget({BoxFit fit = BoxFit.cover, double? width, double? height}) {
+                        Widget buildImageWidget({
+                          BoxFit fit = BoxFit.cover,
+                          double? width,
+                          double? height,
+                        }) {
                           if (webBytes != null) {
-                            return Image.memory(webBytes, fit: fit, width: width, height: height);
+                            return Image.memory(
+                              webBytes,
+                              fit: fit,
+                              width: width,
+                              height: height,
+                            );
                           }
-                          return FileIOHelper.imageWidgetFromPath(path, fit: fit);
+                          return FileIOHelper.imageWidgetFromPath(
+                            path,
+                            fit: fit,
+                          );
                         }
 
                         return Padding(
@@ -539,7 +557,11 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
                                   child: isImage
-                                      ? buildImageWidget(width: 50, height: 50, fit: BoxFit.cover)
+                                      ? buildImageWidget(
+                                          width: 50,
+                                          height: 50,
+                                          fit: BoxFit.cover,
+                                        )
                                       : Container(
                                           width: 50,
                                           height: 50,
@@ -560,7 +582,9 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                 top: -4,
                                 child: InkWell(
                                   onTap: () => setState(() {
-                                    final removed = _pendingImages.removeAt(index);
+                                    final removed = _pendingImages.removeAt(
+                                      index,
+                                    );
                                     _pendingImageBytes.remove(removed);
                                   }),
                                   child: Container(
@@ -796,6 +820,125 @@ class _ChatInputAreaState extends State<ChatInputArea>
                       const SizedBox(width: 12),
                       Container(width: 1, height: 24, color: Colors.grey[800]),
                       const SizedBox(width: 12),
+
+                      // Image resolution controls — visible when an image gen model is active.
+                      if (chatProvider.isImageGenModel) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: themeProvider.inputFillColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: themeProvider.borderColor,
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.aspect_ratio,
+                                size: 14 * scaleProvider.iconScale,
+                                color: themeProvider.subtitleColor,
+                              ),
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 42 * scaleProvider.iconScale,
+                                height: 28 * scaleProvider.iconScale,
+                                child: TextField(
+                                  controller: TextEditingController(
+                                    text: chatProvider.imageGenWidth.toString(),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: themeProvider.textColor,
+                                    fontSize: scaleProvider.systemFontSize - 2,
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                      horizontal: 2,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    filled: true,
+                                    fillColor: themeProvider.containerFillColor,
+                                  ),
+                                  onSubmitted: (val) {
+                                    final w = int.tryParse(val) ?? 1024;
+                                    chatProvider.setImageGenWidth(w);
+                                    chatProvider.saveSettings(
+                                      showConfirmation: false,
+                                    );
+                                  },
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                ),
+                                child: Text(
+                                  '×',
+                                  style: TextStyle(
+                                    color: themeProvider.subtitleColor,
+                                    fontSize: scaleProvider.systemFontSize - 1,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 42 * scaleProvider.iconScale,
+                                height: 28 * scaleProvider.iconScale,
+                                child: TextField(
+                                  controller: TextEditingController(
+                                    text: chatProvider.imageGenHeight
+                                        .toString(),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: themeProvider.textColor,
+                                    fontSize: scaleProvider.systemFontSize - 2,
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                      horizontal: 2,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    filled: true,
+                                    fillColor: themeProvider.containerFillColor,
+                                  ),
+                                  onSubmitted: (val) {
+                                    final h = int.tryParse(val) ?? 1024;
+                                    chatProvider.setImageGenHeight(h);
+                                    chatProvider.saveSettings(
+                                      showConfirmation: false,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 1,
+                          height: 24,
+                          color: Colors.grey[800],
+                        ),
+                        const SizedBox(width: 12),
+                      ],
 
                       _buildCircularButton(
                         icon: Icons.vertical_align_top,
