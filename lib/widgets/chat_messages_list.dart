@@ -60,7 +60,7 @@ class ChatMessagesList extends StatelessWidget {
                     boxShadow: useBloom
                         ? [
                             BoxShadow(
-                    color: themeProvider.faintestColor,
+                              color: themeProvider.faintestColor,
                               blurRadius: 6,
                             ),
                           ]
@@ -273,7 +273,10 @@ class ChatMessagesList extends StatelessWidget {
       builder: (context) => AlertDialog(
         backgroundColor: themeProvider.dropdownColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text("Regenerate?", style: TextStyle(color: themeProvider.textColor)),
+        title: Text(
+          "Regenerate?",
+          style: TextStyle(color: themeProvider.textColor),
+        ),
         content: Text(
           "This will keep this message as a version and generate a new response. Previous responses will be accessible via the version counter.",
           style: TextStyle(color: themeProvider.subtitleColor),
@@ -301,10 +304,10 @@ class ChatMessagesList extends StatelessWidget {
 
   void _handleForkConversation(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    
-    // Create new conversation from this message
+
+    // Create new conversation from messages up to this point
     final newSessionId = chatProvider.createConversationFromMessage(index);
-    
+
     if (newSessionId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -314,8 +317,8 @@ class ChatMessagesList extends StatelessWidget {
       );
       return;
     }
-    
-    // Get the newly created session
+
+    // Find and switch to the newly created session
     final newSession = chatProvider.savedSessions.firstWhere(
       (s) => s.id == newSessionId,
       orElse: () => ChatSessionData(
@@ -327,20 +330,15 @@ class ChatMessagesList extends StatelessWidget {
         systemInstruction: "",
       ),
     );
-    
-    // Show confirmation snackbar
+
+    // Auto-switch into the forked conversation
+    chatProvider.loadSession(newSession);
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("Conversation forked successfully!"),
+      const SnackBar(
+        content: Text("Switched to forked conversation"),
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(milliseconds: 2000),
-        action: SnackBarAction(
-          label: "View",
-          onPressed: () {
-            // Switch to the new conversation
-            chatProvider.loadSession(newSession);
-          },
-        ),
+        duration: Duration(milliseconds: 1500),
       ),
     );
   }
@@ -401,7 +399,8 @@ class ChatMessagesList extends StatelessWidget {
                         messages.length + (showVirtualAiTypingBubble ? 1 : 0),
                     padding: const EdgeInsets.only(bottom: 120),
                     itemBuilder: (context, index) {
-                      if (showVirtualAiTypingBubble && index == messages.length) {
+                      if (showVirtualAiTypingBubble &&
+                          index == messages.length) {
                         return MessageBubble(
                           msg: ChatMessage(
                             text: '',
@@ -419,7 +418,9 @@ class ChatMessagesList extends StatelessWidget {
                         msg: message,
                         themeProvider: themeProvider,
                         showTypingIndicator:
-                            showTypingIndicator && isLastMessage && !message.isUser,
+                            showTypingIndicator &&
+                            isLastMessage &&
+                            !message.isUser,
                         onLongPress: () => _showMessageOptions(context, index),
                         onCopy: () {
                           Clipboard.setData(
@@ -433,14 +434,16 @@ class ChatMessagesList extends StatelessWidget {
                           );
                         },
                         onEdit: () => _showEditDialog(context, index),
-                        onRegenerate: !message.isUser
-                            ? () => _confirmRegenerate(context, index)
-                            : null,
+                        onRegenerate: () => _confirmRegenerate(context, index),
                         onDelete: () => _confirmDeleteMessage(context, index),
-                        onNextVersion: message.regenerationVersions.length > 1 && !message.isUser
+                        onNextVersion:
+                            message.regenerationVersions.length > 1 &&
+                                !message.isUser
                             ? () => chatProvider.nextMessageVersion(index)
                             : null,
-                        onPreviousVersion: message.regenerationVersions.length > 1 && !message.isUser
+                        onPreviousVersion:
+                            message.regenerationVersions.length > 1 &&
+                                !message.isUser
                             ? () => chatProvider.previousMessageVersion(index)
                             : null,
                         onFork: !message.isUser
@@ -460,17 +463,21 @@ class ChatMessagesList extends StatelessWidget {
 
   /// Returns true when typing indicator should be shown:
   /// Loading is active, animations are disabled, and no AI response text yet.
-  bool _showTypingIndicator(ChatProvider chatProvider, ThemeProvider themeProvider) {
-    if (!chatProvider.isLoading || themeProvider.enableLoadingAnimation) return false;
-    
+  bool _showTypingIndicator(
+    ChatProvider chatProvider,
+    ThemeProvider themeProvider,
+  ) {
+    if (!chatProvider.isLoading || themeProvider.enableLoadingAnimation)
+      return false;
+
     final messages = chatProvider.messages;
     if (messages.isEmpty) return true;
-    
+
     final last = messages.last;
-    
+
     // If last message is from user, API hasn't created AI message yet
     if (last.isUser) return true;
-    
+
     // If AI message exists but is empty or only whitespace, show typing indicator
     // Hide as soon as any non-whitespace text arrives
     return last.text.trim().isEmpty;
