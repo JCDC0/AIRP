@@ -38,6 +38,50 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Size.fromHeight(scaledToolbarHeight + scaledBottomHeight);
   }
 
+  /// Maps each AiProvider enum value to its user-facing display name.
+  static String _providerDisplayName(AiProvider provider) {
+    switch (provider) {
+      case AiProvider.gemini:
+        return 'Gemini';
+      case AiProvider.openRouter:
+        return 'OpenRouter';
+      case AiProvider.arliAi:
+        return 'ArliAI';
+      case AiProvider.nanoGpt:
+        return 'NanoGPT';
+      case AiProvider.nanoGptImage:
+        return 'NanoGPT Image';
+      case AiProvider.local:
+        return 'Local';
+      case AiProvider.openAi:
+        return 'OpenAI';
+      case AiProvider.huggingFace:
+        return 'HuggingFace';
+      case AiProvider.groq:
+        return 'Groq';
+      case AiProvider.vertexAi:
+        return 'Vertex AI';
+      case AiProvider.blackboxAi:
+        return 'Blackbox AI';
+      case AiProvider.minimax:
+        return 'Minimax';
+      case AiProvider.openAiCompatible:
+        return 'OpenAI Compatible';
+      case AiProvider.deepseek:
+        return 'Deepseek';
+      case AiProvider.ollama:
+        return 'Ollama';
+      case AiProvider.qwen:
+        return 'Qwen';
+      case AiProvider.xAi:
+        return 'xAI';
+      case AiProvider.zAi:
+        return 'Z.ai';
+      case AiProvider.mistral:
+        return 'Mistral';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -57,23 +101,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     }
 
     final String providerName =
-        chatProvider.currentProvider == AiProvider.gemini
-        ? 'Gemini'
-        : chatProvider.currentProvider == AiProvider.openRouter
-        ? 'OpenRouter'
-        : chatProvider.currentProvider == AiProvider.arliAi
-        ? 'ArliAI'
-        : chatProvider.currentProvider == AiProvider.nanoGpt
-        ? 'NanoGPT'
-        : chatProvider.currentProvider == AiProvider.nanoGptImage
-        ? 'NanoGPT Image'
-        : chatProvider.currentProvider == AiProvider.local
-        ? 'Local'
-        : chatProvider.currentProvider == AiProvider.openAi
-        ? 'OpenAI'
-        : chatProvider.currentProvider == AiProvider.groq
-        ? 'Groq'
-        : 'HuggingFace';
+        _providerDisplayName(chatProvider.currentProvider);
 
     const double baseToolbarHeight = 60.0;
     const double baseBottomHeight = 40.0;
@@ -100,137 +128,25 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         onSelected: (AiProvider result) {
           chatProvider.setProvider(result);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Switched to ${result.name.toUpperCase()}")),
+            SnackBar(
+              content: Text(
+                "Switched to ${_providerDisplayName(result)}",
+              ),
+            ),
           );
         },
-        itemBuilder: (BuildContext context) => <PopupMenuEntry<AiProvider>>[
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.gemini,
-            child: Row(
-              children: [
-                Icon(Icons.auto_awesome, color: themeProvider.textColor),
-                const SizedBox(width: 8),
-                Text(
-                  'Gemini',
+        itemBuilder: (BuildContext context) => AiProvider.values
+            .map(
+              (provider) => PopupMenuItem<AiProvider>(
+                height: scaleProvider.systemFontSize * 2.5,
+                value: provider,
+                child: Text(
+                  _providerDisplayName(provider),
                   style: TextStyle(fontSize: scaleProvider.systemFontSize),
                 ),
-              ],
-            ),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.openRouter,
-            child: Row(
-              children: [
-                Icon(Icons.router, color: themeProvider.textColor),
-                const SizedBox(width: 8),
-                Text(
-                  'OpenRouter',
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.arliAi,
-            child: Row(
-              children: [
-                Icon(Icons.alternate_email, color: themeProvider.textColor),
-                const SizedBox(width: 8),
-                Text(
-                  'ArliAI',
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.nanoGpt,
-            child: Row(
-              children: [
-                Icon(Icons.bolt, color: themeProvider.textColor),
-                const SizedBox(width: 8),
-                Text(
-                  'NanoGPT',
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.nanoGptImage,
-            child: Row(
-              children: [
-                Icon(Icons.image_outlined, color: themeProvider.textColor),
-                const SizedBox(width: 8),
-                Text(
-                  'NanoGPT Image',
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.local,
-            child: Row(
-              children: [
-                Icon(Icons.laptop_mac, color: themeProvider.textColor),
-                const SizedBox(width: 8),
-                Text(
-                  'Local',
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.openAi,
-            child: Row(
-              children: [
-                Icon(Icons.auto_awesome_mosaic, color: themeProvider.textColor),
-                const SizedBox(width: 8),
-                Text(
-                  'OpenAI',
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.huggingFace,
-            child: Row(
-              children: [
-                Icon(Icons.emoji_emotions, color: themeProvider.textColor),
-                const SizedBox(width: 8),
-                Text(
-                  'HuggingFace',
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuItem<AiProvider>(
-            height: scaleProvider.systemFontSize * 2.5,
-            value: AiProvider.groq,
-            child: Row(
-              children: [
-                Icon(Icons.speed, color: themeProvider.textColor),
-                const SizedBox(width: 8),
-                Text(
-                  'Groq',
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
-                ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            )
+            .toList(),
         child: SizedBox(
           width: 300 + (scaleProvider.systemFontSize * 10),
           child: Padding(
@@ -349,6 +265,23 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  /// Helper to build a standard [ModelSelector] for providers that maintain
+  /// a model list. Keeps the switch statement DRY.
+  Widget _standardModelSelector(
+    ChatProvider chatProvider,
+    List<ModelInfo> models,
+    String selectedModel,
+    String placeholder,
+  ) {
+    return ModelSelector(
+      modelsList: models,
+      selectedModel: selectedModel,
+      onSelected: chatProvider.setModel,
+      placeholder: placeholder,
+      isCompact: true,
+    );
+  }
+
   Widget _buildModelSelector(
     BuildContext context,
     ChatProvider chatProvider,
@@ -357,68 +290,130 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   ) {
     switch (chatProvider.currentProvider) {
       case AiProvider.gemini:
-        return ModelSelector(
-          modelsList: chatProvider.geminiModelsList,
-          selectedModel: chatProvider.selectedGeminiModel,
-          onSelected: chatProvider.setModel,
-          placeholder: "Select Gemini Model",
-          isCompact: true,
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.geminiModelsList,
+          chatProvider.selectedGeminiModel,
+          "Select Gemini Model",
         );
       case AiProvider.openRouter:
-        return ModelSelector(
-          modelsList: chatProvider.openRouterModelsList,
-          selectedModel: chatProvider.openRouterModel,
-          onSelected: chatProvider.setModel,
-          placeholder: "Select OpenRouter Model",
-          isCompact: true,
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.openRouterModelsList,
+          chatProvider.openRouterModel,
+          "Select OpenRouter Model",
         );
       case AiProvider.arliAi:
-        return ModelSelector(
-          modelsList: chatProvider.arliAiModelsList,
-          selectedModel: chatProvider.arliAiModel,
-          onSelected: chatProvider.setModel,
-          placeholder: "Select ArliAI Model",
-          isCompact: true,
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.arliAiModelsList,
+          chatProvider.arliAiModel,
+          "Select ArliAI Model",
         );
       case AiProvider.nanoGpt:
-        return ModelSelector(
-          modelsList: chatProvider.nanoGptModelsList,
-          selectedModel: chatProvider.nanoGptModel,
-          onSelected: chatProvider.setModel,
-          placeholder: 'Select NanoGPT Model',
-          isCompact: true,
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.nanoGptModelsList,
+          chatProvider.nanoGptModel,
+          'Select NanoGPT Model',
         );
       case AiProvider.nanoGptImage:
-        return ModelSelector(
-          modelsList: chatProvider.nanoGptImageModelsList,
-          selectedModel: chatProvider.nanoGptImageModel,
-          onSelected: chatProvider.setModel,
-          placeholder: 'Select NanoGPT Image Model',
-          isCompact: true,
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.nanoGptImageModelsList,
+          chatProvider.nanoGptImageModel,
+          'Select NanoGPT Image Model',
         );
       case AiProvider.openAi:
-        return ModelSelector(
-          modelsList: chatProvider.openAiModelsList,
-          selectedModel: chatProvider.openAiModel,
-          onSelected: chatProvider.setModel,
-          placeholder: 'Select OpenAI Model',
-          isCompact: true,
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.openAiModelsList,
+          chatProvider.openAiModel,
+          'Select OpenAI Model',
         );
       case AiProvider.huggingFace:
-        return ModelSelector(
-          modelsList: chatProvider.huggingFaceModelsList,
-          selectedModel: chatProvider.huggingFaceModel,
-          onSelected: chatProvider.setModel,
-          placeholder: 'Select HuggingFace Model',
-          isCompact: true,
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.huggingFaceModelsList,
+          chatProvider.huggingFaceModel,
+          'Select HuggingFace Model',
         );
       case AiProvider.groq:
-        return ModelSelector(
-          modelsList: chatProvider.groqModelsList,
-          selectedModel: chatProvider.groqModel,
-          onSelected: chatProvider.setModel,
-          placeholder: 'Select Groq Model',
-          isCompact: true,
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.groqModelsList,
+          chatProvider.groqModel,
+          'Select Groq Model',
+        );
+      case AiProvider.vertexAi:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.vertexAiModelsList,
+          chatProvider.vertexAiModel,
+          'Select Vertex AI Model',
+        );
+      case AiProvider.blackboxAi:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.blackboxAiModelsList,
+          chatProvider.blackboxAiModel,
+          'Select Blackbox AI Model',
+        );
+      case AiProvider.minimax:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.minimaxModelsList,
+          chatProvider.minimaxModel,
+          'Select Minimax Model',
+        );
+      case AiProvider.openAiCompatible:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.openAiCompatibleModelsList,
+          chatProvider.openAiCompatibleModel,
+          'Select Model',
+        );
+      case AiProvider.deepseek:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.deepseekModelsList,
+          chatProvider.deepseekModel,
+          'Select Deepseek Model',
+        );
+      case AiProvider.ollama:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.ollamaModelsList,
+          chatProvider.ollamaModel,
+          'Select Ollama Model',
+        );
+      case AiProvider.qwen:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.qwenModelsList,
+          chatProvider.qwenModel,
+          'Select Qwen Model',
+        );
+      case AiProvider.xAi:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.xAiModelsList,
+          chatProvider.xAiModel,
+          'Select xAI Model',
+        );
+      case AiProvider.zAi:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.zAiModelsList,
+          chatProvider.zAiModel,
+          'Select Z.ai Model',
+        );
+      case AiProvider.mistral:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.mistralModelsList,
+          chatProvider.mistralModel,
+          'Select Mistral Model',
         );
       case AiProvider.local:
         return Container(

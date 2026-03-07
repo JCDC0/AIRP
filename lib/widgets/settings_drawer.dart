@@ -35,6 +35,9 @@ class SettingsDrawer extends StatefulWidget {
 class _SettingsDrawerState extends State<SettingsDrawer> {
   late TextEditingController _apiKeyController;
   late TextEditingController _localIpController;
+  late TextEditingController _vertexAiEndpointController;
+  late TextEditingController _openAiCompatibleEndpointController;
+  late TextEditingController _ollamaEndpointController;
   late TextEditingController _titleController;
   late TextEditingController _promptTitleController;
   late TextEditingController _mainPromptController;
@@ -46,9 +49,14 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
   String? _lastSyncedApiKey;
   String? _lastSyncedLocalIp;
+  String? _lastSyncedVertexAiEndpoint;
+  String? _lastSyncedOpenAiCompatibleEndpoint;
+  String? _lastSyncedOllamaEndpoint;
   String? _lastSyncedTitle;
   String? _lastSyncedOpenRouterModel;
   String? _lastSyncedGroqModel;
+  String? _lastSyncedMainPrompt;
+  String? _lastSyncedAdvancedPrompt;
 
   @override
   void initState() {
@@ -57,6 +65,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
     _apiKeyController = TextEditingController(text: _getApiKey(chatProvider));
     _localIpController = TextEditingController(text: chatProvider.localIp);
+    _vertexAiEndpointController = TextEditingController(text: chatProvider.vertexAiEndpoint);
+    _openAiCompatibleEndpointController = TextEditingController(text: chatProvider.openAiCompatibleEndpoint);
+    _ollamaEndpointController = TextEditingController(text: chatProvider.ollamaEndpoint);
     _titleController = TextEditingController(text: chatProvider.currentTitle);
     _promptTitleController = TextEditingController();
     _openRouterModelController = TextEditingController(
@@ -73,12 +84,20 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
     _lastSyncedApiKey = _apiKeyController.text;
     _lastSyncedLocalIp = _localIpController.text;
+    _lastSyncedVertexAiEndpoint = _vertexAiEndpointController.text;
+    _lastSyncedOpenAiCompatibleEndpoint = _openAiCompatibleEndpointController.text;
+    _lastSyncedOllamaEndpoint = _ollamaEndpointController.text;
     _lastSyncedTitle = _titleController.text;
     _lastSyncedOpenRouterModel = _openRouterModelController.text;
     _lastSyncedGroqModel = _groqModelController.text;
+    _lastSyncedMainPrompt = _mainPromptController.text;
+    _lastSyncedAdvancedPrompt = _advancedPromptController.text;
 
     _apiKeyController.addListener(_checkForChanges);
     _localIpController.addListener(_checkForChanges);
+    _vertexAiEndpointController.addListener(_checkForChanges);
+    _openAiCompatibleEndpointController.addListener(_checkForChanges);
+    _ollamaEndpointController.addListener(_checkForChanges);
     _titleController.addListener(_checkForChanges);
     _openRouterModelController.addListener(_checkForChanges);
     _groqModelController.addListener(_checkForChanges);
@@ -103,6 +122,26 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         return provider.huggingFaceKey;
       case AiProvider.groq:
         return provider.groqKey;
+      case AiProvider.vertexAi:
+        return provider.vertexAiKey;
+      case AiProvider.blackboxAi:
+        return provider.blackboxAiKey;
+      case AiProvider.minimax:
+        return provider.minimaxKey;
+      case AiProvider.openAiCompatible:
+        return provider.openAiCompatibleKey;
+      case AiProvider.deepseek:
+        return provider.deepseekKey;
+      case AiProvider.ollama:
+        return provider.ollamaKey;
+      case AiProvider.qwen:
+        return provider.qwenKey;
+      case AiProvider.xAi:
+        return provider.xAiKey;
+      case AiProvider.zAi:
+        return provider.zAiKey;
+      case AiProvider.mistral:
+        return provider.mistralKey;
       case AiProvider.local:
         return "";
     }
@@ -118,6 +157,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
     chatProvider.setApiKey(_apiKeyController.text.trim());
     chatProvider.setLocalIp(_localIpController.text.trim());
+    chatProvider.setVertexAiEndpoint(_vertexAiEndpointController.text.trim());
+    chatProvider.setOpenAiCompatibleEndpoint(_openAiCompatibleEndpointController.text.trim());
+    chatProvider.setOllamaEndpoint(_ollamaEndpointController.text.trim());
     chatProvider.setTitle(_titleController.text.trim());
 
     if (chatProvider.currentProvider == AiProvider.openRouter) {
@@ -133,6 +175,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _lastSyncedTitle = _titleController.text;
     _lastSyncedOpenRouterModel = _openRouterModelController.text;
     _lastSyncedGroqModel = _groqModelController.text;
+    _lastSyncedMainPrompt = _mainPromptController.text;
+    _lastSyncedAdvancedPrompt = _advancedPromptController.text;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -155,6 +199,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     if (_apiKeyController.text != _getApiKey(chatProvider)) hasChanges = true;
 
     if (_localIpController.text != chatProvider.localIp) hasChanges = true;
+    if (_vertexAiEndpointController.text != chatProvider.vertexAiEndpoint) hasChanges = true;
+    if (_openAiCompatibleEndpointController.text != chatProvider.openAiCompatibleEndpoint) hasChanges = true;
+    if (_ollamaEndpointController.text != chatProvider.ollamaEndpoint) hasChanges = true;
 
     if (_titleController.text != chatProvider.currentTitle) hasChanges = true;
 
@@ -189,6 +236,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   void dispose() {
     _apiKeyController.dispose();
     _localIpController.dispose();
+    _vertexAiEndpointController.dispose();
+    _openAiCompatibleEndpointController.dispose();
+    _ollamaEndpointController.dispose();
     _titleController.dispose();
     _promptTitleController.dispose();
     _mainPromptController.dispose();
@@ -214,6 +264,27 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       _lastSyncedLocalIp = chatProvider.localIp;
     }
 
+    if (chatProvider.vertexAiEndpoint != _lastSyncedVertexAiEndpoint) {
+      if (_vertexAiEndpointController.text != chatProvider.vertexAiEndpoint) {
+        _vertexAiEndpointController.text = chatProvider.vertexAiEndpoint;
+      }
+      _lastSyncedVertexAiEndpoint = chatProvider.vertexAiEndpoint;
+    }
+
+    if (chatProvider.openAiCompatibleEndpoint != _lastSyncedOpenAiCompatibleEndpoint) {
+      if (_openAiCompatibleEndpointController.text != chatProvider.openAiCompatibleEndpoint) {
+        _openAiCompatibleEndpointController.text = chatProvider.openAiCompatibleEndpoint;
+      }
+      _lastSyncedOpenAiCompatibleEndpoint = chatProvider.openAiCompatibleEndpoint;
+    }
+
+    if (chatProvider.ollamaEndpoint != _lastSyncedOllamaEndpoint) {
+      if (_ollamaEndpointController.text != chatProvider.ollamaEndpoint) {
+        _ollamaEndpointController.text = chatProvider.ollamaEndpoint;
+      }
+      _lastSyncedOllamaEndpoint = chatProvider.ollamaEndpoint;
+    }
+
     if (chatProvider.currentTitle != _lastSyncedTitle) {
       if (_titleController.text != chatProvider.currentTitle) {
         _titleController.text = chatProvider.currentTitle;
@@ -237,6 +308,20 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         }
         _lastSyncedGroqModel = chatProvider.groqModel;
       }
+    }
+
+    if (chatProvider.systemInstruction != _lastSyncedMainPrompt) {
+      if (_mainPromptController.text != chatProvider.systemInstruction) {
+        _mainPromptController.text = chatProvider.systemInstruction;
+      }
+      _lastSyncedMainPrompt = chatProvider.systemInstruction;
+    }
+
+    if (chatProvider.advancedSystemInstruction != _lastSyncedAdvancedPrompt) {
+      if (_advancedPromptController.text != chatProvider.advancedSystemInstruction) {
+        _advancedPromptController.text = chatProvider.advancedSystemInstruction;
+      }
+      _lastSyncedAdvancedPrompt = chatProvider.advancedSystemInstruction;
     }
   }
 
@@ -285,6 +370,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       ApiSettingsPanel(
                         apiKeyController: _apiKeyController,
                         localIpController: _localIpController,
+                        vertexAiEndpointController: _vertexAiEndpointController,
+                        openAiCompatibleEndpointController: _openAiCompatibleEndpointController,
+                        ollamaEndpointController: _ollamaEndpointController,
                       ),
                     ],
                   ),

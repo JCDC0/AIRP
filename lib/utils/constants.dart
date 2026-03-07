@@ -93,6 +93,17 @@ class ApiConstants {
       "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100";
   static const String groqBaseUrl = "https://api.groq.com/openai/v1/models";
 
+  // New providers (v0.5.14)
+  static const String blackboxAiBaseUrl = "https://api.blackbox.ai/api/models";
+  static const String minimaxBaseUrl = "https://api.minimax.chat/v1/models";
+  static const String deepseekBaseUrl = "https://api.deepseek.com/v1/models";
+  static const String qwenBaseUrl =
+      "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models";
+  static const String xAiBaseUrl = "https://api.x.ai/v1/models";
+  static const String zAiBaseUrl = "https://api.z.ai/api/paas/v4/models";
+  static const String mistralBaseUrl = "https://api.mistral.ai/v1/models";
+  static const String ollamaDefaultBaseUrl = "http://localhost:11434/v1";
+
   static const String prefListGemini = 'airp_list_gemini';
   static const String prefListOpenRouter = 'airp_list_openrouter';
   static const String prefListArliAi = 'airp_list_arliai';
@@ -101,6 +112,16 @@ class ApiConstants {
   static const String prefListOpenAi = 'airp_list_openai';
   static const String prefListHuggingFace = 'airp_list_huggingface';
   static const String prefListGroq = 'airp_list_groq';
+  static const String prefListVertexAi = 'airp_list_vertexai';
+  static const String prefListBlackboxAi = 'airp_list_blackboxai';
+  static const String prefListMinimax = 'airp_list_minimax';
+  static const String prefListOpenAiCompatible = 'airp_list_openai_compatible';
+  static const String prefListDeepseek = 'airp_list_deepseek';
+  static const String prefListOllama = 'airp_list_ollama';
+  static const String prefListQwen = 'airp_list_qwen';
+  static const String prefListXAi = 'airp_list_xai';
+  static const String prefListZAi = 'airp_list_zai';
+  static const String prefListMistral = 'airp_list_mistral';
 
   static const String prefKeyGemini = 'airp_key_gemini';
   static const String prefKeyOpenRouter = 'airp_key_openrouter';
@@ -109,6 +130,16 @@ class ApiConstants {
   static const String prefKeyNanoGpt = 'airp_key_nanogpt';
   static const String prefKeyHuggingFace = 'airp_key_huggingface';
   static const String prefKeyGroq = 'airp_key_groq';
+  static const String prefKeyVertexAi = 'airp_key_vertexai';
+  static const String prefKeyBlackboxAi = 'airp_key_blackboxai';
+  static const String prefKeyMinimax = 'airp_key_minimax';
+  static const String prefKeyOpenAiCompatible = 'airp_key_openai_compatible';
+  static const String prefKeyDeepseek = 'airp_key_deepseek';
+  static const String prefKeyOllama = 'airp_key_ollama';
+  static const String prefKeyQwen = 'airp_key_qwen';
+  static const String prefKeyXAi = 'airp_key_xai';
+  static const String prefKeyZAi = 'airp_key_zai';
+  static const String prefKeyMistral = 'airp_key_mistral';
 
   static const String secureKeyGemini = 'secure_airp_key_gemini';
   static const String secureKeyOpenRouter = 'secure_airp_key_openrouter';
@@ -117,6 +148,17 @@ class ApiConstants {
   static const String secureKeyNanoGpt = 'secure_airp_key_nanogpt';
   static const String secureKeyHuggingFace = 'secure_airp_key_huggingface';
   static const String secureKeyGroq = 'secure_airp_key_groq';
+  static const String secureKeyVertexAi = 'secure_airp_key_vertexai';
+  static const String secureKeyBlackboxAi = 'secure_airp_key_blackboxai';
+  static const String secureKeyMinimax = 'secure_airp_key_minimax';
+  static const String secureKeyOpenAiCompatible =
+      'secure_airp_key_openai_compatible';
+  static const String secureKeyDeepseek = 'secure_airp_key_deepseek';
+  static const String secureKeyOllama = 'secure_airp_key_ollama';
+  static const String secureKeyQwen = 'secure_airp_key_qwen';
+  static const String secureKeyXAi = 'secure_airp_key_xai';
+  static const String secureKeyZAi = 'secure_airp_key_zai';
+  static const String secureKeyMistral = 'secure_airp_key_mistral';
 
   static const String prefModelGemini = 'airp_model_gemini';
   static const String prefModelOpenRouter = 'airp_model_openrouter';
@@ -125,9 +167,24 @@ class ApiConstants {
   static const String prefModelOpenAi = 'airp_model_openai';
   static const String prefModelHuggingFace = 'airp_model_huggingface';
   static const String prefModelGroq = 'airp_model_groq';
+  static const String prefModelVertexAi = 'airp_model_vertexai';
+  static const String prefModelBlackboxAi = 'airp_model_blackboxai';
+  static const String prefModelMinimax = 'airp_model_minimax';
+  static const String prefModelOpenAiCompatible =
+      'airp_model_openai_compatible';
+  static const String prefModelDeepseek = 'airp_model_deepseek';
+  static const String prefModelOllama = 'airp_model_ollama';
+  static const String prefModelQwen = 'airp_model_qwen';
+  static const String prefModelXAi = 'airp_model_xai';
+  static const String prefModelZAi = 'airp_model_zai';
+  static const String prefModelMistral = 'airp_model_mistral';
 
   static const String prefLocalIp = 'airp_local_ip';
   static const String prefLocalModelName = 'airp_local_model_name';
+  static const String prefVertexAiEndpoint = 'airp_vertexai_endpoint';
+  static const String prefOpenAiCompatibleEndpoint =
+      'airp_openai_compatible_endpoint';
+  static const String prefOllamaEndpoint = 'airp_ollama_endpoint';
   static const String prefEnableGrounding = 'airp_enable_grounding';
   // ignore: deprecated_member_use_from_same_package
   @Deprecated(

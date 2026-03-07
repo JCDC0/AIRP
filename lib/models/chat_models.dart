@@ -11,6 +11,16 @@ enum AiProvider {
   nanoGptImage,
   huggingFace,
   groq,
+  vertexAi,
+  blackboxAi,
+  minimax,
+  openAiCompatible,
+  deepseek,
+  ollama,
+  qwen,
+  xAi,
+  zAi,
+  mistral,
 }
 
 /// Data structure representing a saved chat session.
