@@ -369,6 +369,7 @@ class ChatProvider extends ChangeNotifier {
   bool _enableReasoning = false;
   bool _enableGenerationSettings = true;
   bool _enableMaxOutputTokens = true;
+  bool _enableManualModelInput = false;
 
   // --- Lorebook / Regex / Formatting state ---
   Lorebook _globalLorebook = Lorebook(name: 'Global');
@@ -429,6 +430,7 @@ class ChatProvider extends ChangeNotifier {
   bool get enableReasoning => _enableReasoning;
   bool get enableGenerationSettings => _enableGenerationSettings;
   bool get enableMaxOutputTokens => _enableMaxOutputTokens;
+  bool get enableManualModelInput => _enableManualModelInput;
 
   // --- Lorebook / Regex / Formatting getters ---
   Lorebook get globalLorebook => _globalLorebook;
@@ -904,6 +906,8 @@ class ChatProvider extends ChangeNotifier {
         prefs.getBool('airp_enable_generation_settings') ?? true;
     _enableMaxOutputTokens =
         prefs.getBool('airp_enable_max_output_tokens') ?? true;
+    _enableManualModelInput =
+        prefs.getBool('airp_enable_manual_model_input') ?? false;
 
     await _loadCharacterCard();
     await _loadSillyTavernState();
@@ -1425,6 +1429,11 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setEnableManualModelInput(bool val) {
+    _enableManualModelInput = val;
+    notifyListeners();
+  }
+
   Future<void> saveSettings({bool showConfirmation = true}) async {
     final prefs = await SharedPreferences.getInstance();
     await _persistApiKey(
@@ -1622,6 +1631,10 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setBool(
       'airp_enable_max_output_tokens',
       _enableMaxOutputTokens,
+    );
+    await prefs.setBool(
+      'airp_enable_manual_model_input',
+      _enableManualModelInput,
     );
 
     // Persist lorebook / regex / formatting state alongside main settings
@@ -3655,6 +3668,7 @@ class ChatProvider extends ChangeNotifier {
         'enableReasoning': _enableReasoning,
         'enableGenerationSettings': _enableGenerationSettings,
         'enableMaxOutputTokens': _enableMaxOutputTokens,
+        'enableManualModelInput': _enableManualModelInput,
         'enableGrounding': _enableGrounding,
         // enableImageGen intentionally omitted — image gen is model-driven.
         'enableUsage': _enableUsage,
@@ -3719,6 +3733,8 @@ class ChatProvider extends ChangeNotifier {
         tog['enableGenerationSettings'] as bool? ?? _enableGenerationSettings;
     _enableMaxOutputTokens =
         tog['enableMaxOutputTokens'] as bool? ?? _enableMaxOutputTokens;
+    _enableManualModelInput =
+        tog['enableManualModelInput'] as bool? ?? _enableManualModelInput;
     _enableGrounding = tog['enableGrounding'] as bool? ?? _enableGrounding;
     // enableImageGen is no longer stored — image gen is model-driven.
     _enableUsage = tog['enableUsage'] as bool? ?? _enableUsage;

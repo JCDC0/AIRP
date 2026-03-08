@@ -208,3 +208,6 @@ This document outlines the planned progression for AIRP, transitioning from its 
 
 0.5.14.1 - Fix TextInput Bug and Add Alphabetical Starred Providers
 Implemented a stateful architecture for ProviderModelSelector to ensure text input consistency across rapid typing addressing the fallback bug which caused reverse typing behavior and broke backspace formatting. Overhauled provider organization by establishing a new ChatProvider variable which manages starred providers serialized into SharedPreferences ensuring alphabetical and starred sorting priorities within the ChatAppBar component's popup menu. Bumped version identifier.
+
+0.5.14.2 - Manual Model Toggle Integration
+Implemented a "Manual Model Input" toggle switch within the ModelSettingsPanel, addressing cases where auto-fetching endpoints (such as Google Vertex AI MaaS models restricting API key access) inhibit seamless usability. Added a persistent boolean state into ChatProvider synchronized with SharedPreferences mitigating redundant text field fallback errors while enabling a generalized manual entry utility applicable globally to all AI providers upon demand.

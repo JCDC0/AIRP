@@ -150,6 +150,29 @@ class ModelSettingsPanel extends StatelessWidget {
         ),
         const SizedBox(height: 5),
 
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Manual Model Input",
+                style: TextStyle(
+                  color: themeProvider.textColor,
+                  fontSize: scaleProvider.systemFontSize * 0.9,
+                ),
+              ),
+              Switch(
+                value: chatProvider.enableManualModelInput,
+                onChanged: (val) {
+                  chatProvider.setEnableManualModelInput(val);
+                },
+                activeColor: themeProvider.bloomGlowColor,
+              ),
+            ],
+          ),
+        ),
+
         if (chatProvider.currentProvider == AiProvider.gemini)
           ProviderModelSelector(
             modelsList: chatProvider.geminiModelsList,
