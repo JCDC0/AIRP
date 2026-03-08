@@ -252,153 +252,48 @@ class ModelSelector extends StatelessWidget {
                                 ),
                               ),
                             )
-                          : ListView.builder(
-                              itemCount: filteredModels.length,
-                              itemBuilder: (context, index) {
-                                final model = filteredModels[index];
-                                final isSelected = model.id == selectedModel;
-                                final isBookmarked = bookmarkedModels.contains(
-                                  model.id,
-                                );
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? themeProvider.textColor
-                                              .withOpacity(0.15)
-                                        : themeProvider.textColor.withOpacity(0.03),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? themeProvider.textColor
-                                                .withOpacity(0.5)
-                                          : themeProvider.dividerColor,
-                                    ),
+                          : Column(
+                              children: [
+                                // Selected Model Section
+                                if (filteredModels.any((m) => m.id == selectedModel)) ...[
+                                  _buildModelRow(
+                                    context: context,
+                                    model: filteredModels.firstWhere((m) => m.id == selectedModel),
+                                    isSelected: true,
+                                    isBookmarked: bookmarkedModels.contains(selectedModel),
+                                    themeProvider: themeProvider,
+                                    scaleProvider: scaleProvider,
+                                    chatProvider: chatProvider,
+                                    onSelected: onSelected,
+                                    setDialogState: setDialogState,
                                   ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(12),
-                                      onTap: () {
-                                        onSelected(model.id);
-                                        Navigator.pop(context);
-                                      },
-                                      onLongPress: () => _showModelDetails(context, model, themeProvider),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 12,
-                                        ),
-                                        child: Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    model.name,
-                                                    style: TextStyle(
-                                                      color: isSelected ? themeProvider.textColor : themeProvider.textColor,
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: scaleProvider.systemFontSize,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    model.id,
-                                                    style: TextStyle(
-                                                      fontSize: scaleProvider.systemFontSize - 4,
-                                                      color: Colors.grey,
-                                                    ),
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                  if (model.contextLength.isNotEmpty)
-                                                    Padding(
-                                                      padding: const EdgeInsets.only(top: 2),
-                                                      child: Text(
-                                                        "Max Context: ${_formatNumber(model.contextLength)}",
-                                                        style: const TextStyle(
-                                                          fontSize: 11,
-                                                          color: Colors.blueAccent,
-                                                          fontWeight: FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  if (model.pricing.isNotEmpty)
-                                                    Padding(
-                                                      padding: const EdgeInsets.only(top: 2),
-                                                      child: Text(
-                                                        _formatPricing(model.pricing),
-                                                        style: const TextStyle(
-                                                          fontSize: 11,
-                                                          color: Colors.greenAccent,
-                                                          fontWeight: FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  if (model.isImageGen)
-                                                    Padding(
-                                                      padding: const EdgeInsets.only(top: 4),
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.purpleAccent.withOpacity(0.18),
-                                                          borderRadius: BorderRadius.circular(6),
-                                                          border: Border.all(color: Colors.purpleAccent.withOpacity(0.5)),
-                                                        ),
-                                                        child: const Text(
-                                                          '🖼 Image Gen',
-                                                          style: TextStyle(fontSize: 10, color: Colors.purpleAccent, fontWeight: FontWeight.w600),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                InkWell(
-                                                  onTap: () => _showModelDetails(context, model, themeProvider),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.all(4.0),
-                                                    child: Icon(Icons.info_outline, color: themeProvider.hintColor, size: 28),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 16),
-                                                InkWell(
-                                                  onTap: () async {
-                                                    await chatProvider.toggleModelBookmark(
-                                                      model.id,
-                                                    );
-                                                    setDialogState(() {});
-                                                  },
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.all(4.0),
-                                                    child: Icon(
-                                                      isBookmarked
-                                                          ? Icons.bookmark
-                                                          : Icons.bookmark_border,
-                                                      color: isBookmarked
-                                                          ? Colors.amber
-                                                          : themeProvider.faintColor,
-                                                      size: 28,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
+                                  const Divider(height: 16),
+                                ],
+                                
+                                // Main Models List
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: filteredModels.length,
+                                    itemBuilder: (context, index) {
+                                      final model = filteredModels[index];
+                                      // Don't render the selected model again in this list
+                                      if (model.id == selectedModel) return const SizedBox.shrink();
+
+                                      return _buildModelRow(
+                                        context: context,
+                                        model: model,
+                                        isSelected: false,
+                                        isBookmarked: bookmarkedModels.contains(model.id),
+                                        themeProvider: themeProvider,
+                                        scaleProvider: scaleProvider,
+                                        chatProvider: chatProvider,
+                                        onSelected: onSelected,
+                                        setDialogState: setDialogState,
+                                      );
+                                    },
                                   ),
-                                );
-                              },
+                                ),
+                              ],
                             ),
                     ),
                   ],
@@ -417,6 +312,155 @@ class ModelSelector extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildModelRow({
+    required BuildContext context,
+    required ModelInfo model,
+    required bool isSelected,
+    required bool isBookmarked,
+    required ThemeProvider themeProvider,
+    required ScaleProvider scaleProvider,
+    required ChatProvider chatProvider,
+    required Function(String) onSelected,
+    required Function(void Function()) setDialogState,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? themeProvider.textColor.withOpacity(0.15)
+            : themeProvider.textColor.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected
+              ? themeProvider.textColor.withOpacity(0.5)
+              : themeProvider.dividerColor,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            onSelected(model.id);
+            Navigator.pop(context);
+          },
+          onLongPress: () => _showModelDetails(context, model, themeProvider),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        model.name,
+                        style: TextStyle(
+                          color: isSelected ? themeProvider.textColor : themeProvider.textColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: scaleProvider.systemFontSize,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        model.id,
+                        style: TextStyle(
+                          fontSize: scaleProvider.systemFontSize - 4,
+                          color: Colors.grey,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (model.contextLength.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            "Max Context: ${_formatNumber(model.contextLength)}",
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.blueAccent,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      if (model.pricing.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            _formatPricing(model.pricing),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.greenAccent,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      if (model.isImageGen)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.purpleAccent.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.purpleAccent.withOpacity(0.5)),
+                            ),
+                            child: const Text(
+                              '🖼 Image Gen',
+                              style: TextStyle(fontSize: 10, color: Colors.purpleAccent, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => _showModelDetails(context, model, themeProvider),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(Icons.info_outline, color: themeProvider.hintColor, size: 28),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () async {
+                        await chatProvider.toggleModelBookmark(
+                          model.id,
+                        );
+                        setDialogState(() {});
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          isBookmarked
+                              ? Icons.bookmark
+                              : Icons.bookmark_border,
+                          color: isBookmarked
+                              ? Colors.amber
+                              : themeProvider.faintColor,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

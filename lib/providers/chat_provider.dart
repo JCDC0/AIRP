@@ -327,6 +327,96 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  /// Returns the `ModelInfo` object for the currently selected model,
+  /// or null if the metadata isn't known/available.
+  ModelInfo? getCurrentModelInfo() {
+    List<ModelInfo> currentList = [];
+    String currentId = "";
+
+    switch (_currentProvider) {
+      case AiProvider.gemini:
+        currentList = _geminiModelsList;
+        currentId = _selectedGeminiModel;
+        break;
+      case AiProvider.openRouter:
+        currentList = _openRouterModelsList;
+        currentId = _openRouterModel;
+        break;
+      case AiProvider.arliAi:
+        currentList = _arliAiModelsList;
+        currentId = _arliAiModel;
+        break;
+      case AiProvider.nanoGpt:
+        currentList = _nanoGptModelsList;
+        currentId = _nanoGptModel;
+        break;
+      case AiProvider.nanoGptImage:
+        currentList = _nanoGptImageModelsList;
+        currentId = _nanoGptImageModel;
+        break;
+      case AiProvider.openAi:
+        currentList = _openAiModelsList;
+        currentId = _openAiModel;
+        break;
+      case AiProvider.huggingFace:
+        currentList = _huggingFaceModelsList;
+        currentId = _huggingFaceModel;
+        break;
+      case AiProvider.groq:
+        currentList = _groqModelsList;
+        currentId = _groqModel;
+        break;
+      case AiProvider.vertexAi:
+        currentList = _vertexAiModelsList;
+        currentId = _vertexAiModel;
+        break;
+      case AiProvider.blackboxAi:
+        currentList = _blackboxAiModelsList;
+        currentId = _blackboxAiModel;
+        break;
+      case AiProvider.minimax:
+        currentList = _minimaxModelsList;
+        currentId = _minimaxModel;
+        break;
+      case AiProvider.openAiCompatible:
+        currentList = _openAiCompatibleModelsList;
+        currentId = _openAiCompatibleModel;
+        break;
+      case AiProvider.deepseek:
+        currentList = _deepseekModelsList;
+        currentId = _deepseekModel;
+        break;
+      case AiProvider.ollama:
+        currentList = _ollamaModelsList;
+        currentId = _ollamaModel;
+        break;
+      case AiProvider.qwen:
+        currentList = _qwenModelsList;
+        currentId = _qwenModel;
+        break;
+      case AiProvider.xAi:
+        currentList = _xAiModelsList;
+        currentId = _xAiModel;
+        break;
+      case AiProvider.zAi:
+        currentList = _zAiModelsList;
+        currentId = _zAiModel;
+        break;
+      case AiProvider.mistral:
+        currentList = _mistralModelsList;
+        currentId = _mistralModel;
+        break;
+      case AiProvider.local:
+        return null;
+    }
+
+    try {
+      return currentList.firstWhere((m) => m.id == currentId);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Formats a string with commas for readability (e.g., 1000000 -> 1,000,000).
   String formatNumber(String s) {
     int? n = int.tryParse(s.replaceAll(',', ''));

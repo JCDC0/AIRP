@@ -211,3 +211,6 @@ Implemented a stateful architecture for ProviderModelSelector to ensure text inp
 
 0.5.14.2 - Manual Model Toggle Integration
 Implemented a "Manual Model Input" toggle switch within the ModelSettingsPanel, addressing cases where auto-fetching endpoints (such as Google Vertex AI MaaS models restricting API key access) inhibit seamless usability. Added a persistent boolean state into ChatProvider synchronized with SharedPreferences mitigating redundant text field fallback errors while enabling a generalized manual entry utility applicable globally to all AI providers upon demand.
+
+0.5.14.3 - Settings Expanded Model Details & Asset Cleanup
+Integrated comprehensive model discovery tracking into the settings space by building a dynamic Selected Model details card within the ModelSettingsPanel displaying current token limits context size and dynamic pricing tiers leveraging a new getCurrentModelInfo helper placed inside ChatProvider mitigating context loss. Reformatted the ModelSelector layout to actively retain and pin the user's currently active AI model above the complete listing so long lists do not require extensive physical scrolling back to origin points. Synchronized kAssetBackgrounds constants list to map accurately with physical local background asset deletions. Cleaned up remaining auxiliary AI comment markers left from GUI prototyping phases.

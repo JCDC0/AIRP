@@ -71,7 +71,39 @@ class ModelSettingsPanel extends StatelessWidget {
     }
   }
 
+  Widget _buildDetailRow(String label, String value, ThemeProvider themeProvider, ScaleProvider scaleProvider) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 70,
+            child: Text(
+              "$label:",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: scaleProvider.systemFontSize * 0.8,
+                color: themeProvider.faintestColor,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: scaleProvider.systemFontSize * 0.8,
+                color: themeProvider.textColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
+
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
@@ -397,6 +429,59 @@ class ModelSettingsPanel extends StatelessWidget {
             refreshButtonColor: Colors.orange,
           ),
         const SizedBox(height: 16),
+        
+        // --- Selected Model Details UI ---
+        Builder(
+          builder: (context) {
+            final activeModel = chatProvider.getCurrentModelInfo();
+            if (activeModel == null) return const SizedBox.shrink();
+
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: themeProvider.containerFillColor,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: themeProvider.borderColor.withOpacity(0.5),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Selected Model Details",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: scaleProvider.systemFontSize * 0.85,
+                      color: themeProvider.textColor.withOpacity(0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildDetailRow("ID", activeModel.id, themeProvider, scaleProvider),
+                  if (activeModel.name.isNotEmpty && activeModel.name != activeModel.id)
+                    _buildDetailRow("Name", activeModel.name, themeProvider, scaleProvider),
+                  _buildDetailRow("Context", "${chatProvider.formatNumber(activeModel.contextLength)} tokens", themeProvider, scaleProvider),
+                  _buildDetailRow("Pricing", activeModel.pricing, themeProvider, scaleProvider),
+                  if (activeModel.description != "No description provided.") ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      activeModel.description,
+                      style: TextStyle(
+                        fontSize: scaleProvider.systemFontSize * 0.75,
+                        color: themeProvider.faintestColor,
+                        height: 1.3,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ]
+                ],
+              ),
+            );
+          },
+        ),
         
         // --- Added Settings (Moved from System Prompt) ---
         const Divider(),
