@@ -478,6 +478,9 @@ class ChatProvider extends ChangeNotifier {
   Set<String> _bookmarkedModels = {};
   Set<String> get bookmarkedModels => _bookmarkedModels;
 
+  Set<AiProvider> _starredProviders = {};
+  Set<AiProvider> get starredProviders => _starredProviders;
+
   late GenerativeModel _model;
   late ChatSession _chat;
   static const _defaultApiKey = '';
@@ -487,6 +490,7 @@ class ChatProvider extends ChangeNotifier {
     _loadSessions();
     _loadSystemPrompts();
     _loadModelBookmarks();
+    _loadStarredProviders();
   }
 
   @override
@@ -528,6 +532,31 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setStringList(
       'airp_bookmarked_models',
       _bookmarkedModels.toList(),
+    );
+  }
+
+  Future<void> _loadStarredProviders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('airp_starred_providers') ?? [];
+    _starredProviders = list
+        .map((e) => AiProvider.values.firstWhere(
+            (p) => p.name == e,
+            orElse: () => AiProvider.gemini))
+        .toSet();
+    notifyListeners();
+  }
+
+  Future<void> toggleProviderStar(AiProvider provider) async {
+    if (_starredProviders.contains(provider)) {
+      _starredProviders.remove(provider);
+    } else {
+      _starredProviders.add(provider);
+    }
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      'airp_starred_providers',
+      _starredProviders.map((e) => e.name).toList(),
     );
   }
 
@@ -3642,6 +3671,7 @@ class ChatProvider extends ChangeNotifier {
         'groq': _groqModel,
       },
       'modelBookmarks': _bookmarkedModels.toList(),
+      'starredProviders': _starredProviders.map((e) => e.name).toList(),
       'localIp': _localIp,
       'localModelName': _localModelName,
       'systemInstruction': _systemInstruction,
@@ -3720,6 +3750,20 @@ class ChatProvider extends ChangeNotifier {
       await prefs.setStringList(
         'airp_bookmarked_models',
         _bookmarkedModels.toList(),
+      );
+    }
+
+    final starred = data['starredProviders'] as List<dynamic>?;
+    if (starred != null) {
+      _starredProviders = starred
+          .map((e) => AiProvider.values.firstWhere(
+              (p) => p.name == e.toString(),
+              orElse: () => AiProvider.gemini))
+          .toSet();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        'airp_starred_providers',
+        _starredProviders.map((e) => e.name).toList(),
       );
     }
 

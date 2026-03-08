@@ -9,7 +9,7 @@ import '../model_selector.dart';
 /// This widget uses a [ModelSelector] if a list of models is available,
 /// otherwise it falls back to a [TextField] for manual entry. It also
 /// includes a refresh button to trigger model fetching.
-class ProviderModelSelector extends StatelessWidget {
+class ProviderModelSelector extends StatefulWidget {
   /// The list of available model info objects.
   final List<ModelInfo> modelsList;
 
@@ -47,31 +47,68 @@ class ProviderModelSelector extends StatelessWidget {
   });
 
   @override
+  State<ProviderModelSelector> createState() => _ProviderModelSelectorState();
+}
+
+class _ProviderModelSelectorState extends State<ProviderModelSelector> {
+  late TextEditingController _internalController;
+
+  @override
+  void initState() {
+    super.initState();
+    _internalController =
+        widget.controller ?? TextEditingController(text: widget.selectedModel);
+  }
+
+  @override
+  void didUpdateWidget(ProviderModelSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If external controller is provided, we don't manage text sync here
+    if (widget.controller == null) {
+      if (oldWidget.selectedModel != widget.selectedModel &&
+          _internalController.text != widget.selectedModel) {
+        _internalController.text = widget.selectedModel;
+      }
+    } else if (widget.controller != oldWidget.controller) {
+      // Switched to a different external controller
+      _internalController = widget.controller!;
+    }
+  }
+
+  @override
+  void dispose() {
+    // Only dispose if we created it
+    if (widget.controller == null) {
+      _internalController.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (modelsList.isNotEmpty)
+        if (widget.modelsList.isNotEmpty)
           ModelSelector(
-            modelsList: modelsList,
-            selectedModel: selectedModel,
-            onSelected: onSelected,
-            placeholder: placeholder,
+            modelsList: widget.modelsList,
+            selectedModel: widget.selectedModel,
+            onSelected: widget.onSelected,
+            placeholder: widget.placeholder,
           )
         else
           TextField(
-            controller:
-                controller ?? TextEditingController(text: selectedModel),
+            controller: _internalController,
             decoration: InputDecoration(
-              hintText: placeholder,
+              hintText: widget.placeholder,
               hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
               border: const OutlineInputBorder(),
               isDense: true,
             ),
             style: TextStyle(fontSize: scaleProvider.systemFontSize),
-            onChanged: (val) => onSelected(val.trim()),
+            onChanged: (val) => widget.onSelected(val.trim()),
           ),
 
         const SizedBox(height: 8),
@@ -79,7 +116,7 @@ class ProviderModelSelector extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            icon: isLoading
+            icon: widget.isLoading
                 ? const SizedBox(
                     width: 16,
                     height: 16,
@@ -87,12 +124,12 @@ class ProviderModelSelector extends StatelessWidget {
                   )
                 : const Icon(Icons.cloud_sync, size: 16),
             label: Text(
-              isLoading ? "Fetching..." : "Refresh Model List",
+              widget.isLoading ? "Fetching..." : "Refresh Model List",
               style: TextStyle(fontSize: scaleProvider.systemFontSize),
             ),
-            onPressed: isLoading ? null : onRefresh,
+            onPressed: widget.isLoading ? null : widget.onRefresh,
             style: OutlinedButton.styleFrom(
-              foregroundColor: refreshButtonColor,
+              foregroundColor: widget.refreshButtonColor,
             ),
           ),
         ),

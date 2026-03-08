@@ -135,18 +135,53 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           );
         },
-        itemBuilder: (BuildContext context) => AiProvider.values
-            .map(
-              (provider) => PopupMenuItem<AiProvider>(
-                height: scaleProvider.systemFontSize * 2.5,
-                value: provider,
-                child: Text(
-                  _providerDisplayName(provider),
-                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
+        itemBuilder: (BuildContext context) {
+          final List<AiProvider> sortedProviders =
+              List<AiProvider>.from(AiProvider.values);
+          sortedProviders.sort((a, b) {
+            final bool aStarred = chatProvider.starredProviders.contains(a);
+            final bool bStarred = chatProvider.starredProviders.contains(b);
+            if (aStarred && !bStarred) return -1;
+            if (!aStarred && bStarred) return 1;
+            return _providerDisplayName(a)
+                .compareTo(_providerDisplayName(b));
+          });
+
+          return sortedProviders
+              .map(
+                (provider) => PopupMenuItem<AiProvider>(
+                  height: scaleProvider.systemFontSize * 2.5,
+                  value: provider,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _providerDisplayName(provider),
+                        style: TextStyle(
+                            fontSize: scaleProvider.systemFontSize),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          chatProvider.starredProviders.contains(provider)
+                              ? Icons.star
+                              : Icons.star_border,
+                          size: scaleProvider.systemFontSize * 1.2,
+                          color: chatProvider.starredProviders
+                                  .contains(provider)
+                              ? Colors.amber
+                              : themeProvider.subtitleColor,
+                        ),
+                        onPressed: () {
+                          chatProvider.toggleProviderStar(provider);
+                          Navigator.pop(context); // Close menu to refresh sort
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            )
-            .toList(),
+              )
+              .toList();
+        },
         child: SizedBox(
           width: 300 + (scaleProvider.systemFontSize * 10),
           child: Padding(
