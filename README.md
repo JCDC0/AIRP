@@ -161,6 +161,16 @@ Connect to an LLM running on your own computer or home server.
    * (Optional) Enter a specific model ID if your server requires it.
    * Click the **Floating Save Button**.
 
+### 9. Additional API Providers (xAI, Deepseek, Mistral, Minimax, Qwen, Z.ai, Blackbox AI, Vertex AI, Custom OpenAI-Compatible)
+
+AIRP supports several additional APIs through a unified OpenAI-compatible pipeline.
+1. Obtain an API key from the respective provider's console.
+2. Select the provider (e.g., **Deepseek**, **Mistral**, **xAI**, **OpenAI Compatible**) from the top dropdown.
+3. Open the **Settings Drawer**.
+4. Paste your key into the API Key field.
+5. (Optional) For the **OpenAI Compatible** provider, expand the **API Endpoint settings** panel to define a custom URL.
+6. **Important:** Click the **Floating Save Button**.
+
 ---
 
 ## Interface & Controls

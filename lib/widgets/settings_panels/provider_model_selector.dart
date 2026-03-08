@@ -53,12 +53,14 @@ class ProviderModelSelector extends StatefulWidget {
 
 class _ProviderModelSelectorState extends State<ProviderModelSelector> {
   late TextEditingController _internalController;
+  late FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
     _internalController =
         widget.controller ?? TextEditingController(text: widget.selectedModel);
+    _focusNode = FocusNode();
   }
 
   @override
@@ -68,7 +70,11 @@ class _ProviderModelSelectorState extends State<ProviderModelSelector> {
     if (widget.controller == null) {
       if (oldWidget.selectedModel != widget.selectedModel &&
           _internalController.text != widget.selectedModel) {
-        _internalController.text = widget.selectedModel;
+        // Only override the text field if the user is NOT actively typing.
+        // This prevents cursor reset/overwrite bugs on rapid typing.
+        if (!_focusNode.hasFocus) {
+          _internalController.text = widget.selectedModel;
+        }
       }
     } else if (widget.controller != oldWidget.controller) {
       // Switched to a different external controller
@@ -82,6 +88,7 @@ class _ProviderModelSelectorState extends State<ProviderModelSelector> {
     if (widget.controller == null) {
       _internalController.dispose();
     }
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -103,6 +110,7 @@ class _ProviderModelSelectorState extends State<ProviderModelSelector> {
         else
           TextField(
             controller: _internalController,
+            focusNode: _focusNode,
             decoration: InputDecoration(
               hintText: widget.placeholder,
               hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize),

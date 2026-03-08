@@ -131,56 +131,30 @@ This document outlines the planned progression for AIRP, transitioning from its 
 
 ---
 
-### 📦 v0.5.14 - Stability, Architecture & UX Polish [PENDING]
+### 📦 v0.6.0 - Architecture Overhaul, Optimization & Separation of God Files [PENDING]
 
-*Focus: Systematic stability pass, code architecture improvements from the full codebase audit, and quality-of-life refinements ahead of 1.0.0.*
+*Focus: Deep architectural restructuring, separating massive files ("God Files") into modular services, fixing persistent UI bugs, and establishing a performant production system chatbot.*
 
-**Code Architecture (from codebase audit):**
+**Coding Standards & Professionalism (STRICT REQUIREMENT):**
+- **Comment Quality:** Do not use single-line comments that state the obvious (e.g., `// Add 1 to count`). Instead, write professional, high-level doc notes for functions/classes explaining *why* the code exists, its methodology, and any edge cases handled. Add these notes each time new code is created.
 
-- **`chat_provider.dart` — God Class decomposition (3036 lines, HIGH priority):** Extract responsibilities into focused services: [PENDING]
-  - `SessionService` — session CRUD, auto-save, merge, fork, switch (`_loadSessions`, `autoSaveCurrentSession`, `mergeSessions`, `switchSession`, `deleteSession`, `forkConversation`).
-  - `ModelRegistryService` — model list state, 7× `fetchXxxModels()` methods, `refreshCurrentModels`, model list deserialization. Deduplicate the per-provider parser lambdas via a `ModelInfoMapper` config object.
-  - `ApiKeyService` — secure storage migration, `_loadApiKeyFromStorage`, `_persistApiKey`, `_getProviderKey`, `_setProviderKey`. Decouple from UI provider.
-  - Import/export consolidation — `exportSettingsMap`, `importSettingsMap`, `mergeSystemPrompts` partially duplicate `LibraryService`; unify them.
-- **`chat_provider.dart` — `sendMessage()` breakdown (~500 lines, MEDIUM priority):** Split into helper methods: `_handleGeminiGrounding`, `_handleImageGeneration`, `_handleByokWebSearch`, `_handleStreamingResponse`, `_handlePostStreamProcessing`. [PENDING]
-- **`ChatSessionData` — add `copyWith` method (MEDIUM priority):** `_finalizeBackgroundSession` and `_addMessageToSavedSession` manually reconstruct the data class with all 9 fields. A `copyWith` would eliminate this boilerplate. [PENDING]
-- **`effects_overlay.dart` — particle widget deduplication (LOW priority):** `MotesEffect`, `RainEffect`, and `FirefliesEffect` share identical scaffolding (~350 lines). Extract a shared `_ParticleEffect<T>` base widget. [PENDING]
+**Phase 1: God Class Decomposition (`chat_provider.dart`)**
+- Extract responsibilities from the massive `ChatProvider` (4000+ lines) into focused, atomic services:
+  - `SessionService` — session CRUD, auto-save, merge, fork, switch.
+  - `ModelRegistryService` — model list state, model fetching, deserialization. Deduplicate per-provider parser lambdas.
+  - `ApiKeyService` — secure storage migration and provider key management.
+- Break down `sendMessage()` into smaller, focused helper methods (`_handleGeminiGrounding`, `_handleStreamingResponse`, etc.).
 
-**Code Quality (from codebase audit):**
+**Phase 2: UI Optimization & Widget Tree Isolation**
+- **Refactor `message_bubble.dart` & `chat_input_area.dart`:** Break these heavy widgets down further into composable sub-widgets to reduce file size and complexity.
+- **Isolate Rebuilds:** Audit the UI layer (`screens/`, `widgets/`, `settings_panels/`) to strictly eliminate unnecessary deep-tree rebuilds. Transition monolithic `Consumer<ChatProvider>` states over to fine-grained `Selector` models for pure UI responsiveness.
+- **Controller Sprawl:** Manage the 15+ manual `TextEditingController`s in `settings_drawer.dart` via reactive sync patterns or data classes to prevent memory leaks and UI desync.
 
-- **Comment quality:** Full audit of all 52+ Dart files confirmed consistently excellent `///` doc comments, section headers, and inline explanations. **No comment changes needed.**
-- **Provider enum dispatch:** Replace `if/else if` string chain in `_loadSettings()` with `AiProvider.values.firstWhere((e) => e.name == providerString, orElse: () => AiProvider.gemini)`. [PENDING]
-- **`getMaxContext()` simplification:** Replace lengthy per-provider switch with a `Map<AiProvider, ...>` lookup or helper returning the current list/ID pair. [PENDING]
-- **Duplicate `_formatNumber`:** Exists in both `ModelSelector` and `ChatProvider`. Move to shared utility `utils/formatting.dart`. [PENDING]
-- **`settings_drawer.dart` controller sprawl:** 15 manually-synced `TextEditingController`s. Group into data classes or use a more reactive sync pattern. [PENDING]
-- **`web_search_service.dart` URL normalization:** `_normalizeUrl` silently prepends `http://`. Default to HTTPS or warn the user. [PENDING]
-
-**Stability & Bug Fixes:**
-
-- **Attachment area improvements:** Pending attachment preview strip only renders images; PDFs and other files show a generic icon but are clickable for nothing. Add tap-to-preview for PDFs and indicate document type more clearly. [PENDING]
-- **Image gen + web search mutual exclusion:** Make the mutual exclusion more explicit in the UI: show a tooltip or warning snackbar when the user attempts to enable both on an image-gen model. [PENDING]
-- **`doc`/`docx` pipeline alignment:** The message bubble has icon handling for doc/docx but they are never passed to the API. Align the file picker, API service, and message bubble so they consistently support the same file types. [PENDING]
-- **Web: `image_picker` behaviour:** v0.5.13 FileIOHelper rework handles `file_picker` on web; `image_picker` web behaviour still needs testing and possible fallback. [PENDING]
-
-**UX / Quality of Life:**
-
-- **Session title auto-generation:** Currently session titles default to truncated first message text. Auto-generate a brief title via the AI (one-shot, non-streamed call) after the first exchange. [PENDING]
-- **Scroll-to-bottom auto-trigger:** After the AI finishes streaming, the chat view doesn't always scroll to show the final message. Add a reliable post-stream scroll. [PENDING]
-- **Empty-state screen:** When no messages exist and no session is loaded, show a branded empty state instead of a blank background. [PENDING]
-- **Error message UX:** API errors are appended inline as raw markdown. Format them in a distinct error bubble style with a retry button. [PENDING]
-
----
-
-### 📦 v1.0.0 - Total Codebase Overhaul: Optimization, High Efficiency & Release [PENDING]
-
-*Focus: Deep architectural restructuring, addressing remaining technical debt, eliminating redundancies, and maximizing app-wide performance. Final release version. Requires v0.5.13 and v0.5.14 to be completed first.*
-
-- **Comprehensive State Refactoring:** Building on v0.5.14 decomposition, re-evaluate all top-level providers (`ChatProvider`, `ThemeProvider`, `ScaleProvider`), extracting remaining heavy logic into precise, atomic services (e.g., `WebSearchManager`, `TokenTrackingService`, `AIStreamingOrchestrator`). [PENDING]
-- **API & Networking Efficiency:** Consolidate HTTP, streaming logic, and serialization across all AI APIs and web search endpoints. Implement aggressive deduplication of request formatting and unified retry/error pipelines (rate limits, bot challenges like DDG blocking). [PENDING]
-- **Widget-Tree Optimization & Rebuild Isolation:** Audit the entire UI layer (`screens/`, `widgets/`, `settings_panels/`) to strictly eliminate unnecessary deep-tree rebuilds. Transition monolithic `Consumer` and `StatefulWidget` states over to fine-grained `Selector` models for pure UI responsiveness. [PENDING]
-- **VFX Optimization:** Consolidate `EffectsOverlay` logic to use a single `CustomPainter` or a lightweight particle system for better performance on mobile. [COMPLETE - Uses CustomPainter]
-- **Data Persistence Strategy & File I/O:** Complete overhaul of secure storage and SharedPreferences I/O. Decouple storage read/writes from the main UI thread via batched operations yielding zero-lag interactions. [PENDING]
-- **GitHub Release Build:** Finalize APK/AAB and desktop builds for public distribution as a v1.0.0 release. [PENDING]
+**Phase 3: Stability, Data Persistence & UX Polish**
+- **File I/O:** Decouple `SharedPreferences` reads/writes from the main UI thread via batched operations yielding zero-lag interactions.
+- Add `ChatSessionData.copyWith` to eliminate manual boilerplate when updating session state.
+- Deduplicate particle effects (`MotesEffect`, `RainEffect`, `FirefliesEffect`) into a shared `_ParticleEffect<T>`.
+- **UX Fixes Additions:** Session title auto-generation, scroll-to-bottom auto-trigger after streams, empty-state screen for new chats, explicit image gen + web search mutual exclusion guards, and distinct error formatting bubbles.
 
 ---
  **Phased Instructions:**
@@ -191,8 +165,7 @@ This document outlines the planned progression for AIRP, transitioning from its 
 4. **[COMPLETE] Phase 4 (v0.5.12):** Implemented Lorebook system with full SillyTavern Character Book V2 parity, Regex Engine with ephemeral modes, Macro Engine as shared foundation, Advanced Formatting templates, and importable Preset packs. Updated CharacterCard model with V2 spec fields (creatorNotes, tags, characterBook, postHistoryInstructions, alternateGreetings, depth_prompt). Split system_prompt_panel.dart into 5 panel widgets. Fixed 7 bugs. Settings drawer expanded to 12 tiles. Library export/import extended with character card and SillyTavern state persistence. Incremental commits 0.5.12.1 through 0.5.12.11.
 5. **[IN PROGRESS] Phase 5 (v0.5.13):** [DONE] Eliminated all `dart:io` from UI/service layers via centralized `FileIOHelper` with conditional imports; web-safe import/export, chat attachments, message display, and theming. [DONE] Improved device detection using `defaultTargetPlatform` + `shortestSide` breakpoint; updated layout defaults for phone/tablet/desktop. [PENDING] Fix image gen to actually render generated images (download bytes → store in `ChatMessage.aiImage` → render via `Image.memory`). [PENDING] Fix PDF, doc/docx, and video attachment pipeline inconsistencies. [PENDING] Improve image gen provider guard UI.
 6. **[COMPLETE] Phase 6 (v0.5.14):** Multi-Provider Integration. Integrated 10 new API providers (Vertex AI, Blackbox AI, Minimax, OpenAI Compatible, Deepseek, Ollama, Qwen, xAI, Z.ai, Mistral) using the existing OpenAI-compatible pipeline architecture. Added endpoint configurations for custom hostings in the settings UI. Fixed an issue where system prompts did not persist in the settings UI after reloading the web app by adding active synchronization to the SettingsDrawer text controllers. Refined the message fork feature to spawn a new conversation containing strictly the selected chat bubble, rather than copying the entire preceding conversation history.
-7. **Phase 7 (v0.5.15):** Architecture and stability pass. Decompose `ChatProvider` into `SessionService`, `ModelRegistryService`, and `ApiKeyService`. Break down `sendMessage()` into helper methods. Add `ChatSessionData.copyWith`. Deduplicate particle effects, format utilities, and provider dispatch. Fix scroll-to-bottom after stream, add empty-state screen, improve error bubble formatting, address web platform attachment compatibility, and add session title auto-generation.
-8. **Phase 8 (v1.0.0):** Execute a complete codebase efficiency overhaul. Build on v0.5.15 decomposition to further extract atomic services. Audit the entire project for remaining duplicated logic, streamline API and networking code, minimize widget rebuilds with granular `Selector` models, and decouple storage I/O from state updates for zero-lag interactions. Produce final release build for GitHub distribution.
+7. **Phase 7 (v0.6.0):** Execute the complete codebase efficiency and modular architecture overhaul as detailed in the v0.6 roadmap.
 
 **Constraint:** Ensure all UI changes respect `ScaleProvider` and `ThemeProvider` for consistent Material 3 styling and responsive scaling.
 
@@ -214,3 +187,6 @@ Implemented a "Manual Model Input" toggle switch within the ModelSettingsPanel, 
 
 0.5.14.3 - Settings Expanded Model Details & Asset Cleanup
 Integrated comprehensive model discovery tracking into the settings space by building a dynamic Selected Model details card within the ModelSettingsPanel displaying current token limits context size and dynamic pricing tiers leveraging a new getCurrentModelInfo helper placed inside ChatProvider mitigating context loss. Reformatted the ModelSelector layout to actively retain and pin the user's currently active AI model above the complete listing so long lists do not require extensive physical scrolling back to origin points. Synchronized kAssetBackgrounds constants list to map accurately with physical local background asset deletions. Cleaned up remaining auxiliary AI comment markers left from GUI prototyping phases.
+
+0.5.14.4 - Fix TextField Resets & Apply Documentation Sync
+Addressed the persistent single-character overwrite bug within ProviderModelSelector during manual model input by introducing a FocusNode constraint to conditionally block widget text synchronizations while the user is actively typing mitigating rapid-fire rebuild race conditions. Integrated external README and suggested_features documentation adjustments aligning local branch states with user-driven roadmap updates.
