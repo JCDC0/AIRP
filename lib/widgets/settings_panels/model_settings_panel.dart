@@ -46,28 +46,32 @@ class ModelSettingsPanel extends StatelessWidget {
         return provider.huggingFaceModelsList.length;
       case AiProvider.groq:
         return provider.groqModelsList.length;
-      case AiProvider.vertexAi:
-        return provider.vertexAiModelsList.length;
-      case AiProvider.blackboxAi:
-        return provider.blackboxAiModelsList.length;
-      case AiProvider.minimax:
-        return provider.minimaxModelsList.length;
-      case AiProvider.openAiCompatible:
-        return provider.openAiCompatibleModelsList.length;
-      case AiProvider.deepseek:
-        return provider.deepseekModelsList.length;
-      case AiProvider.ollama:
-        return provider.ollamaModelsList.length;
-      case AiProvider.qwen:
-        return provider.qwenModelsList.length;
-      case AiProvider.xAi:
-        return provider.xAiModelsList.length;
-      case AiProvider.zAi:
-        return provider.zAiModelsList.length;
-      case AiProvider.mistral:
-        return provider.mistralModelsList.length;
+      case AiProvider.local:
+        return 1; // Local models are custom
       default:
         return 0;
+    }
+  }
+
+  /// Formats pricing string from per-token to per-million tokens format.
+  String _formatPricing(String p) {
+    try {
+      final parts = p.split(' / ');
+      if (parts.length != 2) return p;
+      double input = double.tryParse(parts[0]) ?? 0;
+      double output = double.tryParse(parts[1]) ?? 0;
+      
+      // Handle special values like -1 (Auto Router / Variable)
+      if (input < 0 || output < 0) return "Variable / Dynamic";
+      if (input == 0 && output == 0) return "Free / Unknown";
+
+      // Convert per token to per 1M tokens
+      double inputM = input * 1000000;
+      double outputM = output * 1000000;
+      
+      return "Input: \$${inputM.toStringAsFixed(2)}/M | Output: \$${outputM.toStringAsFixed(2)}/M";
+    } catch (e) {
+      return p;
     }
   }
 
@@ -182,29 +186,6 @@ class ModelSettingsPanel extends StatelessWidget {
         ),
         const SizedBox(height: 5),
 
-        Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Manual Model Input",
-                style: TextStyle(
-                  color: themeProvider.textColor,
-                  fontSize: scaleProvider.systemFontSize * 0.9,
-                ),
-              ),
-              Switch(
-                value: chatProvider.enableManualModelInput,
-                onChanged: (val) {
-                  chatProvider.setEnableManualModelInput(val);
-                },
-                activeColor: themeProvider.bloomGlowColor,
-              ),
-            ],
-          ),
-        ),
-
         if (chatProvider.currentProvider == AiProvider.gemini)
           ProviderModelSelector(
             modelsList: chatProvider.geminiModelsList,
@@ -318,116 +299,6 @@ class ModelSettingsPanel extends StatelessWidget {
             refreshButtonColor: Colors.deepOrangeAccent,
             controller: groqModelController,
           ),
-
-        if (chatProvider.currentProvider == AiProvider.vertexAi)
-          ProviderModelSelector(
-            modelsList: chatProvider.vertexAiModelsList,
-            selectedModel: chatProvider.vertexAiModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select Vertex AI Model",
-            isLoading: chatProvider.isLoadingVertexAiModels,
-            onRefresh: chatProvider.fetchVertexAiModels,
-            refreshButtonColor: Colors.lightBlueAccent,
-          ),
-
-        if (chatProvider.currentProvider == AiProvider.blackboxAi)
-          ProviderModelSelector(
-            modelsList: chatProvider.blackboxAiModelsList,
-            selectedModel: chatProvider.blackboxAiModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select Blackbox AI Model",
-            isLoading: chatProvider.isLoadingBlackboxAiModels,
-            onRefresh: chatProvider.fetchBlackboxAiModels,
-            refreshButtonColor: Colors.grey,
-          ),
-
-        if (chatProvider.currentProvider == AiProvider.minimax)
-          ProviderModelSelector(
-            modelsList: chatProvider.minimaxModelsList,
-            selectedModel: chatProvider.minimaxModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select Minimax Model",
-            isLoading: chatProvider.isLoadingMinimaxModels,
-            onRefresh: chatProvider.fetchMinimaxModels,
-            refreshButtonColor: Colors.redAccent,
-          ),
-
-        if (chatProvider.currentProvider == AiProvider.openAiCompatible)
-          ProviderModelSelector(
-            modelsList: chatProvider.openAiCompatibleModelsList,
-            selectedModel: chatProvider.openAiCompatibleModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select Model",
-            isLoading: chatProvider.isLoadingOpenAiCompatibleModels,
-            onRefresh: chatProvider.fetchOpenAiCompatibleModels,
-            refreshButtonColor: Colors.tealAccent,
-          ),
-
-        if (chatProvider.currentProvider == AiProvider.deepseek)
-          ProviderModelSelector(
-            modelsList: chatProvider.deepseekModelsList,
-            selectedModel: chatProvider.deepseekModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select Deepseek Model",
-            isLoading: chatProvider.isLoadingDeepseekModels,
-            onRefresh: chatProvider.fetchDeepseekModels,
-            refreshButtonColor: Colors.blueAccent,
-          ),
-
-        if (chatProvider.currentProvider == AiProvider.ollama)
-          ProviderModelSelector(
-            modelsList: chatProvider.ollamaModelsList,
-            selectedModel: chatProvider.ollamaModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select Ollama Model",
-            isLoading: chatProvider.isLoadingOllamaModels,
-            onRefresh: chatProvider.fetchOllamaModels,
-            refreshButtonColor: Colors.white70,
-          ),
-
-        if (chatProvider.currentProvider == AiProvider.qwen)
-          ProviderModelSelector(
-            modelsList: chatProvider.qwenModelsList,
-            selectedModel: chatProvider.qwenModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select Qwen Model",
-            isLoading: chatProvider.isLoadingQwenModels,
-            onRefresh: chatProvider.fetchQwenModels,
-            refreshButtonColor: Colors.purpleAccent,
-          ),
-
-        if (chatProvider.currentProvider == AiProvider.xAi)
-          ProviderModelSelector(
-            modelsList: chatProvider.xAiModelsList,
-            selectedModel: chatProvider.xAiModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select xAI Model",
-            isLoading: chatProvider.isLoadingXAiModels,
-            onRefresh: chatProvider.fetchXAiModels,
-            refreshButtonColor: Colors.blue,
-          ),
-
-        if (chatProvider.currentProvider == AiProvider.zAi)
-          ProviderModelSelector(
-            modelsList: chatProvider.zAiModelsList,
-            selectedModel: chatProvider.zAiModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select Z.ai Model",
-            isLoading: chatProvider.isLoadingZAiModels,
-            onRefresh: chatProvider.fetchZAiModels,
-            refreshButtonColor: Colors.cyanAccent,
-          ),
-
-        if (chatProvider.currentProvider == AiProvider.mistral)
-          ProviderModelSelector(
-            modelsList: chatProvider.mistralModelsList,
-            selectedModel: chatProvider.mistralModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Select Mistral Model",
-            isLoading: chatProvider.isLoadingMistralModels,
-            onRefresh: chatProvider.fetchMistralModels,
-            refreshButtonColor: Colors.orange,
-          ),
         const SizedBox(height: 16),
         
         // --- Selected Model Details UI ---
@@ -463,7 +334,8 @@ class ModelSettingsPanel extends StatelessWidget {
                   if (activeModel.name.isNotEmpty && activeModel.name != activeModel.id)
                     _buildDetailRow("Name", activeModel.name, themeProvider, scaleProvider),
                   _buildDetailRow("Context", "${chatProvider.formatNumber(activeModel.contextLength)} tokens", themeProvider, scaleProvider),
-                  _buildDetailRow("Pricing", activeModel.pricing, themeProvider, scaleProvider),
+                  if (activeModel.pricing.isNotEmpty)
+                    _buildDetailRow("Pricing", _formatPricing(activeModel.pricing), themeProvider, scaleProvider),
                   if (activeModel.description != "No description provided.") ...[
                     const SizedBox(height: 4),
                     Text(

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
-import '../../providers/chat_provider.dart';
 import '../model_selector.dart';
 
 /// A wrapper widget that provides model selection and list refreshing.
@@ -95,12 +94,11 @@ class _ProviderModelSelectorState extends State<ProviderModelSelector> {
   @override
   Widget build(BuildContext context) {
     final scaleProvider = Provider.of<ScaleProvider>(context);
-    final chatProvider = Provider.of<ChatProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.modelsList.isNotEmpty && !chatProvider.enableManualModelInput)
+        if (widget.modelsList.isNotEmpty)
           ModelSelector(
             modelsList: widget.modelsList,
             selectedModel: widget.selectedModel,
