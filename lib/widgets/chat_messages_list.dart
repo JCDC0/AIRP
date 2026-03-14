@@ -467,8 +467,9 @@ class ChatMessagesList extends StatelessWidget {
     ChatProvider chatProvider,
     ThemeProvider themeProvider,
   ) {
-    if (!chatProvider.isLoading || themeProvider.enableLoadingAnimation)
+    if (!chatProvider.isLoading || themeProvider.enableLoadingAnimation) {
       return false;
+    }
 
     final messages = chatProvider.messages;
     if (messages.isEmpty) return true;
