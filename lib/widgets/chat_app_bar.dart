@@ -12,6 +12,9 @@ import 'model_selector.dart';
 /// and provides access to navigation and settings drawers. It also
 /// includes a model selector in the bottom section.
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
+  static const Key providerPickerTriggerKey = Key('provider-picker-trigger');
+  static const Key providerPickerDialogKey = Key('provider-picker-dialog');
+
   /// Callback triggered when the navigation drawer should be opened.
   final VoidCallback? onOpenDrawer;
 
@@ -119,6 +122,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
       ),
       title: GestureDetector(
+        key: providerPickerTriggerKey,
+        behavior: HitTestBehavior.opaque,
         onTap: () => _showProviderPicker(
           context,
           chatProvider,
@@ -175,6 +180,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     const SizedBox(width: 4),
                     Icon(
                       Icons.arrow_drop_down,
+                      key: const Key('provider-picker-arrow'),
                       color: themeProvider.textColor,
                       size: 18,
                     ),
@@ -254,6 +260,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     ThemeProvider themeProvider,
     ScaleProvider scaleProvider,
   ) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+
     showDialog<AiProvider>(
       context: context,
       barrierColor: Colors.black26,
@@ -270,6 +278,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           });
 
           return Dialog(
+            key: providerPickerDialogKey,
             backgroundColor: themeProvider.dropdownColor,
             elevation: themeProvider.enableBloom ? 12 : 8,
             shadowColor: themeProvider.enableBloom
@@ -285,6 +294,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 final AiProvider provider = sortedProviders[i];
                 final bool isStarred = cp.starredProviders.contains(provider);
                 return SizedBox(
+                  key: ValueKey<String>('provider-row-${provider.name}'),
                   height: scaleProvider.systemFontSize * 2.5,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -300,6 +310,9 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                             ),
                             child: Text(
                               _providerDisplayName(provider),
+                              key: ValueKey<String>(
+                                'provider-label-${provider.name}',
+                              ),
                               style: TextStyle(
                                 fontSize: scaleProvider.systemFontSize,
                               ),
@@ -308,6 +321,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                         ),
                       ),
                       IconButton(
+                        key: ValueKey<String>('provider-star-${provider.name}'),
                         icon: Icon(
                           isStarred ? Icons.star : Icons.star_border,
                           size: scaleProvider.systemFontSize * 1.2,
@@ -328,7 +342,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     ).then((AiProvider? result) {
       if (result != null) {
         chatProvider.setProvider(result);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger?.showSnackBar(
           SnackBar(
             content: Text(
               "Switched to ${_providerDisplayName(result)}",

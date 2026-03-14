@@ -54,31 +54,49 @@ void main() {
       await tester.pumpAndSettle();
 
       // Open the provider picker by tapping the arrow icon in the app-bar title.
-      await tester.tap(find.byIcon(Icons.arrow_drop_down));
+      await tester.tap(find.byKey(ChatAppBar.providerPickerTriggerKey));
       await tester.pumpAndSettle();
 
       // The dialog should now be visible.
-      expect(find.byType(Dialog), findsOneWidget);
+      expect(find.byKey(ChatAppBar.providerPickerDialogKey), findsOneWidget);
 
       // Before starring anything, all star icons should be unfilled.
-      expect(find.byIcon(Icons.star), findsNothing);
-      expect(find.byIcon(Icons.star_border), findsWidgets);
+      final dialogFinder = find.byKey(ChatAppBar.providerPickerDialogKey);
+      expect(
+        find.descendant(of: dialogFinder, matching: find.byIcon(Icons.star)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: dialogFinder,
+          matching: find.byIcon(Icons.star_border),
+        ),
+        findsWidgets,
+      );
 
       // Pick the first provider in the sorted list (first star_border icon).
-      final firstStarButton = find.byIcon(Icons.star_border).first;
+      final firstStarButton = find
+          .descendant(
+            of: dialogFinder,
+            matching: find.byIcon(Icons.star_border),
+          )
+          .first;
       await tester.tap(firstStarButton);
       // Allow the Consumer rebuild triggered by notifyListeners() to complete.
       await tester.pumpAndSettle();
 
       // The starred icon must now be visible — no close/reopen required.
-      expect(find.byIcon(Icons.star), findsOneWidget);
+      expect(
+        find.descendant(of: dialogFinder, matching: find.byIcon(Icons.star)),
+        findsOneWidget,
+      );
 
       // The starred provider should appear at the top of the list.
       // The first InkWell in the dialog represents the top provider row.
       final providerTexts = tester
           .widgetList<Text>(
             find.descendant(
-              of: find.byType(Dialog),
+              of: dialogFinder,
               matching: find.byType(Text),
             ),
           )
@@ -115,20 +133,29 @@ void main() {
       await tester.pumpAndSettle();
 
       // Open picker by tapping the arrow icon in the app-bar title.
-      await tester.tap(find.byIcon(Icons.arrow_drop_down));
+      await tester.tap(find.byKey(ChatAppBar.providerPickerTriggerKey));
       await tester.pumpAndSettle();
 
-      expect(find.byType(Dialog), findsOneWidget);
+      final dialogFinder = find.byKey(ChatAppBar.providerPickerDialogKey);
+      expect(dialogFinder, findsOneWidget);
 
       // Exactly one filled star visible (for Groq which was pre-starred).
-      expect(find.byIcon(Icons.star), findsOneWidget);
+      expect(
+        find.descendant(of: dialogFinder, matching: find.byIcon(Icons.star)),
+        findsOneWidget,
+      );
 
       // Tap the filled star to un-star.
-      await tester.tap(find.byIcon(Icons.star));
+      await tester.tap(
+        find.byKey(ValueKey<String>('provider-star-${AiProvider.groq.name}')),
+      );
       await tester.pumpAndSettle();
 
       // Star should have disappeared immediately.
-      expect(find.byIcon(Icons.star), findsNothing);
+      expect(
+        find.descendant(of: dialogFinder, matching: find.byIcon(Icons.star)),
+        findsNothing,
+      );
     },
   );
 }
