@@ -1,8 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/character_card.dart';
-import 'file_io_native.dart'
-    if (dart.library.html) 'file_io_web.dart'
+import 'file_io_native.dart' if (dart.library.html) 'file_io_web.dart'
     as platform_io;
 
 class CharacterCardService {
@@ -12,10 +11,7 @@ class CharacterCardService {
   ///
   /// [filename] is used to determine the format (PNG or JSON).
   /// [bytes] is the raw file content.
-  static Future<CharacterCard?> parseFileData(
-    String filename,
-    Uint8List bytes,
-  ) async {
+  static Future<CharacterCard?> parseFileData(String filename, Uint8List bytes) async {
     final name = filename.toLowerCase();
 
     if (name.endsWith('.json')) {
@@ -25,9 +21,7 @@ class CharacterCardService {
       return parsePng(bytes);
     }
 
-    throw FormatException(
-      "Unsupported file type. Please provide a .json or .png file.",
-    );
+    throw FormatException("Unsupported file type. Please provide a .json or .png file.");
   }
 
   /// Parses a character card from a JSON string.
@@ -64,13 +58,11 @@ class CharacterCardService {
           // tEXt format: keyword\0text
           final nullIndex = chunkData.indexOf(0);
           if (nullIndex != -1) {
-            final keyword = String.fromCharCodes(
-              chunkData.sublist(0, nullIndex),
-            );
+            final keyword =
+                String.fromCharCodes(chunkData.sublist(0, nullIndex));
             if (keyword == 'chara') {
-              final base64Content = utf8.decode(
-                chunkData.sublist(nullIndex + 1),
-              );
+              final base64Content =
+                  utf8.decode(chunkData.sublist(nullIndex + 1));
               final jsonStr = utf8.decode(base64.decode(base64Content));
               return parseJson(jsonStr);
             }
@@ -81,9 +73,8 @@ class CharacterCardService {
           //   languageTag\0 translatedKeyword\0 text
           final nullIndex = chunkData.indexOf(0);
           if (nullIndex != -1) {
-            final keyword = String.fromCharCodes(
-              chunkData.sublist(0, nullIndex),
-            );
+            final keyword =
+                String.fromCharCodes(chunkData.sublist(0, nullIndex));
             if (keyword == 'chara') {
               int pos = nullIndex + 1;
               final compressionFlag = chunkData[pos];
@@ -137,12 +128,11 @@ class CharacterCardService {
   /// Returns a list of warnings, or empty if fully compatible.
   static List<String> validate(CharacterCard card) {
     final warnings = <String>[...card.compatibilityWarnings];
-
+    
     // Check for essential fields
     if (card.name.isEmpty) warnings.add("Card has no name.");
-    if (card.description.isEmpty && card.personality.isEmpty)
-      warnings.add("Card has no description or personality.");
-
+    if (card.description.isEmpty && card.personality.isEmpty) warnings.add("Card has no description or personality.");
+    
     return warnings;
   }
 }

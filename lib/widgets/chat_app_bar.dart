@@ -150,15 +150,23 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           return sortedProviders
               .map(
                 (provider) => PopupMenuItem<AiProvider>(
+                  enabled: false,
                   height: scaleProvider.systemFontSize * 2.5,
-                  value: provider,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        _providerDisplayName(provider),
-                        style: TextStyle(
-                            fontSize: scaleProvider.systemFontSize),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context, provider),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              _providerDisplayName(provider),
+                              style: TextStyle(
+                                  fontSize: scaleProvider.systemFontSize),
+                            ),
+                          ),
+                        ),
                       ),
                       IconButton(
                         icon: Icon(
@@ -173,7 +181,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                         ),
                         onPressed: () {
                           chatProvider.toggleProviderStar(provider);
-                          Navigator.pop(context); // Close menu to refresh sort
                         },
                       ),
                     ],

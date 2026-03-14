@@ -66,16 +66,16 @@ class ChatProvider extends ChangeNotifier {
   List<ModelInfo> _groqModelsList = [];
 
   // Additional provider model lists
-  List<ModelInfo> _vertexAiModelsList = [];
-  List<ModelInfo> _blackboxAiModelsList = [];
-  List<ModelInfo> _minimaxModelsList = [];
-  List<ModelInfo> _openAiCompatibleModelsList = [];
-  List<ModelInfo> _deepseekModelsList = [];
-  List<ModelInfo> _ollamaModelsList = [];
-  List<ModelInfo> _qwenModelsList = [];
-  List<ModelInfo> _xAiModelsList = [];
-  List<ModelInfo> _zAiModelsList = [];
-  List<ModelInfo> _mistralModelsList = [];
+  final List<ModelInfo> _vertexAiModelsList = [];
+  final List<ModelInfo> _blackboxAiModelsList = [];
+  final List<ModelInfo> _minimaxModelsList = [];
+  final List<ModelInfo> _openAiCompatibleModelsList = [];
+  final List<ModelInfo> _deepseekModelsList = [];
+  final List<ModelInfo> _ollamaModelsList = [];
+  final List<ModelInfo> _qwenModelsList = [];
+  final List<ModelInfo> _xAiModelsList = [];
+  final List<ModelInfo> _zAiModelsList = [];
+  final List<ModelInfo> _mistralModelsList = [];
 
   List<ModelInfo> get geminiModelsList => _geminiModelsList;
   List<ModelInfo> get openRouterModelsList => _openRouterModelsList;
@@ -139,22 +139,22 @@ class ChatProvider extends ChangeNotifier {
   String _nanoGptKey = '';
   String _huggingFaceKey = '';
   String _groqKey = '';
-  String _vertexAiKey = '';
-  String _blackboxAiKey = '';
-  String _minimaxKey = '';
-  String _openAiCompatibleKey = '';
-  String _deepseekKey = '';
-  String _ollamaKey = '';
-  String _qwenKey = '';
-  String _xAiKey = '';
-  String _zAiKey = '';
-  String _mistralKey = '';
+  final String _vertexAiKey = '';
+  final String _blackboxAiKey = '';
+  final String _minimaxKey = '';
+  final String _openAiCompatibleKey = '';
+  final String _deepseekKey = '';
+  final String _ollamaKey = '';
+  final String _qwenKey = '';
+  final String _xAiKey = '';
+  final String _zAiKey = '';
+  final String _mistralKey = '';
   String _localIp = ChatDefaults.localIp;
   String _localModelName = 'local-model';
   String _vertexAiEndpoint = '';
   String _openAiCompatibleEndpoint = '';
   String _ollamaEndpoint = 'http://localhost:11434';
-  Set<AiProvider> _starredProviders = {};
+  final Set<AiProvider> _starredProviders = {};
 
   AiProvider get currentProvider => _currentProvider;
   String get geminiKey => _geminiKey;
@@ -189,16 +189,16 @@ class ChatProvider extends ChangeNotifier {
   String _openAiModel = 'gpt-4o';
   String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
   String _groqModel = 'llama3-8b-8192';
-  String _vertexAiModel = '';
-  String _blackboxAiModel = '';
-  String _minimaxModel = '';
-  String _openAiCompatibleModel = '';
-  String _deepseekModel = '';
-  String _ollamaModel = '';
-  String _qwenModel = '';
-  String _xAiModel = '';
-  String _zAiModel = '';
-  String _mistralModel = '';
+  final String _vertexAiModel = '';
+  final String _blackboxAiModel = '';
+  final String _minimaxModel = '';
+  final String _openAiCompatibleModel = '';
+  final String _deepseekModel = '';
+  final String _ollamaModel = '';
+  final String _qwenModel = '';
+  final String _xAiModel = '';
+  final String _zAiModel = '';
+  final String _mistralModel = '';
   String _selectedModel = 'models/gemini-3-flash-preview';
 
   String get selectedGeminiModel => _selectedGeminiModel;
@@ -2345,10 +2345,17 @@ class ChatProvider extends ChangeNotifier {
     final finalSystemInstruction = _buildSystemInstruction();
 
     String? currentBg = backgroundImagePath;
+    bool isBookmarked = false;
     if (!clearBackground && currentBg == null) {
       final existingIndex = _savedSessions.indexWhere((s) => s.id == sessionId);
       if (existingIndex != -1) {
         currentBg = _savedSessions[existingIndex].backgroundImage;
+        isBookmarked = _savedSessions[existingIndex].isBookmarked;
+      }
+    } else {
+      final existingIndex = _savedSessions.indexWhere((s) => s.id == sessionId);
+      if (existingIndex != -1) {
+        isBookmarked = _savedSessions[existingIndex].isBookmarked;
       }
     }
 
@@ -2361,6 +2368,7 @@ class ChatProvider extends ChangeNotifier {
       systemInstruction: finalSystemInstruction,
       backgroundImage: currentBg,
       provider: providerNameSnapshot,
+      isBookmarked: isBookmarked,
     );
 
     _savedSessions.removeWhere((s) => s.id == sessionId);
@@ -2401,9 +2409,16 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString('airp_sessions', data);
   }
 
-  void createNewSession() {
+  void createNewSession({bool saveCurrent = true}) {
+    // Reuse the current empty conversation to avoid duplicate blank sessions.
+    if (_messages.isEmpty && _currentTitle.isEmpty) {
+      notifyListeners();
+      initializeModel();
+      return;
+    }
+
     // Save current session before switching if it has content
-    if (_messages.isNotEmpty) {
+    if (saveCurrent && _messages.isNotEmpty) {
       autoSaveCurrentSession();
     }
 
@@ -2478,7 +2493,7 @@ class ChatProvider extends ChangeNotifier {
     initializeModel();
   }
 
-  void deleteSession(String id) async {
+  Future<void> deleteSession(String id) async {
     // Cancel any active stream for this session
     final sub = _activeStreams.remove(id);
     if (sub != null) {
@@ -2490,7 +2505,7 @@ class ChatProvider extends ChangeNotifier {
 
     _savedSessions.removeWhere((s) => s.id == id);
     if (id == _currentSessionId) {
-      createNewSession();
+      createNewSession(saveCurrent: false);
     } else {
       notifyListeners();
     }

@@ -440,8 +440,9 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                   ),
                   icon: const Icon(Icons.delete_forever, color: Colors.white),
                   label: const Text("DELETE"),
-                  onPressed: () {
-                    chatProvider.deleteSession(session.id);
+                  onPressed: () async {
+                    await chatProvider.deleteSession(session.id);
+                    if (!context.mounted) return;
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
