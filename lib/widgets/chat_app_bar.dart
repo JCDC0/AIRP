@@ -118,77 +118,13 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         icon: Icon(Icons.menu, size: scaleProvider.iconScale * 24),
         onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
       ),
-      title: PopupMenuButton<AiProvider>(
-        initialValue: chatProvider.currentProvider,
-        color: themeProvider.dropdownColor,
-        shadowColor: themeProvider.enableBloom
-            ? themeProvider.bloomGlowColor.withOpacity(0.5)
-            : null,
-        elevation: themeProvider.enableBloom ? 12 : 8,
-        onSelected: (AiProvider result) {
-          chatProvider.setProvider(result);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "Switched to ${_providerDisplayName(result)}",
-              ),
-            ),
-          );
-        },
-        itemBuilder: (BuildContext context) {
-          final List<AiProvider> sortedProviders =
-              List<AiProvider>.from(AiProvider.values);
-          sortedProviders.sort((a, b) {
-            final bool aStarred = chatProvider.starredProviders.contains(a);
-            final bool bStarred = chatProvider.starredProviders.contains(b);
-            if (aStarred && !bStarred) return -1;
-            if (!aStarred && bStarred) return 1;
-            return _providerDisplayName(a)
-                .compareTo(_providerDisplayName(b));
-          });
-
-          return sortedProviders
-              .map(
-                (provider) => PopupMenuItem<AiProvider>(
-                  enabled: false,
-                  height: scaleProvider.systemFontSize * 2.5,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => Navigator.pop(context, provider),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text(
-                              _providerDisplayName(provider),
-                              style: TextStyle(
-                                  fontSize: scaleProvider.systemFontSize),
-                            ),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          chatProvider.starredProviders.contains(provider)
-                              ? Icons.star
-                              : Icons.star_border,
-                          size: scaleProvider.systemFontSize * 1.2,
-                          color: chatProvider.starredProviders
-                                  .contains(provider)
-                              ? Colors.amber
-                              : themeProvider.subtitleColor,
-                        ),
-                        onPressed: () {
-                          chatProvider.toggleProviderStar(provider);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              )
-              .toList();
-        },
+      title: GestureDetector(
+        onTap: () => _showProviderPicker(
+          context,
+          chatProvider,
+          themeProvider,
+          scaleProvider,
+        ),
         child: SizedBox(
           width: 300 + (scaleProvider.systemFontSize * 10),
           child: Padding(
@@ -305,6 +241,102 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
     );
+  }
+
+  /// Shows a reactive provider picker dialog.
+  ///
+  /// The dialog wraps its content in a [Consumer<ChatProvider>] so that
+  /// toggling the star on a provider immediately updates the icon and
+  /// re-sorts the list without needing to close and reopen the menu.
+  static void _showProviderPicker(
+    BuildContext context,
+    ChatProvider chatProvider,
+    ThemeProvider themeProvider,
+    ScaleProvider scaleProvider,
+  ) {
+    showDialog<AiProvider>(
+      context: context,
+      barrierColor: Colors.black26,
+      builder: (dialogContext) => Consumer<ChatProvider>(
+        builder: (ctx, cp, _) {
+          final List<AiProvider> sortedProviders =
+              List<AiProvider>.from(AiProvider.values);
+          sortedProviders.sort((a, b) {
+            final bool aStarred = cp.starredProviders.contains(a);
+            final bool bStarred = cp.starredProviders.contains(b);
+            if (aStarred && !bStarred) return -1;
+            if (!aStarred && bStarred) return 1;
+            return _providerDisplayName(a).compareTo(_providerDisplayName(b));
+          });
+
+          return Dialog(
+            backgroundColor: themeProvider.dropdownColor,
+            elevation: themeProvider.enableBloom ? 12 : 8,
+            shadowColor: themeProvider.enableBloom
+                ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                : null,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: sortedProviders.length,
+              itemBuilder: (_, i) {
+                final AiProvider provider = sortedProviders[i];
+                final bool isStarred = cp.starredProviders.contains(provider);
+                return SizedBox(
+                  height: scaleProvider.systemFontSize * 2.5,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () =>
+                              Navigator.of(dialogContext).pop(provider),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8,
+                              horizontal: 16,
+                            ),
+                            child: Text(
+                              _providerDisplayName(provider),
+                              style: TextStyle(
+                                fontSize: scaleProvider.systemFontSize,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          isStarred ? Icons.star : Icons.star_border,
+                          size: scaleProvider.systemFontSize * 1.2,
+                          color: isStarred
+                              ? Colors.amber
+                              : themeProvider.subtitleColor,
+                        ),
+                        onPressed: () => cp.toggleProviderStar(provider),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    ).then((AiProvider? result) {
+      if (result != null) {
+        chatProvider.setProvider(result);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Switched to ${_providerDisplayName(result)}",
+            ),
+          ),
+        );
+      }
+    });
   }
 
   /// Helper to build a standard [ModelSelector] for providers that maintain
