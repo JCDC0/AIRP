@@ -2299,9 +2299,11 @@ class ChatProvider extends ChangeNotifier {
 
     final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
 
-    // Start new conversation with the message that triggered fork
-    // and all messages up to that point
-    final forkedMessages = _messages.sublist(0, messageIndex + 1);
+    // Start new conversation with only the selected message bubble.
+    final selectedMessage = _messages[messageIndex].copyWith(
+      clearContentNotifier: true,
+    );
+    final forkedMessages = [selectedMessage];
 
     final newSession = ChatSessionData(
       id: newSessionId,

@@ -164,7 +164,7 @@ This document outlines the planned progression for AIRP, transitioning from its 
 3. **[COMPLETE] Phase 3 (v0.5.11):** Light mode system with full codebase color adaptation. Implemented 20+ semantic color getters in ThemeProvider, replaced ~170 hardcoded color references across 21 files. Fixed icon consistency (circular backgrounds with static borders for attachment, scroll, zoom, and send buttons).
 4. **[COMPLETE] Phase 4 (v0.5.12):** Implemented Lorebook system with full SillyTavern Character Book V2 parity, Regex Engine with ephemeral modes, Macro Engine as shared foundation, Advanced Formatting templates, and importable Preset packs. Updated CharacterCard model with V2 spec fields (creatorNotes, tags, characterBook, postHistoryInstructions, alternateGreetings, depth_prompt). Split system_prompt_panel.dart into 5 panel widgets. Fixed 7 bugs. Settings drawer expanded to 12 tiles. Library export/import extended with character card and SillyTavern state persistence. Incremental commits 0.5.12.1 through 0.5.12.11.
 5. **[IN PROGRESS] Phase 5 (v0.5.13):** [DONE] Eliminated all `dart:io` from UI/service layers via centralized `FileIOHelper` with conditional imports; web-safe import/export, chat attachments, message display, and theming. [DONE] Improved device detection using `defaultTargetPlatform` + `shortestSide` breakpoint; updated layout defaults for phone/tablet/desktop. [PENDING] Fix image gen to actually render generated images (download bytes → store in `ChatMessage.aiImage` → render via `Image.memory`). [PENDING] Fix PDF, doc/docx, and video attachment pipeline inconsistencies. [PENDING] Improve image gen provider guard UI.
-6. **[COMPLETE] Phase 6 (v0.5.14):** Multi-Provider Integration. Integrated 10 new API providers (Vertex AI, Blackbox AI, Minimax, OpenAI Compatible, Deepseek, Ollama, Qwen, xAI, Z.ai, Mistral) using the existing OpenAI-compatible pipeline architecture. Added endpoint configurations for custom hostings in the settings UI. Fixed an issue where system prompts did not persist in the settings UI after reloading the web app by adding active synchronization to the SettingsDrawer text controllers. Refined the message fork feature to spawn a new conversation containing strictly the selected chat bubble, rather than copying the entire preceding conversation history.
+6. **[COMPLETE] Phase 6 (v0.5.14):** Multi-Provider Integration. Integrated 10 new API providers (Vertex AI, Blackbox AI, Minimax, OpenAI Compatible, Deepseek, Ollama, Qwen, xAI, Z.ai, Mistral) using the existing OpenAI-compatible pipeline architecture. Added endpoint configurations for custom hostings in the settings UI. Fixed an issue where system prompts did not persist in the settings UI after reloading the web app by adding active synchronization to the SettingsDrawer text controllers. Refined the message fork feature to spawn a new conversation containing only the selected chat bubble. Follow-up patch releases streamlined provider/model settings flow, expanded selected-model details, fixed provider menu starring so the menu stays open until an actual provider is chosen, and fixed conversation bookmark and deletion persistence.
 7. **Phase 7 (v0.6.0):** Execute the complete codebase efficiency and modular architecture overhaul as detailed in the v0.6 roadmap.
 
 **Constraint:** Ensure all UI changes respect `ScaleProvider` and `ThemeProvider` for consistent Material 3 styling and responsive scaling.
@@ -190,3 +190,36 @@ Integrated comprehensive model discovery tracking into the settings space by bui
 
 0.5.14.4 - Fix TextField Resets & Apply Documentation Sync
 Addressed the persistent single-character overwrite bug within ProviderModelSelector during manual model input by introducing a FocusNode constraint to conditionally block widget text synchronizations while the user is actively typing mitigating rapid-fire rebuild race conditions. Integrated external README and suggested_features documentation adjustments aligning local branch states with user-driven roadmap updates.
+
+0.5.14.5 - Streamline Provider Settings and Core Model Flow
+Refined provider and model settings behavior by simplifying active ChatProvider state paths, reducing unsupported provider branching in the current selection flow, removing manual model input gating inside the selector path, and improving selected-model pricing display formatting within the settings panel. Included dependency lockfile refresh and generated plugin metadata updates while bumping the visible app version.
+
+0.5.14.6 - Fix Provider Menu and Conversation Persistence Bugs
+Fixed provider dropdown behavior so starring a provider no longer closes the menu and only selecting a provider closes and switches context. Preserved conversation bookmarks during autosave so starred chats remain starred after switching sessions, and fixed current-session deletion flow so deleted conversations do not linger through accidental resave. Reused the active empty conversation instead of creating duplicate blank sessions while bumping the app version.
+
+---
+
+## 🎯 Pre-1.0 Final Feature Slate
+
+The goal before 1.0.0 is feature-complete stability on top of the existing architecture, followed by the full modular optimization pass.
+
+### 0.7.0 - Attachment and Image Reliability Hardening [PLANNED]
+
+- Complete pending v0.5.13 attachment/image items: image-generation render pipeline, provider capability guards, PDF and doc/docx handling parity, and explicit unsupported-format feedback.
+- Add an end-to-end attachment validation matrix (provider x file type x platform) and close silent-drop paths.
+
+### 0.8.0 - Session and Conversation UX Polish [PLANNED]
+
+- Finalize session ergonomics: robust title generation, deterministic new-chat behavior, improved fork/discoverability UX, and clearer empty states.
+- Improve long-session handling (scroll behavior, resume behavior, and background stream handoff visibility).
+
+### 0.9.0 - Production Readiness and Guardrails [PLANNED]
+
+- Add focused regression tests around session persistence, provider switching, and attachment pipelines.
+- Resolve high-impact analyzer debt categories (deprecated keyboard APIs, async context safety hotspots, direct dependency declarations).
+- Add error-surface consistency for provider/API failures and edge-case recoverability.
+
+### 1.0.0 - Full Architecture Rework and Optimization [TARGET]
+
+- Execute the planned decomposition and optimization roadmap currently described under v0.6.0, promoted as the 1.0.0 architecture milestone.
+- Deliver modular service boundaries, reduced rebuild pressure, cleaner persistence orchestration, and maintainability improvements without feature regressions.
