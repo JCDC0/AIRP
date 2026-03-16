@@ -470,7 +470,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     key: Key('preset_${widget.resetVersion}'),
                     initiallyExpanded: false,
                     title: Text(
-                      "Custom Rules & Presets",
+                      "Config Packs",
                       style: TextStyle(
                         color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
@@ -505,7 +505,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     key: Key('regex_${widget.resetVersion}'),
                     initiallyExpanded: false,
                     title: Text(
-                      "Regex Scripts",
+                      "Text Transforms",
                       style: TextStyle(
                         color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
@@ -532,7 +532,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     key: Key('formatting_${widget.resetVersion}'),
                     initiallyExpanded: false,
                     title: Text(
-                      "Advanced Formatting",
+                      "Style Rules",
                       style: TextStyle(
                         color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,

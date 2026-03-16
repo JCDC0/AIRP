@@ -67,7 +67,7 @@ class _FormattingPanelState extends State<FormattingPanel> {
                 color: Colors.redAccent,
                 fontSize: scaleProvider.systemFontSize)),
         content: Text(
-          'This will remove all formatting rules.\n\nThis cannot be undone.',
+          'This will remove all style rules.\n\nThis cannot be undone.',
           style: TextStyle(
               color: themeProvider.subtitleColor,
               fontSize: scaleProvider.systemFontSize * 0.8),
@@ -218,7 +218,7 @@ class _FormattingPanelState extends State<FormattingPanel> {
 
             return AlertDialog(
               backgroundColor: themeProvider.dropdownColor,
-              title: Text('Edit Formatting Rule',
+              title: Text('Edit Style Rule',
                   style: TextStyle(
                       color: themeProvider.textColor,
                       fontSize: scaleProvider.systemFontSize)),
@@ -405,7 +405,7 @@ class _FormattingPanelState extends State<FormattingPanel> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Invalid formatting template file.')),
+                content: Text('Invalid style rule file.')),
           );
         }
         return;
@@ -454,12 +454,12 @@ class _FormattingPanelState extends State<FormattingPanel> {
         bytes: bytes,
         fileName: '${template.name.isNotEmpty ? template.name : "template"}.json',
         extensions: ['json'],
-        dialogTitle: 'Export Formatting Template',
+        dialogTitle: 'Export Style Rule',
       );
 
       if (saved && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Formatting template exported!')),
+          const SnackBar(content: Text('Style rule exported!')),
         );
       }
     } catch (e) {
@@ -613,7 +613,7 @@ class _FormattingPanelState extends State<FormattingPanel> {
                       Icon(Icons.text_format,
                           size: 48, color: themeProvider.faintColor),
                       const SizedBox(height: 12),
-                      Text('No formatting rules defined.',
+                      Text('No style rules defined.',
                           style: TextStyle(
                               color: themeProvider.faintColor,
                               fontSize:

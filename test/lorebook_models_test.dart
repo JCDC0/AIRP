@@ -6,7 +6,7 @@ void main() {
     test('default constructor applies sensible defaults', () {
       final book = Lorebook();
       expect(book.name, '');
-      expect(book.scanDepth, 2);
+      expect(book.scanDepth, 10);
       expect(book.tokenBudget, 2048);
       expect(book.recursionSteps, 0);
       expect(book.caseSensitive, false);

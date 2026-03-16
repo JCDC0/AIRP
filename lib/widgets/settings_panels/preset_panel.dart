@@ -164,12 +164,12 @@ class _PresetPanelState extends State<PresetPanel> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Imported preset '${preset.name}'!")),
+            SnackBar(content: Text("Imported config pack '${preset.name}'!")),
           );
         }
       }
     } catch (e) {
-      debugPrint("Import preset failed: $e");
+      debugPrint("Import config pack failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Import failed: $e")),
@@ -188,7 +188,7 @@ class _PresetPanelState extends State<PresetPanel> {
     final preset = SystemPreset(
       name: widget.promptTitleController.text.isNotEmpty
           ? widget.promptTitleController.text
-          : "Untitled Preset",
+          : "Untitled Config Pack",
       systemPrompt: widget.mainPromptController.text,
       advancedPrompt: widget.advancedPromptController.text,
       customRules: _customRules,
@@ -208,12 +208,12 @@ class _PresetPanelState extends State<PresetPanel> {
         fileName:
             '${preset.name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.json',
         extensions: ['json'],
-        dialogTitle: 'Export Preset',
+        dialogTitle: 'Export Config Pack',
       );
 
       if (saved && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Preset exported!")),
+          const SnackBar(content: Text("Config pack exported!")),
         );
       }
     } catch (e) {

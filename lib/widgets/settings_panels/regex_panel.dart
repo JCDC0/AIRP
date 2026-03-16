@@ -196,7 +196,7 @@ class _RegexPanelState extends State<RegexPanel> {
 
             return AlertDialog(
               backgroundColor: themeProvider.dropdownColor,
-              title: Text('Edit Regex Script',
+              title: Text('Edit Text Transform',
                   style: TextStyle(
                       color: themeProvider.textColor,
                       fontSize: scaleProvider.systemFontSize)),
@@ -623,7 +623,7 @@ class _RegexPanelState extends State<RegexPanel> {
       if (imported.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No valid regex scripts found.')),
+            const SnackBar(content: Text('No valid text transforms found.')),
           );
         }
         return;
@@ -642,7 +642,7 @@ class _RegexPanelState extends State<RegexPanel> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content:
-                  Text('Imported ${imported.length} regex script(s).')),
+                  Text('Imported ${imported.length} text transform(s).')),
         );
       }
     } catch (e) {
@@ -676,12 +676,12 @@ class _RegexPanelState extends State<RegexPanel> {
         bytes: bytes,
         fileName: 'regex_scripts.json',
         extensions: ['json'],
-        dialogTitle: 'Export Regex Scripts',
+        dialogTitle: 'Export Text Transforms',
       );
 
       if (saved && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Regex scripts exported!')),
+          const SnackBar(content: Text('Text transforms exported!')),
         );
       }
     } catch (e) {
@@ -861,7 +861,7 @@ class _RegexPanelState extends State<RegexPanel> {
                       Icon(Icons.find_replace,
                           size: 48, color: themeProvider.faintColor),
                       const SizedBox(height: 12),
-                      Text('No global regex scripts defined.',
+                      Text('No global text transforms defined.',
                           style: TextStyle(
                               color: themeProvider.faintColor,
                               fontSize:

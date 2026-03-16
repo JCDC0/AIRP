@@ -755,7 +755,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
 
     return ExpansionTile(
       title: Text(
-        'Lorebook ($entryCount entries)',
+        'World Lore ($entryCount entries)',
         style: TextStyle(
           fontSize: scaleProvider.systemFontSize * 0.85,
           color: themeProvider.subtitleColor,
@@ -772,7 +772,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                     size: 36, color: themeProvider.faintColor),
                 const SizedBox(height: 8),
                 Text(
-                  'No embedded lorebook.',
+                  'No embedded world lore.',
                   style: TextStyle(
                       color: themeProvider.faintColor,
                       fontSize: scaleProvider.systemFontSize * 0.85),
@@ -780,7 +780,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Import a character card with a lorebook to see entries here.',
+                  'Import a character card with world lore to see entries here.',
                   style: TextStyle(
                       color: themeProvider.faintestColor,
                       fontSize: scaleProvider.systemFontSize * 0.7),

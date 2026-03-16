@@ -1,9 +1,8 @@
+import 'dart:developer' as developer;
 import 'dart:math';
 
 import '../models/lorebook_models.dart';
 import 'lorebook_state_service.dart';
-
-/// Result of evaluating lorebook entries against a set of messages.
 ///
 /// Contains entries grouped by their [LorebookPosition] for downstream
 /// prompt construction.  The caller can iterate [byPosition] to inject
@@ -145,14 +144,14 @@ class LorebookService {
   // Keyword matching
   // ---------------------------------------------------------------------------
 
-  /// Checks whether any of [keys] appear in [corpus].
-  static bool _matchesKeys(
+  /// Returns the matching key, or null if none match.
+  static String? _matchesKeys(
     List<String> keys,
     String corpus, {
     required bool caseSensitive,
     required bool matchWholeWords,
   }) {
-    if (keys.isEmpty) return false;
+    if (keys.isEmpty) return null;
 
     final effectiveCorpus = caseSensitive ? corpus : corpus.toLowerCase();
 
@@ -166,12 +165,12 @@ class LorebookService {
           r'\b' + escaped + r'\b',
           caseSensitive: caseSensitive,
         );
-        if (pattern.hasMatch(corpus)) return true;
+        if (pattern.hasMatch(corpus)) return key;
       } else {
-        if (effectiveCorpus.contains(effectiveKey)) return true;
+        if (effectiveCorpus.contains(effectiveKey)) return key;
       }
     }
-    return false;
+    return null;
   }
 
   // ---------------------------------------------------------------------------
@@ -186,18 +185,26 @@ class LorebookService {
     required bool matchWholeWords,
     LorebookSessionState? sessionState,
   }) {
+    final entryLabel = entry.comment.isNotEmpty ? entry.comment : 'UID:${entry.id}';
+
     // Constant entries always activate (no keyword matching needed).
     if (entry.strategy == LorebookStrategy.constant) {
-      return _passTimedEffects(entry, sessionState);
+      bool passed = _passTimedEffects(entry, sessionState);
+      if (passed) {
+        developer.log('[$entryLabel] activated (Constant)', name: 'Lorebook');
+      }
+      return passed;
     }
 
     // Primary keyword match.
-    if (!_matchesKeys(
+    final matchedKey = _matchesKeys(
       entry.keys,
       corpus,
       caseSensitive: caseSensitive,
       matchWholeWords: matchWholeWords,
-    )) {
+    );
+
+    if (matchedKey == null) {
       return false;
     }
 
@@ -212,20 +219,29 @@ class LorebookService {
 
       if (entry.selectiveLogic) {
         // AND mode: secondary keys MUST also match.
-        if (!secondaryHit) return false;
+        if (secondaryHit == null) return false;
       } else {
         // NOT mode: secondary keys must NOT match.
-        if (secondaryHit) return false;
+        if (secondaryHit != null) return false;
       }
     }
 
     // Probability roll.
     if (entry.probability < 100) {
-      if (_rng.nextInt(100) >= entry.probability) return false;
+      if (_rng.nextInt(100) >= entry.probability) {
+        developer.log('[$entryLabel] matched "$matchedKey" but failed probability roll (${entry.probability}%)', name: 'Lorebook');
+        return false;
+      }
     }
 
     // Timed effects.
-    return _passTimedEffects(entry, sessionState);
+    bool passed = _passTimedEffects(entry, sessionState);
+    if (passed) {
+      developer.log('[$entryLabel] activated via keyword: "$matchedKey"', name: 'Lorebook');
+    } else {
+      developer.log('[$entryLabel] matched "$matchedKey" but blocked by Timed Effects', name: 'Lorebook');
+    }
+    return passed;
   }
 
   /// Checks delay, cooldown, and sticky timed effects.
