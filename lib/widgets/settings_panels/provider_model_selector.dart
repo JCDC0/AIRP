@@ -117,11 +117,10 @@ class _ProviderModelSelectorState extends State<ProviderModelSelector> {
             ),
             style: TextStyle(fontSize: scaleProvider.systemFontSize),
             onChanged: (val) {
-               // Update parent state but don't force a cursor reset
-               widget.onSelected(val);
+              // Update parent state but don't force a cursor reset
+              widget.onSelected(val);
             },
           ),
-
 
         const SizedBox(height: 8),
 

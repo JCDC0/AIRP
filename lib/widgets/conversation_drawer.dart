@@ -48,7 +48,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
     return Material(
       elevation: themeProvider.enableBloom ? 20 : 16,
       shadowColor: themeProvider.enableBloom
-          ? themeProvider.bloomGlowColor.withOpacity(0.3)
+          ? themeProvider.bloomGlowColor.withValues(alpha: 0.3)
           : null,
       color: themeProvider.scaffoldBackgroundColor,
       child: SizedBox(
@@ -136,16 +136,16 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                       borderRadius: BorderRadius.circular(20),
                       border: themeProvider.enableBloom
                           ? Border.all(
-                              color: themeProvider.bloomGlowColor.withOpacity(
-                                0.3,
+                              color: themeProvider.bloomGlowColor.withValues(
+                                alpha: 0.3,
                               ),
                             )
                           : null,
                       boxShadow: themeProvider.enableBloom
                           ? [
                               BoxShadow(
-                                color: themeProvider.bloomGlowColor.withOpacity(
-                                  0.1,
+                                color: themeProvider.bloomGlowColor.withValues(
+                                  alpha: 0.1,
                                 ),
                                 blurRadius: 6,
                               ),
@@ -350,7 +350,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
         boxShadow: (isActive && themeProvider.enableBloom)
             ? [
                 BoxShadow(
-                  color: themeProvider.bloomGlowColor.withOpacity(0.2),
+                  color: themeProvider.bloomGlowColor.withValues(alpha: 0.2),
                   blurRadius: 8,
                   spreadRadius: 1,
                 ),
@@ -568,13 +568,13 @@ class _BackgroundNotificationCardState
             color: theme.surfaceDimColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.bloomGlowColor.withOpacity(0.4),
+              color: theme.bloomGlowColor.withValues(alpha: 0.4),
               width: 1,
             ),
             boxShadow: theme.enableBloom
                 ? [
                     BoxShadow(
-                      color: theme.bloomGlowColor.withOpacity(0.2),
+                      color: theme.bloomGlowColor.withValues(alpha: 0.2),
                       blurRadius: 12,
                       spreadRadius: 1,
                     ),

@@ -65,9 +65,15 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
     _apiKeyController = TextEditingController(text: _getApiKey(chatProvider));
     _localIpController = TextEditingController(text: chatProvider.localIp);
-    _vertexAiEndpointController = TextEditingController(text: chatProvider.vertexAiEndpoint);
-    _openAiCompatibleEndpointController = TextEditingController(text: chatProvider.openAiCompatibleEndpoint);
-    _ollamaEndpointController = TextEditingController(text: chatProvider.ollamaEndpoint);
+    _vertexAiEndpointController = TextEditingController(
+      text: chatProvider.vertexAiEndpoint,
+    );
+    _openAiCompatibleEndpointController = TextEditingController(
+      text: chatProvider.openAiCompatibleEndpoint,
+    );
+    _ollamaEndpointController = TextEditingController(
+      text: chatProvider.ollamaEndpoint,
+    );
     _titleController = TextEditingController(text: chatProvider.currentTitle);
     _promptTitleController = TextEditingController();
     _openRouterModelController = TextEditingController(
@@ -85,7 +91,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     _lastSyncedApiKey = _apiKeyController.text;
     _lastSyncedLocalIp = _localIpController.text;
     _lastSyncedVertexAiEndpoint = _vertexAiEndpointController.text;
-    _lastSyncedOpenAiCompatibleEndpoint = _openAiCompatibleEndpointController.text;
+    _lastSyncedOpenAiCompatibleEndpoint =
+        _openAiCompatibleEndpointController.text;
     _lastSyncedOllamaEndpoint = _ollamaEndpointController.text;
     _lastSyncedTitle = _titleController.text;
     _lastSyncedOpenRouterModel = _openRouterModelController.text;
@@ -116,7 +123,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       case AiProvider.arliAi:
         return provider.arliAiKey;
       case AiProvider.nanoGpt:
-      case AiProvider.nanoGptImage:  // Shared key
+      case AiProvider.nanoGptImage: // Shared key
         return provider.nanoGptKey;
       case AiProvider.huggingFace:
         return provider.huggingFaceKey;
@@ -158,7 +165,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     chatProvider.setApiKey(_apiKeyController.text.trim());
     chatProvider.setLocalIp(_localIpController.text.trim());
     chatProvider.setVertexAiEndpoint(_vertexAiEndpointController.text.trim());
-    chatProvider.setOpenAiCompatibleEndpoint(_openAiCompatibleEndpointController.text.trim());
+    chatProvider.setOpenAiCompatibleEndpoint(
+      _openAiCompatibleEndpointController.text.trim(),
+    );
     chatProvider.setOllamaEndpoint(_ollamaEndpointController.text.trim());
     chatProvider.setTitle(_titleController.text.trim());
 
@@ -199,9 +208,13 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     if (_apiKeyController.text != _getApiKey(chatProvider)) hasChanges = true;
 
     if (_localIpController.text != chatProvider.localIp) hasChanges = true;
-    if (_vertexAiEndpointController.text != chatProvider.vertexAiEndpoint) hasChanges = true;
-    if (_openAiCompatibleEndpointController.text != chatProvider.openAiCompatibleEndpoint) hasChanges = true;
-    if (_ollamaEndpointController.text != chatProvider.ollamaEndpoint) hasChanges = true;
+    if (_vertexAiEndpointController.text != chatProvider.vertexAiEndpoint)
+      hasChanges = true;
+    if (_openAiCompatibleEndpointController.text !=
+        chatProvider.openAiCompatibleEndpoint)
+      hasChanges = true;
+    if (_ollamaEndpointController.text != chatProvider.ollamaEndpoint)
+      hasChanges = true;
 
     if (_titleController.text != chatProvider.currentTitle) hasChanges = true;
 
@@ -271,11 +284,15 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       _lastSyncedVertexAiEndpoint = chatProvider.vertexAiEndpoint;
     }
 
-    if (chatProvider.openAiCompatibleEndpoint != _lastSyncedOpenAiCompatibleEndpoint) {
-      if (_openAiCompatibleEndpointController.text != chatProvider.openAiCompatibleEndpoint) {
-        _openAiCompatibleEndpointController.text = chatProvider.openAiCompatibleEndpoint;
+    if (chatProvider.openAiCompatibleEndpoint !=
+        _lastSyncedOpenAiCompatibleEndpoint) {
+      if (_openAiCompatibleEndpointController.text !=
+          chatProvider.openAiCompatibleEndpoint) {
+        _openAiCompatibleEndpointController.text =
+            chatProvider.openAiCompatibleEndpoint;
       }
-      _lastSyncedOpenAiCompatibleEndpoint = chatProvider.openAiCompatibleEndpoint;
+      _lastSyncedOpenAiCompatibleEndpoint =
+          chatProvider.openAiCompatibleEndpoint;
     }
 
     if (chatProvider.ollamaEndpoint != _lastSyncedOllamaEndpoint) {
@@ -318,7 +335,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     }
 
     if (chatProvider.advancedSystemInstruction != _lastSyncedAdvancedPrompt) {
-      if (_advancedPromptController.text != chatProvider.advancedSystemInstruction) {
+      if (_advancedPromptController.text !=
+          chatProvider.advancedSystemInstruction) {
         _advancedPromptController.text = chatProvider.advancedSystemInstruction;
       }
       _lastSyncedAdvancedPrompt = chatProvider.advancedSystemInstruction;
@@ -336,7 +354,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     return Material(
       elevation: themeProvider.enableBloom ? 30 : 16,
       shadowColor: themeProvider.enableBloom
-          ? themeProvider.bloomGlowColor.withOpacity(0.9)
+          ? themeProvider.bloomGlowColor.withValues(alpha: 0.9)
           : null,
       color: themeProvider.scaffoldBackgroundColor,
       child: SizedBox(
@@ -371,7 +389,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         apiKeyController: _apiKeyController,
                         localIpController: _localIpController,
                         vertexAiEndpointController: _vertexAiEndpointController,
-                        openAiCompatibleEndpointController: _openAiCompatibleEndpointController,
+                        openAiCompatibleEndpointController:
+                            _openAiCompatibleEndpointController,
                         ollamaEndpointController: _ollamaEndpointController,
                       ),
                     ],
@@ -410,7 +429,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                         shadows: themeProvider.enableBloom
-                            ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                            ? [
+                                Shadow(
+                                  color: themeProvider.bloomGlowColor,
+                                  blurRadius: 10,
+                                ),
+                              ]
                             : [],
                       ),
                     ),
@@ -437,7 +461,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   // --- Character Card ---
                   ExpansionTile(
                     key: Key('character_card_${widget.resetVersion}'),
-                    initiallyExpanded: chatProvider.characterCard.name.isNotEmpty,
+                    initiallyExpanded:
+                        chatProvider.characterCard.name.isNotEmpty,
                     title: Text(
                       "Character Card",
                       style: TextStyle(
@@ -476,7 +501,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                         shadows: themeProvider.enableBloom
-                            ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                            ? [
+                                Shadow(
+                                  color: themeProvider.bloomGlowColor,
+                                  blurRadius: 10,
+                                ),
+                              ]
                             : [],
                       ),
                     ),
@@ -511,7 +541,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                         shadows: themeProvider.enableBloom
-                            ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                            ? [
+                                Shadow(
+                                  color: themeProvider.bloomGlowColor,
+                                  blurRadius: 10,
+                                ),
+                              ]
                             : [],
                       ),
                     ),
@@ -538,7 +573,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                         shadows: themeProvider.enableBloom
-                            ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                            ? [
+                                Shadow(
+                                  color: themeProvider.bloomGlowColor,
+                                  blurRadius: 10,
+                                ),
+                              ]
                             : [],
                       ),
                     ),

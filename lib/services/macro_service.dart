@@ -183,10 +183,7 @@ class MacroService {
   static final RegExp _tokenPattern = RegExp(r'\{\{(.+?)\}\}');
 
   /// Result of a single resolution pass.
-  static Future<_PassResult> _resolvePass(
-    String text,
-    MacroContext ctx,
-  ) async {
+  static Future<_PassResult> _resolvePass(String text, MacroContext ctx) async {
     bool shouldTrim = false;
 
     final buffer = StringBuffer();
@@ -272,13 +269,11 @@ class MacroService {
       case 'isotime':
         return _TokenResult(DateFormat.Hms().format(DateTime.now()));
       case 'isodate':
-        return _TokenResult(
-            DateFormat('yyyy-MM-dd').format(DateTime.now()));
+        return _TokenResult(DateFormat('yyyy-MM-dd').format(DateTime.now()));
       case 'datetimeformat':
         if (parts.length >= 2) {
           try {
-            return _TokenResult(
-                DateFormat(parts[1]).format(DateTime.now()));
+            return _TokenResult(DateFormat(parts[1]).format(DateTime.now()));
           } catch (_) {
             return _TokenResult('[invalid format: ${parts[1]}]');
           }
@@ -389,7 +384,9 @@ class MacroService {
   /// `{{addvar::name::delta}}` / `{{subvar::name::delta}}`.
   /// [sign] is 1 for add, -1 for subtract.
   static Future<_TokenResult> _resolveAddVar(
-      List<String> parts, int sign) async {
+    List<String> parts,
+    int sign,
+  ) async {
     if (parts.length < 3) return _TokenResult('0');
     final name = parts[1];
     final delta = int.tryParse(parts[2]) ?? 0;
@@ -447,7 +444,5 @@ class _TokenResult {
   final bool isTrim;
 
   const _TokenResult(this.value) : isTrim = false;
-  const _TokenResult.trim()
-      : value = '',
-        isTrim = true;
+  const _TokenResult.trim() : value = '', isTrim = true;
 }

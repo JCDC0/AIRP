@@ -89,7 +89,8 @@ class FormattingService {
     return FormattingTemplate(
       name: 'Default',
       enabled: false,
-      description: 'Starter template with dialogue, thought, narration, '
+      description:
+          'Starter template with dialogue, thought, narration, '
           'and character name rules.',
       rules: [
         FormattingRule(

@@ -186,7 +186,9 @@ class ChatMessage {
       modelName: modelName ?? this.modelName,
       usage: usage ?? this.usage,
       thoughtSignature: thoughtSignature ?? this.thoughtSignature,
-      contentNotifier: clearContentNotifier ? null : (contentNotifier ?? this.contentNotifier),
+      contentNotifier: clearContentNotifier
+          ? null
+          : (contentNotifier ?? this.contentNotifier),
       regenerationVersions: regenerationVersions ?? this.regenerationVersions,
       currentVersionIndex: currentVersionIndex ?? this.currentVersionIndex,
     );
@@ -267,7 +269,8 @@ class ModelInfo {
     // OpenRouter metadata check
     try {
       final modality = rawData?['architecture']?['modality'];
-      if (modality != null && modality.toString().contains('image')) return true;
+      if (modality != null && modality.toString().contains('image'))
+        return true;
     } catch (_) {}
 
     // Substring fallback for providers without metadata
@@ -310,7 +313,8 @@ class ModelInfo {
       pricing: json['pricing'] as String? ?? '',
       created: json['created'] as int?,
       rawData: rawData,
-      isImageGen: json['isImageGen'] as bool? ?? ModelInfo.detectImageGen(id, rawData),
+      isImageGen:
+          json['isImageGen'] as bool? ?? ModelInfo.detectImageGen(id, rawData),
     );
   }
 }

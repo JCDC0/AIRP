@@ -85,28 +85,36 @@ class _RegexPanelState extends State<RegexPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dropdownColor,
-        title: Text('Delete Script?',
-            style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: scaleProvider.systemFontSize)),
+        title: Text(
+          'Delete Script?',
+          style: TextStyle(
+            color: Colors.redAccent,
+            fontSize: scaleProvider.systemFontSize,
+          ),
+        ),
         content: Text(
           "Delete '${script.scriptName.isNotEmpty ? script.scriptName : 'Unnamed'}'?\n\nThis cannot be undone.",
           style: TextStyle(
-              color: themeProvider.subtitleColor,
-              fontSize: scaleProvider.systemFontSize * 0.8),
+            color: themeProvider.subtitleColor,
+            fontSize: scaleProvider.systemFontSize * 0.8,
+          ),
         ),
         actions: [
           TextButton(
-            child: Text('Cancel',
-                style:
-                    TextStyle(fontSize: scaleProvider.systemFontSize * 0.8)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
+            ),
             onPressed: () => Navigator.pop(ctx),
           ),
           TextButton(
-            child: Text('DELETE',
-                style: TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: scaleProvider.systemFontSize * 0.8)),
+            child: Text(
+              'DELETE',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: scaleProvider.systemFontSize * 0.8,
+              ),
+            ),
             onPressed: () {
               final updated = chatProvider.globalRegexScripts
                   .where((s) => s.id != script.id)
@@ -159,13 +167,13 @@ class _RegexPanelState extends State<RegexPanel> {
             );
 
             InputDecoration monoInputDeco(String label) => InputDecoration(
-                  labelText: label,
-                  labelStyle: labelStyle,
-                  filled: true,
-                  fillColor: themeProvider.containerFillDarkColor,
-                  isDense: true,
-                  border: const OutlineInputBorder(),
-                );
+              labelText: label,
+              labelStyle: labelStyle,
+              filled: true,
+              fillColor: themeProvider.containerFillDarkColor,
+              isDense: true,
+              border: const OutlineInputBorder(),
+            );
 
             final monoStyle = TextStyle(
               fontFamily: 'monospace',
@@ -183,7 +191,7 @@ class _RegexPanelState extends State<RegexPanel> {
                     editing.copyWith(
                       findRegex: findCtrl.text,
                       replaceString: replaceCtrl.text,
-                    )
+                    ),
                   ],
                   target: RegexTarget.aiOutput,
                   macroContext: chatProvider.macroContext,
@@ -196,10 +204,13 @@ class _RegexPanelState extends State<RegexPanel> {
 
             return AlertDialog(
               backgroundColor: themeProvider.dropdownColor,
-              title: Text('Edit Text Transform',
-                  style: TextStyle(
-                      color: themeProvider.textColor,
-                      fontSize: scaleProvider.systemFontSize)),
+              title: Text(
+                'Edit Text Transform',
+                style: TextStyle(
+                  color: themeProvider.textColor,
+                  fontSize: scaleProvider.systemFontSize,
+                ),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: SingleChildScrollView(
@@ -247,33 +258,41 @@ class _RegexPanelState extends State<RegexPanel> {
                         runSpacing: 0,
                         children: [
                           _dialogCheck(
-                              'User Input',
-                              editing.affectsUserInput,
-                              (v) => setDialogState(
-                                  () => editing.affectsUserInput = v ?? false),
-                              scaleProvider,
-                              themeProvider),
+                            'User Input',
+                            editing.affectsUserInput,
+                            (v) => setDialogState(
+                              () => editing.affectsUserInput = v ?? false,
+                            ),
+                            scaleProvider,
+                            themeProvider,
+                          ),
                           _dialogCheck(
-                              'AI Output',
-                              editing.affectsAiOutput,
-                              (v) => setDialogState(
-                                  () => editing.affectsAiOutput = v ?? false),
-                              scaleProvider,
-                              themeProvider),
+                            'AI Output',
+                            editing.affectsAiOutput,
+                            (v) => setDialogState(
+                              () => editing.affectsAiOutput = v ?? false,
+                            ),
+                            scaleProvider,
+                            themeProvider,
+                          ),
                           _dialogCheck(
-                              'World Info',
-                              editing.affectsWorldInfo,
-                              (v) => setDialogState(
-                                  () => editing.affectsWorldInfo = v ?? false),
-                              scaleProvider,
-                              themeProvider),
+                            'World Info',
+                            editing.affectsWorldInfo,
+                            (v) => setDialogState(
+                              () => editing.affectsWorldInfo = v ?? false,
+                            ),
+                            scaleProvider,
+                            themeProvider,
+                          ),
                           _dialogCheck(
-                              'Reasoning',
-                              editing.affectsReasoning,
-                              (v) => setDialogState(
-                                  () => editing.affectsReasoning = v ?? false),
-                              scaleProvider,
-                              themeProvider),
+                            'Reasoning',
+                            editing.affectsReasoning,
+                            (v) => setDialogState(
+                              () => editing.affectsReasoning = v ?? false,
+                            ),
+                            scaleProvider,
+                            themeProvider,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -285,27 +304,29 @@ class _RegexPanelState extends State<RegexPanel> {
                         spacing: 4,
                         children: [
                           _dialogCheck(
-                              'Display only',
-                              editing.displayOnly,
-                              (v) => setDialogState(() {
-                                    editing.displayOnly = v ?? false;
-                                    if (editing.displayOnly) {
-                                      editing.promptOnly = false;
-                                    }
-                                  }),
-                              scaleProvider,
-                              themeProvider),
+                            'Display only',
+                            editing.displayOnly,
+                            (v) => setDialogState(() {
+                              editing.displayOnly = v ?? false;
+                              if (editing.displayOnly) {
+                                editing.promptOnly = false;
+                              }
+                            }),
+                            scaleProvider,
+                            themeProvider,
+                          ),
                           _dialogCheck(
-                              'Prompt only',
-                              editing.promptOnly,
-                              (v) => setDialogState(() {
-                                    editing.promptOnly = v ?? false;
-                                    if (editing.promptOnly) {
-                                      editing.displayOnly = false;
-                                    }
-                                  }),
-                              scaleProvider,
-                              themeProvider),
+                            'Prompt only',
+                            editing.promptOnly,
+                            (v) => setDialogState(() {
+                              editing.promptOnly = v ?? false;
+                              if (editing.promptOnly) {
+                                editing.displayOnly = false;
+                              }
+                            }),
+                            scaleProvider,
+                            themeProvider,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -317,33 +338,35 @@ class _RegexPanelState extends State<RegexPanel> {
                         spacing: 6,
                         children: [
                           _flagChip(
-                              'i',
-                              editing.caseInsensitive,
-                              (v) => setDialogState(
-                                  () => editing.caseInsensitive = v),
-                              themeProvider,
-                              scaleProvider),
+                            'i',
+                            editing.caseInsensitive,
+                            (v) => setDialogState(
+                              () => editing.caseInsensitive = v,
+                            ),
+                            themeProvider,
+                            scaleProvider,
+                          ),
                           _flagChip(
-                              's',
-                              editing.dotAll,
-                              (v) =>
-                                  setDialogState(() => editing.dotAll = v),
-                              themeProvider,
-                              scaleProvider),
+                            's',
+                            editing.dotAll,
+                            (v) => setDialogState(() => editing.dotAll = v),
+                            themeProvider,
+                            scaleProvider,
+                          ),
                           _flagChip(
-                              'm',
-                              editing.multiLine,
-                              (v) => setDialogState(
-                                  () => editing.multiLine = v),
-                              themeProvider,
-                              scaleProvider),
+                            'm',
+                            editing.multiLine,
+                            (v) => setDialogState(() => editing.multiLine = v),
+                            themeProvider,
+                            scaleProvider,
+                          ),
                           _flagChip(
-                              'u',
-                              editing.unicode,
-                              (v) =>
-                                  setDialogState(() => editing.unicode = v),
-                              themeProvider,
-                              scaleProvider),
+                            'u',
+                            editing.unicode,
+                            (v) => setDialogState(() => editing.unicode = v),
+                            themeProvider,
+                            scaleProvider,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -361,9 +384,10 @@ class _RegexPanelState extends State<RegexPanel> {
                                   value: editing.macroMode,
                                   items: RegexMacroMode.values,
                                   labelOf: (m) => m.name,
-                                  onChanged: (v) => setDialogState(() =>
-                                      editing.macroMode =
-                                          v ?? RegexMacroMode.none),
+                                  onChanged: (v) => setDialogState(
+                                    () => editing.macroMode =
+                                        v ?? RegexMacroMode.none,
+                                  ),
                                   themeProvider: themeProvider,
                                   scaleProvider: scaleProvider,
                                 ),
@@ -381,9 +405,10 @@ class _RegexPanelState extends State<RegexPanel> {
                                   value: editing.scope,
                                   items: RegexScope.values,
                                   labelOf: (s) => s.name,
-                                  onChanged: (v) => setDialogState(() =>
-                                      editing.scope =
-                                          v ?? RegexScope.scoped),
+                                  onChanged: (v) => setDialogState(
+                                    () =>
+                                        editing.scope = v ?? RegexScope.scoped,
+                                  ),
                                   themeProvider: themeProvider,
                                   scaleProvider: scaleProvider,
                                 ),
@@ -403,7 +428,8 @@ class _RegexPanelState extends State<RegexPanel> {
                               style: monoStyle,
                               decoration: monoInputDeco('Min Depth'),
                               controller: TextEditingController(
-                                  text: editing.minDepth.toString()),
+                                text: editing.minDepth.toString(),
+                              ),
                               onChanged: (v) =>
                                   editing.minDepth = int.tryParse(v) ?? 0,
                             ),
@@ -415,10 +441,10 @@ class _RegexPanelState extends State<RegexPanel> {
                               style: monoStyle,
                               decoration: monoInputDeco('Max Depth'),
                               controller: TextEditingController(
-                                  text: editing.maxDepth.toString()),
+                                text: editing.maxDepth.toString(),
+                              ),
                               onChanged: (v) =>
-                                  editing.maxDepth =
-                                      int.tryParse(v) ?? -1,
+                                  editing.maxDepth = int.tryParse(v) ?? -1,
                             ),
                           ),
                         ],
@@ -434,13 +460,14 @@ class _RegexPanelState extends State<RegexPanel> {
                         children: [
                           ...editing.trimStrings.asMap().entries.map((e) {
                             return InputChip(
-                              label: Text(e.value,
-                                  style: TextStyle(
-                                      fontSize:
-                                          scaleProvider.systemFontSize * 0.7,
-                                      color: themeProvider.textColor)),
-                              backgroundColor:
-                                  themeProvider.containerFillColor,
+                              label: Text(
+                                e.value,
+                                style: TextStyle(
+                                  fontSize: scaleProvider.systemFontSize * 0.7,
+                                  color: themeProvider.textColor,
+                                ),
+                              ),
+                              backgroundColor: themeProvider.containerFillColor,
                               deleteIconColor: Colors.redAccent,
                               onDeleted: () {
                                 setDialogState(() {
@@ -450,15 +477,18 @@ class _RegexPanelState extends State<RegexPanel> {
                             );
                           }),
                           ActionChip(
-                            label: Icon(Icons.add,
-                                size: 14, color: themeProvider.textColor),
-                            backgroundColor:
-                                themeProvider.containerFillColor,
+                            label: Icon(
+                              Icons.add,
+                              size: 14,
+                              color: themeProvider.textColor,
+                            ),
+                            backgroundColor: themeProvider.containerFillColor,
                             onPressed: () => _addTrimString(
-                                setDialogState,
-                                editing,
-                                themeProvider,
-                                scaleProvider),
+                              setDialogState,
+                              editing,
+                              themeProvider,
+                              scaleProvider,
+                            ),
                           ),
                         ],
                       ),
@@ -481,15 +511,19 @@ class _RegexPanelState extends State<RegexPanel> {
                         alignment: Alignment.centerRight,
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.play_arrow, size: 16),
-                          label: Text('Run',
-                              style: TextStyle(
-                                  fontSize:
-                                      scaleProvider.systemFontSize * 0.8)),
+                          label: Text(
+                            'Run',
+                            style: TextStyle(
+                              fontSize: scaleProvider.systemFontSize * 0.8,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blueAccent,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                           ),
                           onPressed: runTest,
                         ),
@@ -502,10 +536,7 @@ class _RegexPanelState extends State<RegexPanel> {
                             color: themeProvider.containerFillDarkColor,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: SelectableText(
-                            testOutput,
-                            style: monoStyle,
-                          ),
+                          child: SelectableText(testOutput, style: monoStyle),
                         ),
                       ],
                     ],
@@ -514,16 +545,22 @@ class _RegexPanelState extends State<RegexPanel> {
               ),
               actions: [
                 TextButton(
-                  child: Text('Cancel',
-                      style: TextStyle(
-                          fontSize: scaleProvider.systemFontSize * 0.8)),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: scaleProvider.systemFontSize * 0.8,
+                    ),
+                  ),
                   onPressed: () => Navigator.pop(ctx),
                 ),
                 TextButton(
-                  child: Text('Save',
-                      style: TextStyle(
-                          color: Colors.blueAccent,
-                          fontSize: scaleProvider.systemFontSize * 0.8)),
+                  child: Text(
+                    'Save',
+                    style: TextStyle(
+                      color: Colors.blueAccent,
+                      fontSize: scaleProvider.systemFontSize * 0.8,
+                    ),
+                  ),
                   onPressed: () {
                     editing.scriptName = nameCtrl.text.trim();
                     editing.findRegex = findCtrl.text;
@@ -555,16 +592,20 @@ class _RegexPanelState extends State<RegexPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dropdownColor,
-        title: Text('Add Trim String',
-            style: TextStyle(
-                color: themeProvider.textColor,
-                fontSize: scaleProvider.systemFontSize)),
+        title: Text(
+          'Add Trim String',
+          style: TextStyle(
+            color: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize,
+          ),
+        ),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           style: TextStyle(
-              color: themeProvider.textColor,
-              fontSize: scaleProvider.systemFontSize * 0.85),
+            color: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize * 0.85,
+          ),
           decoration: InputDecoration(
             hintText: 'String to trim before matching',
             filled: true,
@@ -573,15 +614,20 @@ class _RegexPanelState extends State<RegexPanel> {
         ),
         actions: [
           TextButton(
-              child: Text('Cancel',
-                  style: TextStyle(
-                      fontSize: scaleProvider.systemFontSize * 0.8)),
-              onPressed: () => Navigator.pop(ctx)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+          ),
           TextButton(
-            child: Text('Add',
-                style: TextStyle(
-                    color: Colors.blueAccent,
-                    fontSize: scaleProvider.systemFontSize * 0.8)),
+            child: Text(
+              'Add',
+              style: TextStyle(
+                color: Colors.blueAccent,
+                fontSize: scaleProvider.systemFontSize * 0.8,
+              ),
+            ),
             onPressed: () {
               final val = ctrl.text.trim();
               if (val.isNotEmpty) {
@@ -615,9 +661,7 @@ class _RegexPanelState extends State<RegexPanel> {
             .map((e) => RegexScript.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       } else if (decoded is Map) {
-        imported = [
-          RegexScript.fromJson(Map<String, dynamic>.from(decoded))
-        ];
+        imported = [RegexScript.fromJson(Map<String, dynamic>.from(decoded))];
       }
 
       if (imported.isEmpty) {
@@ -641,16 +685,16 @@ class _RegexPanelState extends State<RegexPanel> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text('Imported ${imported.length} text transform(s).')),
+            content: Text('Imported ${imported.length} text transform(s).'),
+          ),
         );
       }
     } catch (e) {
       debugPrint('Regex import failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     }
   }
@@ -660,16 +704,17 @@ class _RegexPanelState extends State<RegexPanel> {
     final scripts = chatProvider.globalRegexScripts;
     if (scripts.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No scripts to export.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('No scripts to export.')));
       }
       return;
     }
 
     try {
-      final jsonStr = const JsonEncoder.withIndent('  ')
-          .convert(scripts.map((s) => s.toJson()).toList());
+      final jsonStr = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(scripts.map((s) => s.toJson()).toList());
       final bytes = Uint8List.fromList(utf8.encode(jsonStr));
 
       final saved = await FileIOHelper.saveFile(
@@ -687,9 +732,9 @@ class _RegexPanelState extends State<RegexPanel> {
     } catch (e) {
       debugPrint('Regex export failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
@@ -718,10 +763,13 @@ class _RegexPanelState extends State<RegexPanel> {
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ),
-        Text(label,
-            style: TextStyle(
-                color: themeProvider.textColor,
-                fontSize: scaleProvider.systemFontSize * 0.75)),
+        Text(
+          label,
+          style: TextStyle(
+            color: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize * 0.75,
+          ),
+        ),
         const SizedBox(width: 6),
       ],
     );
@@ -735,12 +783,14 @@ class _RegexPanelState extends State<RegexPanel> {
     ScaleProvider scaleProvider,
   ) {
     return FilterChip(
-      label: Text(label,
-          style: TextStyle(
-              fontFamily: 'monospace',
-              fontSize: scaleProvider.systemFontSize * 0.8,
-              color:
-                  selected ? Colors.white : themeProvider.subtitleColor)),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: scaleProvider.systemFontSize * 0.8,
+          color: selected ? Colors.white : themeProvider.subtitleColor,
+        ),
+      ),
       selected: selected,
       selectedColor: Colors.blueAccent,
       backgroundColor: themeProvider.containerFillColor,
@@ -772,13 +822,11 @@ class _RegexPanelState extends State<RegexPanel> {
         dropdownColor: themeProvider.dropdownColor,
         underline: const SizedBox(),
         style: TextStyle(
-            color: themeProvider.textColor,
-            fontSize: scaleProvider.systemFontSize * 0.8),
+          color: themeProvider.textColor,
+          fontSize: scaleProvider.systemFontSize * 0.8,
+        ),
         items: items.map((i) {
-          return DropdownMenuItem<T>(
-            value: i,
-            child: Text(labelOf(i)),
-          );
+          return DropdownMenuItem<T>(value: i, child: Text(labelOf(i)));
         }).toList(),
         onChanged: onChanged,
       ),
@@ -815,17 +863,21 @@ class _RegexPanelState extends State<RegexPanel> {
               // --- Import / Export / Add ---
               Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8),
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: _handleImport,
                         icon: const Icon(Icons.arrow_downward, size: 14),
-                        label: Text('Import',
-                            style: TextStyle(
-                                fontSize:
-                                    scaleProvider.systemFontSize * 0.8)),
+                        label: Text(
+                          'Import',
+                          style: TextStyle(
+                            fontSize: scaleProvider.systemFontSize * 0.8,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -833,16 +885,21 @@ class _RegexPanelState extends State<RegexPanel> {
                       child: OutlinedButton.icon(
                         onPressed: _handleExport,
                         icon: const Icon(Icons.arrow_upward, size: 14),
-                        label: Text('Export',
-                            style: TextStyle(
-                                fontSize:
-                                    scaleProvider.systemFontSize * 0.8)),
+                        label: Text(
+                          'Export',
+                          style: TextStyle(
+                            fontSize: scaleProvider.systemFontSize * 0.8,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.add_circle,
-                          color: Colors.greenAccent, size: 22),
+                      icon: const Icon(
+                        Icons.add_circle,
+                        color: Colors.greenAccent,
+                        size: 22,
+                      ),
                       tooltip: 'Add Script',
                       onPressed: _addScript,
                     ),
@@ -858,22 +915,27 @@ class _RegexPanelState extends State<RegexPanel> {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      Icon(Icons.find_replace,
-                          size: 48, color: themeProvider.faintColor),
+                      Icon(
+                        Icons.find_replace,
+                        size: 48,
+                        color: themeProvider.faintColor,
+                      ),
                       const SizedBox(height: 12),
-                      Text('No global text transforms defined.',
-                          style: TextStyle(
-                              color: themeProvider.faintColor,
-                              fontSize:
-                                  scaleProvider.systemFontSize * 0.9),
-                          textAlign: TextAlign.center),
+                      Text(
+                        'No global text transforms defined.',
+                        style: TextStyle(
+                          color: themeProvider.faintColor,
+                          fontSize: scaleProvider.systemFontSize * 0.9,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Tap + to add one, or import from a JSON file.',
                         style: TextStyle(
-                            color: themeProvider.faintestColor,
-                            fontSize:
-                                scaleProvider.systemFontSize * 0.7),
+                          color: themeProvider.faintestColor,
+                          fontSize: scaleProvider.systemFontSize * 0.7,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -886,8 +948,8 @@ class _RegexPanelState extends State<RegexPanel> {
                   physics: const NeverScrollableScrollPhysics(),
                   buildDefaultDragHandles: false,
                   itemCount: globalScripts.length,
-                  onReorder: (oldIdx, newIdx) => _onReorder(
-                      oldIdx, newIdx, List.from(globalScripts)),
+                  onReorder: (oldIdx, newIdx) =>
+                      _onReorder(oldIdx, newIdx, List.from(globalScripts)),
                   itemBuilder: (ctx, index) {
                     final script = globalScripts[index];
                     return ListTile(
@@ -895,26 +957,29 @@ class _RegexPanelState extends State<RegexPanel> {
                       dense: true,
                       leading: ReorderableDragStartListener(
                         index: index,
-                        child: Icon(Icons.drag_handle,
-                            color: themeProvider.faintColor, size: 18),
+                        child: Icon(
+                          Icons.drag_handle,
+                          color: themeProvider.faintColor,
+                          size: 18,
+                        ),
                       ),
                       title: Text(
                         script.scriptName.isNotEmpty
                             ? script.scriptName
                             : 'Unnamed Script',
                         style: TextStyle(
-                            color: themeProvider.subtitleColor,
-                            fontSize:
-                                scaleProvider.systemFontSize * 0.8),
+                          color: themeProvider.subtitleColor,
+                          fontSize: scaleProvider.systemFontSize * 0.8,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
                         '${_affectsSummary(script)}${_ephemeralBadge(script)}',
                         style: TextStyle(
-                            color: themeProvider.faintColor,
-                            fontSize:
-                                scaleProvider.systemFontSize * 0.65),
+                          color: themeProvider.faintColor,
+                          fontSize: scaleProvider.systemFontSize * 0.65,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -922,16 +987,17 @@ class _RegexPanelState extends State<RegexPanel> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: Icon(Icons.close,
-                                color: themeProvider.faintestColor,
-                                size: 16),
+                            icon: Icon(
+                              Icons.close,
+                              color: themeProvider.faintestColor,
+                              size: 16,
+                            ),
                             onPressed: () => _deleteScript(script),
                           ),
                           Switch(
                             value: script.enabled,
                             activeThumbColor: Colors.blueAccent,
-                            onChanged: (v) =>
-                                _toggleScript(script, v),
+                            onChanged: (v) => _toggleScript(script, v),
                           ),
                         ],
                       ),
@@ -945,8 +1011,7 @@ class _RegexPanelState extends State<RegexPanel> {
                 Divider(color: themeProvider.borderColor, height: 1),
                 ExpansionTile(
                   initiallyExpanded: false,
-                  tilePadding:
-                      const EdgeInsets.symmetric(horizontal: 16),
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 16),
                   title: Text(
                     'Character Scripts (${charScripts.length})',
                     style: TextStyle(
@@ -962,20 +1027,18 @@ class _RegexPanelState extends State<RegexPanel> {
                       dense: true,
                       enabled: false,
                       title: Text(
-                        s.scriptName.isNotEmpty
-                            ? s.scriptName
-                            : 'Unnamed',
+                        s.scriptName.isNotEmpty ? s.scriptName : 'Unnamed',
                         style: TextStyle(
-                            color: themeProvider.faintColor,
-                            fontSize:
-                                scaleProvider.systemFontSize * 0.75),
+                          color: themeProvider.faintColor,
+                          fontSize: scaleProvider.systemFontSize * 0.75,
+                        ),
                       ),
                       subtitle: Text(
                         'From character card \u00b7 ${_affectsSummary(s)}',
                         style: TextStyle(
-                            color: themeProvider.faintestColor,
-                            fontSize:
-                                scaleProvider.systemFontSize * 0.6),
+                          color: themeProvider.faintestColor,
+                          fontSize: scaleProvider.systemFontSize * 0.6,
+                        ),
                       ),
                     );
                   }).toList(),

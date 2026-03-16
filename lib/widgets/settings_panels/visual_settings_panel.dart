@@ -89,13 +89,15 @@ class VisualSettingsPanel extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: themeProvider.enableBloom
-                  ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                  ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                   : themeProvider.borderColor,
             ),
             boxShadow: themeProvider.enableBloom
                 ? [
                     BoxShadow(
-                      color: themeProvider.bloomGlowColor.withOpacity(0.1),
+                      color: themeProvider.bloomGlowColor.withValues(
+                        alpha: 0.1,
+                      ),
                       blurRadius: 8,
                     ),
                   ]
@@ -414,8 +416,8 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.bloomGlowColor.withOpacity(
-                              0.9,
+                            color: themeProvider.bloomGlowColor.withValues(
+                              alpha: 0.9,
                             ),
                             blurRadius: 20,
                           ),
@@ -443,8 +445,8 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.bloomGlowColor.withOpacity(
-                              0.9,
+                            color: themeProvider.bloomGlowColor.withValues(
+                              alpha: 0.9,
                             ),
                             blurRadius: 20,
                           ),
@@ -473,7 +475,9 @@ class VisualSettingsPanel extends StatelessWidget {
                 shadows: themeProvider.enableBloom
                     ? [
                         Shadow(
-                          color: themeProvider.bloomGlowColor.withOpacity(0.9),
+                          color: themeProvider.bloomGlowColor.withValues(
+                            alpha: 0.9,
+                          ),
                           blurRadius: 20,
                         ),
                       ]
@@ -489,8 +493,8 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.bloomGlowColor.withOpacity(
-                              0.9,
+                            color: themeProvider.bloomGlowColor.withValues(
+                              alpha: 0.9,
                             ),
                             blurRadius: 20,
                           ),
@@ -518,8 +522,8 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.bloomGlowColor.withOpacity(
-                              0.9,
+                            color: themeProvider.bloomGlowColor.withValues(
+                              alpha: 0.9,
                             ),
                             blurRadius: 20,
                           ),
@@ -547,8 +551,8 @@ class VisualSettingsPanel extends StatelessWidget {
                   shadows: themeProvider.enableBloom
                       ? [
                           Shadow(
-                            color: themeProvider.bloomGlowColor.withOpacity(
-                              0.9,
+                            color: themeProvider.bloomGlowColor.withValues(
+                              alpha: 0.9,
                             ),
                             blurRadius: 20,
                           ),
@@ -739,7 +743,10 @@ class VisualSettingsPanel extends StatelessWidget {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: isCustom
-                              ? FileIOHelper.imageWidgetFromPath(path, fit: BoxFit.cover)
+                              ? FileIOHelper.imageWidgetFromPath(
+                                  path,
+                                  fit: BoxFit.cover,
+                                )
                               : Image.asset(path, fit: BoxFit.cover),
                         ),
                         if (isSelected)

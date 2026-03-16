@@ -3,6 +3,7 @@ import 'dart:math';
 
 import '../models/lorebook_models.dart';
 import 'lorebook_state_service.dart';
+
 ///
 /// Contains entries grouped by their [LorebookPosition] for downstream
 /// prompt construction.  The caller can iterate [byPosition] to inject
@@ -80,9 +81,7 @@ class LorebookService {
     final scanDepth = lorebook.scanDepth <= 0
         ? recentMessages.length
         : lorebook.scanDepth;
-    final corpus = recentMessages
-        .take(scanDepth)
-        .join('\n');
+    final corpus = recentMessages.take(scanDepth).join('\n');
 
     // Phase 1: Filter to eligible entries.
     final eligible = lorebook.entries.where((e) {
@@ -185,7 +184,9 @@ class LorebookService {
     required bool matchWholeWords,
     LorebookSessionState? sessionState,
   }) {
-    final entryLabel = entry.comment.isNotEmpty ? entry.comment : 'UID:${entry.id}';
+    final entryLabel = entry.comment.isNotEmpty
+        ? entry.comment
+        : 'UID:${entry.id}';
 
     // Constant entries always activate (no keyword matching needed).
     if (entry.strategy == LorebookStrategy.constant) {
@@ -229,7 +230,10 @@ class LorebookService {
     // Probability roll.
     if (entry.probability < 100) {
       if (_rng.nextInt(100) >= entry.probability) {
-        developer.log('[$entryLabel] matched "$matchedKey" but failed probability roll (${entry.probability}%)', name: 'Lorebook');
+        developer.log(
+          '[$entryLabel] matched "$matchedKey" but failed probability roll (${entry.probability}%)',
+          name: 'Lorebook',
+        );
         return false;
       }
     }
@@ -237,9 +241,15 @@ class LorebookService {
     // Timed effects.
     bool passed = _passTimedEffects(entry, sessionState);
     if (passed) {
-      developer.log('[$entryLabel] activated via keyword: "$matchedKey"', name: 'Lorebook');
+      developer.log(
+        '[$entryLabel] activated via keyword: "$matchedKey"',
+        name: 'Lorebook',
+      );
     } else {
-      developer.log('[$entryLabel] matched "$matchedKey" but blocked by Timed Effects', name: 'Lorebook');
+      developer.log(
+        '[$entryLabel] matched "$matchedKey" but blocked by Timed Effects',
+        name: 'Lorebook',
+      );
     }
     return passed;
   }
@@ -290,8 +300,7 @@ class LorebookService {
     if (characterName.isEmpty) return true;
 
     final nameLC = characterName.toLowerCase();
-    final inList = entry.characterFilter
-        .any((n) => n.toLowerCase() == nameLC);
+    final inList = entry.characterFilter.any((n) => n.toLowerCase() == nameLC);
 
     // Inclusive list: character must be in list.
     // Exclusive list: character must NOT be in list.

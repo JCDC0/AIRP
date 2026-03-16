@@ -70,15 +70,20 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dropdownColor,
-        title: Text("Delete '$title'?",
-            style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: scaleProvider.systemFontSize)),
+        title: Text(
+          "Delete '$title'?",
+          style: TextStyle(
+            color: Colors.redAccent,
+            fontSize: scaleProvider.systemFontSize,
+          ),
+        ),
         content: Text(
-            "Are you sure you want to remove this preset from your library?",
-            style: TextStyle(
-                color: themeProvider.subtitleColor,
-                fontSize: scaleProvider.systemFontSize * 0.8)),
+          "Are you sure you want to remove this preset from your library?",
+          style: TextStyle(
+            color: themeProvider.subtitleColor,
+            fontSize: scaleProvider.systemFontSize * 0.8,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -86,8 +91,10 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           ),
           TextButton(
             onPressed: () {
-              final chatProvider =
-                  Provider.of<ChatProvider>(context, listen: false);
+              final chatProvider = Provider.of<ChatProvider>(
+                context,
+                listen: false,
+              );
               chatProvider.deletePromptFromLibrary(title);
               widget.promptTitleController.clear();
               Navigator.pop(ctx);
@@ -95,9 +102,13 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                 const SnackBar(content: Text("Deleted from Library")),
               );
             },
-            child: const Text("Delete",
-                style: TextStyle(
-                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Delete",
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -146,8 +157,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
       child: AbsorbPointer(
         absorbing: !chatProvider.enableSystemPrompt,
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -159,7 +169,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: themeProvider.enableBloom
-                        ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                        ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                         : themeProvider.borderColor,
                   ),
                 ),
@@ -239,13 +249,17 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.redAccent,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   icon: const Icon(Icons.delete, size: 16),
-                  label: const Text("Clear from Library",
-                      style: TextStyle(fontSize: 12)),
+                  label: const Text(
+                    "Clear from Library",
+                    style: TextStyle(fontSize: 12),
+                  ),
                   onPressed: () => _confirmDeletePromptFromLibrary(
                     widget.promptTitleController.text,
                   ),
@@ -267,7 +281,9 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                   filled: true,
                   fillColor: themeProvider.containerFillDarkColor,
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 8),
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   isDense: true,
                 ),
                 style: TextStyle(
@@ -294,9 +310,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                   filled: true,
                   fillColor: themeProvider.containerFillColor,
                 ),
-                style: TextStyle(
-                  fontSize: scaleProvider.systemFontSize,
-                ),
+                style: TextStyle(fontSize: scaleProvider.systemFontSize),
               ),
 
               const SizedBox(height: 8),
@@ -333,7 +347,9 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                         foregroundColor: themeProvider.textColor,
                         side: BorderSide(color: themeProvider.textColor),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                       ),
                       onPressed: _handleSavePreset,
                       child: const Text("Save to Library"),

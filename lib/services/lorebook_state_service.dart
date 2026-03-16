@@ -48,11 +48,11 @@ class LorebookSessionState {
     Map<int, int>? lastActivationTurn,
     Map<int, int>? stickyExpiry,
     Map<int, int>? cooldownExpiry,
-  })  : _currentTurn = currentTurn,
-        _matchCounts = matchCounts ?? {},
-        _lastActivationTurn = lastActivationTurn ?? {},
-        _stickyExpiry = stickyExpiry ?? {},
-        _cooldownExpiry = cooldownExpiry ?? {};
+  }) : _currentTurn = currentTurn,
+       _matchCounts = matchCounts ?? {},
+       _lastActivationTurn = lastActivationTurn ?? {},
+       _stickyExpiry = stickyExpiry ?? {},
+       _cooldownExpiry = cooldownExpiry ?? {};
 
   /// Current turn number.
   int get currentTurn => _currentTurn;

@@ -96,8 +96,9 @@ class _PresetPanelState extends State<PresetPanel> {
     if (jsonString != null) {
       try {
         final List<dynamic> decoded = jsonDecode(jsonString);
-        _customRules =
-            decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        _customRules = decoded
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
       } catch (e) {
         debugPrint("Error loading custom rules: $e");
       }
@@ -171,9 +172,9 @@ class _PresetPanelState extends State<PresetPanel> {
     } catch (e) {
       debugPrint("Import config pack failed: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Import failed: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Import failed: $e")));
       }
     }
   }
@@ -212,16 +213,16 @@ class _PresetPanelState extends State<PresetPanel> {
       );
 
       if (saved && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Config pack exported!")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Config pack exported!")));
       }
     } catch (e) {
       debugPrint("Export failed: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Export failed: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Export failed: $e")));
       }
     }
   }
@@ -258,10 +259,13 @@ class _PresetPanelState extends State<PresetPanel> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: themeProvider.dropdownColor,
-        title: Text("Edit Rule",
-            style: TextStyle(
-                color: themeProvider.textColor,
-                fontSize: scaleProvider.systemFontSize)),
+        title: Text(
+          "Edit Rule",
+          style: TextStyle(
+            color: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -273,8 +277,9 @@ class _PresetPanelState extends State<PresetPanel> {
                 fillColor: themeProvider.containerFillDarkColor,
               ),
               style: TextStyle(
-                  color: themeProvider.textColor,
-                  fontSize: scaleProvider.systemFontSize * 0.8),
+                color: themeProvider.textColor,
+                fontSize: scaleProvider.systemFontSize * 0.8,
+              ),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -286,27 +291,32 @@ class _PresetPanelState extends State<PresetPanel> {
                 fillColor: themeProvider.containerFillDarkColor,
               ),
               style: TextStyle(
-                  color: themeProvider.textColor,
-                  fontSize: scaleProvider.systemFontSize * 0.8),
+                color: themeProvider.textColor,
+                fontSize: scaleProvider.systemFontSize * 0.8,
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
-              child: Text("Cancel",
-                  style: TextStyle(
-                      fontSize: scaleProvider.systemFontSize * 0.8)),
-              onPressed: () => Navigator.pop(context)),
+            child: Text(
+              "Cancel",
+              style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
           TextButton(
-            child: Text("Save",
-                style: TextStyle(
-                    color: Colors.blueAccent,
-                    fontSize: scaleProvider.systemFontSize * 0.8)),
+            child: Text(
+              "Save",
+              style: TextStyle(
+                color: Colors.blueAccent,
+                fontSize: scaleProvider.systemFontSize * 0.8,
+              ),
+            ),
             onPressed: () {
               setState(() {
                 _customRules[index]['label'] = labelController.text.trim();
-                _customRules[index]['content'] =
-                    contentController.text.trim();
+                _customRules[index]['content'] = contentController.text.trim();
                 _saveCustomRulesToPrefs();
                 if (_customRules[index]['active'] == true) {
                   _rebuildAdvancedPrompt();
@@ -328,28 +338,37 @@ class _PresetPanelState extends State<PresetPanel> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: themeProvider.dropdownColor,
-        title: Text("Delete Rule?",
-            style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: scaleProvider.systemFontSize)),
+        title: Text(
+          "Delete Rule?",
+          style: TextStyle(
+            color: Colors.redAccent,
+            fontSize: scaleProvider.systemFontSize,
+          ),
+        ),
         content: Text(
           "Are you sure you want to delete '${rule['label']}'?\n\nThis cannot be undone.",
           style: TextStyle(
-              color: themeProvider.subtitleColor,
-              fontSize: scaleProvider.systemFontSize * 0.8),
+            color: themeProvider.subtitleColor,
+            fontSize: scaleProvider.systemFontSize * 0.8,
+          ),
         ),
         actions: [
           TextButton(
-              child: Text("Cancel",
-                  style: TextStyle(
-                      fontSize: scaleProvider.systemFontSize * 0.8)),
-              onPressed: () => Navigator.pop(context)),
+            child: Text(
+              "Cancel",
+              style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
           TextButton(
-            child: Text("DELETE",
-                style: TextStyle(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize * 0.8)),
+            child: Text(
+              "DELETE",
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: scaleProvider.systemFontSize * 0.8,
+              ),
+            ),
             onPressed: () {
               _deleteCustomRuleForever(index);
               Navigator.pop(context);
@@ -420,18 +439,22 @@ class _PresetPanelState extends State<PresetPanel> {
             children: [
               // --- Import / Export Buttons ---
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: _handleImportPreset,
                         icon: const Icon(Icons.arrow_downward, size: 14),
-                        label: Text("Import",
-                            style: TextStyle(
-                                fontSize:
-                                    scaleProvider.systemFontSize * 0.8)),
+                        label: Text(
+                          "Import",
+                          style: TextStyle(
+                            fontSize: scaleProvider.systemFontSize * 0.8,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -439,10 +462,12 @@ class _PresetPanelState extends State<PresetPanel> {
                       child: OutlinedButton.icon(
                         onPressed: _handleExportPreset,
                         icon: const Icon(Icons.arrow_upward, size: 14),
-                        label: Text("Export",
-                            style: TextStyle(
-                                fontSize:
-                                    scaleProvider.systemFontSize * 0.8)),
+                        label: Text(
+                          "Export",
+                          style: TextStyle(
+                            fontSize: scaleProvider.systemFontSize * 0.8,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -455,9 +480,11 @@ class _PresetPanelState extends State<PresetPanel> {
               if (_customRules.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: Text("No custom rules defined.",
-                      style: TextStyle(color: Colors.grey),
-                      textAlign: TextAlign.center),
+                  child: Text(
+                    "No custom rules defined.",
+                    style: TextStyle(color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
 
               ..._customRules.asMap().entries.map((entry) {
@@ -469,8 +496,9 @@ class _PresetPanelState extends State<PresetPanel> {
                   title: Text(
                     rule['label'],
                     style: TextStyle(
-                        color: themeProvider.subtitleColor,
-                        fontSize: scaleProvider.systemFontSize * 0.8),
+                      color: themeProvider.subtitleColor,
+                      fontSize: scaleProvider.systemFontSize * 0.8,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -479,19 +507,27 @@ class _PresetPanelState extends State<PresetPanel> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        color: themeProvider.faintColor, fontSize: 10),
+                      color: themeProvider.faintColor,
+                      fontSize: 10,
+                    ),
                   ),
                   leading: IconButton(
-                    icon: const Icon(Icons.edit,
-                        color: Colors.blueAccent, size: 16),
+                    icon: const Icon(
+                      Icons.edit,
+                      color: Colors.blueAccent,
+                      size: 16,
+                    ),
                     onPressed: () => _editCustomRule(index),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.close,
-                            color: themeProvider.faintestColor, size: 16),
+                        icon: Icon(
+                          Icons.close,
+                          color: themeProvider.faintestColor,
+                          size: 16,
+                        ),
                         onPressed: () => _confirmDeleteCustomRule(index),
                       ),
                       Switch(
@@ -536,7 +572,8 @@ class _PresetPanelState extends State<PresetPanel> {
                         labelText: "New Rule Content",
                         hintText: "Enter custom rule content...",
                         hintStyle: TextStyle(
-                            fontSize: scaleProvider.systemFontSize * 0.8),
+                          fontSize: scaleProvider.systemFontSize * 0.8,
+                        ),
                         border: const OutlineInputBorder(),
                         filled: true,
                         fillColor: themeProvider.containerFillColor,
@@ -549,22 +586,31 @@ class _PresetPanelState extends State<PresetPanel> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
-                          icon: Icon(Icons.copy_rounded,
-                              size: 18, color: themeProvider.textColor),
+                          icon: Icon(
+                            Icons.copy_rounded,
+                            size: 18,
+                            color: themeProvider.textColor,
+                          ),
                           onPressed: _copyRuleContentToClipboard,
                           tooltip: 'Copy Rule Content',
                           padding: const EdgeInsets.all(8),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.paste,
-                              size: 18, color: Colors.greenAccent),
+                          icon: const Icon(
+                            Icons.paste,
+                            size: 18,
+                            color: Colors.greenAccent,
+                          ),
                           onPressed: _pasteRuleContentFromClipboard,
                           tooltip: 'Paste Rule Content',
                           padding: const EdgeInsets.all(8),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.add_circle,
-                              size: 20, color: Colors.greenAccent),
+                          icon: const Icon(
+                            Icons.add_circle,
+                            size: 20,
+                            color: Colors.greenAccent,
+                          ),
                           onPressed: _addRuleFromInput,
                           tooltip: 'Add Rule',
                           padding: const EdgeInsets.all(8),
@@ -577,8 +623,10 @@ class _PresetPanelState extends State<PresetPanel> {
 
               // --- Preview ---
               ExpansionTile(
-                title: const Text("View Generated Advanced Prompt",
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                title: const Text(
+                  "View Generated Advanced Prompt",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -592,8 +640,9 @@ class _PresetPanelState extends State<PresetPanel> {
                         border: const OutlineInputBorder(),
                       ),
                       style: TextStyle(
-                          fontSize: 12,
-                          color: themeProvider.subtitleColor),
+                        fontSize: 12,
+                        color: themeProvider.subtitleColor,
+                      ),
                     ),
                   ),
                 ],

@@ -27,7 +27,9 @@ class SettingsHeader extends StatelessWidget {
             shadows: themeProvider.enableBloom
                 ? [
                     Shadow(
-                      color: themeProvider.bloomGlowColor.withOpacity(0.9),
+                      color: themeProvider.bloomGlowColor.withValues(
+                        alpha: 0.9,
+                      ),
                       blurRadius: 20,
                     ),
                   ]

@@ -60,7 +60,7 @@ class ModelSettingsPanel extends StatelessWidget {
       if (parts.length != 2) return p;
       double input = double.tryParse(parts[0]) ?? 0;
       double output = double.tryParse(parts[1]) ?? 0;
-      
+
       // Handle special values like -1 (Auto Router / Variable)
       if (input < 0 || output < 0) return "Variable / Dynamic";
       if (input == 0 && output == 0) return "Free / Unknown";
@@ -68,14 +68,19 @@ class ModelSettingsPanel extends StatelessWidget {
       // Convert per token to per 1M tokens
       double inputM = input * 1000000;
       double outputM = output * 1000000;
-      
+
       return "Input: \$${inputM.toStringAsFixed(2)}/M | Output: \$${outputM.toStringAsFixed(2)}/M";
     } catch (e) {
       return p;
     }
   }
 
-  Widget _buildDetailRow(String label, String value, ThemeProvider themeProvider, ScaleProvider scaleProvider) {
+  Widget _buildDetailRow(
+    String label,
+    String value,
+    ThemeProvider themeProvider,
+    ScaleProvider scaleProvider,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
@@ -107,7 +112,6 @@ class ModelSettingsPanel extends StatelessWidget {
   }
 
   @override
-
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
@@ -134,13 +138,15 @@ class ModelSettingsPanel extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: themeProvider.enableBloom
-                  ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                  ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                   : themeProvider.borderColor,
             ),
             boxShadow: themeProvider.enableBloom
                 ? [
                     BoxShadow(
-                      color: themeProvider.bloomGlowColor.withOpacity(0.1),
+                      color: themeProvider.bloomGlowColor.withValues(
+                        alpha: 0.1,
+                      ),
                       blurRadius: 8,
                     ),
                   ]
@@ -300,7 +306,7 @@ class ModelSettingsPanel extends StatelessWidget {
             controller: groqModelController,
           ),
         const SizedBox(height: 16),
-        
+
         // --- Selected Model Details UI ---
         Builder(
           builder: (context) {
@@ -315,7 +321,7 @@ class ModelSettingsPanel extends StatelessWidget {
                 color: themeProvider.containerFillColor,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: themeProvider.borderColor.withOpacity(0.5),
+                  color: themeProvider.borderColor.withValues(alpha: 0.5),
                 ),
               ),
               child: Column(
@@ -326,17 +332,39 @@ class ModelSettingsPanel extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: scaleProvider.systemFontSize * 0.85,
-                      color: themeProvider.textColor.withOpacity(0.8),
+                      color: themeProvider.textColor.withValues(alpha: 0.8),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildDetailRow("ID", activeModel.id, themeProvider, scaleProvider),
-                  if (activeModel.name.isNotEmpty && activeModel.name != activeModel.id)
-                    _buildDetailRow("Name", activeModel.name, themeProvider, scaleProvider),
-                  _buildDetailRow("Context", "${chatProvider.formatNumber(activeModel.contextLength)} tokens", themeProvider, scaleProvider),
+                  _buildDetailRow(
+                    "ID",
+                    activeModel.id,
+                    themeProvider,
+                    scaleProvider,
+                  ),
+                  if (activeModel.name.isNotEmpty &&
+                      activeModel.name != activeModel.id)
+                    _buildDetailRow(
+                      "Name",
+                      activeModel.name,
+                      themeProvider,
+                      scaleProvider,
+                    ),
+                  _buildDetailRow(
+                    "Context",
+                    "${chatProvider.formatNumber(activeModel.contextLength)} tokens",
+                    themeProvider,
+                    scaleProvider,
+                  ),
                   if (activeModel.pricing.isNotEmpty)
-                    _buildDetailRow("Pricing", _formatPricing(activeModel.pricing), themeProvider, scaleProvider),
-                  if (activeModel.description != "No description provided.") ...[
+                    _buildDetailRow(
+                      "Pricing",
+                      _formatPricing(activeModel.pricing),
+                      themeProvider,
+                      scaleProvider,
+                    ),
+                  if (activeModel.description !=
+                      "No description provided.") ...[
                     const SizedBox(height: 4),
                     Text(
                       activeModel.description,
@@ -348,13 +376,13 @@ class ModelSettingsPanel extends StatelessWidget {
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ]
+                  ],
                 ],
               ),
             );
           },
         ),
-        
+
         // --- Added Settings (Moved from System Prompt) ---
         const Divider(),
         SwitchListTile(
@@ -366,7 +394,9 @@ class ModelSettingsPanel extends StatelessWidget {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
                         blurRadius: 20,
                       ),
                     ]
@@ -408,7 +438,9 @@ class ModelSettingsPanel extends StatelessWidget {
                 shadows: themeProvider.enableBloom
                     ? [
                         Shadow(
-                          color: themeProvider.bloomGlowColor.withOpacity(0.9),
+                          color: themeProvider.bloomGlowColor.withValues(
+                            alpha: 0.9,
+                          ),
                           blurRadius: 20,
                         ),
                       ]
@@ -440,7 +472,9 @@ class ModelSettingsPanel extends StatelessWidget {
                 shadows: themeProvider.enableBloom
                     ? [
                         Shadow(
-                          color: themeProvider.bloomGlowColor.withOpacity(0.9),
+                          color: themeProvider.bloomGlowColor.withValues(
+                            alpha: 0.9,
+                          ),
                           blurRadius: 20,
                         ),
                       ]
@@ -461,7 +495,6 @@ class ModelSettingsPanel extends StatelessWidget {
               chatProvider.saveSettings();
             },
           ),
-
       ],
     );
   }

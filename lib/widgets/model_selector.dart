@@ -42,7 +42,8 @@ class ModelSelector extends StatelessWidget {
 
     final selectedModelInfo = modelsList.firstWhere(
       (m) => m.id == selectedModel,
-      orElse: () => ModelInfo(id: selectedModel, name: cleanModelName(selectedModel)),
+      orElse: () =>
+          ModelInfo(id: selectedModel, name: cleanModelName(selectedModel)),
     );
 
     return GestureDetector(
@@ -61,13 +62,13 @@ class ModelSelector extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: themeProvider.enableBloom
-                ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                 : themeProvider.borderColor,
           ),
           boxShadow: themeProvider.enableBloom
               ? [
                   BoxShadow(
-                    color: themeProvider.bloomGlowColor.withOpacity(0.1),
+                    color: themeProvider.bloomGlowColor.withValues(alpha: 0.1),
                     blurRadius: 8,
                   ),
                 ]
@@ -78,8 +79,8 @@ class ModelSelector extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                selectedModelInfo.name.isNotEmpty 
-                    ? selectedModelInfo.name 
+                selectedModelInfo.name.isNotEmpty
+                    ? selectedModelInfo.name
                     : placeholder,
                 style: TextStyle(
                   color: themeProvider.textColor,
@@ -134,13 +135,15 @@ class ModelSelector extends StatelessWidget {
               if (sortMode.startsWith("Cost")) {
                 double aInput = 0.0;
                 double bInput = 0.0;
-                
+
                 try {
                   if (a.pricing.isNotEmpty) {
-                    aInput = double.tryParse(a.pricing.split(' / ').first) ?? 0.0;
+                    aInput =
+                        double.tryParse(a.pricing.split(' / ').first) ?? 0.0;
                   }
                   if (b.pricing.isNotEmpty) {
-                    bInput = double.tryParse(b.pricing.split(' / ').first) ?? 0.0;
+                    bInput =
+                        double.tryParse(b.pricing.split(' / ').first) ?? 0.0;
                   }
                 } catch (_) {}
 
@@ -154,7 +157,7 @@ class ModelSelector extends StatelessWidget {
               if (sortMode == "Name (Z-A)") {
                 return b.name.compareTo(a.name);
               }
-              
+
               // Default: Name (A-Z)
               return a.name.compareTo(b.name);
             });
@@ -183,7 +186,10 @@ class ModelSelector extends StatelessWidget {
                     )
                   else
                     IconButton(
-                      icon: Icon(Icons.refresh, color: themeProvider.subtitleColor),
+                      icon: Icon(
+                        Icons.refresh,
+                        color: themeProvider.subtitleColor,
+                      ),
                       onPressed: () async {
                         await chatProvider.refreshCurrentModels();
                         setDialogState(() {});
@@ -197,11 +203,26 @@ class ModelSelector extends StatelessWidget {
                       });
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(value: "Name (A-Z)", child: Text("Name (A-Z)")),
-                      const PopupMenuItem(value: "Name (Z-A)", child: Text("Name (Z-A)")),
-                      const PopupMenuItem(value: "Cost (Low to High)", child: Text("Cost (Low-High)")),
-                      const PopupMenuItem(value: "Cost (High to Low)", child: Text("Cost (High-Low)")),
-                      const PopupMenuItem(value: "Newest", child: Text("Newest")),
+                      const PopupMenuItem(
+                        value: "Name (A-Z)",
+                        child: Text("Name (A-Z)"),
+                      ),
+                      const PopupMenuItem(
+                        value: "Name (Z-A)",
+                        child: Text("Name (Z-A)"),
+                      ),
+                      const PopupMenuItem(
+                        value: "Cost (Low to High)",
+                        child: Text("Cost (Low-High)"),
+                      ),
+                      const PopupMenuItem(
+                        value: "Cost (High to Low)",
+                        child: Text("Cost (High-Low)"),
+                      ),
+                      const PopupMenuItem(
+                        value: "Newest",
+                        child: Text("Newest"),
+                      ),
                     ],
                   ),
                 ],
@@ -255,12 +276,18 @@ class ModelSelector extends StatelessWidget {
                           : Column(
                               children: [
                                 // Selected Model Section
-                                if (filteredModels.any((m) => m.id == selectedModel)) ...[
+                                if (filteredModels.any(
+                                  (m) => m.id == selectedModel,
+                                )) ...[
                                   _buildModelRow(
                                     context: context,
-                                    model: filteredModels.firstWhere((m) => m.id == selectedModel),
+                                    model: filteredModels.firstWhere(
+                                      (m) => m.id == selectedModel,
+                                    ),
                                     isSelected: true,
-                                    isBookmarked: bookmarkedModels.contains(selectedModel),
+                                    isBookmarked: bookmarkedModels.contains(
+                                      selectedModel,
+                                    ),
                                     themeProvider: themeProvider,
                                     scaleProvider: scaleProvider,
                                     chatProvider: chatProvider,
@@ -269,7 +296,7 @@ class ModelSelector extends StatelessWidget {
                                   ),
                                   const Divider(height: 16),
                                 ],
-                                
+
                                 // Main Models List
                                 Expanded(
                                   child: ListView.builder(
@@ -277,13 +304,16 @@ class ModelSelector extends StatelessWidget {
                                     itemBuilder: (context, index) {
                                       final model = filteredModels[index];
                                       // Don't render the selected model again in this list
-                                      if (model.id == selectedModel) return const SizedBox.shrink();
+                                      if (model.id == selectedModel)
+                                        return const SizedBox.shrink();
 
                                       return _buildModelRow(
                                         context: context,
                                         model: model,
                                         isSelected: false,
-                                        isBookmarked: bookmarkedModels.contains(model.id),
+                                        isBookmarked: bookmarkedModels.contains(
+                                          model.id,
+                                        ),
                                         themeProvider: themeProvider,
                                         scaleProvider: scaleProvider,
                                         chatProvider: chatProvider,
@@ -330,12 +360,12 @@ class ModelSelector extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isSelected
-            ? themeProvider.textColor.withOpacity(0.15)
-            : themeProvider.textColor.withOpacity(0.03),
+            ? themeProvider.textColor.withValues(alpha: 0.15)
+            : themeProvider.textColor.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSelected
-              ? themeProvider.textColor.withOpacity(0.5)
+              ? themeProvider.textColor.withValues(alpha: 0.5)
               : themeProvider.dividerColor,
         ),
       ),
@@ -349,10 +379,7 @@ class ModelSelector extends StatelessWidget {
           },
           onLongPress: () => _showModelDetails(context, model, themeProvider),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -363,7 +390,9 @@ class ModelSelector extends StatelessWidget {
                       Text(
                         model.name,
                         style: TextStyle(
-                          color: isSelected ? themeProvider.textColor : themeProvider.textColor,
+                          color: isSelected
+                              ? themeProvider.textColor
+                              : themeProvider.textColor,
                           fontWeight: FontWeight.bold,
                           fontSize: scaleProvider.systemFontSize,
                         ),
@@ -405,15 +434,28 @@ class ModelSelector extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.purpleAccent.withOpacity(0.18),
+                              color: Colors.purpleAccent.withValues(
+                                alpha: 0.18,
+                              ),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.purpleAccent.withOpacity(0.5)),
+                              border: Border.all(
+                                color: Colors.purpleAccent.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
                             ),
                             child: const Text(
                               '🖼 Image Gen',
-                              style: TextStyle(fontSize: 10, color: Colors.purpleAccent, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.purpleAccent,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
@@ -425,28 +467,29 @@ class ModelSelector extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     InkWell(
-                      onTap: () => _showModelDetails(context, model, themeProvider),
+                      onTap: () =>
+                          _showModelDetails(context, model, themeProvider),
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
                         padding: const EdgeInsets.all(4.0),
-                        child: Icon(Icons.info_outline, color: themeProvider.hintColor, size: 28),
+                        child: Icon(
+                          Icons.info_outline,
+                          color: themeProvider.hintColor,
+                          size: 28,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     InkWell(
                       onTap: () async {
-                        await chatProvider.toggleModelBookmark(
-                          model.id,
-                        );
+                        await chatProvider.toggleModelBookmark(model.id);
                         setDialogState(() {});
                       },
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
                         padding: const EdgeInsets.all(4.0),
                         child: Icon(
-                          isBookmarked
-                              ? Icons.bookmark
-                              : Icons.bookmark_border,
+                          isBookmarked ? Icons.bookmark : Icons.bookmark_border,
                           color: isBookmarked
                               ? Colors.amber
                               : themeProvider.faintColor,
@@ -464,7 +507,11 @@ class ModelSelector extends StatelessWidget {
     );
   }
 
-  void _showModelDetails(BuildContext context, ModelInfo model, ThemeProvider themeProvider) {
+  void _showModelDetails(
+    BuildContext context,
+    ModelInfo model,
+    ThemeProvider themeProvider,
+  ) {
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
     showDialog(
       context: context,
@@ -472,7 +519,10 @@ class ModelSelector extends StatelessWidget {
         backgroundColor: themeProvider.dialogBackgroundColor,
         title: Text(
           model.name,
-          style: TextStyle(color: themeProvider.textColor, fontSize: scaleProvider.systemFontSize),
+          style: TextStyle(
+            color: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize,
+          ),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -481,15 +531,35 @@ class ModelSelector extends StatelessWidget {
             children: [
               _detailRow("ID:", model.id, scaleProvider, themeProvider),
               if (model.created != null)
-                _detailRow("Created:", _formatTimestamp(model.created!), scaleProvider, themeProvider),
+                _detailRow(
+                  "Created:",
+                  _formatTimestamp(model.created!),
+                  scaleProvider,
+                  themeProvider,
+                ),
               if (model.contextLength.isNotEmpty)
-                _detailRow("Max Context:", _formatNumber(model.contextLength), scaleProvider, themeProvider),
+                _detailRow(
+                  "Max Context:",
+                  _formatNumber(model.contextLength),
+                  scaleProvider,
+                  themeProvider,
+                ),
               if (model.pricing.isNotEmpty)
-                _detailRow("", _formatPricing(model.pricing), scaleProvider, themeProvider),
+                _detailRow(
+                  "",
+                  _formatPricing(model.pricing),
+                  scaleProvider,
+                  themeProvider,
+                ),
               const Divider(color: Colors.white24),
               Text(
-                model.description.isNotEmpty ? model.description : "No description available.",
-                style: TextStyle(color: themeProvider.subtitleColor, fontSize: scaleProvider.systemFontSize - 2),
+                model.description.isNotEmpty
+                    ? model.description
+                    : "No description available.",
+                style: TextStyle(
+                  color: themeProvider.subtitleColor,
+                  fontSize: scaleProvider.systemFontSize - 2,
+                ),
               ),
             ],
           ),
@@ -504,15 +574,35 @@ class ModelSelector extends StatelessWidget {
     );
   }
 
-  Widget _detailRow(String label, String value, ScaleProvider scale, ThemeProvider themeProvider) {
+  Widget _detailRow(
+    String label,
+    String value,
+    ScaleProvider scale,
+    ThemeProvider themeProvider,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (label.isNotEmpty)
-            Text("$label ", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: scale.systemFontSize - 2)),
-          Expanded(child: Text(value, style: TextStyle(color: themeProvider.textColor, fontSize: scale.systemFontSize - 2))),
+            Text(
+              "$label ",
+              style: TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: scale.systemFontSize - 2,
+              ),
+            ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: themeProvider.textColor,
+                fontSize: scale.systemFontSize - 2,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -538,8 +628,18 @@ class ModelSelector extends StatelessWidget {
     try {
       final dt = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
       final months = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
       ];
       return "${months[dt.month - 1]} ${dt.day}, ${dt.year}";
     } catch (_) {
@@ -553,7 +653,7 @@ class ModelSelector extends StatelessWidget {
       if (parts.length != 2) return p;
       double input = double.tryParse(parts[0]) ?? 0;
       double output = double.tryParse(parts[1]) ?? 0;
-      
+
       // Handle special values like -1 (Auto Router / Variable)
       if (input < 0 || output < 0) return "Pricing: Variable / Dynamic";
       if (input == 0 && output == 0) return "Pricing: Free / Unknown";
@@ -561,7 +661,7 @@ class ModelSelector extends StatelessWidget {
       // Convert per token to per 1M tokens
       double inputM = input * 1000000;
       double outputM = output * 1000000;
-      
+
       return "Input: \$${inputM.toStringAsFixed(2)}/M\nOutput: \$${outputM.toStringAsFixed(2)}/M";
     } catch (e) {
       return p;

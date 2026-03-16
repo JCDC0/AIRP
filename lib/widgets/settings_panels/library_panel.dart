@@ -43,10 +43,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
         Text(
           "Export and import your app configuration as a "
           "portable .airp file.",
-          style: TextStyle(
-            fontSize: fontSize * 0.8,
-            color: Colors.grey,
-          ),
+          style: TextStyle(fontSize: fontSize * 0.8, color: Colors.grey),
         ),
         const SizedBox(height: 16),
 
@@ -57,8 +54,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.greenAccent,
               side: const BorderSide(color: Colors.greenAccent),
-              padding:
-                  const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               textStyle: TextStyle(
                 fontSize: fontSize,
                 fontWeight: FontWeight.bold,
@@ -138,8 +134,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
             style: OutlinedButton.styleFrom(
               foregroundColor: themeProvider.textColor,
               side: BorderSide(color: themeProvider.textColor),
-              padding:
-                  const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               textStyle: TextStyle(
                 fontSize: fontSize,
                 fontWeight: FontWeight.bold,
@@ -155,7 +150,7 @@ class _LibraryPanelState extends State<LibraryPanel> {
           "⚠ Import overwrites settings but merges prompts & chats.",
           style: TextStyle(
             fontSize: fontSize * 0.7,
-            color: Colors.orangeAccent.withOpacity(0.8),
+            color: Colors.orangeAccent.withValues(alpha: 0.8),
             fontStyle: FontStyle.italic,
           ),
         ),
@@ -178,7 +173,10 @@ class _LibraryPanelState extends State<LibraryPanel> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
       title: Text(
         label,
-        style: TextStyle(fontSize: fontSize * 0.85, color: themeProvider.subtitleColor),
+        style: TextStyle(
+          fontSize: fontSize * 0.85,
+          color: themeProvider.subtitleColor,
+        ),
       ),
       value: value,
       activeThumbColor: themeProvider.textColor,
@@ -288,8 +286,9 @@ class _LibraryPanelState extends State<LibraryPanel> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(importResult.message),
-          backgroundColor:
-              importResult.success ? Colors.greenAccent : Colors.redAccent,
+          backgroundColor: importResult.success
+              ? Colors.greenAccent
+              : Colors.redAccent,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -316,7 +315,10 @@ class _LibraryPanelState extends State<LibraryPanel> {
         conversationCount = sessions.length;
         conversationTitles = sessions
             .take(3)
-            .map((s) => (s as Map<String, dynamic>)['title'] as String? ?? 'Untitled')
+            .map(
+              (s) =>
+                  (s as Map<String, dynamic>)['title'] as String? ?? 'Untitled',
+            )
             .toList();
       }
 
@@ -329,8 +331,10 @@ class _LibraryPanelState extends State<LibraryPanel> {
       // Determine what sections are present
       final sections = <String>[];
       if (settings != null) {
-        if (settings['generation'] != null) sections.add('Generation Parameters');
-        if (settings['systemInstruction'] != null || settings['advancedSystemInstruction'] != null) {
+        if (settings['generation'] != null)
+          sections.add('Generation Parameters');
+        if (settings['systemInstruction'] != null ||
+            settings['advancedSystemInstruction'] != null) {
           sections.add('System Prompts');
         }
         if (settings['provider'] != null || settings['models'] != null) {
@@ -361,11 +365,18 @@ class _LibraryPanelState extends State<LibraryPanel> {
       backgroundColor: themeProvider.dropdownColor,
       title: Row(
         children: [
-          Icon(Icons.preview, color: themeProvider.textColor, size: fontSize * 1.5),
+          Icon(
+            Icons.preview,
+            color: themeProvider.textColor,
+            size: fontSize * 1.5,
+          ),
           const SizedBox(width: 8),
           Text(
             "Import Preview",
-            style: TextStyle(color: themeProvider.textColor, fontSize: fontSize + 2),
+            style: TextStyle(
+              color: themeProvider.textColor,
+              fontSize: fontSize + 2,
+            ),
           ),
         ],
       ),
@@ -390,22 +401,27 @@ class _LibraryPanelState extends State<LibraryPanel> {
               _buildSectionHeader("Conversations", fontSize, themeProvider),
               Text(
                 "• ${preview.conversationCount} conversation${preview.conversationCount == 1 ? '' : 's'}",
-                style: TextStyle(color: themeProvider.subtitleColor, fontSize: fontSize * 0.9),
+                style: TextStyle(
+                  color: themeProvider.subtitleColor,
+                  fontSize: fontSize * 0.9,
+                ),
               ),
               if (preview.conversationTitles.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                ...preview.conversationTitles.map((title) => Padding(
-                      padding: const EdgeInsets.only(left: 12, top: 2),
-                      child: Text(
-                        "→ $title",
-                        style: TextStyle(
-                          color: themeProvider.hintColor,
-                          fontSize: fontSize * 0.85,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                ...preview.conversationTitles.map(
+                  (title) => Padding(
+                    padding: const EdgeInsets.only(left: 12, top: 2),
+                    child: Text(
+                      "→ $title",
+                      style: TextStyle(
+                        color: themeProvider.hintColor,
+                        fontSize: fontSize * 0.85,
                       ),
-                    )),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
                 if (preview.conversationCount > 3)
                   Padding(
                     padding: const EdgeInsets.only(left: 12, top: 2),
@@ -426,33 +442,45 @@ class _LibraryPanelState extends State<LibraryPanel> {
             if (preview.systemPromptsCount > 0) ...[
               Text(
                 "• ${preview.systemPromptsCount} saved system prompt${preview.systemPromptsCount == 1 ? '' : 's'}",
-                style: TextStyle(color: themeProvider.subtitleColor, fontSize: fontSize * 0.9),
+                style: TextStyle(
+                  color: themeProvider.subtitleColor,
+                  fontSize: fontSize * 0.9,
+                ),
               ),
               const SizedBox(height: 12),
             ],
 
             // Settings sections
             if (preview.sections.isNotEmpty) ...[
-              _buildSectionHeader("Settings to Update", fontSize, themeProvider),
-              ...preview.sections.map((section) => Padding(
-                    padding: const EdgeInsets.only(left: 0, top: 4),
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle_outline,
-                            color: Colors.greenAccent, size: fontSize),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            section,
-                            style: TextStyle(
-                              color: themeProvider.subtitleColor,
-                              fontSize: fontSize * 0.9,
-                            ),
+              _buildSectionHeader(
+                "Settings to Update",
+                fontSize,
+                themeProvider,
+              ),
+              ...preview.sections.map(
+                (section) => Padding(
+                  padding: const EdgeInsets.only(left: 0, top: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.greenAccent,
+                        size: fontSize,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          section,
+                          style: TextStyle(
+                            color: themeProvider.subtitleColor,
+                            fontSize: fontSize * 0.9,
                           ),
                         ),
-                      ],
-                    ),
-                  )),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
             ],
 
@@ -462,13 +490,17 @@ class _LibraryPanelState extends State<LibraryPanel> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline, color: Colors.orangeAccent, size: fontSize),
+                Icon(
+                  Icons.info_outline,
+                  color: Colors.orangeAccent,
+                  size: fontSize,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     "Settings will be overwritten. Conversations and system prompts will be merged (duplicates skipped). API keys are never imported.",
                     style: TextStyle(
-                      color: Colors.orangeAccent.withOpacity(0.9),
+                      color: Colors.orangeAccent.withValues(alpha: 0.9),
                       fontSize: fontSize * 0.8,
                     ),
                   ),
@@ -498,7 +530,11 @@ class _LibraryPanelState extends State<LibraryPanel> {
     );
   }
 
-  Widget _buildSectionHeader(String title, double fontSize, ThemeProvider themeProvider) {
+  Widget _buildSectionHeader(
+    String title,
+    double fontSize,
+    ThemeProvider themeProvider,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
@@ -529,5 +565,4 @@ class _LibraryPreview {
     required this.systemPromptsCount,
     required this.sections,
   });
-
 }

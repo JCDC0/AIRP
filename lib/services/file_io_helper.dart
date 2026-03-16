@@ -6,7 +6,8 @@ import 'package:file_picker/file_picker.dart';
 
 // Conditionally import dart:io — this import is a no-op on web.
 // All dart:io usage is guarded behind `!kIsWeb`.
-import 'file_io_native.dart' if (dart.library.html) 'file_io_web.dart'
+import 'file_io_native.dart'
+    if (dart.library.html) 'file_io_web.dart'
     as platform_io;
 
 /// A record type returned by [FileIOHelper.pickFileData].

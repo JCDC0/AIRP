@@ -72,7 +72,10 @@ class SettingsSlider extends StatelessWidget {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                style: TextStyle(fontSize: fontSize, color: themeProvider.textColor),
+                style: TextStyle(
+                  fontSize: fontSize,
+                  color: themeProvider.textColor,
+                ),
                 textAlign: TextAlign.center,
                 decoration: InputDecoration(
                   contentPadding: EdgeInsets.zero,

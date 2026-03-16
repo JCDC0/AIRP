@@ -283,7 +283,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                               ? [
                                   BoxShadow(
                                     color: themeProvider.bloomGlowColor
-                                        .withOpacity(0.6),
+                                        .withValues(alpha: 0.6),
                                     blurRadius: 20,
                                     spreadRadius: 0,
                                   ),
@@ -312,12 +312,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                                     ? [
                                         Shadow(
                                           color: themeProvider.textColor
-                                              .withOpacity(0.7),
+                                              .withValues(alpha: 0.7),
                                           blurRadius: 4,
                                         ),
                                         Shadow(
                                           color: themeProvider.bloomGlowColor
-                                              .withOpacity(0.7),
+                                              .withValues(alpha: 0.7),
                                           blurRadius: 8,
                                         ),
                                       ]
@@ -351,7 +351,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 ? GestureDetector(
                     onTap: _closeDrawers,
                     child: Container(
-                      color: Colors.black.withOpacity(opacity),
+                      color: Colors.black.withValues(alpha: opacity),
                     ), // Overlay always dark
                   )
                 : const SizedBox.shrink();

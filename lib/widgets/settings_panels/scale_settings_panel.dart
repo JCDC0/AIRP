@@ -137,7 +137,7 @@ class ScaleSettingsPanel extends StatelessWidget {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: isActive
-              ? activeColor.withOpacity(0.2)
+              ? activeColor.withValues(alpha: 0.2)
               : themeProvider.containerFillColor,
           foregroundColor: isActive ? activeColor : Colors.grey,
           side: BorderSide(

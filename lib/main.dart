@@ -43,7 +43,9 @@ class AIRP extends StatelessWidget {
           brightness: themeProvider.brightness,
         ),
         useMaterial3: true,
-        drawerTheme: DrawerThemeData(backgroundColor: themeProvider.surfaceColor),
+        drawerTheme: DrawerThemeData(
+          backgroundColor: themeProvider.surfaceColor,
+        ),
       ),
       home: const ChatScreen(),
     );

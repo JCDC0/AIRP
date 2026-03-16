@@ -103,8 +103,9 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       tokenColor = Colors.yellowAccent;
     }
 
-    final String providerName =
-        _providerDisplayName(chatProvider.currentProvider);
+    final String providerName = _providerDisplayName(
+      chatProvider.currentProvider,
+    );
 
     const double baseToolbarHeight = 60.0;
     const double baseBottomHeight = 40.0;
@@ -146,7 +147,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Text(
                   "Context: ${chatProvider.tokenCount} / ${chatProvider.formatNumber(maxContext.toString())}",
                   style: TextStyle(
-                    color: tokenColor.withOpacity(0.8),
+                    color: tokenColor.withValues(alpha: 0.8),
                     fontSize: scaleProvider.systemFontSize - 2,
                     fontWeight: FontWeight.w600,
                     shadows: themeProvider.enableBloom
@@ -224,7 +225,9 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              themeProvider.bloomGlowColor.withOpacity(0.7),
+                              themeProvider.bloomGlowColor.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                         ),
@@ -235,7 +238,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                         icon: Icon(
                           Icons.refresh,
                           size: 20,
-                          color: themeProvider.textColor.withOpacity(0.7),
+                          color: themeProvider.textColor.withValues(alpha: 0.7),
                         ),
                         onPressed: chatProvider.isLoading
                             ? null
@@ -267,8 +270,9 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       barrierColor: Colors.black26,
       builder: (dialogContext) => Consumer<ChatProvider>(
         builder: (ctx, cp, _) {
-          final List<AiProvider> sortedProviders =
-              List<AiProvider>.from(AiProvider.values);
+          final List<AiProvider> sortedProviders = List<AiProvider>.from(
+            AiProvider.values,
+          );
           sortedProviders.sort((a, b) {
             final bool aStarred = cp.starredProviders.contains(a);
             final bool bStarred = cp.starredProviders.contains(b);
@@ -282,7 +286,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             backgroundColor: themeProvider.dropdownColor,
             elevation: themeProvider.enableBloom ? 12 : 8,
             shadowColor: themeProvider.enableBloom
-                ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                 : null,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
@@ -344,9 +348,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         chatProvider.setProvider(result);
         messenger?.showSnackBar(
           SnackBar(
-            content: Text(
-              "Switched to ${_providerDisplayName(result)}",
-            ),
+            content: Text("Switched to ${_providerDisplayName(result)}"),
           ),
         );
       }
@@ -511,13 +513,15 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: themeProvider.enableBloom
-                  ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                  ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                   : themeProvider.borderColor,
             ),
             boxShadow: themeProvider.enableBloom
                 ? [
                     BoxShadow(
-                      color: themeProvider.bloomGlowColor.withOpacity(0.1),
+                      color: themeProvider.bloomGlowColor.withValues(
+                        alpha: 0.1,
+                      ),
                       blurRadius: 8,
                     ),
                   ]

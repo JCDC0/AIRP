@@ -36,7 +36,9 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
                         blurRadius: 20,
                       ),
                     ]
@@ -102,7 +104,9 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
                         blurRadius: 20,
                       ),
                     ]
@@ -140,7 +144,12 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                     fontWeight: FontWeight.bold,
                     fontSize: scaleProvider.systemFontSize,
                     shadows: themeProvider.enableBloom
-                        ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                        ? [
+                            Shadow(
+                              color: themeProvider.bloomGlowColor,
+                              blurRadius: 10,
+                            ),
+                          ]
                         : [],
                   ),
                 ),
@@ -152,14 +161,14 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: themeProvider.enableBloom
-                          ? themeProvider.bloomGlowColor.withOpacity(0.5)
+                          ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                           : themeProvider.borderColor,
                     ),
                     boxShadow: themeProvider.enableBloom
                         ? [
                             BoxShadow(
-                              color: themeProvider.bloomGlowColor.withOpacity(
-                                0.1,
+                              color: themeProvider.bloomGlowColor.withValues(
+                                alpha: 0.1,
                               ),
                               blurRadius: 8,
                             ),
@@ -246,7 +255,9 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
                         blurRadius: 20,
                       ),
                     ]
@@ -331,7 +342,9 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               shadows: themeProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.bloomGlowColor.withOpacity(0.9),
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
                         blurRadius: 20,
                       ),
                     ]

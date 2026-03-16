@@ -48,8 +48,8 @@ class SystemPreset {
     this.formattingTemplate,
     this.postHistoryInstructions = '',
     this.sourceFormat = 'airp',
-  })  : lorebookEntries = lorebookEntries ?? [],
-        regexScripts = regexScripts ?? [];
+  }) : lorebookEntries = lorebookEntries ?? [],
+       regexScripts = regexScripts ?? [];
 
   factory SystemPreset.fromJson(Map<String, dynamic> json) {
     // --- Lorebook entries ---
@@ -72,7 +72,8 @@ class SystemPreset {
     FormattingTemplate? parsedFormatting;
     if (json['formatting_template'] is Map) {
       parsedFormatting = FormattingTemplate.fromJson(
-          Map<String, dynamic>.from(json['formatting_template']));
+        Map<String, dynamic>.from(json['formatting_template']),
+      );
     }
 
     return SystemPreset(
@@ -80,7 +81,8 @@ class SystemPreset {
       description: json['description'] as String? ?? '',
       systemPrompt: json['system_prompt'] as String? ?? '',
       advancedPrompt: json['advanced_prompt'] as String? ?? '',
-      customRules: (json['custom_rules'] as List<dynamic>?)
+      customRules:
+          (json['custom_rules'] as List<dynamic>?)
               ?.map((e) => Map<String, dynamic>.from(e))
               .toList() ??
           [],
@@ -134,12 +136,15 @@ class SystemPreset {
       description: description ?? this.description,
       systemPrompt: systemPrompt ?? this.systemPrompt,
       advancedPrompt: advancedPrompt ?? this.advancedPrompt,
-      customRules: customRules ??
+      customRules:
+          customRules ??
           this.customRules.map((r) => Map<String, dynamic>.from(r)).toList(),
-      generationSettings: generationSettings ??
+      generationSettings:
+          generationSettings ??
           Map<String, dynamic>.from(this.generationSettings),
       version: version ?? this.version,
-      lorebookEntries: lorebookEntries ??
+      lorebookEntries:
+          lorebookEntries ??
           this.lorebookEntries.map((e) => e.copyWith()).toList(),
       regexScripts:
           regexScripts ?? this.regexScripts.map((e) => e.copyWith()).toList(),

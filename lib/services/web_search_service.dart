@@ -113,8 +113,7 @@ class WebSearchService {
       }
 
       final Map<String, dynamic> data = jsonDecode(response.body);
-      final List<dynamic> results =
-          (data['results'] as List<dynamic>?) ?? [];
+      final List<dynamic> results = (data['results'] as List<dynamic>?) ?? [];
 
       return results
           .take(resultCount)
@@ -150,14 +149,8 @@ class WebSearchService {
       final response = await http
           .post(
             Uri.parse('https://google.serper.dev/search'),
-            headers: {
-              'X-API-KEY': apiKey,
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'q': query,
-              'num': resultCount,
-            }),
+            headers: {'X-API-KEY': apiKey, 'Content-Type': 'application/json'},
+            body: jsonEncode({'q': query, 'num': resultCount}),
           )
           .timeout(_timeout);
 
@@ -169,8 +162,7 @@ class WebSearchService {
       }
 
       final Map<String, dynamic> data = jsonDecode(response.body);
-      final List<dynamic> results =
-          (data['organic'] as List<dynamic>?) ?? [];
+      final List<dynamic> results = (data['organic'] as List<dynamic>?) ?? [];
 
       return results
           .take(resultCount)
@@ -222,8 +214,7 @@ class WebSearchService {
       }
 
       final Map<String, dynamic> data = jsonDecode(response.body);
-      final List<dynamic> results =
-          (data['results'] as List<dynamic>?) ?? [];
+      final List<dynamic> results = (data['results'] as List<dynamic>?) ?? [];
 
       return results
           .take(resultCount)

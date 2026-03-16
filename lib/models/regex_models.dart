@@ -102,8 +102,8 @@ class RegexScript {
     this.macroMode = RegexMacroMode.none,
     this.sortOrder = 0,
     Map<String, dynamic>? extensions,
-  })  : trimStrings = trimStrings ?? [],
-        extensions = extensions ?? {};
+  }) : trimStrings = trimStrings ?? [],
+       extensions = extensions ?? {};
 
   /// Creates a [RegexScript] from a SillyTavern-compatible JSON map.
   ///
@@ -155,7 +155,8 @@ class RegexScript {
     RegexMacroMode macroMode = RegexMacroMode.none;
     final rawMacro = json['substituteRegex'] ?? json['macroMode'];
     if (rawMacro is int) {
-      macroMode = RegexMacroMode.values.elementAtOrNull(rawMacro) ??
+      macroMode =
+          RegexMacroMode.values.elementAtOrNull(rawMacro) ??
           RegexMacroMode.none;
     } else if (rawMacro is String) {
       macroMode = RegexMacroMode.values.firstWhere(
@@ -181,13 +182,12 @@ class RegexScript {
 
     return RegexScript(
       id: json['id'] as int? ?? 0,
-      scriptName: json['scriptName'] as String? ??
-          json['script_name'] as String? ??
-          '',
-      findRegex: json['findRegex'] as String? ??
-          json['find_regex'] as String? ??
-          '',
-      replaceString: json['replaceString'] as String? ??
+      scriptName:
+          json['scriptName'] as String? ?? json['script_name'] as String? ?? '',
+      findRegex:
+          json['findRegex'] as String? ?? json['find_regex'] as String? ?? '',
+      replaceString:
+          json['replaceString'] as String? ??
           json['replace_string'] as String? ??
           '',
       trimStrings: trimStrings,
@@ -198,23 +198,23 @@ class RegexScript {
       affectsWorldInfo: affectsWI,
       affectsReasoning: affectsReason,
       displayOnly:
-          json['markdownOnly'] as bool? ?? json['displayOnly'] as bool? ?? false,
-      promptOnly: json['promptOnly'] as bool? ??
-          json['prompt_only'] as bool? ??
+          json['markdownOnly'] as bool? ??
+          json['displayOnly'] as bool? ??
           false,
+      promptOnly:
+          json['promptOnly'] as bool? ?? json['prompt_only'] as bool? ?? false,
       minDepth: json['minDepth'] as int? ?? json['min_depth'] as int? ?? 0,
       maxDepth: json['maxDepth'] as int? ?? json['max_depth'] as int? ?? -1,
-      caseInsensitive: json['caseInsensitive'] as bool? ??
+      caseInsensitive:
+          json['caseInsensitive'] as bool? ??
           json['case_insensitive'] as bool? ??
           false,
       dotAll: json['dotAll'] as bool? ?? json['dot_all'] as bool? ?? false,
-      multiLine: json['multiLine'] as bool? ??
-          json['multi_line'] as bool? ??
-          false,
+      multiLine:
+          json['multiLine'] as bool? ?? json['multi_line'] as bool? ?? false,
       unicode: json['unicode'] as bool? ?? false,
       macroMode: macroMode,
-      sortOrder:
-          json['sortOrder'] as int? ?? json['sort_order'] as int? ?? 0,
+      sortOrder: json['sortOrder'] as int? ?? json['sort_order'] as int? ?? 0,
       extensions: ext,
     );
   }

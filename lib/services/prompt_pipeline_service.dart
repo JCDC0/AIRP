@@ -46,8 +46,9 @@ class PromptPipelineService {
 
     // --- Lorebook: beforeCharDefs ---
     if (lorebookResult != null) {
-      final before =
-          lorebookResult.forPosition(LorebookPosition.beforeCharDefs);
+      final before = lorebookResult.forPosition(
+        LorebookPosition.beforeCharDefs,
+      );
       if (before.isNotEmpty) {
         if (result.isNotEmpty) result += '\n\n';
         result += before.map((e) => e.content).join('\n');
@@ -106,8 +107,7 @@ class PromptPipelineService {
 
     // --- Lorebook: afterCharDefs ---
     if (lorebookResult != null) {
-      final after =
-          lorebookResult.forPosition(LorebookPosition.afterCharDefs);
+      final after = lorebookResult.forPosition(LorebookPosition.afterCharDefs);
       if (after.isNotEmpty) {
         if (result.isNotEmpty) result += '\n\n';
         result += after.map((e) => e.content).join('\n');
@@ -226,9 +226,6 @@ class PromptPipelineService {
     required List<RegexScript> characterScripts,
   }) {
     if (!enableRegex) return [];
-    return [
-      ...globalScripts,
-      if (enableCharacterCard) ...characterScripts,
-    ];
+    return [...globalScripts, if (enableCharacterCard) ...characterScripts];
   }
 }

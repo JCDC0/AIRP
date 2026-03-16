@@ -80,31 +80,35 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
     final Color accent = themeProvider.textColor;
     final double fs = scaleProvider.systemFontSize;
     final List<Shadow> bloomShadow = themeProvider.enableBloom
-        ? [Shadow(color: themeProvider.bloomGlowColor.withOpacity(0.9), blurRadius: 20)]
+        ? [
+            Shadow(
+              color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
+              blurRadius: 20,
+            ),
+          ]
         : [];
 
     InputDecoration buildFieldDecoration({
       required String hint,
       String? label,
       bool obscure = false,
-    }) =>
-        InputDecoration(
-          hintText: hint,
-          labelText: label,
-          labelStyle: TextStyle(color: accent, fontSize: fs - 1),
-          border: OutlineInputBorder(
-            borderSide: themeProvider.enableBloom
-                ? BorderSide(color: accent)
-                : const BorderSide(),
-          ),
-          enabledBorder: themeProvider.enableBloom
-              ? OutlineInputBorder(
-                  borderSide: BorderSide(color: accent.withOpacity(0.5)),
-                )
-              : const OutlineInputBorder(),
-          filled: true,
-          isDense: true,
-        );
+    }) => InputDecoration(
+      hintText: hint,
+      labelText: label,
+      labelStyle: TextStyle(color: accent, fontSize: fs - 1),
+      border: OutlineInputBorder(
+        borderSide: themeProvider.enableBloom
+            ? BorderSide(color: accent)
+            : const BorderSide(),
+      ),
+      enabledBorder: themeProvider.enableBloom
+          ? OutlineInputBorder(
+              borderSide: BorderSide(color: accent.withValues(alpha: 0.5)),
+            )
+          : const OutlineInputBorder(),
+      filled: true,
+      isDense: true,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,13 +130,13 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: themeProvider.enableBloom
-                  ? accent.withOpacity(0.5)
+                  ? accent.withValues(alpha: 0.5)
                   : themeProvider.borderColor,
             ),
             boxShadow: themeProvider.enableBloom
                 ? [
                     BoxShadow(
-                      color: accent.withOpacity(0.1),
+                      color: accent.withValues(alpha: 0.1),
                       blurRadius: 8,
                     ),
                   ]
@@ -201,14 +205,14 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
           chatProvider.searchProvider == SearchProvider.provider
               ? "Uses the AI provider's native search (e.g. Gemini Search, OpenRouter web plugin)."
               : chatProvider.searchProvider == SearchProvider.brave
-                  ? "Results are fetched via the Brave Search API before each message."
-                  : chatProvider.searchProvider == SearchProvider.tavily
-                      ? "AI-optimised search with pre-summarised results. Fast and accurate."
-                      : chatProvider.searchProvider == SearchProvider.serper
-                          ? "Google Search results via Serper.dev — high-quality organic results."
-                          : chatProvider.searchProvider == SearchProvider.searxng
-                              ? "Results are fetched from your self-hosted SearXNG instance."
-                              : "DuckDuckGo HTML scraping — no API key required.",
+              ? "Results are fetched via the Brave Search API before each message."
+              : chatProvider.searchProvider == SearchProvider.tavily
+              ? "AI-optimised search with pre-summarised results. Fast and accurate."
+              : chatProvider.searchProvider == SearchProvider.serper
+              ? "Google Search results via Serper.dev — high-quality organic results."
+              : chatProvider.searchProvider == SearchProvider.searxng
+              ? "Results are fetched from your self-hosted SearXNG instance."
+              : "DuckDuckGo HTML scraping — no API key required.",
           style: TextStyle(
             fontSize: fs * 0.78,
             color: Colors.grey,
@@ -273,7 +277,8 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
       required String hint,
       String? label,
       bool obscure,
-    }) fieldDecoration,
+    })
+    fieldDecoration,
   }) {
     switch (chatProvider.searchProvider) {
       case SearchProvider.brave:
@@ -365,7 +370,8 @@ class _BraveConfig extends StatelessWidget {
     required String hint,
     String? label,
     bool obscure,
-  }) fieldDecoration;
+  })
+  fieldDecoration;
   final ValueChanged<String> onSave;
 
   const _BraveConfig({
@@ -411,7 +417,7 @@ class _BraveConfig extends StatelessWidget {
             "Get a free key at api.search.brave.com/app/keys",
             style: TextStyle(
               fontSize: fs * 0.78,
-              color: accent.withOpacity(0.8),
+              color: accent.withValues(alpha: 0.8),
               decoration: TextDecoration.underline,
             ),
           ),
@@ -438,7 +444,8 @@ class _ApiKeyConfig extends StatelessWidget {
     required String hint,
     String? label,
     bool obscure,
-  }) fieldDecoration;
+  })
+  fieldDecoration;
   final ValueChanged<String> onSave;
 
   const _ApiKeyConfig({
@@ -486,7 +493,7 @@ class _ApiKeyConfig extends StatelessWidget {
             helpText,
             style: TextStyle(
               fontSize: fs * 0.78,
-              color: accent.withOpacity(0.8),
+              color: accent.withValues(alpha: 0.8),
               decoration: TextDecoration.underline,
             ),
           ),
@@ -511,7 +518,8 @@ class _SearXNGConfig extends StatelessWidget {
     required String hint,
     String? label,
     bool obscure,
-  }) fieldDecoration;
+  })
+  fieldDecoration;
   final VoidCallback onValidate;
   final ValueChanged<String> onSave;
 
@@ -535,13 +543,14 @@ class _SearXNGConfig extends StatelessWidget {
       statusIcon = SizedBox(
         width: 18,
         height: 18,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: accent,
-        ),
+        child: CircularProgressIndicator(strokeWidth: 2, color: accent),
       );
     } else if (valid == true) {
-      statusIcon = const Icon(Icons.check_circle, color: Colors.greenAccent, size: 20);
+      statusIcon = const Icon(
+        Icons.check_circle,
+        color: Colors.greenAccent,
+        size: 20,
+      );
     } else if (valid == false) {
       statusIcon = const Icon(Icons.error, color: Colors.redAccent, size: 20);
     } else {
@@ -580,24 +589,24 @@ class _SearXNGConfig extends StatelessWidget {
                 validating
                     ? "Validating…"
                     : valid == true
-                        ? "Instance OK"
-                        : valid == false
-                            ? "Unreachable — retry"
-                            : "Validate Instance",
+                    ? "Instance OK"
+                    : valid == false
+                    ? "Unreachable — retry"
+                    : "Validate Instance",
                 style: TextStyle(fontSize: fs - 2),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: valid == true
                     ? Colors.greenAccent
                     : valid == false
-                        ? Colors.redAccent
-                        : accent,
+                    ? Colors.redAccent
+                    : accent,
                 side: BorderSide(
                   color: valid == true
                       ? Colors.greenAccent
                       : valid == false
-                          ? Colors.redAccent
-                          : accent,
+                      ? Colors.redAccent
+                      : accent,
                 ),
               ),
             ),
@@ -633,20 +642,26 @@ class _DDGWarning extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
-        border: Border.all(color: Colors.orangeAccent.withOpacity(0.6)),
+        color: Colors.orange.withValues(alpha: 0.1),
+        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.6)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded,
-              color: Colors.orangeAccent, size: 20),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orangeAccent,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text.rich(
               TextSpan(
-                style: TextStyle(fontSize: fs * 0.85, color: themeProvider.subtitleColor),
+                style: TextStyle(
+                  fontSize: fs * 0.85,
+                  color: themeProvider.subtitleColor,
+                ),
                 children: const [
                   TextSpan(
                     text: "DuckDuckGo scraping is unreliable. ",

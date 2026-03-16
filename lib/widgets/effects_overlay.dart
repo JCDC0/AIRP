@@ -200,7 +200,7 @@ class MotePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size canvasSize) {
     final paint = Paint()
-      ..color = color.withOpacity(opacity.clamp(0.0, 1.0))
+      ..color = color.withValues(alpha: opacity.clamp(0.0, 1.0))
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, size * 0.8);
 
     canvas.drawCircle(
@@ -317,7 +317,7 @@ class RainPainter extends CustomPainter {
 
     for (var drop in drops) {
       final paint = Paint()
-        ..color = color.withOpacity(drop.opacity.clamp(0.0, 1.0))
+        ..color = color.withValues(alpha: drop.opacity.clamp(0.0, 1.0))
         ..strokeWidth = drop.strokeWidth
         ..strokeCap = StrokeCap.round;
 
@@ -506,7 +506,7 @@ class FireflyPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity((opacity * 0.4).clamp(0.0, 1.0))
+      ..color = color.withValues(alpha: (opacity * 0.4).clamp(0.0, 1.0))
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, this.size * 0.6);
 
     canvas.drawCircle(

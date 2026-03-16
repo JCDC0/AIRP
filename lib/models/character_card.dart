@@ -19,7 +19,7 @@ class CharacterCard {
   String postHistoryInstructions;
   List<String> alternateGreetings;
   Map<String, dynamic> extensions;
-  
+
   // V2 Spec fields — added for full spec parity
   String creatorNotes;
   List<String> tags;
@@ -68,11 +68,10 @@ class CharacterCard {
     this.specVersion = '2.0',
     this.hasIncompatibleFields = false,
     this.compatibilityWarnings = const [],
-  }) : 
-    alternateGreetings = alternateGreetings ?? [],
-    extensions = extensions ?? {},
-    tags = tags ?? [],
-    regexScripts = regexScripts ?? [];
+  }) : alternateGreetings = alternateGreetings ?? [],
+       extensions = extensions ?? {},
+       tags = tags ?? [],
+       regexScripts = regexScripts ?? [];
 
   /// Creates a CharacterCard from a JSON map (SillyTavern V1/V2 compatible).
   factory CharacterCard.fromJson(Map<String, dynamic> json) {
@@ -94,22 +93,37 @@ class CharacterCard {
     // Extract fields with fail-safe defaults
     // Support both V1 and V2 field names where applicable
     final name = content['name'] as String? ?? '';
-    final description = content['description'] as String? ?? content['char_persona'] as String? ?? '';
+    final description =
+        content['description'] as String? ??
+        content['char_persona'] as String? ??
+        '';
     final personality = content['personality'] as String? ?? '';
-    final scenario = content['scenario'] as String? ?? content['world_scenario'] as String? ?? '';
-    final firstMessage = content['first_mes'] as String? ?? content['char_greeting'] as String? ?? '';
-    final mesExample = content['mes_example'] as String? ?? content['example_dialogue'] as String? ?? '';
-    
+    final scenario =
+        content['scenario'] as String? ??
+        content['world_scenario'] as String? ??
+        '';
+    final firstMessage =
+        content['first_mes'] as String? ??
+        content['char_greeting'] as String? ??
+        '';
+    final mesExample =
+        content['mes_example'] as String? ??
+        content['example_dialogue'] as String? ??
+        '';
+
     final creator = content['creator'] as String? ?? '';
     final characterVersion = content['character_version'] as String? ?? '';
     final systemPrompt = content['system_prompt'] as String? ?? '';
-    final postHistoryInstructions = content['post_history_instructions'] as String? ?? '';
-    
+    final postHistoryInstructions =
+        content['post_history_instructions'] as String? ?? '';
+
     List<String> altGreetings = [];
     if (content['alternate_greetings'] is List) {
-      altGreetings = (content['alternate_greetings'] as List).map((e) => e.toString()).toList();
+      altGreetings = (content['alternate_greetings'] as List)
+          .map((e) => e.toString())
+          .toList();
     }
-    
+
     Map<String, dynamic> ext = {};
     if (content['extensions'] is Map) {
       ext = Map<String, dynamic>.from(content['extensions']);
@@ -128,7 +142,8 @@ class CharacterCard {
     Lorebook? characterBook;
     if (content['character_book'] is Map) {
       characterBook = Lorebook.fromJson(
-          Map<String, dynamic>.from(content['character_book']));
+        Map<String, dynamic>.from(content['character_book']),
+      );
     }
 
     // --- Depth prompt from extensions ---
@@ -221,13 +236,9 @@ class CharacterCard {
       data['character_book'] = characterBook!.toJson();
     }
 
-    return {
-      'spec': spec,
-      'spec_version': specVersion,
-      'data': data,
-    };
+    return {'spec': spec, 'spec_version': specVersion, 'data': data};
   }
-  
+
   /// Creates a deep copy of the CharacterCard
   CharacterCard copyWith({
     String? name,
@@ -260,8 +271,10 @@ class CharacterCard {
       creator: creator ?? this.creator,
       characterVersion: characterVersion ?? this.characterVersion,
       systemPrompt: systemPrompt ?? this.systemPrompt,
-      postHistoryInstructions: postHistoryInstructions ?? this.postHistoryInstructions,
-      alternateGreetings: alternateGreetings ?? List.from(this.alternateGreetings),
+      postHistoryInstructions:
+          postHistoryInstructions ?? this.postHistoryInstructions,
+      alternateGreetings:
+          alternateGreetings ?? List.from(this.alternateGreetings),
       extensions: extensions ?? Map.from(this.extensions),
       creatorNotes: creatorNotes ?? this.creatorNotes,
       tags: tags ?? List.from(this.tags),
@@ -269,7 +282,8 @@ class CharacterCard {
       depthPromptText: depthPromptText ?? this.depthPromptText,
       depthPromptDepth: depthPromptDepth ?? this.depthPromptDepth,
       depthPromptRole: depthPromptRole ?? this.depthPromptRole,
-      regexScripts: regexScripts ?? this.regexScripts.map((r) => r.copyWith()).toList(),
+      regexScripts:
+          regexScripts ?? this.regexScripts.map((r) => r.copyWith()).toList(),
       spec: spec,
       specVersion: specVersion,
       hasIncompatibleFields: hasIncompatibleFields,

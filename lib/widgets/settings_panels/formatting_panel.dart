@@ -49,8 +49,9 @@ class _FormattingPanelState extends State<FormattingPanel> {
 
   void _loadDefault() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    chatProvider
-        .setFormattingTemplate(FormattingService.defaultTemplate().copyWith(enabled: true));
+    chatProvider.setFormattingTemplate(
+      FormattingService.defaultTemplate().copyWith(enabled: true),
+    );
   }
 
   void _clearTemplate() {
@@ -62,28 +63,36 @@ class _FormattingPanelState extends State<FormattingPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: themeProvider.dropdownColor,
-        title: Text('Clear Template?',
-            style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: scaleProvider.systemFontSize)),
+        title: Text(
+          'Clear Template?',
+          style: TextStyle(
+            color: Colors.redAccent,
+            fontSize: scaleProvider.systemFontSize,
+          ),
+        ),
         content: Text(
           'This will remove all style rules.\n\nThis cannot be undone.',
           style: TextStyle(
-              color: themeProvider.subtitleColor,
-              fontSize: scaleProvider.systemFontSize * 0.8),
+            color: themeProvider.subtitleColor,
+            fontSize: scaleProvider.systemFontSize * 0.8,
+          ),
         ),
         actions: [
           TextButton(
-            child: Text('Cancel',
-                style:
-                    TextStyle(fontSize: scaleProvider.systemFontSize * 0.8)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
+            ),
             onPressed: () => Navigator.pop(ctx),
           ),
           TextButton(
-            child: Text('CLEAR',
-                style: TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: scaleProvider.systemFontSize * 0.8)),
+            child: Text(
+              'CLEAR',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: scaleProvider.systemFontSize * 0.8,
+              ),
+            ),
             onPressed: () {
               chatProvider.setFormattingTemplate(null);
               Navigator.pop(ctx);
@@ -100,7 +109,8 @@ class _FormattingPanelState extends State<FormattingPanel> {
 
   void _addRule() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    var template = chatProvider.formattingTemplate ??
+    var template =
+        chatProvider.formattingTemplate ??
         FormattingTemplate(name: 'Custom', enabled: true);
 
     final newRule = FormattingRule(
@@ -183,13 +193,13 @@ class _FormattingPanelState extends State<FormattingPanel> {
             );
 
             InputDecoration monoInputDeco(String label) => InputDecoration(
-                  labelText: label,
-                  labelStyle: labelStyle,
-                  filled: true,
-                  fillColor: themeProvider.containerFillDarkColor,
-                  isDense: true,
-                  border: const OutlineInputBorder(),
-                );
+              labelText: label,
+              labelStyle: labelStyle,
+              filled: true,
+              fillColor: themeProvider.containerFillDarkColor,
+              isDense: true,
+              border: const OutlineInputBorder(),
+            );
 
             final monoStyle = TextStyle(
               fontFamily: 'monospace',
@@ -218,10 +228,13 @@ class _FormattingPanelState extends State<FormattingPanel> {
 
             return AlertDialog(
               backgroundColor: themeProvider.dropdownColor,
-              title: Text('Edit Style Rule',
-                  style: TextStyle(
-                      color: themeProvider.textColor,
-                      fontSize: scaleProvider.systemFontSize)),
+              title: Text(
+                'Edit Style Rule',
+                style: TextStyle(
+                  color: themeProvider.textColor,
+                  fontSize: scaleProvider.systemFontSize,
+                ),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: SingleChildScrollView(
@@ -248,8 +261,7 @@ class _FormattingPanelState extends State<FormattingPanel> {
                         decoration: BoxDecoration(
                           color: themeProvider.containerFillDarkColor,
                           borderRadius: BorderRadius.circular(6),
-                          border:
-                              Border.all(color: themeProvider.borderColor),
+                          border: Border.all(color: themeProvider.borderColor),
                         ),
                         child: DropdownButton<FormattingRuleType>(
                           value: editing.type,
@@ -257,17 +269,19 @@ class _FormattingPanelState extends State<FormattingPanel> {
                           dropdownColor: themeProvider.dropdownColor,
                           underline: const SizedBox(),
                           style: TextStyle(
-                              color: themeProvider.textColor,
-                              fontSize:
-                                  scaleProvider.systemFontSize * 0.8),
+                            color: themeProvider.textColor,
+                            fontSize: scaleProvider.systemFontSize * 0.8,
+                          ),
                           items: FormattingRuleType.values.map((t) {
                             return DropdownMenuItem<FormattingRuleType>(
                               value: t,
                               child: Row(
                                 children: [
-                                  Icon(_typeIcon(t),
-                                      size: 16,
-                                      color: themeProvider.subtitleColor),
+                                  Icon(
+                                    _typeIcon(t),
+                                    size: 16,
+                                    color: themeProvider.subtitleColor,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(t.name),
                                 ],
@@ -275,7 +289,8 @@ class _FormattingPanelState extends State<FormattingPanel> {
                             );
                           }).toList(),
                           onChanged: (v) => setDialogState(
-                              () => editing.type = v ?? editing.type),
+                            () => editing.type = v ?? editing.type,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -294,8 +309,7 @@ class _FormattingPanelState extends State<FormattingPanel> {
                       TextField(
                         controller: templateCtrl,
                         style: monoStyle,
-                        decoration:
-                            monoInputDeco('Template (use {{match}})'),
+                        decoration: monoInputDeco('Template (use {{match}})'),
                         maxLines: 2,
                         minLines: 1,
                       ),
@@ -318,15 +332,19 @@ class _FormattingPanelState extends State<FormattingPanel> {
                         alignment: Alignment.centerRight,
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.play_arrow, size: 16),
-                          label: Text('Run',
-                              style: TextStyle(
-                                  fontSize:
-                                      scaleProvider.systemFontSize * 0.8)),
+                          label: Text(
+                            'Run',
+                            style: TextStyle(
+                              fontSize: scaleProvider.systemFontSize * 0.8,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blueAccent,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                           ),
                           onPressed: runPreview,
                         ),
@@ -351,16 +369,22 @@ class _FormattingPanelState extends State<FormattingPanel> {
               ),
               actions: [
                 TextButton(
-                  child: Text('Cancel',
-                      style: TextStyle(
-                          fontSize: scaleProvider.systemFontSize * 0.8)),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: scaleProvider.systemFontSize * 0.8,
+                    ),
+                  ),
                   onPressed: () => Navigator.pop(ctx),
                 ),
                 TextButton(
-                  child: Text('Save',
-                      style: TextStyle(
-                          color: Colors.blueAccent,
-                          fontSize: scaleProvider.systemFontSize * 0.8)),
+                  child: Text(
+                    'Save',
+                    style: TextStyle(
+                      color: Colors.blueAccent,
+                      fontSize: scaleProvider.systemFontSize * 0.8,
+                    ),
+                  ),
                   onPressed: () {
                     editing.label = labelCtrl.text.trim();
                     editing.pattern = patternCtrl.text;
@@ -370,8 +394,7 @@ class _FormattingPanelState extends State<FormattingPanel> {
                     if (template != null) {
                       final updated = template.copyWith(
                         rules: template.rules
-                            .map(
-                                (r) => r.id == editing.id ? editing : r)
+                            .map((r) => r.id == editing.id ? editing : r)
                             .toList(),
                       );
                       chatProvider.setFormattingTemplate(updated);
@@ -404,31 +427,33 @@ class _FormattingPanelState extends State<FormattingPanel> {
       if (decoded is! Map) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Invalid style rule file.')),
+            const SnackBar(content: Text('Invalid style rule file.')),
           );
         }
         return;
       }
 
-      final imported =
-          FormattingTemplate.fromJson(Map<String, dynamic>.from(decoded));
+      final imported = FormattingTemplate.fromJson(
+        Map<String, dynamic>.from(decoded),
+      );
       imported.enabled = true;
       chatProvider.setFormattingTemplate(imported);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  "Imported template '${imported.name}' (${imported.rules.length} rules).")),
+            content: Text(
+              "Imported template '${imported.name}' (${imported.rules.length} rules).",
+            ),
+          ),
         );
       }
     } catch (e) {
       debugPrint('Template import failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     }
   }
@@ -438,36 +463,38 @@ class _FormattingPanelState extends State<FormattingPanel> {
     final template = chatProvider.formattingTemplate;
     if (template == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No template to export.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('No template to export.')));
       }
       return;
     }
 
     try {
-      final jsonStr = const JsonEncoder.withIndent('  ')
-          .convert(template.toJson());
+      final jsonStr = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(template.toJson());
       final bytes = Uint8List.fromList(utf8.encode(jsonStr));
 
       final saved = await FileIOHelper.saveFile(
         bytes: bytes,
-        fileName: '${template.name.isNotEmpty ? template.name : "template"}.json',
+        fileName:
+            '${template.name.isNotEmpty ? template.name : "template"}.json',
         extensions: ['json'],
         dialogTitle: 'Export Style Rule',
       );
 
       if (saved && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Style rule exported!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Style rule exported!')));
       }
     } catch (e) {
       debugPrint('Template export failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
@@ -501,8 +528,10 @@ class _FormattingPanelState extends State<FormattingPanel> {
             children: [
               // --- Template Controls ---
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -538,27 +567,32 @@ class _FormattingPanelState extends State<FormattingPanel> {
                           child: OutlinedButton.icon(
                             onPressed: _loadDefault,
                             icon: const Icon(Icons.restore, size: 14),
-                            label: Text('Default',
-                                style: TextStyle(
-                                    fontSize:
-                                        scaleProvider.systemFontSize * 0.8)),
+                            label: Text(
+                              'Default',
+                              style: TextStyle(
+                                fontSize: scaleProvider.systemFontSize * 0.8,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: _clearTemplate,
-                            icon: Icon(Icons.clear, size: 14,
+                            icon: Icon(
+                              Icons.clear,
+                              size: 14,
+                              color: template != null ? Colors.redAccent : null,
+                            ),
+                            label: Text(
+                              'Clear',
+                              style: TextStyle(
+                                fontSize: scaleProvider.systemFontSize * 0.8,
                                 color: template != null
                                     ? Colors.redAccent
-                                    : null),
-                            label: Text('Clear',
-                                style: TextStyle(
-                                    fontSize:
-                                        scaleProvider.systemFontSize * 0.8,
-                                    color: template != null
-                                        ? Colors.redAccent
-                                        : null)),
+                                    : null,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -572,10 +606,12 @@ class _FormattingPanelState extends State<FormattingPanel> {
                           child: OutlinedButton.icon(
                             onPressed: _handleImport,
                             icon: const Icon(Icons.arrow_downward, size: 14),
-                            label: Text('Import',
-                                style: TextStyle(
-                                    fontSize:
-                                        scaleProvider.systemFontSize * 0.8)),
+                            label: Text(
+                              'Import',
+                              style: TextStyle(
+                                fontSize: scaleProvider.systemFontSize * 0.8,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -583,16 +619,21 @@ class _FormattingPanelState extends State<FormattingPanel> {
                           child: OutlinedButton.icon(
                             onPressed: _handleExport,
                             icon: const Icon(Icons.arrow_upward, size: 14),
-                            label: Text('Export',
-                                style: TextStyle(
-                                    fontSize:
-                                        scaleProvider.systemFontSize * 0.8)),
+                            label: Text(
+                              'Export',
+                              style: TextStyle(
+                                fontSize: scaleProvider.systemFontSize * 0.8,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.add_circle,
-                              color: Colors.greenAccent, size: 22),
+                          icon: const Icon(
+                            Icons.add_circle,
+                            color: Colors.greenAccent,
+                            size: 22,
+                          ),
                           tooltip: 'Add Rule',
                           onPressed: _addRule,
                         ),
@@ -610,22 +651,27 @@ class _FormattingPanelState extends State<FormattingPanel> {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      Icon(Icons.text_format,
-                          size: 48, color: themeProvider.faintColor),
+                      Icon(
+                        Icons.text_format,
+                        size: 48,
+                        color: themeProvider.faintColor,
+                      ),
                       const SizedBox(height: 12),
-                      Text('No style rules defined.',
-                          style: TextStyle(
-                              color: themeProvider.faintColor,
-                              fontSize:
-                                  scaleProvider.systemFontSize * 0.9),
-                          textAlign: TextAlign.center),
+                      Text(
+                        'No style rules defined.',
+                        style: TextStyle(
+                          color: themeProvider.faintColor,
+                          fontSize: scaleProvider.systemFontSize * 0.9,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Load the default template or add rules manually.',
                         style: TextStyle(
-                            color: themeProvider.faintestColor,
-                            fontSize:
-                                scaleProvider.systemFontSize * 0.7),
+                          color: themeProvider.faintestColor,
+                          fontSize: scaleProvider.systemFontSize * 0.7,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -646,14 +692,19 @@ class _FormattingPanelState extends State<FormattingPanel> {
                       dense: true,
                       leading: ReorderableDragStartListener(
                         index: index,
-                        child: Icon(Icons.drag_handle,
-                            color: themeProvider.faintColor, size: 18),
+                        child: Icon(
+                          Icons.drag_handle,
+                          color: themeProvider.faintColor,
+                          size: 18,
+                        ),
                       ),
                       title: Row(
                         children: [
-                          Icon(_typeIcon(rule.type),
-                              size: 14,
-                              color: themeProvider.subtitleColor),
+                          Icon(
+                            _typeIcon(rule.type),
+                            size: 14,
+                            color: themeProvider.subtitleColor,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
@@ -661,9 +712,9 @@ class _FormattingPanelState extends State<FormattingPanel> {
                                   ? rule.label
                                   : 'Unnamed Rule',
                               style: TextStyle(
-                                  color: themeProvider.subtitleColor,
-                                  fontSize:
-                                      scaleProvider.systemFontSize * 0.8),
+                                color: themeProvider.subtitleColor,
+                                fontSize: scaleProvider.systemFontSize * 0.8,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -673,17 +724,19 @@ class _FormattingPanelState extends State<FormattingPanel> {
                       subtitle: Text(
                         rule.type.name,
                         style: TextStyle(
-                            color: themeProvider.faintColor,
-                            fontSize:
-                                scaleProvider.systemFontSize * 0.65),
+                          color: themeProvider.faintColor,
+                          fontSize: scaleProvider.systemFontSize * 0.65,
+                        ),
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: Icon(Icons.close,
-                                color: themeProvider.faintestColor,
-                                size: 16),
+                            icon: Icon(
+                              Icons.close,
+                              color: themeProvider.faintestColor,
+                              size: 16,
+                            ),
                             onPressed: () => _deleteRule(rule),
                           ),
                           Switch(

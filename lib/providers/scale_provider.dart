@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -206,14 +207,11 @@ class ScaleProvider extends ChangeNotifier {
         deviceIndex < DeviceType.values.length) {
       _deviceType = DeviceType.values[deviceIndex];
     }
-    _chatFontSize =
-        (data['chatFontSize'] as num?)?.toDouble() ?? _chatFontSize;
+    _chatFontSize = (data['chatFontSize'] as num?)?.toDouble() ?? _chatFontSize;
     _systemFontSize =
         (data['systemFontSize'] as num?)?.toDouble() ?? _systemFontSize;
-    _drawerWidth =
-        (data['drawerWidth'] as num?)?.toDouble() ?? _drawerWidth;
-    _iconScale =
-        (data['iconScale'] as num?)?.toDouble() ?? _iconScale;
+    _drawerWidth = (data['drawerWidth'] as num?)?.toDouble() ?? _drawerWidth;
+    _iconScale = (data['iconScale'] as num?)?.toDouble() ?? _iconScale;
     _inputAreaScale =
         (data['inputAreaScale'] as num?)?.toDouble() ?? _inputAreaScale;
 

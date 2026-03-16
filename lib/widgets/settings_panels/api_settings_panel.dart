@@ -15,13 +15,13 @@ class ApiSettingsPanel extends StatelessWidget {
 
   /// Controller for the local server IP address text field.
   final TextEditingController localIpController;
-  
+
   /// Controller for the Vertex AI endpoint URL.
   final TextEditingController vertexAiEndpointController;
-  
+
   /// Controller for the generic OpenAI Compatible endpoint URL.
   final TextEditingController openAiCompatibleEndpointController;
-  
+
   /// Controller for the Ollama endpoint URL.
   final TextEditingController ollamaEndpointController;
 
@@ -41,14 +41,16 @@ class ApiSettingsPanel extends StatelessWidget {
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     // Determines if the current provider requires an endpoint URL
-    final bool requiresEndpoint = chatProvider.currentProvider == AiProvider.local ||
-                                  chatProvider.currentProvider == AiProvider.vertexAi ||
-                                  chatProvider.currentProvider == AiProvider.openAiCompatible ||
-                                  chatProvider.currentProvider == AiProvider.ollama;
+    final bool requiresEndpoint =
+        chatProvider.currentProvider == AiProvider.local ||
+        chatProvider.currentProvider == AiProvider.vertexAi ||
+        chatProvider.currentProvider == AiProvider.openAiCompatible ||
+        chatProvider.currentProvider == AiProvider.ollama;
 
     // Determines if the current provider requires an API key
-    final bool requiresApiKey = chatProvider.currentProvider != AiProvider.local &&
-                                chatProvider.currentProvider != AiProvider.ollama;
+    final bool requiresApiKey =
+        chatProvider.currentProvider != AiProvider.local &&
+        chatProvider.currentProvider != AiProvider.ollama;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,7 +63,12 @@ class ApiSettingsPanel extends StatelessWidget {
               color: themeProvider.textColor,
               fontSize: scaleProvider.systemFontSize,
               shadows: themeProvider.enableBloom
-                  ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                  ? [
+                      Shadow(
+                        color: themeProvider.bloomGlowColor,
+                        blurRadius: 10,
+                      ),
+                    ]
                   : [],
             ),
           ),
@@ -79,7 +86,9 @@ class ApiSettingsPanel extends StatelessWidget {
               enabledBorder: themeProvider.enableBloom
                   ? OutlineInputBorder(
                       borderSide: BorderSide(
-                        color: themeProvider.bloomGlowColor.withOpacity(0.5),
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.5,
+                        ),
                       ),
                     )
                   : const OutlineInputBorder(),
@@ -99,7 +108,12 @@ class ApiSettingsPanel extends StatelessWidget {
               color: themeProvider.textColor,
               fontSize: scaleProvider.systemFontSize,
               shadows: themeProvider.enableBloom
-                  ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                  ? [
+                      Shadow(
+                        color: themeProvider.bloomGlowColor,
+                        blurRadius: 10,
+                      ),
+                    ]
                   : [],
             ),
           ),

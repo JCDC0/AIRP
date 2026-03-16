@@ -69,7 +69,11 @@ class MessageBubble extends StatelessWidget {
     this.showTypingIndicator = false,
   });
 
-  void _showImageZoom(BuildContext context, ImageProvider imageProvider, {Uint8List? rawBytes}) {
+  void _showImageZoom(
+    BuildContext context,
+    ImageProvider imageProvider, {
+    Uint8List? rawBytes,
+  }) {
     showDialog(
       context: context,
       barrierColor: const Color.fromARGB(255, 0, 0, 0),
@@ -112,7 +116,8 @@ class MessageBubble extends StatelessWidget {
                         try {
                           await FileIOHelper.saveFile(
                             bytes: rawBytes,
-                            fileName: 'airp_image_${DateTime.now().millisecondsSinceEpoch}.png',
+                            fileName:
+                                'airp_image_${DateTime.now().millisecondsSinceEpoch}.png',
                           );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -130,26 +135,27 @@ class MessageBubble extends StatelessWidget {
                           }
                         }
                       } else {
-                      try {
-                        final savedPath = await FileIOHelper.saveToDownloads(
-                          bytes: rawBytes,
-                          filename: 'airp_image_${DateTime.now().millisecondsSinceEpoch}.png',
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Saved to $savedPath'),
-                              duration: const Duration(seconds: 3),
-                            ),
+                        try {
+                          final savedPath = await FileIOHelper.saveToDownloads(
+                            bytes: rawBytes,
+                            filename:
+                                'airp_image_${DateTime.now().millisecondsSinceEpoch}.png',
                           );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Saved to $savedPath'),
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Save failed: $e')),
+                            );
+                          }
                         }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Save failed: $e')),
-                          );
-                        }
-                      }
                       }
                     },
                     icon: const Icon(Icons.download),
@@ -294,16 +300,16 @@ class MessageBubble extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: textColor.withOpacity(0.1),
+                          color: textColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: textColor.withOpacity(0.2),
+                            color: textColor.withValues(alpha: 0.2),
                           ),
                         ),
                         child: Text(
                           "$currentVersionNum/$totalVersions",
                           style: TextStyle(
-                            color: textColor.withOpacity(0.7),
+                            color: textColor.withValues(alpha: 0.7),
                             fontSize: 12 * scaleProvider.iconScale,
                             fontWeight: FontWeight.w500,
                           ),
@@ -346,14 +352,14 @@ class MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: IconButton(
-        icon: Icon(icon, size: size, color: color.withOpacity(0.5)),
+        icon: Icon(icon, size: size, color: color.withValues(alpha: 0.5)),
         onPressed: onTap,
         tooltip: tooltip,
         constraints: const BoxConstraints(),
         padding: const EdgeInsets.all(8),
         style: IconButton.styleFrom(
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          hoverColor: color.withOpacity(0.1),
+          hoverColor: color.withValues(alpha: 0.1),
         ),
       ),
     );
@@ -413,7 +419,7 @@ class MessageBubble extends StatelessWidget {
       color: textColor,
       backgroundColor: themeProvider.containerFillColor,
       shadows: useBloom
-          ? [Shadow(color: textColor.withOpacity(0.9), blurRadius: 4)]
+          ? [Shadow(color: textColor.withValues(alpha: 0.9), blurRadius: 4)]
           : [],
       fontFamily: 'monospace',
       fontSize: scaleProvider.chatFontSize - 2,
@@ -425,9 +431,13 @@ class MessageBubble extends StatelessWidget {
     final isReasoningDone = splitContent['isDone'] as bool;
     final bool hasReasoning = reasoningText.trim().isNotEmpty;
     final bool hasVisibleText = visibleText.trim().isNotEmpty;
-    final bool hasAttachments = msg.imagePaths.isNotEmpty || msg.aiImage != null;
+    final bool hasAttachments =
+        msg.imagePaths.isNotEmpty || msg.aiImage != null;
     final bool shouldShowTypingDots =
-      showTypingIndicator && !hasReasoning && !hasVisibleText && !hasAttachments;
+        showTypingIndicator &&
+        !hasReasoning &&
+        !hasVisibleText &&
+        !hasAttachments;
 
     final contentColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,13 +464,13 @@ class MessageBubble extends StatelessWidget {
                 cleanModelName(msg.modelName!),
                 style: TextStyle(
                   fontSize: scaleProvider.chatFontSize - 4,
-                  color: textColor.withOpacity(0.7),
+                  color: textColor.withValues(alpha: 0.7),
                   fontWeight: FontWeight.bold,
                   fontFamily: 'monospace',
                   shadows: useBloom
                       ? [
                           Shadow(
-                            color: textColor.withOpacity(0.9),
+                            color: textColor.withValues(alpha: 0.9),
                             blurRadius: 4,
                           ),
                         ]
@@ -496,11 +506,7 @@ class MessageBubble extends StatelessWidget {
             child: GestureDetector(
               onTap: () {
                 final bytes = base64Decode(msg.aiImage!);
-                _showImageZoom(
-                  context,
-                  MemoryImage(bytes),
-                  rawBytes: bytes,
-                );
+                _showImageZoom(context, MemoryImage(bytes), rawBytes: bytes);
               },
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -519,7 +525,9 @@ class MessageBubble extends StatelessWidget {
               final displayText = snapshot.data ?? visibleText;
               return MarkdownBody(
                 data: displayText,
-                builders: {'code': CodeElementBuilder(context, codeStyle, themeProvider)},
+                builders: {
+                  'code': CodeElementBuilder(context, codeStyle, themeProvider),
+                },
                 styleSheet: MarkdownStyleSheet(
                   codeblockPadding: EdgeInsets.zero,
                   codeblockDecoration: const BoxDecoration(
@@ -531,7 +539,7 @@ class MessageBubble extends StatelessWidget {
                     shadows: useBloom
                         ? [
                             Shadow(
-                              color: textColor.withOpacity(0.9),
+                              color: textColor.withValues(alpha: 0.9),
                               blurRadius: 15,
                             ),
                           ]
@@ -542,7 +550,12 @@ class MessageBubble extends StatelessWidget {
                     fontSize: scaleProvider.chatFontSize,
                     decoration: TextDecoration.underline,
                     shadows: useBloom
-                        ? [const Shadow(color: Colors.blueAccent, blurRadius: 8)]
+                        ? [
+                            const Shadow(
+                              color: Colors.blueAccent,
+                              blurRadius: 8,
+                            ),
+                          ]
                         : [],
                   ),
                   code: codeStyle,
@@ -596,13 +609,13 @@ class MessageBubble extends StatelessWidget {
                 "Usage: ${msg.usage!['prompt_tokens'] ?? 0} in + ${msg.usage!['completion_tokens'] ?? 0} out = ${msg.usage!['total_tokens'] ?? 0} total",
                 style: TextStyle(
                   fontSize: scaleProvider.chatFontSize - 4,
-                  color: textColor.withOpacity(0.7),
+                  color: textColor.withValues(alpha: 0.7),
                   fontWeight: FontWeight.bold,
                   fontFamily: 'monospace',
                   shadows: useBloom
                       ? [
                           Shadow(
-                            color: textColor.withOpacity(0.9),
+                            color: textColor.withValues(alpha: 0.9),
                             blurRadius: 4,
                           ),
                         ]
@@ -622,7 +635,7 @@ class MessageBubble extends StatelessWidget {
                 backgroundColor: bubbleColor,
                 borderColor: borderColor,
                 glowColor: (msg.isUser ? bubbleColor : themeProvider.textColor)
-                    .withOpacity(0.15),
+                    .withValues(alpha: 0.15),
                 radius: 12.0,
                 strokeWidth: 2.0,
                 glowStrokeWidth: 10.0,
@@ -680,7 +693,10 @@ class MessageBubble extends StatelessWidget {
                   width: 150,
                   height: 150,
                   color: themeProvider.containerFillColor,
-                  child: FileIOHelper.imageWidgetFromPath(path, fit: BoxFit.cover),
+                  child: FileIOHelper.imageWidgetFromPath(
+                    path,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             );
@@ -771,7 +787,10 @@ class _InlineTypingDotsState extends State<_InlineTypingDots>
           mainAxisSize: MainAxisSize.min,
           children: List.generate(3, (index) {
             final double delay = index * 0.2;
-            final double t = ((_controller.value - delay) % 1.0).clamp(0.0, 1.0);
+            final double t = ((_controller.value - delay) % 1.0).clamp(
+              0.0,
+              1.0,
+            );
             final double bounce = (t < 0.5) ? (t * 2) : (2 - t * 2);
             final double offset = -bounceHeight * bounce;
 
@@ -783,7 +802,7 @@ class _InlineTypingDotsState extends State<_InlineTypingDots>
                   width: dotSize,
                   height: dotSize,
                   decoration: BoxDecoration(
-                    color: themeProvider.textColor.withOpacity(0.7),
+                    color: themeProvider.textColor.withValues(alpha: 0.7),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -848,7 +867,9 @@ class CodeElementBuilder extends MarkdownElementBuilder {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: themeProvider.dividerColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -876,11 +897,18 @@ class CodeElementBuilder extends MarkdownElementBuilder {
                   },
                   child: Row(
                     children: [
-                      Icon(Icons.copy, color: themeProvider.subtitleColor, size: 14),
+                      Icon(
+                        Icons.copy,
+                        color: themeProvider.subtitleColor,
+                        size: 14,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         "Copy Code",
-                        style: TextStyle(color: themeProvider.subtitleColor, fontSize: 11),
+                        style: TextStyle(
+                          color: themeProvider.subtitleColor,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                   ),
@@ -959,21 +987,33 @@ class BorderGlowPainter extends CustomPainter {
 
 /// Immutable config for a single orbiting line on the thinking bubble.
 class _ThinkOrbitLine {
-  final int speed;     // Whole-number speed multiplier (1–3)
+  final int speed; // Whole-number speed multiplier (1–3)
   final double offset; // Starting phase [0, 1)
   final double length; // Arc fraction of total path [0.10, 0.35)
-  const _ThinkOrbitLine({required this.speed, required this.offset, required this.length});
+  const _ThinkOrbitLine({
+    required this.speed,
+    required this.offset,
+    required this.length,
+  });
 }
 
 /// Generates [count] randomised orbit lines with whole-number speeds.
-List<_ThinkOrbitLine> _generateThinkOrbitLines(Random rng, {int count = 2, int maxSpeed = 2}) {
+List<_ThinkOrbitLine> _generateThinkOrbitLines(
+  Random rng, {
+  int count = 2,
+  int maxSpeed = 2,
+}) {
   final int c = count.clamp(2, 5);
   final List<int> speeds = List.generate(c, (i) => (i % maxSpeed) + 1);
   speeds.shuffle(rng);
   return List.generate(c, (i) {
     final double offset = (i / c) + rng.nextDouble() * 0.1;
     final double length = 0.12 + rng.nextDouble() * 0.18;
-    return _ThinkOrbitLine(speed: speeds[i], offset: offset % 1.0, length: length);
+    return _ThinkOrbitLine(
+      speed: speeds[i],
+      offset: offset % 1.0,
+      length: length,
+    );
   });
 }
 
@@ -1030,7 +1070,6 @@ class _ThinkingOrbitPainter extends CustomPainter {
   bool shouldRepaint(covariant _ThinkingOrbitPainter oldDelegate) =>
       oldDelegate.progress != progress;
 }
-
 
 // --- REASONING HELPERS ---
 
@@ -1102,7 +1141,10 @@ class _ReasoningViewState extends State<ReasoningView>
         // Re-randomise lines each time animation is enabled
         final rng = Random();
         setState(() {
-          _orbitLines = _generateThinkOrbitLines(rng, count: rng.nextInt(3) + 2);
+          _orbitLines = _generateThinkOrbitLines(
+            rng,
+            count: rng.nextInt(3) + 2,
+          );
         });
         _orbitController.repeat();
       } else {
@@ -1143,7 +1185,7 @@ class _ReasoningViewState extends State<ReasoningView>
                           widget.enableLoadingAnimation
                       ? _ThinkingOrbitPainter(
                           progress: _orbitController.value,
-                          color: widget.textColor.withOpacity(0.6),
+                          color: widget.textColor.withValues(alpha: 0.6),
                           lines: _orbitLines,
                         )
                       : null,
@@ -1153,9 +1195,11 @@ class _ReasoningViewState extends State<ReasoningView>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: widget.textColor.withOpacity(0.06),
+                  color: widget.textColor.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: widget.textColor.withOpacity(0.1)),
+                  border: Border.all(
+                    color: widget.textColor.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1165,7 +1209,7 @@ class _ReasoningViewState extends State<ReasoningView>
                           ? Icons.visibility_off_outlined
                           : Icons.psychology_outlined,
                       size: 14,
-                      color: widget.textColor.withOpacity(0.6),
+                      color: widget.textColor.withValues(alpha: 0.6),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -1175,7 +1219,7 @@ class _ReasoningViewState extends State<ReasoningView>
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: widget.textColor.withOpacity(0.6),
+                        color: widget.textColor.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -1191,11 +1235,11 @@ class _ReasoningViewState extends State<ReasoningView>
               padding: const EdgeInsets.all(8),
               width: double.infinity,
               decoration: BoxDecoration(
-                color: widget.textColor.withOpacity(0.1),
+                color: widget.textColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
                 border: Border(
                   left: BorderSide(
-                    color: widget.textColor.withOpacity(0.3),
+                    color: widget.textColor.withValues(alpha: 0.3),
                     width: 3,
                   ),
                 ),
@@ -1205,7 +1249,7 @@ class _ReasoningViewState extends State<ReasoningView>
                 style: TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 11,
-                  color: widget.textColor.withOpacity(0.8),
+                  color: widget.textColor.withValues(alpha: 0.8),
                   height: 1.4,
                 ),
               ),

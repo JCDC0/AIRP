@@ -32,8 +32,13 @@ class SettingsColorPicker extends StatelessWidget {
     return Column(
       children: [
         GestureDetector(
-          onTap: () =>
-              _showColorPickerDialog(context, color, onSave, scaleProvider, themeProvider),
+          onTap: () => _showColorPickerDialog(
+            context,
+            color,
+            onSave,
+            scaleProvider,
+            themeProvider,
+          ),
           child: Container(
             width: 40,
             height: 40,
@@ -42,7 +47,7 @@ class SettingsColorPicker extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: themeProvider.textColor, width: 2),
               boxShadow: [
-                BoxShadow(color: color.withOpacity(0.5), blurRadius: 8),
+                BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8),
               ],
             ),
           ),

@@ -110,8 +110,7 @@ class PresetService {
   // SillyTavern parser internals
   // -------------------------------------------------------------------------
 
-  static PresetImportResult _parseSillyTavernPreset(
-      Map<String, dynamic> json) {
+  static PresetImportResult _parseSillyTavernPreset(Map<String, dynamic> json) {
     final warnings = <String>[];
 
     // --- Name ---
@@ -130,17 +129,14 @@ class PresetService {
       genSettings['top_k'] = _toInt(json['top_k']);
     }
     if (json['frequency_penalty'] != null) {
-      genSettings['frequency_penalty'] =
-          _toDouble(json['frequency_penalty']);
+      genSettings['frequency_penalty'] = _toDouble(json['frequency_penalty']);
     }
     if (json['presence_penalty'] != null) {
-      genSettings['presence_penalty'] =
-          _toDouble(json['presence_penalty']);
+      genSettings['presence_penalty'] = _toDouble(json['presence_penalty']);
     }
 
     // max_tokens — ST uses both 'max_tokens' and 'openai_max_tokens'.
-    final maxTokens =
-        json['openai_max_tokens'] ?? json['max_tokens'];
+    final maxTokens = json['openai_max_tokens'] ?? json['max_tokens'];
     if (maxTokens != null) {
       genSettings['max_tokens'] = _toInt(maxTokens);
     }
@@ -155,9 +151,8 @@ class PresetService {
         if (p is! Map) continue;
         final role = p['role'] as String? ?? '';
         final content = p['content'] as String? ?? '';
-        final identifier = p['identifier'] as String? ??
-            p['name'] as String? ??
-            '';
+        final identifier =
+            p['identifier'] as String? ?? p['name'] as String? ?? '';
 
         // ST's "main" prompt is identified by role=system + identifier
         // containing "main" or being the first system prompt.
@@ -173,21 +168,24 @@ class PresetService {
     if (json['prompts'] is List && (json['prompts'] as List).length > 2) {
       final count = (json['prompts'] as List).length;
       warnings.add(
-          'Discarded $count prompt entries from ST prompts[] array '
-          '(only main prompt and post-history instructions were imported).');
+        'Discarded $count prompt entries from ST prompts[] array '
+        '(only main prompt and post-history instructions were imported).',
+      );
     }
 
     if (json['prompt_order'] is List) {
       warnings.add(
-          'Discarded prompt_order[] orchestration — AIRP does not '
-          'support ST\'s multi-slot prompt assembly.');
+        'Discarded prompt_order[] orchestration — AIRP does not '
+        'support ST\'s multi-slot prompt assembly.',
+      );
     }
 
     if (json['chat_completion_source'] != null) {
       warnings.add(
-          'Ignored chat_completion_source '
-          '"${json['chat_completion_source']}" — AIRP uses its '
-          'own backend selection.');
+        'Ignored chat_completion_source '
+        '"${json['chat_completion_source']}" — AIRP uses its '
+        'own backend selection.',
+      );
     }
 
     // Warn about ST-specific fields we can't map.
@@ -209,8 +207,7 @@ class PresetService {
         .where((f) => json.containsKey(f) && json[f] != null)
         .toList();
     if (foundStFields.isNotEmpty) {
-      warnings.add(
-          'Ignored ST-specific fields: ${foundStFields.join(', ')}.');
+      warnings.add('Ignored ST-specific fields: ${foundStFields.join(', ')}.');
     }
 
     // --- Regex scripts embedded in ST preset ---
@@ -218,8 +215,7 @@ class PresetService {
     if (json['regex_scripts'] is List) {
       regexScripts = (json['regex_scripts'] as List)
           .whereType<Map>()
-          .map((e) =>
-              RegexScript.fromJson(Map<String, dynamic>.from(e)))
+          .map((e) => RegexScript.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     }
 
@@ -235,10 +231,7 @@ class PresetService {
       sourceFormat: 'sillytavern',
     );
 
-    return PresetImportResult(
-      preset: preset,
-      warnings: warnings,
-    );
+    return PresetImportResult(preset: preset, warnings: warnings);
   }
 
   /// Checks if a prompt entry is the "main" system prompt.
@@ -297,8 +290,5 @@ class PresetImportResult {
   /// True if no warnings were generated.
   bool get isClean => warnings.isEmpty;
 
-  const PresetImportResult({
-    required this.preset,
-    required this.warnings,
-  });
+  const PresetImportResult({required this.preset, required this.warnings});
 }

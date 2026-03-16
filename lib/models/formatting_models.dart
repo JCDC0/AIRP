@@ -25,8 +25,8 @@ class FormattingTemplate {
     this.description = '',
     List<FormattingRule>? rules,
     Map<String, dynamic>? extensions,
-  })  : rules = rules ?? [],
-        extensions = extensions ?? {};
+  }) : rules = rules ?? [],
+       extensions = extensions ?? {};
 
   factory FormattingTemplate.fromJson(Map<String, dynamic> json) {
     List<FormattingRule> parsedRules = [];

@@ -38,8 +38,8 @@ class Lorebook {
     this.matchWholeWords = false,
     List<LorebookEntry>? entries,
     Map<String, dynamic>? extensions,
-  })  : entries = entries ?? [],
-        extensions = extensions ?? {};
+  }) : entries = entries ?? [],
+       extensions = extensions ?? {};
 
   /// Creates a [Lorebook] from a SillyTavern `character_book` JSON map.
   ///
@@ -157,11 +157,7 @@ enum LorebookPosition {
 }
 
 /// The role used when inserting as a depth-based message.
-enum LorebookRole {
-  system,
-  user,
-  assistant,
-}
+enum LorebookRole { system, user, assistant }
 
 // ---------------------------------------------------------------------------
 // Lorebook Entry
@@ -274,10 +270,10 @@ class LorebookEntry {
     List<String>? characterFilter,
     this.characterFilterIsInclusive = true,
     Map<String, dynamic>? extensions,
-  })  : keys = keys ?? [],
-        secondaryKeys = secondaryKeys ?? [],
-        characterFilter = characterFilter ?? [],
-        extensions = extensions ?? {};
+  }) : keys = keys ?? [],
+       secondaryKeys = secondaryKeys ?? [],
+       characterFilter = characterFilter ?? [],
+       extensions = extensions ?? {};
 
   /// Creates a [LorebookEntry] from a SillyTavern entry JSON map.
   ///
@@ -292,8 +288,9 @@ class LorebookEntry {
   factory LorebookEntry.fromJson(Map<String, dynamic> json) {
     // --- Keys ---
     List<String> parsedKeys = _parseKeys(json['keys'] ?? json['key']);
-    List<String> parsedSecondary =
-        _parseKeys(json['secondary_keys'] ?? json['keysecondary']);
+    List<String> parsedSecondary = _parseKeys(
+      json['secondary_keys'] ?? json['keysecondary'],
+    );
 
     // --- Enabled ---
     bool enabled = true;
@@ -377,17 +374,18 @@ class LorebookEntry {
       order: json['insertion_order'] as int? ?? json['order'] as int? ?? 100,
       probability: json['probability'] as int? ?? 100,
       group: json['group'] as String? ?? '',
-      groupWeight: json['group_weight'] as int? ??
-          json['groupWeight'] as int? ??
-          100,
+      groupWeight:
+          json['group_weight'] as int? ?? json['groupWeight'] as int? ?? 100,
       selectiveLogic: selectiveLogic,
       sticky: json['sticky'] as int?,
       cooldown: json['cooldown'] as int?,
       delay: json['delay'] as int?,
-      preventRecursion: json['prevent_recursion'] as bool? ??
+      preventRecursion:
+          json['prevent_recursion'] as bool? ??
           json['preventRecursion'] as bool? ??
           false,
-      excludeRecursion: json['exclude_recursion'] as bool? ??
+      excludeRecursion:
+          json['exclude_recursion'] as bool? ??
           json['excludeRecursion'] as bool? ??
           false,
       characterFilter: charFilter,
@@ -481,8 +479,7 @@ class LorebookEntry {
       delay: delay ?? this.delay,
       preventRecursion: preventRecursion ?? this.preventRecursion,
       excludeRecursion: excludeRecursion ?? this.excludeRecursion,
-      characterFilter:
-          characterFilter ?? List.from(this.characterFilter),
+      characterFilter: characterFilter ?? List.from(this.characterFilter),
       characterFilterIsInclusive:
           characterFilterIsInclusive ?? this.characterFilterIsInclusive,
       extensions: extensions ?? Map.from(this.extensions),
@@ -497,7 +494,10 @@ class LorebookEntry {
   static List<String> _parseKeys(dynamic raw) {
     if (raw == null) return [];
     if (raw is List) {
-      return raw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+      return raw
+          .map((e) => e.toString().trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
     }
     if (raw is String) {
       return raw

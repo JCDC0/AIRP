@@ -56,11 +56,13 @@ class ThemeProvider extends ChangeNotifier {
   // ── Semantic colors (adapt to light / dark mode) ──────────────────────
 
   /// The overall brightness used by MaterialApp / ColorScheme.
-  Brightness get brightness => _isLightMode ? Brightness.light : Brightness.dark;
+  Brightness get brightness =>
+      _isLightMode ? Brightness.light : Brightness.dark;
 
   /// Scaffold / page background.
-  Color get scaffoldBackgroundColor =>
-      _isLightMode ? const Color(0xFFFAFAFA) : const Color.fromARGB(255, 0, 0, 0);
+  Color get scaffoldBackgroundColor => _isLightMode
+      ? const Color(0xFFFAFAFA)
+      : const Color.fromARGB(255, 0, 0, 0);
 
   /// Primary surface (drawers, input areas, bottom sheets).
   Color get surfaceColor =>
@@ -104,25 +106,24 @@ class ThemeProvider extends ChangeNotifier {
 
   /// Container background fill (cards, chips, tag pills).
   Color get containerFillColor =>
-      _isLightMode ? Colors.black.withOpacity(0.06) : Colors.black26;
+      _isLightMode ? Colors.black.withValues(alpha: 0.06) : Colors.black26;
 
   /// Deeper container fill.
   Color get containerFillDarkColor =>
-      _isLightMode ? Colors.black.withOpacity(0.04) : Colors.black12;
+      _isLightMode ? Colors.black.withValues(alpha: 0.04) : Colors.black12;
 
   /// Input field fill colour.
   Color get inputFillColor => _isLightMode ? Colors.white : Colors.black;
 
   /// Semi-opaque dark overlay.
   Color get overlayDarkColor =>
-      _isLightMode ? Colors.black.withOpacity(0.06) : Colors.black87;
+      _isLightMode ? Colors.black.withValues(alpha: 0.06) : Colors.black87;
 
   /// Foreground colour on coloured buttons.
   Color get onAccentColor => _isLightMode ? Colors.white : Colors.black;
 
   /// Bloom shadow colour that works on both backgrounds.
-  Color get bloomGlowColor =>
-      _isLightMode ? appThemeColor : Colors.white;
+  Color get bloomGlowColor => _isLightMode ? appThemeColor : Colors.white;
 
   ThemeProvider() {
     _loadPreferences();
@@ -146,10 +147,7 @@ class ThemeProvider extends ChangeNotifier {
     final baseColor = textColor;
     final baseTheme = (_isLightMode ? ThemeData.light() : ThemeData.dark())
         .textTheme
-        .apply(
-      bodyColor: baseColor,
-      displayColor: baseColor,
-    );
+        .apply(bodyColor: baseColor, displayColor: baseColor);
     switch (_fontStyle) {
       case 'Google':
         return GoogleFonts.openSansTextTheme(baseTheme);
@@ -385,7 +383,8 @@ class ThemeProvider extends ChangeNotifier {
     _backgroundOpacity =
         prefs.getDouble('app_bg_opacity') ?? AppDefaults.backgroundOpacity;
     _enableBloom = prefs.getBool('app_enable_bloom') ?? false;
-    _enableLoadingAnimation = prefs.getBool('app_enable_loading_animation') ?? true;
+    _enableLoadingAnimation =
+        prefs.getBool('app_enable_loading_animation') ?? true;
     _enableMotes = prefs.getBool('app_enable_motes') ?? false;
     _enableRain = prefs.getBool('app_enable_rain') ?? false;
     _enableFireflies = prefs.getBool('app_enable_fireflies') ?? false;
@@ -466,14 +465,14 @@ class ThemeProvider extends ChangeNotifier {
     _backgroundOpacity =
         (data['backgroundOpacity'] as num?)?.toDouble() ?? _backgroundOpacity;
     _enableBloom = data['bloom'] as bool? ?? _enableBloom;
-    _enableLoadingAnimation = data['loadingAnimation'] as bool? ?? _enableLoadingAnimation;
+    _enableLoadingAnimation =
+        data['loadingAnimation'] as bool? ?? _enableLoadingAnimation;
     _enableMotes = data['motes'] as bool? ?? _enableMotes;
     _enableRain = data['rain'] as bool? ?? _enableRain;
     _enableFireflies = data['fireflies'] as bool? ?? _enableFireflies;
     _isLightMode = data['lightMode'] as bool? ?? _isLightMode;
     _motesDensity = (data['motesDensity'] as num?)?.toInt() ?? _motesDensity;
-    _rainIntensity =
-        (data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity;
+    _rainIntensity = (data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity;
     _firefliesCount =
         (data['firefliesCount'] as num?)?.toInt() ?? _firefliesCount;
 
@@ -506,7 +505,10 @@ class ThemeProvider extends ChangeNotifier {
     }
     await prefs.setDouble('app_bg_opacity', _backgroundOpacity);
     await prefs.setBool('app_enable_bloom', _enableBloom);
-    await prefs.setBool('app_enable_loading_animation', _enableLoadingAnimation);
+    await prefs.setBool(
+      'app_enable_loading_animation',
+      _enableLoadingAnimation,
+    );
     await prefs.setBool('app_enable_motes', _enableMotes);
     await prefs.setBool('app_enable_rain', _enableRain);
     await prefs.setBool('app_enable_fireflies', _enableFireflies);
