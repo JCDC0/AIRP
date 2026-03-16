@@ -24,15 +24,14 @@
 * **Regex Engine**: Post-processing pipeline with 3 modes — permanent (modifies stored text), display-only (render-time only), and prompt-only (alters sent prompt). Targets user input, AI output, world info, and reasoning independently. Supports macro-resolved patterns.
 * **Formatting Templates**: Template-based output styling with ordered rules for dialogue, thought, narration, and character name wrapping. Macro placeholders (`{{char}}`, `{{match}}`, etc.) are resolved at render time.
 * **Macro Engine**: Shared foundation powering lorebooks, regex, and formatting. 25+ macros across identity (`{{char}}`, `{{user}}`), time (`{{date}}`, `{{isotime}}`), randomization (`{{roll::2d6}}`, `{{pick::a::b}}`), variables (`{{getvar}}`, `{{setvar}}`), and utility (`{{newline}}`, `{{trim}}`). Recursive resolution with depth cap.
-* **Preset System**: Import and export configuration packs bundling system prompt, generation settings, lorebook entries, regex scripts, and formatting templates. Partial SillyTavern preset import with auto-extraction of compatible fields.
-* **Save & Load Library**: Export and import your entire setup as `.airp` files with per-category toggles: Conversations, System Prompt, Advanced System Prompt, Generation Parameters, Layout & Scaling, Visuals & Atmosphere, Character Card, and Lorebook/Regex/Formatting. Intelligent merge on import.
+* **Config Packs (Presets)**: Import and export configuration packs bundling system prompt, custom rules, generation settings, and optionally lorebook entries, regex scripts, and formatting templates. Quick-apply from a local pack list. Partial SillyTavern preset import with auto-extraction of compatible fields.
+* **Full Backup (Library)**: Export and import your entire AIRP configuration as `.airp` files with per-category toggles: Conversations, System Prompt, Advanced System Prompt, Generation Parameters, Layout & Scaling, Visuals & Atmosphere, Character Card, and Lorebook/Regex/Formatting. Smart import merges by ID and deduplicates.
 * **Searchable History**: Quickly find past conversations with integrated search. Star conversations to pin them in a dedicated "Starred" section at the top of the drawer.
 * **Developer Friendly**: Full Markdown support with **syntax highlighting** for code blocks and one-click code copying.
 * **Message Management**: Edit, copy, delete, or regenerate specific messages within a chat.
 * **Deep Visual Customization**: Independent color pickers for user bubble, user text, AI bubble, and AI text colors. Separate opacity sliders for background dimmer and message bubbles. 16 thematic font presets.
 * **Atmospheric Effects**: Toggle "Bloom" for a glow dependent on your chosen color, or enable environmental effects like **Floating Motes**, **Rain**, or **Fireflies** — each with configurable density/intensity sliders.
-* **System Prompt Library**: Save and load custom personas and roleplay instructions. Export/import structured presets (JSON) bundling system prompt, advanced prompt, generation settings, lorebook entries, regex scripts, and formatting templates.
-* **Advanced Prompting Engine**: Create, edit, and toggle individual "tweaks" that stack on top of your main persona. Full SillyTavern-compatible character card import/export with lorebook, regex, and formatting subsystems.
+* **Advanced Prompting Engine**: Create, edit, and toggle individual custom rule "tweaks" that stack on top of your main persona. Full SillyTavern-compatible character card import/export with lorebook, regex, and formatting subsystems.
 * **Multimodal Support**: Send images to compatible models.
 * **File Attachment Support**: Attach PDFs and text-based files (txt, md, dart, etc.) to your messages for AI analysis.
 * **Token Counting**: Persistent, real-time context usage display in the app header with color-coded indicators (green → yellow → orange → red) as the context window fills.
@@ -234,7 +233,7 @@ Slide from the **right** edge or tap the **Settings** icon.
    * This is your "World Rulebook" or "Main Persona".
    * Type directly into the large text box in the settings drawer.
    * **Save/Load**: Use the dropdown menu to save your prompt to a local library for later use.
-   * **Export/Import Presets**: Export structured presets as JSON files containing system prompt, advanced prompt, generation settings, and optionally lorebook entries, regex scripts, and formatting templates. Import merges rules intelligently (dedup by label).
+   * **Export/Import Config Packs**: Export structured packs as JSON files containing system prompt, custom rules, generation settings, and optionally lorebook entries, regex scripts, and formatting templates. Import merges rules intelligently (dedup by label).
 
 2. **Advanced Tweaks (Character Cards)**:
    * Below the main prompt, expand the **"Advanced System Prompt"** section.
@@ -271,7 +270,7 @@ Search results are formatted as a `[WEB_CONTEXT]` block and prepended to your me
 
 ---
 
-## Save & Load Library
+## Full Backup (Save & Load Library)
 
 Export and import your entire AIRP configuration using `.airp` files. Located in the Settings Drawer under **Library**.
 
@@ -284,7 +283,9 @@ Export and import your entire AIRP configuration using `.airp` files. Located in
   * Visuals & Atmosphere
   * Character Card
   * Lorebook / Regex / Formatting
-* **Intelligent Import**: Import preview with the same category toggles. Conversations are merged by ID, system prompts by title — no duplicates. Character card, lorebook, regex scripts, and formatting templates are restored from the imported file.
+* **Smart Import**: Import preview with the same category toggles. Conversations are merged by ID, system prompts by title — no duplicates. Character card, lorebook, regex scripts, and formatting templates are restored from the imported file.
+
+> **Note:** Full Backup captures your complete app state as a single `.airp` file. For sharing individual configurations (prompts + settings), use **Config Packs** instead.
 
 ---
 
@@ -430,30 +431,32 @@ Variables set with `{{setvar}}` persist across sessions via local storage.
 
 ---
 
-## Preset System
+## Config Packs (Presets)
 
-Presets are importable configuration packs that bundle multiple settings together. Located in the Settings Drawer under **Presets**.
+Config Packs are shareable, targeted configuration bundles. Located in the Settings Drawer under **Presets**.
 
-### What's in a Preset
+### What's in a Config Pack
 
-A preset can include any combination of:
+A config pack can include any combination of:
 * **System Prompt**: Main persona/instructions.
-* **Advanced Prompt**: Tweaks and overrides.
+* **Custom Rules**: Toggle-able text directives that stack on the advanced prompt.
 * **Generation Settings**: Temperature, Top P, Top K, Max Tokens.
 * **Post-History Instructions**: Text injected after the conversation history.
-* **Lorebook Entries**: World-building entries bundled with the preset.
-* **Regex Scripts**: Text processing rules bundled with the preset.
-* **Formatting Template**: Output formatting rules bundled with the preset.
+* **Lorebook Entries**: World-building entries bundled with the pack.
+* **Regex Scripts**: Text processing rules bundled with the pack.
+* **Formatting Template**: Output formatting rules bundled with the pack.
 
-### Using Presets
+### Using Config Packs
 
 1. Open the **Settings Drawer** and expand **Presets**.
-2. **Import**: Tap the import button to load a `.json` preset file.
-   * AIRP-native presets import with full fidelity.
+2. **Import**: Tap the import button to load a `.json` config pack.
+   * AIRP-native packs import with full fidelity.
    * SillyTavern OpenAI presets are partially supported — temperature, top_p, top_k, max_tokens, main prompt, and post-history content are extracted. Incompatible ST-specific fields are discarded with a warning.
-3. **Apply**: Tap a preset to apply it. The system prompt, generation parameters, and any bundled lorebook/regex/formatting are loaded.
-4. **Export**: Save your current configuration as a preset for sharing or backup.
-5. **Delete**: Remove presets you no longer need.
+3. **Apply**: Tap a pack to apply it. The system prompt, generation parameters, and any bundled lorebook/regex/formatting are loaded.
+4. **Export**: Save your current configuration as a pack for sharing or backup.
+5. **Delete**: Remove packs you no longer need.
+
+> **Note:** Config Packs target *specific settings* for sharing. For backing up your entire app state (conversations, visuals, model history, etc.), use **Full Backup** instead.
 
 ---
 

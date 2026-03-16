@@ -26,7 +26,6 @@ class _ConversationDrawerState extends State<ConversationDrawer>
     with TickerProviderStateMixin {
   String _searchQuery = '';
 
-
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -59,248 +58,268 @@ class _ConversationDrawerState extends State<ConversationDrawer>
           children: [
             Column(
               children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 50, 16, 0),
-              color: themeProvider.containerFillColor,
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Conversations List",
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 50, 16, 0),
+                  color: themeProvider.containerFillColor,
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Conversations List",
+                        style: TextStyle(
+                          fontSize: scaleProvider.systemFontSize + 8,
+                          fontWeight: FontWeight.bold,
+                          color: themeProvider.textColor,
+                          shadows: themeProvider.enableBloom
+                              ? [
+                                  Shadow(
+                                    color: themeProvider.bloomGlowColor,
+                                    blurRadius: 10,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 0,
+                  ),
+                  dense: true,
+                  leading: Icon(
+                    Icons.add_circle_outline,
+                    color: Colors.greenAccent,
+                    shadows: themeProvider.enableBloom
+                        ? [
+                            const Shadow(
+                              color: Colors.greenAccent,
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  title: Text(
+                    "New Conversation",
                     style: TextStyle(
-                      fontSize: scaleProvider.systemFontSize + 8,
-                      fontWeight: FontWeight.bold,
-                      color: themeProvider.textColor,
+                      color: Colors.green,
+                      fontSize: scaleProvider.systemFontSize,
                       shadows: themeProvider.enableBloom
-                          ? [
-                              Shadow(
-                                color: themeProvider.bloomGlowColor,
-                                blurRadius: 10,
-                              ),
-                            ]
+                          ? [const Shadow(color: Colors.green, blurRadius: 8)]
                           : [],
                     ),
                   ),
-                ],
-              ),
-            ),
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 0,
-              ),
-              dense: true,
-              leading: Icon(
-                Icons.add_circle_outline,
-                color: Colors.greenAccent,
-                shadows: themeProvider.enableBloom
-                    ? [const Shadow(color: Colors.greenAccent, blurRadius: 8)]
-                    : [],
-              ),
-              title: Text(
-                "New Conversation",
-                style: TextStyle(
-                  color: Colors.green,
-                  fontSize: scaleProvider.systemFontSize,
-                  shadows: themeProvider.enableBloom
-                      ? [const Shadow(color: Colors.green, blurRadius: 8)]
-                      : [],
-                ),
-              ),
-              subtitle: Text(
-                "Hold Chat to delete",
-                style: TextStyle(
-                  color: Colors.orangeAccent,
-                  fontSize: scaleProvider.systemFontSize - 2,
-                ),
-              ),
-              onTap: () {
-                chatProvider.createNewSession();
-                widget.onClose?.call();
-              },
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: themeProvider.textColor.withAlpha(20),
-                  borderRadius: BorderRadius.circular(20),
-                  border: themeProvider.enableBloom
-                      ? Border.all(
-                          color: themeProvider.bloomGlowColor.withOpacity(0.3),
-                        )
-                      : null,
-                  boxShadow: themeProvider.enableBloom
-                      ? [
-                          BoxShadow(
-                            color: themeProvider.bloomGlowColor.withOpacity(0.1),
-                            blurRadius: 6,
-                          ),
-                        ]
-                      : [],
-                ),
-                child: TextField(
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontSize: scaleProvider.systemFontSize,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: "Find conversation...",
-                    hintStyle: TextStyle(
-                      color: themeProvider.dimTextColor,
-                      fontSize: scaleProvider.systemFontSize - 1,
+                  subtitle: Text(
+                    "Hold Chat to delete",
+                    style: TextStyle(
+                      color: Colors.orangeAccent,
+                      fontSize: scaleProvider.systemFontSize - 2,
                     ),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: themeProvider.textColor,
-                      size: 18,
-                      shadows: themeProvider.enableBloom
+                  ),
+                  onTap: () {
+                    chatProvider.createNewSession();
+                    widget.onClose?.call();
+                  },
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: themeProvider.textColor.withAlpha(20),
+                      borderRadius: BorderRadius.circular(20),
+                      border: themeProvider.enableBloom
+                          ? Border.all(
+                              color: themeProvider.bloomGlowColor.withOpacity(
+                                0.3,
+                              ),
+                            )
+                          : null,
+                      boxShadow: themeProvider.enableBloom
                           ? [
-                              Shadow(
-                                color: themeProvider.bloomGlowColor,
+                              BoxShadow(
+                                color: themeProvider.bloomGlowColor.withOpacity(
+                                  0.1,
+                                ),
                                 blurRadius: 6,
                               ),
                             ]
                           : [],
                     ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    isDense: true,
-                  ),
-                  onChanged: (val) {
-                    setState(() {
-                      _searchQuery = val;
-                    });
-                  },
-                ),
-              ),
-            ),
-
-            const Divider(color: Colors.grey),
-
-            Expanded(
-              child: filteredSessions.isEmpty
-                  ? Center(
-                      child: Text(
-                        "No chats found",
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: scaleProvider.systemFontSize,
+                    child: TextField(
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Find conversation...",
+                        hintStyle: TextStyle(
+                          color: themeProvider.dimTextColor,
+                          fontSize: scaleProvider.systemFontSize - 1,
                         ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: themeProvider.textColor,
+                          size: 18,
+                          shadows: themeProvider.enableBloom
+                              ? [
+                                  Shadow(
+                                    color: themeProvider.bloomGlowColor,
+                                    blurRadius: 6,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        isDense: true,
                       ),
-                    )
-                  : ListView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 0,
-                      ),
-                      children: [
-                        if (bookmarkedSessions.isNotEmpty) ...[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 0,
-                            ),
-                            child: Text(
-                              "Starred",
-                              style: TextStyle(
-                                color: themeProvider.textColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: scaleProvider.systemFontSize,
-                                letterSpacing: 1.2,
-                                shadows: themeProvider.enableBloom
-                                    ? [
-                                        Shadow(
-                                          color: themeProvider.bloomGlowColor,
-                                          blurRadius: 6,
-                                        ),
-                                      ]
-                                    : [],
-                              ),
-                            ),
-                          ),
-                          Divider(color: themeProvider.dividerColor, height: 1),
-                          ...bookmarkedSessions.map(
-                            (session) => _buildSessionItem(
-                              context,
-                              session,
-                              themeProvider,
-                              chatProvider,
-                              scaleProvider,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        if (recentSessions.isNotEmpty) ...[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 0,
-                            ),
-                            child: Text(
-                              "Recent",
-                              style: TextStyle(
-                                color: themeProvider.textColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: scaleProvider.systemFontSize,
-                                letterSpacing: 1.2,
-                                shadows: themeProvider.enableBloom
-                                    ? [
-                                        Shadow(
-                                          color: themeProvider.bloomGlowColor,
-                                          blurRadius: 6,
-                                        ),
-                                      ]
-                                    : [],
-                              ),
-                            ),
-                          ),
-                          Divider(color: themeProvider.dividerColor, height: 1),
-                          const SizedBox(height: 8),
-                          ...recentSessions.map(
-                            (session) => _buildSessionItem(
-                              context,
-                              session,
-                              themeProvider,
-                              chatProvider,
-                              scaleProvider,
-                            ),
-                          ),
-                        ],
-                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val;
+                        });
+                      },
                     ),
-            ),
-          ],
-        ),
+                  ),
+                ),
 
-        // Notification overlay for completed background responses
-        if (chatProvider.pendingNotifications.isNotEmpty)
-          Positioned(
-            left: 8,
-            right: 8,
-            bottom: 16,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(
-                chatProvider.pendingNotifications.length,
-                (i) => _BackgroundNotificationCard(
-                  notification: chatProvider.pendingNotifications[i],
-                  themeProvider: themeProvider,
-                  scaleProvider: scaleProvider,
-                  onDismiss: () {
-                    chatProvider.removeNotification(i);
-                  },
+                const Divider(color: Colors.grey),
+
+                Expanded(
+                  child: filteredSessions.isEmpty
+                      ? Center(
+                          child: Text(
+                            "No chats found",
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: scaleProvider.systemFontSize,
+                            ),
+                          ),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 0,
+                          ),
+                          children: [
+                            if (bookmarkedSessions.isNotEmpty) ...[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 0,
+                                ),
+                                child: Text(
+                                  "Starred",
+                                  style: TextStyle(
+                                    color: themeProvider.textColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: scaleProvider.systemFontSize,
+                                    letterSpacing: 1.2,
+                                    shadows: themeProvider.enableBloom
+                                        ? [
+                                            Shadow(
+                                              color:
+                                                  themeProvider.bloomGlowColor,
+                                              blurRadius: 6,
+                                            ),
+                                          ]
+                                        : [],
+                                  ),
+                                ),
+                              ),
+                              Divider(
+                                color: themeProvider.dividerColor,
+                                height: 1,
+                              ),
+                              ...bookmarkedSessions.map(
+                                (session) => _buildSessionItem(
+                                  context,
+                                  session,
+                                  themeProvider,
+                                  chatProvider,
+                                  scaleProvider,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            if (recentSessions.isNotEmpty) ...[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 0,
+                                ),
+                                child: Text(
+                                  "Recent",
+                                  style: TextStyle(
+                                    color: themeProvider.textColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: scaleProvider.systemFontSize,
+                                    letterSpacing: 1.2,
+                                    shadows: themeProvider.enableBloom
+                                        ? [
+                                            Shadow(
+                                              color:
+                                                  themeProvider.bloomGlowColor,
+                                              blurRadius: 6,
+                                            ),
+                                          ]
+                                        : [],
+                                  ),
+                                ),
+                              ),
+                              Divider(
+                                color: themeProvider.dividerColor,
+                                height: 1,
+                              ),
+                              const SizedBox(height: 8),
+                              ...recentSessions.map(
+                                (session) => _buildSessionItem(
+                                  context,
+                                  session,
+                                  themeProvider,
+                                  chatProvider,
+                                  scaleProvider,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                ),
+              ],
+            ),
+
+            // Notification overlay for completed background responses
+            if (chatProvider.pendingNotifications.isNotEmpty)
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: 16,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(
+                    chatProvider.pendingNotifications.length,
+                    (i) => _BackgroundNotificationCard(
+                      notification: chatProvider.pendingNotifications[i],
+                      themeProvider: themeProvider,
+                      scaleProvider: scaleProvider,
+                      onDismiss: () {
+                        chatProvider.removeNotification(i);
+                      },
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -314,7 +333,9 @@ class _ConversationDrawerState extends State<ConversationDrawer>
     ScaleProvider scaleProvider,
   ) {
     final bool isActive = session.id == chatProvider.currentSessionId;
-    final bool isStreaming = chatProvider.streamingSessionIds.contains(session.id);
+    final bool isStreaming = chatProvider.streamingSessionIds.contains(
+      session.id,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
@@ -367,11 +388,18 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: isActive ? themeProvider.textColor : themeProvider.subtitleColor,
+                  color: isActive
+                      ? themeProvider.textColor
+                      : themeProvider.subtitleColor,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                   fontSize: scaleProvider.systemFontSize + 1,
                   shadows: (isActive && themeProvider.enableBloom)
-                      ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 8)]
+                      ? [
+                          Shadow(
+                            color: themeProvider.bloomGlowColor,
+                            blurRadius: 8,
+                          ),
+                        ]
                       : [],
                 ),
               ),
@@ -400,7 +428,9 @@ class _ConversationDrawerState extends State<ConversationDrawer>
         ),
         onTap: () {
           // Save outgoing session's background before switching
-          chatProvider.autoSaveCurrentSession(backgroundImagePath: themeProvider.backgroundImagePath);
+          chatProvider.autoSaveCurrentSession(
+            backgroundImagePath: themeProvider.backgroundImagePath,
+          );
           chatProvider.loadSession(session);
 
           if (session.backgroundImage != null) {
@@ -441,7 +471,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                   icon: const Icon(Icons.delete_forever, color: Colors.white),
                   label: const Text("DELETE"),
                   onPressed: () async {
-                    await chatProvider.deleteSession(session.id);
+                    chatProvider.deleteSession(session.id);
                     if (!context.mounted) return;
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -549,12 +579,7 @@ class _BackgroundNotificationCardState
                       spreadRadius: 1,
                     ),
                   ]
-                : [
-                    BoxShadow(
-                      color: theme.containerFillColor,
-                      blurRadius: 8,
-                    ),
-                  ],
+                : [BoxShadow(color: theme.containerFillColor, blurRadius: 8)],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -567,7 +592,12 @@ class _BackgroundNotificationCardState
                     color: Colors.greenAccent,
                     size: 16,
                     shadows: theme.enableBloom
-                        ? [const Shadow(color: Colors.greenAccent, blurRadius: 6)]
+                        ? [
+                            const Shadow(
+                              color: Colors.greenAccent,
+                              blurRadius: 6,
+                            ),
+                          ]
                         : [],
                   ),
                   const SizedBox(width: 6),
@@ -581,7 +611,12 @@ class _BackgroundNotificationCardState
                         fontWeight: FontWeight.bold,
                         fontSize: scale.systemFontSize,
                         shadows: theme.enableBloom
-                            ? [Shadow(color: theme.bloomGlowColor, blurRadius: 6)]
+                            ? [
+                                Shadow(
+                                  color: theme.bloomGlowColor,
+                                  blurRadius: 6,
+                                ),
+                              ]
                             : [],
                       ),
                     ),
@@ -592,11 +627,7 @@ class _BackgroundNotificationCardState
                         if (mounted) widget.onDismiss();
                       });
                     },
-                    child: Icon(
-                      Icons.close,
-                      color: Colors.grey[600],
-                      size: 14,
-                    ),
+                    child: Icon(Icons.close, color: Colors.grey[600], size: 14),
                   ),
                 ],
               ),

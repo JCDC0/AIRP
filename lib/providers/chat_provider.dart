@@ -1054,9 +1054,20 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  void setVertexAiEndpoint(String val) { _vertexAiEndpoint = val; notifyListeners(); }
-  void setOpenAiCompatibleEndpoint(String val) { _openAiCompatibleEndpoint = val; notifyListeners(); }
-  void setOllamaEndpoint(String val) { _ollamaEndpoint = val; notifyListeners(); }
+  void setVertexAiEndpoint(String val) {
+    _vertexAiEndpoint = val;
+    notifyListeners();
+  }
+
+  void setOpenAiCompatibleEndpoint(String val) {
+    _openAiCompatibleEndpoint = val;
+    notifyListeners();
+  }
+
+  void setOllamaEndpoint(String val) {
+    _ollamaEndpoint = val;
+    notifyListeners();
+  }
 
   void toggleProviderStar(AiProvider provider) {
     if (_starredProviders.contains(provider)) {
@@ -2292,23 +2303,23 @@ class ChatProvider extends ChangeNotifier {
     selectMessageVersion(messageIndex, prevIndex);
   }
 
-  /// Creates a new conversation using the specified message as the starting point.
+  /// Creates a new conversation branch using only the specified message.
   /// Returns the new session ID.
-  String createConversationFromMessage(int messageIndex) {
+  String createBranchFromMessage(int messageIndex) {
     if (messageIndex < 0 || messageIndex >= _messages.length) return "";
 
     final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
 
-    // Start new conversation with only the selected message bubble.
+    // Branch: start new conversation with only the selected message
     final selectedMessage = _messages[messageIndex].copyWith(
       clearContentNotifier: true,
     );
-    final forkedMessages = [selectedMessage];
+    final branchedMessages = [selectedMessage];
 
     final newSession = ChatSessionData(
       id: newSessionId,
-      title: "Forked Conversation",
-      messages: forkedMessages,
+      title: "Branched Conversation",
+      messages: branchedMessages,
       modelName: _selectedModel,
       tokenCount: 0,
       systemInstruction: _systemInstruction,
@@ -2411,16 +2422,9 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString('airp_sessions', data);
   }
 
-  void createNewSession({bool saveCurrent = true}) {
-    // Reuse the current empty conversation to avoid duplicate blank sessions.
-    if (_messages.isEmpty && _currentTitle.isEmpty) {
-      notifyListeners();
-      initializeModel();
-      return;
-    }
-
+  void createNewSession() {
     // Save current session before switching if it has content
-    if (saveCurrent && _messages.isNotEmpty) {
+    if (_messages.isNotEmpty) {
       autoSaveCurrentSession();
     }
 
@@ -2495,7 +2499,7 @@ class ChatProvider extends ChangeNotifier {
     initializeModel();
   }
 
-  Future<void> deleteSession(String id) async {
+  void deleteSession(String id) async {
     // Cancel any active stream for this session
     final sub = _activeStreams.remove(id);
     if (sub != null) {
@@ -2507,7 +2511,7 @@ class ChatProvider extends ChangeNotifier {
 
     _savedSessions.removeWhere((s) => s.id == id);
     if (id == _currentSessionId) {
-      createNewSession(saveCurrent: false);
+      createNewSession();
     } else {
       notifyListeners();
     }

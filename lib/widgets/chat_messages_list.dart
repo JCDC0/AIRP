@@ -302,16 +302,16 @@ class ChatMessagesList extends StatelessWidget {
     );
   }
 
-  void _handleForkConversation(BuildContext context, int index) {
+  void _handleBranchConversation(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
 
-    // Create new conversation from messages up to this point
-    final newSessionId = chatProvider.createConversationFromMessage(index);
+    // Create a new branch from the selected message
+    final newSessionId = chatProvider.createBranchFromMessage(index);
 
     if (newSessionId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Failed to fork conversation"),
+          content: Text("Failed to branch conversation"),
           duration: Duration(milliseconds: 1500),
         ),
       );
@@ -323,7 +323,7 @@ class ChatMessagesList extends StatelessWidget {
       (s) => s.id == newSessionId,
       orElse: () => ChatSessionData(
         id: newSessionId,
-        title: "Forked Conversation",
+        title: "Branched Conversation",
         messages: [],
         modelName: chatProvider.selectedModel,
         tokenCount: 0,
@@ -331,12 +331,12 @@ class ChatMessagesList extends StatelessWidget {
       ),
     );
 
-    // Auto-switch into the forked conversation
+    // Auto-switch into the branched conversation
     chatProvider.loadSession(newSession);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Switched to forked conversation"),
+        content: Text("Switched to branched conversation"),
         behavior: SnackBarBehavior.floating,
         duration: Duration(milliseconds: 1500),
       ),
@@ -446,8 +446,8 @@ class ChatMessagesList extends StatelessWidget {
                                 !message.isUser
                             ? () => chatProvider.previousMessageVersion(index)
                             : null,
-                        onFork: !message.isUser
-                            ? () => _handleForkConversation(context, index)
+                        onBranch: !message.isUser
+                            ? () => _handleBranchConversation(context, index)
                             : null,
                       );
                     },

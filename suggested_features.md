@@ -1,225 +1,165 @@
 # AIRP Roadmap & Suggested Features
 
-This document outlines the planned progression for AIRP, transitioning from its current state toward a highly customizable, "Silly Tavern" inspired roleplay client.
+This document tracks AIRP's version history and upcoming milestones.
 
 ---
 
-## 🚀 Version Roadmap
+## ✅ Completed Versions
 
-### ✅ v0.5.8 - Enhanced Model Selection, Metadata & Pricing UI [COMPLETE]
+### v0.5.8 — Model Selection, Metadata & Pricing UI
 
-*Focus: Introduced comprehensive model discovery and pricing transparency.*
+Enhanced ModelSelector with dynamic model listing, cost sorting, and metadata display from OpenRouter (context length, cost per token, provider info).
 
-- **Enhanced ModelSelector:** Dynamic model listing with metadata and pricing information from OpenRouter.
-- **Cost Sorting:** Users can sort models by cost for budget-conscious selection.
-- **Model Metadata UI:** Display context length, cost per token, and provider information.
+### v0.5.9 — Model Selector & Response Versioning
 
-### ✅ v0.5.9 - Enhanced Model Selector & Response Versioning [COMPLETE]
+Improved model picker UX with filtering, response versioning with fork/regenerate and version navigation, dynamic context management, and loading border animations.
 
-*Focus: Advanced model interaction and conversation management.*
+### v0.5.10 — Web Search (BYOK)
 
-- **Improved Model Selection UX:** Refined model picker with better discoverability and filtering.
-- **Response Versioning:** Fork conversations and regenerate responses with version tracking.
-- **Dynamic Context Management:** Better handling of token limits and context allocation.
-- **Loading Animations:** Randomized loading border animations and UI polish.
+Provider-agnostic web search with 6 backends: Provider-native grounding, Brave, Tavily, Serper.dev, SearXNG (self-hosted), and DuckDuckGo (scraping fallback). Results injected as `[WEB_CONTEXT]` blocks prepended to user messages. Configurable max results slider (1–10).
 
-### 📦 v0.5.10 - Expanded Web Search (BYOK) [COMPLETE]
+### v0.5.11 — Light Mode System
 
-*Focus: Providing privacy-focused, flexible web search capabilities that bypass costly provider-native tools.*
+Full light/dark mode toggle with 20+ semantic color getters in ThemeProvider. Replaced ~170 hardcoded color references across 21 files. Fixed icon consistency with circular styled backgrounds.
 
-- **Web Search Panel:** A new settings section under the Settings Drawer (beneath "Generation Parameters"). [COMPLETE]
-- **Tiered Search Systems:** [COMPLETE]
-  - **Provider (default):** Delegates to the AI provider's native grounding (Gemini Search, OpenRouter web plugin). No change to existing behaviour.
-  - **Brave Web Search:** High-quality results with a Bring Your Own Key (BYOK) system. Secure key storage. [COMPLETE]
-  - **Tavily:** AI-optimised search with pre-summarised results. BYOK with secure key storage. 1 000 free searches/month. [COMPLETE]
-  - **Serper.dev:** Google Search results in clean JSON. BYOK with secure key storage. 2 500 free searches included. [COMPLETE]
-  - **SearXNG:** Support for self-hosted SearXNG instance URLs with IP:port normalisation and a live validation button. [COMPLETE]
-  - **DDG Scraping:** A free fallback using DuckDuckGo HTML scraping (no key required). Warning displayed in UI. [COMPLETE]
-- **Context Injection:** Search results are formatted as a `[WEB_CONTEXT]` block and prepended to the user message before sending to the AI. This ensures per-message freshness and works uniformly across all backends (Gemini streaming and OpenAI-compatible). Native provider grounding is only used when the backend is set to "Provider". [COMPLETE]
-- **Max Results slider:** User can configure 1–10 results per query. [COMPLETE]
+### v0.5.12 — The "Silly Tavern" Era
 
-### ✅ v0.5.11 - Light Mode System [COMPLETE]
+Major roleplay engine release building four subsystems on a shared macro engine:
 
-*Focus: Full light/dark mode theming across the entire application.*
+- **Lorebook System** — SillyTavern Character Book V2 parity with keyword-triggered context injection, 8 insertion positions, timed effects, inclusion groups, recursive scanning, and token budgeting.
+- **Regex Engine** — Post-processing pipeline with 3 modes (permanent, display-only, prompt-only) targeting user input, AI output, world info, and reasoning independently.
+- **Formatting Templates** — Template-based output wrapping for dialogue, thought, narration, and character name styling with macro resolution.
+- **Macro Engine** — Shared foundation with 25+ macros (identity, time, randomization, variables, conditionals, utility).
+- **Preset System** — Importable config packs bundling system prompt, generation settings, lorebook, regex, and formatting. Partial SillyTavern preset import.
+- **Character Card V2** — Full spec editor with 11+ fields, embedded lorebook auto-loading, PNG/JSON import/export with round-trip fidelity.
+- **Infrastructure** — Split monolithic panels into 5 focused widgets, fixed 7 bugs, expanded settings drawer to 12 tiles, normalized SharedPreferences keys.
 
-- **Light Mode Toggle:** Added to Visuals & Atmosphere tab above Global Interface Font, persisted via SharedPreferences. [COMPLETE]
-- **Semantic Color System:** 20+ adaptive color getters in ThemeProvider (textColor, surfaceColor, dropdownColor, borderColor, containerFillColor, etc.) that swap between light and dark palettes. [COMPLETE]
-- **Full Codebase Coverage:** Replaced ~170 hardcoded color references across 21 files (screens, widgets, settings panels) with semantic getters. [COMPLETE]
-- **Settings Integration:** Light mode state included in export/import and reset-to-defaults flows. [COMPLETE]
-- **Icon Consistency Fix:** Applied circular `inputFillColor` backgrounds with static borders to attachment, scroll-to-top, scroll-to-bottom, and zoom buttons matching the style of image gen, web search, and reasoning toggles. Converted send button from `IconButton.filled` to Container-based circular styling with proper light/dark mode color adaptation. [COMPLETE]
+### v0.5.13 — Web Compatibility & Device Detection
 
-### ✅ v0.5.12 - The "Silly Tavern" Era [COMPLETE]
+- Centralized `FileIOHelper` with conditional imports eliminating all `dart:io` from UI/service layers for web compatibility.
+- Improved device detection using `defaultTargetPlatform` + Material Design `shortestSide` breakpoints.
+- Updated layout defaults for phone/tablet/desktop scaling.
+- Pending: Image gen render pipeline, attachment pipeline fixes.
 
-*Focus: Advanced roleplay features, SillyTavern-compatible data formats, and deep immersion systems. Builds four subsystems on a shared macro engine foundation.*
+### v0.5.14 — Multi-Provider Integration
 
-- **Scaffolding & Bug Fixes:** [COMPLETE]
-  - Split monolithic `system_prompt_panel.dart` (1401 lines, 3 merged sections) into 5 focused panel widgets: Main System Prompt, Character Card, Presets, Regex, Formatting.
-  - Fix double JSON export in character card and preset export handlers.
-  - Fix `_cardSaveTimer` not cancelled in `dispose()` (race condition).
-  - Remove dead kaomoji migration code.
-  - Decouple Rules Preset dropdown from Main Prompt's `savedSystemPrompts` list.
-  - Fix `enable_character_card` toggle not persisting across restarts.
-  - Add `iTXt` compressed chunk support to PNG character card parser for V2 card compatibility.
-  - Normalize inconsistent SharedPreferences keys to `airp_` prefix convention.
-  - Settings drawer expanded from 8 to 12 top-level ExpansionTiles.
-  - Update `GEMINI.md` stale references and `pubspec.yaml` version sync.
-- **Data Models (3 new model files):** [COMPLETE]
-  - `lorebook_models.dart` — Full SillyTavern Character Book V2 spec parity. `Lorebook` container (name, scanDepth, tokenBudget, recursionSteps) and `LorebookEntry` with all spec fields plus ST extensions: keys, secondary keys (optional filter), content, strategy (constant/triggered), insertion position (8 positions matching ST: beforeCharDefs, afterCharDefs, ANTop, ANBottom, atDepth, EMTop, EMBottom, outlet), depth/role, probability, inclusion groups with weight-based scoring, sticky/cooldown/delay timers, recursion controls. Import handles both V2 spec field names and SillyTavern internal names (keys↔key, secondary_keys↔keysecondary, insertion_order↔order, enabled↔!disable). Nullable booleans preserved for global default inheritance.
-  - `regex_models.dart` — `RegexScript` matching ST's `RegexScriptData`: id, name, findPattern, replaceWith, trimStrings (List), scope (global/scoped/preset), placement-based targeting (userInput, aiResponse, worldInfo, reasoning), ephemerality (displayOnly, promptOnly), depth range, macro mode (none/raw/escaped), sortOrder. Import converts ST's numeric `placement[]` array and inverted `disabled` flag.
-  - `formatting_models.dart` — `FormattingTemplate` and `FormattingRule` for dialogue/thought/narration/characterName wrapping with `{{macro}}` placeholder support.
-  - `CharacterCard` model updated with missing V2 spec fields: `creatorNotes`, `tags`, and `characterBook` (the embedded lorebook, parsed from `data.character_book`). Round-trip fidelity for all spec fields. `extensions.depth_prompt` explicitly parsed for depth-based prompt injection.
-- **Macro Engine (shared foundation for all subsystems):** [COMPLETE]
-  - `macro_service.dart` — Static `MacroService.resolve()` with recursive `{{...}}` token parser (depth-capped at 20). Core macros: `{{char}}`, `{{user}}`, `{{description}}`, `{{personality}}`, `{{scenario}}`, `{{persona}}`, `{{mesExamples}}`. Time macros: `{{time}}`, `{{date}}`, `{{weekday}}`, `{{isotime}}`, `{{isodate}}`, `{{datetimeformat::FORMAT}}`. Variable macros: `{{getvar}}`, `{{setvar}}`, `{{incvar}}`, `{{decvar}}`. Conditionals, randomization (`{{random::a::b}}`, `{{roll::NdM}}`), utility (`{{newline}}`, `{{trim}}`). Legacy aliases: `<USER>` → `{{user}}`, `<BOT>` → `{{char}}`. Variables persisted via SharedPreferences.
-- **Lorebook Service (keyword-triggered context injection):** [COMPLETE]
-  - `lorebook_service.dart` — Static `LorebookService.evaluateEntries()`: scans last N messages for keyword matches (primary keys + optional secondary filter with AND/NOT logic), applies probability rolls, character filters, inclusion group conflict resolution (weight-based), recursive entry scanning. Returns activated entries grouped by insertion position for prompt construction.
-  - `lorebook_state_service.dart` — Per-session state tracking for sticky counters, cooldown timers, delay thresholds, activation history. Persisted to SharedPreferences keyed by session ID.
-  - `parseFromCharacterBook()` / `toCharacterBook()` — SillyTavern V2 `data.character_book` round-trip serialization with field name normalization.
-- **Regex Engine Service (post-processing pipeline):** [COMPLETE]
-  - `regex_service.dart` — Static `RegexService` with target-filtered script application. Three modes: `applyPermanent()` (modifies stored text), `applyDisplayOnly()` (render-time only, stored text unchanged), `applyPromptOnly()` (alters sent prompt, stored text unchanged). Macro-resolved patterns via MacroService. Dart RegExp flag mapping (caseSensitive, dotAll, multiLine, unicode).
-- **Formatting Service (template-based output wrapping):** [COMPLETE]
-  - `formatting_service.dart` — Static `FormattingService.applyTemplates()` applying ordered `FormattingRule` pattern matches with macro-resolved template strings. Built-in defaults for dialogue, thought, narration, and character name styling.
-- **Preset System (importable configuration packs):** [COMPLETE]
-  - Extended `SystemPreset` with optional lorebook entries, regex scripts, and formatting template fields.
-  - AIRP-native preset import/export with full fidelity. Partial SillyTavern preset import: extracts temperature, top_p, top_k, max_tokens, main prompt, and post-history content from ST OpenAI presets; discards incompatible `prompts[]`/`prompt_order[]` structure with user warning.
-  - Replaces "Custom Rules & Presets" section. Existing custom rules data migrated on first load.
-- **ChatProvider Integration (prompt pipeline modifications):** [COMPLETE]
-  - New state: global/character lorebooks, global/scoped regex scripts, formatting template, enable toggles. All persisted via SharedPreferences.
-  - `_buildSystemInstruction()` modified: lorebook entries injected at correct positions relative to character card block. `extensions.depth_prompt` injected at specified depth. `atDepth` entries returned separately for message-level splicing.
-  - `sendMessage()` modified: pre-send user input regex, at-depth lorebook entry injection into message history (OpenAI path: spliced as system-role messages; Gemini path: system instruction addenda), streaming display-only regex on `contentNotifier`, post-stream permanent regex on stored text.
-  - `MessageBubble._buildBubble()` modified: formatting templates and display-only regex applied to visible text before Markdown rendering.
-  - Character card import auto-loads embedded `character_book` as character-scoped lorebook and `extensions.regex_scripts` as scoped regex scripts.
-- **UI Panels (5 new/refactored panel widgets):** [COMPLETE]
-  - Character Card Panel with collapsible Lorebook sub-section: global settings (scan depth, token budget, case sensitivity, whole-word, recursion steps), entry list with title/key badges/strategy icons/enabled switches, full entry editor (tabbed: Basic, Filters, Position, Priority, Groups, Character Filter, Timed Effects, Recursion). Import/export lorebook JSON. UI for `postHistoryInstructions`, `alternateGreetings`, and `creatorNotes`.
-  - Regex Panel: master toggle, `ReorderableListView` with drag handles, per-script edit dialog (find/replace inputs, trim strings, affects checkboxes, scope, flag chips, ephemerality, depth range, macro mode), test panel with live preview, import/export regex sets.
-  - Formatting Panel: master toggle, rule list with type icons, edit dialog with pattern/template inputs and macro helper buttons, preview panel, import/export templates.
-  - Preset Panel: import `.json` files, list with apply/delete/export, auto-set system prompt + generation params + optional lorebook/regex. Backward-compatible custom rules sub-section.
-  - All panels use `ThemeProvider` semantic colors and `ScaleProvider` font sizing consistently.
-- **Persistence & Serialization:** [COMPLETE]
-  - Library export/import (`.airp` format) extended with lorebook, regex scripts, and formatting template sections.
-  - Character card JSON export embeds `character_book` and scoped regex into V2 format. Import round-trips all spec fields.
-
-### 📦 v0.5.13 - Image Gen Fixes & Attachment Improvements [IN PROGRESS]
-
-*Focus: Making the image generation button actually display generated images, fixing silent failures in the attachment pipeline, and web compatibility.*
-
-**Web Import/Export Rework:** [COMPLETE]
-
-- **Centralized FileIOHelper:** Created `file_io_helper.dart` with conditional imports (`file_io_native.dart` / `file_io_web.dart`) to eliminate all direct `dart:io` usage from UI and service layers. All file picking, saving, reading, and image display now routes through `FileIOHelper`, which uses `kIsWeb` guards and in-memory `Uint8List` bytes on web instead of filesystem paths.
-- **Refactored all import/export panels:** Library, Character Card, Preset, Regex, and Formatting panels all use `FileIOHelper.pickAndReadString()` / `pickFileData()` / `saveFile()` instead of `dart:io` `File` + `FilePicker`.
-- **Web-safe chat attachments:** `chat_input_area.dart` stores picked image/file bytes in a `Map<String, Uint8List>` on web, passes them through `ChatProvider.sendMessage()` → `ChatApiService` so the API can read attachment content without filesystem access.
-- **Web-safe message display:** `message_bubble.dart` uses `FileIOHelper.imageWidgetFromPath()` / `imageProviderFromPath()` instead of `Image.file()` / `FileImage()`. AI image saving uses `FileIOHelper.saveToDownloads()` on native, `FileIOHelper.saveFile()` (browser download) on web.
-- **Web-safe theming:** `theme_provider.dart` and `visual_settings_panel.dart` use `FileIOHelper` for custom background images instead of `dart:io`.
-
-**Device Detection & Layout Defaults:** [COMPLETE]
-
-- **Improved device detection:** `ScaleProvider.initializeDeviceType()` now uses `defaultTargetPlatform` for definitive native desktop detection, `shortestSide >= 600dp` (Material Design breakpoint) for tablet detection (orientation-independent), and width >= 1100 for web desktop fallback.
-- **Updated default scaling:** Phone (19/18/250/1.15/4), Tablet (20/20/450/1.5/6), Desktop (21/18/600/1.5/10).
-- **Input Area Scale slider max increased to 12.**
-
-**Image Generation Fixes:**
-
-- **Fix image gen display:** `ChatProvider.sendMessage()` stores the image URL as raw text in `ChatMessage.text`. The `ChatMessage.aiImage` field (base64) exists in the model and `MessageBubble` renders it via `Image.memory()`, but it is never populated. Fix: after `ChatApiService.generateImage()` returns a URL, download the image bytes and store them in `aiImage` (base64) so `MessageBubble` renders it correctly as an image widget rather than a raw URL string. [PENDING]
-- **OpenRouter image gen model:** The hardcoded model for OpenRouter is `stabilityai/stable-diffusion-xl-base-1.0`. Add a setting (or smarter default) for selecting image gen models, or update to a better-supported OpenRouter model (e.g. `black-forest-labs/FLUX-1-schnell`). [PENDING]
-- **Image gen provider guard:** Image gen currently only runs on OpenRouter and OpenAI. Add a clearer UI hint (tooltip or disabled state) when the active provider doesn't support image gen, so the button self-disables or explains why. [PENDING]
-
-**Attachment Pipeline Fixes:**
-
-- **PDF support for OpenAI path:** `streamOpenAiCompatible` silently drops PDF files (no branch handles `application/pdf`). OpenAI's vision API doesn't accept PDF natively, but the error should be surfaced: show a snackbar warning that PDFs are unsupported on non-Gemini providers. [PENDING]
-- **Doc/Docx silent drop:** The file picker allows `.doc` and `.docx`, but neither the Gemini nor the OpenAI API service handles them — they are silently discarded. Either remove these extensions from the file picker or read them as raw text with a warning. [PENDING]
-- **Video is unsupported:** Neither file picker nor API services support video. Remove any implied video support from the UI or add basic Gemini video inline data support (`video/mp4` as `DataPart`). [PENDING]
-- **History image replay for Gemini:** When `initializeModel()` reconstructs chat history, it only handles `image/png` and `image/jpeg`. Add `webp`, `heic`, and `pdf` MIME types to match `streamGeminiResponse`. [PENDING]
+Integrated 10 new API providers (Vertex AI, Blackbox AI, Minimax, OpenAI Compatible, Deepseek, Ollama, Qwen, xAI, Z.ai, Mistral) using existing OpenAI-compatible pipeline. Added endpoint configurations for custom hostings. Fixed system prompt persistence on web reload. Refined fork feature to spawn single-message conversations. Patch releases (0.5.14.1–0.5.14.8) streamlined provider/model settings, fixed text input bugs, added starred providers, expanded model details display, and fixed conversation bookmark/deletion persistence.
 
 ---
 
-### 📦 v0.6.0 - Architecture Overhaul, Optimization & Separation of God Files [PENDING]
+## 🚀 v0.6 — Architecture, Feature Maturity & Library System
 
-*Focus: Deep architectural restructuring, separating massive files ("God Files") into modular services, fixing persistent UI bugs, and establishing a performant production system chatbot.*
+*Focus: Decompose the god class, fix lorebook evaluation, establish per-subsystem libraries, rename ST-derived features for AIRP identity, and merge redundant configuration systems.*
 
-**Coding Standards & Professionalism (STRICT REQUIREMENT):**
-- **Comment Quality:** Do not use single-line comments that state the obvious (e.g., `// Add 1 to count`). Instead, write professional, high-level doc notes for functions/classes explaining *why* the code exists, its methodology, and any edge cases handled. Add these notes each time new code is created.
+### Phase 1: ChatProvider Decomposition
 
-**Phase 1: God Class Decomposition (`chat_provider.dart`)**
-- Extract responsibilities from the massive `ChatProvider` (4000+ lines) into focused, atomic services:
-  - `SessionService` — session CRUD, auto-save, merge, fork, switch.
-  - `ModelRegistryService` — model list state, model fetching, deserialization. Deduplicate per-provider parser lambdas.
-  - `ApiKeyService` — secure storage migration and provider key management.
-- Break down `sendMessage()` into smaller, focused helper methods (`_handleGeminiGrounding`, `_handleStreamingResponse`, etc.).
+The 3,292-line `ChatProvider` god class must be broken into focused services:
 
-**Phase 2: UI Optimization & Widget Tree Isolation**
-- **Refactor `message_bubble.dart` & `chat_input_area.dart`:** Break these heavy widgets down further into composable sub-widgets to reduce file size and complexity.
-- **Isolate Rebuilds:** Audit the UI layer (`screens/`, `widgets/`, `settings_panels/`) to strictly eliminate unnecessary deep-tree rebuilds. Transition monolithic `Consumer<ChatProvider>` states over to fine-grained `Selector` models for pure UI responsiveness.
-- **Controller Sprawl:** Manage the 15+ manual `TextEditingController`s in `settings_drawer.dart` via reactive sync patterns or data classes to prevent memory leaks and UI desync.
+- **SessionService** — Session CRUD, auto-save, merge, fork, switch.
+- **ModelRegistryService** — Model list state, fetching, deserialization. Remove 10 empty `fetch*Models()` stubs.
+- **ApiKeyService** — Secure storage migration and provider key management.
+- **WebSearchOrchestrator** — Search provider selection and BYOK dispatch.
+- **ImageGenService** — Image generation routing, download, and base64 storage.
+- Break `sendMessage()` into focused helper methods with clear separation of grounding, streaming, and post-processing phases.
 
-**Phase 3: Stability, Data Persistence & UX Polish**
-- **File I/O:** Decouple `SharedPreferences` reads/writes from the main UI thread via batched operations yielding zero-lag interactions.
-- Add `ChatSessionData.copyWith` to eliminate manual boilerplate when updating session state.
-- Deduplicate particle effects (`MotesEffect`, `RainEffect`, `FirefliesEffect`) into a shared `_ParticleEffect<T>`.
-- **UX Fixes Additions:** Session title auto-generation, scroll-to-bottom auto-trigger after streams, empty-state screen for new chats, explicit image gen + web search mutual exclusion guards, and distinct error formatting bubbles.
+### Phase 2: Lorebook Engine Fix & Enhancement
+
+Fix the core keyword matching bug (default `scanDepth=2` is too small — most keywords never appear in a 2-message window):
+
+- Increase default scan depth to 10–20 messages.
+- Add activation debug logging (show which entries activated and why in a debug panel).
+- Add match-highlighting feedback in the lorebook entry list.
+- Test with real character cards containing 10+ entries across varied keywords.
+- Consider semantic/fuzzy keyword matching as an optional enhancement.
+
+### Phase 3: Feature Identity Pass
+
+Rename ST-derived subsystems to establish AIRP's own identity while maintaining import compatibility:
+
+- Lorebook → **World Lore** (or Context Library)
+- Regex Scripts → **Text Transforms**
+- Formatting Templates → **Style Rules**
+- Custom Rules & Presets → **Config Packs** (merged — see Phase 5)
+- Update all UI labels, SharedPreferences keys (with migration), and documentation.
+
+### Phase 4: Per-Subsystem Library System
+
+Add an in-app library for each subsystem so users can **swap resources instantly** without file import/export. All entries are stored locally and accessible via a quick-select list:
+
+#### Character Card Library
+
+- Save any loaded character card to the local library with one tap.
+- Quick-swap cards from a selectable list in the Character Card panel (dropdown or list view).
+- Each stored card includes its embedded lorebook, alternate greetings, and depth prompt.
+- Delete cards from the library individually.
+
+#### World Lore Library (Lorebook)
+
+- Save/load named lorebook sets from a local library.
+- Quick-swap between different world contexts (e.g., "Fantasy Kingdom," "Sci-Fi Station").
+- Merge lorebook sets when applying (add new entries, skip duplicates by key match).
+
+#### Text Transform Library (Regex)
+
+- Save/load named regex script sets.
+- Quick-apply curated transform packs from the library.
+- Built-in starter packs (e.g., "Clean Markdown," "Roleplay Enhancer").
+
+#### Style Rules Library (Formatting)
+
+- Save/load named formatting templates.
+- Quick-swap visual styling with a single tap.
+- Built-in defaults beyond the current pass-through templates (bold character names, italic thoughts, styled dialogue).
+
+### Phase 5: Merge Config Packs & Save/Load Library
+
+Currently two overlapping systems exist:
+
+- **Custom Rules & Presets (CRP)** — Targets generation parameters, system prompt, custom rules, and optional lorebook/regex/formatting.
+- **Save & Load Library (SLL)** — Exports/imports the entire app state as `.airp` files with per-category toggles.
+
+**Merge plan:**
+
+**Config Packs** (formerly CRP) handles targeted, shareable configuration:
+
+- Bundles: system prompt, generation settings (temperature, top_p, top_k, max_tokens), custom rules, and optionally attached lorebook/regex/formatting from the library.
+- Quick-apply from a local pack list — no file picker needed.
+- Import/export as `.json` for sharing.
+- Custom rules remain as toggle-able text directives stacked on the advanced prompt.
+
+**Full Backup** (formerly SLL) handles complete app state:
+
+- Single unified `.airp` file containing: conversations, system prompt, advanced prompt, generation parameters, layout scaling, visuals, character card + all library entries (character cards, lorebooks, regex sets, formatting templates, config packs), model history, and provider settings.
+- Smart import system handles the god JSON: per-category toggle on import preview, conversation merge by ID, prompt merge by title, library entries merged by name (no duplicates).
+- Export/import flow simplified: one button to export everything, one to import with a category picker.
+
+### Phase 6: Widget Decomposition & UI Cleanup
+
+- Split `message_bubble.dart` (1,217 lines) into: markdown renderer, image viewer, version navigator, context menu.
+- Split `chat_input_area.dart` (1,313 lines) into: toggle bar, attachment handler, input field.
+- Remove per-field copy/paste buttons from Character Card panel (24+ redundant buttons). Replace with a single "Copy Card JSON" action.
+- Extract lorebook sub-section from `character_card_panel.dart` into its own widget.
+- Deduplicate particle effects in `effects_overlay.dart` into a shared `ParticleEffect<T>` base.
+- Audit `Consumer<ChatProvider>` over-rebuilds and migrate to fine-grained `Selector` patterns.
+
+### Phase 7: Pending v0.5.13 Completion
+
+- Fix image gen render pipeline (download bytes → base64 → `aiImage` field → `Image.memory()`).
+- Fix PDF/doc/docx silent drop in attachment pipeline (surface errors via snackbar).
+- Add provider capability guards for image gen (disable button when provider doesn't support it).
+- Fix DDG query URL encoding.
+- Add explicit unsupported-format feedback.
+
+### Phase 8: Documentation & Polish
+
+- Rewrite `README.md` with renamed features and updated architecture.
+- Update `GEMINI.md` to reflect new service boundaries.
+- Add inline code documentation for all new services.
 
 ---
- **Phased Instructions:**
 
-1. **[COMPLETE] Phase 1 (v0.5.8-v0.5.9):** Enhanced ModelSelector with refresh button, long-press descriptions, and cost sorting using OpenRouter metadata. Response versioning and conversation forking implemented.
-2. **[COMPLETE] Phase 2 (v0.5.10):** Built `WebSearchService` implementing Brave, Tavily, Serper.dev, SearXNG, and DDG backends. Added `WebSearchSettingsPanel` beneath Generation Parameters in the drawer. Context injected as `[WEB_CONTEXT]` blocks prepended to user message before AI calls.
-3. **[COMPLETE] Phase 3 (v0.5.11):** Light mode system with full codebase color adaptation. Implemented 20+ semantic color getters in ThemeProvider, replaced ~170 hardcoded color references across 21 files. Fixed icon consistency (circular backgrounds with static borders for attachment, scroll, zoom, and send buttons).
-4. **[COMPLETE] Phase 4 (v0.5.12):** Implemented Lorebook system with full SillyTavern Character Book V2 parity, Regex Engine with ephemeral modes, Macro Engine as shared foundation, Advanced Formatting templates, and importable Preset packs. Updated CharacterCard model with V2 spec fields (creatorNotes, tags, characterBook, postHistoryInstructions, alternateGreetings, depth_prompt). Split system_prompt_panel.dart into 5 panel widgets. Fixed 7 bugs. Settings drawer expanded to 12 tiles. Library export/import extended with character card and SillyTavern state persistence. Incremental commits 0.5.12.1 through 0.5.12.11.
-5. **[IN PROGRESS] Phase 5 (v0.5.13):** [DONE] Eliminated all `dart:io` from UI/service layers via centralized `FileIOHelper` with conditional imports; web-safe import/export, chat attachments, message display, and theming. [DONE] Improved device detection using `defaultTargetPlatform` + `shortestSide` breakpoint; updated layout defaults for phone/tablet/desktop. [PENDING] Fix image gen to actually render generated images (download bytes → store in `ChatMessage.aiImage` → render via `Image.memory`). [PENDING] Fix PDF, doc/docx, and video attachment pipeline inconsistencies. [PENDING] Improve image gen provider guard UI.
-6. **[COMPLETE] Phase 6 (v0.5.14):** Multi-Provider Integration. Integrated 10 new API providers (Vertex AI, Blackbox AI, Minimax, OpenAI Compatible, Deepseek, Ollama, Qwen, xAI, Z.ai, Mistral) using the existing OpenAI-compatible pipeline architecture. Added endpoint configurations for custom hostings in the settings UI. Fixed an issue where system prompts did not persist in the settings UI after reloading the web app by adding active synchronization to the SettingsDrawer text controllers. Refined the message fork feature to spawn a new conversation containing only the selected chat bubble. Follow-up patch releases streamlined provider/model settings flow, expanded selected-model details, fixed provider menu starring so the menu stays open until an actual provider is chosen, and fixed conversation bookmark and deletion persistence.
-7. **Phase 7 (v0.6.0):** Execute the complete codebase efficiency and modular architecture overhaul as detailed in the v0.6 roadmap.
+## Commit Message Format
 
-**Constraint:** Ensure all UI changes respect `ScaleProvider` and `ThemeProvider` for consistent Material 3 styling and responsive scaling.
-
-**Commit Message Format**
-
-- **Title Header** - Read util/version.dart for the version number and input a header title that summarizes what is created, create the title in the format version number and your title
-- **Format** - Example if version reads 1.0.0 then output as: 1.0.0 - your title
-
-- **Content Summary** - Outline all the changes made or all the features implemented, for better understanding, use git diff or other methods to find the changes or additions in the codebase in the terminal for an understanding of all changes or all features implemented
-- **No Markdown Formatting** - Don't use markdown formatting with bullet points, asterisks, this is to make the text more easily copy pastable.
-
-- **FOR THE LLM READING THIS** - Please ensure that the commit message is concise yet comprehensive, providing a clear overview of the changes made. The title should be brief and to the point, while the content summary should give enough detail to understand the scope and impact of the changes without needing to refer back to the code. Avoid using technical jargon or abbreviations that may not be universally understood, and focus on the practical implications of the changes for users and developers alike. Do not perform any git operations, just generate the commit message based on the changes made in the codebase.
-
-0.5.14.1 - Fix TextInput Bug and Add Alphabetical Starred Providers
-Implemented a stateful architecture for ProviderModelSelector to ensure text input consistency across rapid typing addressing the fallback bug which caused reverse typing behavior and broke backspace formatting. Overhauled provider organization by establishing a new ChatProvider variable which manages starred providers serialized into SharedPreferences ensuring alphabetical and starred sorting priorities within the ChatAppBar component's popup menu. Bumped version identifier.
-
-0.5.14.2 - Manual Model Toggle Integration
-Implemented a "Manual Model Input" toggle switch within the ModelSettingsPanel, addressing cases where auto-fetching endpoints (such as Google Vertex AI MaaS models restricting API key access) inhibit seamless usability. Added a persistent boolean state into ChatProvider synchronized with SharedPreferences mitigating redundant text field fallback errors while enabling a generalized manual entry utility applicable globally to all AI providers upon demand.
-
-0.5.14.3 - Settings Expanded Model Details & Asset Cleanup
-Integrated comprehensive model discovery tracking into the settings space by building a dynamic Selected Model details card within the ModelSettingsPanel displaying current token limits context size and dynamic pricing tiers leveraging a new getCurrentModelInfo helper placed inside ChatProvider mitigating context loss. Reformatted the ModelSelector layout to actively retain and pin the user's currently active AI model above the complete listing so long lists do not require extensive physical scrolling back to origin points. Synchronized kAssetBackgrounds constants list to map accurately with physical local background asset deletions. Cleaned up remaining auxiliary AI comment markers left from GUI prototyping phases.
-
-0.5.14.4 - Fix TextField Resets & Apply Documentation Sync
-Addressed the persistent single-character overwrite bug within ProviderModelSelector during manual model input by introducing a FocusNode constraint to conditionally block widget text synchronizations while the user is actively typing mitigating rapid-fire rebuild race conditions. Integrated external README and suggested_features documentation adjustments aligning local branch states with user-driven roadmap updates.
-
-0.5.14.5 - Streamline Provider Settings and Core Model Flow
-Refined provider and model settings behavior by simplifying active ChatProvider state paths, reducing unsupported provider branching in the current selection flow, removing manual model input gating inside the selector path, and improving selected-model pricing display formatting within the settings panel. Included dependency lockfile refresh and generated plugin metadata updates while bumping the visible app version.
-
-0.5.14.6 - Fix Provider Menu and Conversation Persistence Bugs
-Fixed provider dropdown behavior so starring a provider no longer closes the menu and only selecting a provider closes and switches context. Preserved conversation bookmarks during autosave so starred chats remain starred after switching sessions, and fixed current-session deletion flow so deleted conversations do not linger through accidental resave. Reused the active empty conversation instead of creating duplicate blank sessions while bumping the app version.
-
----
-
-## 🎯 Pre-1.0 Final Feature Slate
-
-The goal before 1.0.0 is feature-complete stability on top of the existing architecture, followed by the full modular optimization pass.
-
-### 0.7.0 - Attachment and Image Reliability Hardening [PLANNED]
-
-- Complete pending v0.5.13 attachment/image items: image-generation render pipeline, provider capability guards, PDF and doc/docx handling parity, and explicit unsupported-format feedback.
-- Add an end-to-end attachment validation matrix (provider x file type x platform) and close silent-drop paths.
-
-### 0.8.0 - Session and Conversation UX Polish [PLANNED]
-
-- Finalize session ergonomics: robust title generation, deterministic new-chat behavior, improved fork/discoverability UX, and clearer empty states.
-- Improve long-session handling (scroll behavior, resume behavior, and background stream handoff visibility).
-
-### 0.9.0 - Production Readiness and Guardrails [PLANNED]
-
-- Add focused regression tests around session persistence, provider switching, and attachment pipelines.
-- Resolve high-impact analyzer debt categories (deprecated keyboard APIs, async context safety hotspots, direct dependency declarations).
-- Add error-surface consistency for provider/API failures and edge-case recoverability.
-
-### 1.0.0 - Full Architecture Rework and Optimization [TARGET]
-
-- Execute the planned decomposition and optimization roadmap currently described under v0.6.0, promoted as the 1.0.0 architecture milestone.
-- Deliver modular service boundaries, reduced rebuild pressure, cleaner persistence orchestration, and maintainability improvements without feature regressions.
+- **Title**: `[version] - [title]` (read `lib/utils/version.dart` for current version)
+- **Content**: Plain-text summary of all changes (no markdown formatting)
+- **Source**: Use `git diff` to identify all changes

@@ -48,8 +48,8 @@ class MessageBubble extends StatelessWidget {
   /// Callback for navigating to previous version.
   final VoidCallback? onPreviousVersion;
 
-  /// Callback for forking conversation from this message.
-  final VoidCallback? onFork;
+  /// Callback for branching conversation from this message.
+  final VoidCallback? onBranch;
 
   /// Whether to show an inline typing indicator inside this bubble.
   final bool showTypingIndicator;
@@ -65,7 +65,7 @@ class MessageBubble extends StatelessWidget {
     this.onDelete,
     this.onNextVersion,
     this.onPreviousVersion,
-    this.onFork,
+    this.onBranch,
     this.showTypingIndicator = false,
   });
 
@@ -216,7 +216,7 @@ class MessageBubble extends StatelessWidget {
         onDelete != null ||
         onNextVersion != null ||
         onPreviousVersion != null ||
-        onFork != null;
+        onBranch != null;
 
     final hasVersions = !msg.isUser && msg.regenerationVersions.length > 1;
     final totalVersions = hasVersions ? msg.regenerationVersions.length : 0;
@@ -319,12 +319,12 @@ class MessageBubble extends StatelessWidget {
                       textColor,
                       25 * scaleProvider.iconScale,
                     ),
-                  // Fork button
-                  if (onFork != null)
+                  // Branch button
+                  if (onBranch != null)
                     _buildIconBtn(
                       Icons.call_split,
-                      "Fork conversation",
-                      onFork!,
+                      "Branch conversation",
+                      onBranch!,
                       textColor,
                       25 * scaleProvider.iconScale,
                     ),
