@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:typed_data';
+
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
@@ -389,32 +390,6 @@ class _PresetPanelState extends State<PresetPanel> {
   }
 
   // ---------------------------------------------------------------------------
-  // Clipboard helpers
-  // ---------------------------------------------------------------------------
-
-  void _copyRuleContentToClipboard() {
-    final text = _newRuleContentController.text;
-    if (text.isNotEmpty) {
-      Clipboard.setData(ClipboardData(text: text));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Copied rule to Clipboard!"),
-          duration: Duration(milliseconds: 600),
-        ),
-      );
-    }
-  }
-
-  Future<void> _pasteRuleContentFromClipboard() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data?.text != null) {
-      setState(() {
-        _newRuleContentController.text = data!.text!;
-      });
-    }
-  }
-
-  // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
 
@@ -585,26 +560,6 @@ class _PresetPanelState extends State<PresetPanel> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.copy_rounded,
-                            size: 18,
-                            color: themeProvider.textColor,
-                          ),
-                          onPressed: _copyRuleContentToClipboard,
-                          tooltip: 'Copy Rule Content',
-                          padding: const EdgeInsets.all(8),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.paste,
-                            size: 18,
-                            color: Colors.greenAccent,
-                          ),
-                          onPressed: _pasteRuleContentFromClipboard,
-                          tooltip: 'Paste Rule Content',
-                          padding: const EdgeInsets.all(8),
-                        ),
                         IconButton(
                           icon: const Icon(
                             Icons.add_circle,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/services.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
@@ -113,33 +112,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         ],
       ),
     );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Clipboard helpers
-  // ---------------------------------------------------------------------------
-
-  void _copyToClipboard() {
-    final text = widget.mainPromptController.text;
-    if (text.isNotEmpty) {
-      Clipboard.setData(ClipboardData(text: text));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Copied main prompt to Clipboard!"),
-          duration: Duration(milliseconds: 600),
-        ),
-      );
-    }
-  }
-
-  Future<void> _pasteFromClipboard() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data?.text != null) {
-      setState(() {
-        widget.mainPromptController.text = data!.text!;
-      });
-      widget.onPromptChanged();
-    }
   }
 
   // ---------------------------------------------------------------------------
@@ -321,27 +293,6 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.copy_rounded,
-                        size: 18,
-                        color: themeProvider.textColor,
-                      ),
-                      onPressed: _copyToClipboard,
-                      tooltip: 'Copy to Clipboard',
-                      padding: const EdgeInsets.all(8),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.paste,
-                        size: 18,
-                        color: Colors.greenAccent,
-                      ),
-                      onPressed: _pasteFromClipboard,
-                      tooltip: 'Paste from Clipboard',
-                      padding: const EdgeInsets.all(8),
-                    ),
-                    const SizedBox(width: 8),
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: themeProvider.textColor,

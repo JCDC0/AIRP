@@ -8,6 +8,7 @@ import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/character_card.dart';
 import '../../models/lorebook_models.dart';
+import '../../providers/local_library_provider.dart';
 import '../../services/character_card_service.dart';
 import '../../services/library_service.dart';
 import '../../services/file_io_helper.dart';
@@ -273,42 +274,113 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
   }
 
   // ---------------------------------------------------------------------------
-  // Clipboard helpers
+  // Local Library View
   // ---------------------------------------------------------------------------
 
-  void _copyCardFieldToClipboard(
-    TextEditingController controller,
-    String fieldName,
-  ) {
-    final text = controller.text;
-    if (text.isNotEmpty) {
-      Clipboard.setData(ClipboardData(text: text));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Copied $fieldName to Clipboard!"),
-          duration: const Duration(milliseconds: 600),
-        ),
-      );
-    }
-  }
+  Widget _buildLocalLibrarySection(BuildContext context) {
+    final library = Provider.of<LocalLibraryProvider>(context);
+    final theme = Provider.of<ThemeProvider>(context);
+    final sp = Provider.of<ScaleProvider>(context);
 
-  Future<void> _pasteToCardField(
-    TextEditingController controller,
-    String fieldName,
-  ) async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data?.text != null) {
-      setState(() {
-        controller.text = data!.text!;
-      });
-      _syncCardFromControllers();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Pasted to $fieldName"),
-          duration: const Duration(milliseconds: 600),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Local Library",
+              style: TextStyle(
+                color: theme.textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: sp.systemFontSize * 0.9,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add_circle, color: Colors.greenAccent),
+              tooltip: 'Save Current Card to Library',
+              onPressed: () {
+                final currentCard =
+                    Provider.of<ChatProvider>(context, listen: false)
+                        .characterCard;
+                if (currentCard.name.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text("Cannot save a card without a Name!")),
+                  );
+                  return;
+                }
+                library.saveCard(currentCard);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text("Saved '${currentCard.name}' to Library!")),
+                );
+              },
+            ),
+          ],
         ),
-      );
-    }
+        if (library.cards.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+              "No character cards saved yet.",
+              style: TextStyle(
+                color: theme.faintColor,
+                fontSize: sp.systemFontSize * 0.8,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          )
+        else
+          Container(
+            height: 140,
+            decoration: BoxDecoration(
+              color: theme.containerFillDarkColor,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: theme.borderColor),
+            ),
+            child: ListView.builder(
+              itemCount: library.cards.length,
+              itemBuilder: (context, index) {
+                final c = library.cards[index];
+                return ListTile(
+                  dense: true,
+                  title: Text(
+                    c.name,
+                    style: TextStyle(
+                        color: theme.textColor, fontSize: sp.systemFontSize * 0.85),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.check_circle_outline,
+                            size: 20, color: Colors.blueAccent),
+                        tooltip: 'Load Card',
+                        onPressed: () {
+                          final chat =
+                              Provider.of<ChatProvider>(context, listen: false);
+                          chat.setCharacterCard(CharacterCard.fromJson(c.toV3Json()));
+                          _updateCardControllers(chat.characterCard);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Loaded '${c.name}'")),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline,
+                            size: 20, color: Colors.redAccent),
+                        tooltip: 'Delete Card',
+                        onPressed: () => library.deleteCard(c),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -511,6 +583,10 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                 ],
               ),
               Divider(color: themeProvider.borderColor),
+
+              // Local Library
+              _buildLocalLibrarySection(context),
+              const SizedBox(height: 16),
 
               // --- Primary Card Fields ---
               _buildCardField("Name", _cardNameController),
@@ -1069,36 +1145,6 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
             border: const OutlineInputBorder(),
           ),
           style: const TextStyle(fontSize: 13),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.copy_rounded,
-                  size: 16,
-                  color: themeProvider.textColor,
-                ),
-                onPressed: () => _copyCardFieldToClipboard(controller, label),
-                tooltip: 'Copy $label',
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.paste,
-                  size: 16,
-                  color: Colors.greenAccent,
-                ),
-                onPressed: () => _pasteToCardField(controller, label),
-                tooltip: 'Paste to $label',
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
         ),
       ],
     );

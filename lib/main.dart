@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/scale_provider.dart';
+import 'providers/local_library_provider.dart';
 import 'screens/chat_screen.dart';
 
 /// The entry point for the AIRP application.
@@ -16,6 +17,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => ScaleProvider()),
+        ChangeNotifierProvider(create: (_) => LocalLibraryProvider()),
       ],
       child: const AIRP(),
     ),

@@ -706,46 +706,17 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
                       onSubmitted: (_) => _addRule(),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.copy_rounded,
-                              size: 18, color: tp.textColor),
-                          onPressed: () {
-                            final text = _newRuleContentController.text;
-                            if (text.isNotEmpty) {
-                              Clipboard.setData(ClipboardData(text: text));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Copied!'),
-                                    duration:
-                                        Duration(milliseconds: 600)),
-                              );
-                            }
-                          },
-                          tooltip: 'Copy Rule Content',
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add_circle, size: 18),
+                        label: const Text('Add Rule'),
+                        onPressed: _addRule,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: tp.dropdownColor,
+                          foregroundColor: Colors.greenAccent,
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.paste,
-                              size: 18, color: Colors.greenAccent),
-                          onPressed: () async {
-                            final data = await Clipboard.getData(
-                                Clipboard.kTextPlain);
-                            if (data?.text != null) {
-                              setState(() => _newRuleContentController.text =
-                                  data!.text!);
-                            }
-                          },
-                          tooltip: 'Paste Rule Content',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle,
-                              size: 20, color: Colors.greenAccent),
-                          onPressed: _addRule,
-                          tooltip: 'Add Rule',
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
