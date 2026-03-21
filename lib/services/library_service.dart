@@ -247,7 +247,7 @@ class LibraryService {
   // --- Character Card Helpers ---
 
   static Future<String> exportCharacterCard(CharacterCard card) async {
-    final map = card.toJson();
+    final map = card.toV3Json();
     const encoder = JsonEncoder.withIndent('  ');
     return encoder.convert(map);
   }

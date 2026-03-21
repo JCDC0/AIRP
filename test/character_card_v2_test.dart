@@ -318,5 +318,66 @@ void main() {
       expect(card.tags, isEmpty);
       expect(card.characterBook, isNull);
     });
+
+    test('fromJson parses AIRP Character Card V3 schema', () {
+      final v3 = {
+        'schema': kCharacterCardV3Schema,
+        'schema_version': '3.0',
+        'card': {
+          'name': 'V3 Character',
+          'description': 'Optimized profile',
+          'personality': 'Focused',
+          'scenario': 'Space station',
+          'first_mes': 'Systems online.',
+          'mes_example': '',
+          'creator': 'AIRP',
+          'creator_notes': 'Migrated to V3',
+          'character_version': '3.0',
+          'system_prompt': 'Be concise.',
+          'post_history_instructions': 'Keep continuity.',
+          'alternate_greetings': ['Ready?'],
+          'tags': ['scifi'],
+          'extensions': {},
+        },
+      };
+
+      final card = CharacterCard.fromJson(v3);
+      expect(card.name, 'V3 Character');
+      expect(card.description, 'Optimized profile');
+      expect(card.characterVersion, '3.0');
+      expect(card.spec, kCharacterCardV2Spec);
+    });
+
+    test('toV3Json exports expected schema wrapper', () {
+      final card = CharacterCard(
+        name: 'Export V3',
+        description: 'Profile',
+        creator: 'Tester',
+      );
+
+      final v3 = card.toV3Json();
+      expect(v3['schema'], kCharacterCardV3Schema);
+      expect(v3['schema_version'], '3.0');
+      expect(v3['card'], isA<Map<String, dynamic>>());
+      final cardData = v3['card'] as Map<String, dynamic>;
+      expect(cardData['name'], 'Export V3');
+      expect(cardData['description'], 'Profile');
+      expect(cardData['creator'], 'Tester');
+    });
+
+    test('V3 export round-trip restores original fields', () {
+      final original = CharacterCard(
+        name: 'Roundtrip V3',
+        description: 'Desc',
+        firstMessage: 'Hi',
+        tags: ['a', 'b'],
+      );
+
+      final restored = CharacterCard.fromJson(original.toV3Json());
+      expect(restored.name, original.name);
+      expect(restored.description, original.description);
+      expect(restored.firstMessage, original.firstMessage);
+      expect(restored.tags, original.tags);
+    });
   });
 }

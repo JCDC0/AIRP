@@ -25,6 +25,9 @@ import '../utils/constants.dart';
 /// AI providers (Gemini, OpenRouter, OpenAI, etc.), and coordinates the
 /// streaming of chat responses.
 class ChatProvider extends ChangeNotifier {
+  static const String _characterCardKeyV3 = 'airp_character_card_v3';
+  static const String _characterCardKeyV2 = 'airp_character_card';
+
   // --- Background stream infrastructure ---
   final Map<String, StreamSubscription> _activeStreams = {};
   final Map<String, ValueNotifier<String>> _activeNotifiers = {};
@@ -567,11 +570,23 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _loadCharacterCard() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? data = prefs.getString('airp_character_card');
+    final String? v3Data = prefs.getString(_characterCardKeyV3);
+    final String? v2Data = prefs.getString(_characterCardKeyV2);
+    final String? data = v3Data ?? v2Data;
     if (data != null) {
       try {
         final Map<String, dynamic> jsonMap = jsonDecode(data);
         _characterCard = CharacterCard.fromJson(jsonMap);
+
+        // One-time migration: persist to V3 key and remove legacy V2 key.
+        if (v3Data == null) {
+          await prefs.setString(
+            _characterCardKeyV3,
+            jsonEncode(_characterCard.toV3Json()),
+          );
+          await prefs.remove(_characterCardKeyV2);
+        }
+
         notifyListeners();
       } catch (e) {
         debugPrint("Error loading character card: $e");
@@ -936,8 +951,9 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _saveCharacterCard() async {
     final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_characterCard.toJson());
-    await prefs.setString('airp_character_card', data);
+    final String data = jsonEncode(_characterCard.toV3Json());
+    await prefs.setString(_characterCardKeyV3, data);
+    await prefs.remove(_characterCardKeyV2);
   }
 
   void setModel(String model) {
@@ -3090,7 +3106,7 @@ class ChatProvider extends ChangeNotifier {
       'advancedSystemInstruction': _advancedSystemInstruction,
       'systemPrompts': _savedSystemPrompts.map((p) => p.toJson()).toList(),
       'sessions': _savedSessions.map((s) => s.toJson()).toList(),
-      'characterCard': _characterCard.toJson(),
+      'characterCard': _characterCard.toV3Json(),
       'enableCharacterCard': _enableCharacterCard,
       'sillyTavernState': {
         'globalLorebook': _globalLorebook.toJson(),

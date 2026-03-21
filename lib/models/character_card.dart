@@ -1,6 +1,9 @@
 import 'lorebook_models.dart';
 import 'regex_models.dart';
 
+const String kCharacterCardV2Spec = 'chara_card_v2';
+const String kCharacterCardV3Schema = 'airp_character_card_v3';
+
 /// Represents a SillyTavern-compatible character card.
 /// Supports V1 and V2 specifications.
 class CharacterCard {
@@ -75,11 +78,22 @@ class CharacterCard {
 
   /// Creates a CharacterCard from a JSON map (SillyTavern V1/V2 compatible).
   factory CharacterCard.fromJson(Map<String, dynamic> json) {
+    // AIRP V3 storage schema.
+    if (json['schema'] == kCharacterCardV3Schema && json['card'] is Map) {
+      final v3Card = Map<String, dynamic>.from(json['card']);
+      final wrapped = {
+        'spec': kCharacterCardV2Spec,
+        'spec_version': '2.0',
+        'data': v3Card,
+      };
+      return CharacterCard.fromJson(wrapped);
+    }
+
     final warnings = <String>[];
     bool incompatible = false;
 
     // Check strict version if present
-    if (json.containsKey('spec') && json['spec'] != 'chara_card_v2') {
+    if (json.containsKey('spec') && json['spec'] != kCharacterCardV2Spec) {
       warnings.add("Unknown spec: ${json['spec']}. Import may be lossy.");
       incompatible = true;
     }
@@ -170,7 +184,7 @@ class CharacterCard {
     }
 
     // Spec metadata
-    final spec = content['spec'] as String? ?? 'chara_card_v2';
+    final spec = content['spec'] as String? ?? kCharacterCardV2Spec;
     final specVersion = content['spec_version'] as String? ?? '2.0';
 
     return CharacterCard(
@@ -237,6 +251,25 @@ class CharacterCard {
     }
 
     return {'spec': spec, 'spec_version': specVersion, 'data': data};
+  }
+
+  /// Serializes to AIRP Character Card V3 schema.
+  ///
+  /// V3 keeps card fields flat under `card` for quick access and smaller
+  /// decode overhead in local persistence, while remaining import-compatible
+  /// by mapping back to V2 fields in [fromJson].
+  Map<String, dynamic> toV3Json() {
+    final v2 = toJson();
+    final data = Map<String, dynamic>.from(v2['data'] as Map<String, dynamic>);
+    return {
+      'schema': kCharacterCardV3Schema,
+      'schema_version': '3.0',
+      'card': data,
+      'meta': {
+        'source_spec': spec,
+        'source_spec_version': specVersion,
+      },
+    };
   }
 
   /// Creates a deep copy of the CharacterCard
