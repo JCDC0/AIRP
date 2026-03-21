@@ -147,6 +147,7 @@ class PromptPipelineService {
     }
 
     final mergedByPosition = <LorebookPosition, List<LorebookEntry>>{};
+    final mergedActivationTraces = <LorebookActivationTrace>[];
     int totalTokens = 0;
 
     for (final lorebook in lorebooks) {
@@ -160,11 +161,13 @@ class PromptPipelineService {
         mergedByPosition.putIfAbsent(entry.key, () => []).addAll(entry.value);
       }
       totalTokens += result.estimatedTokens;
+      mergedActivationTraces.addAll(result.activationTraces);
     }
 
     return LorebookEvalResult(
       byPosition: mergedByPosition,
       estimatedTokens: totalTokens,
+      activationTraces: mergedActivationTraces,
     );
   }
 

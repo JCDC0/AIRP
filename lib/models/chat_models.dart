@@ -269,8 +269,9 @@ class ModelInfo {
     // OpenRouter metadata check
     try {
       final modality = rawData?['architecture']?['modality'];
-      if (modality != null && modality.toString().contains('image'))
+      if (modality != null && modality.toString().contains('image')) {
         return true;
+      }
     } catch (_) {}
 
     // Substring fallback for providers without metadata

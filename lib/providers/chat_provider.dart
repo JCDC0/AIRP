@@ -371,6 +371,10 @@ class ChatProvider extends ChangeNotifier {
   Lorebook _globalLorebook = Lorebook(name: 'Global');
   List<RegexScript> _globalRegexScripts = [];
   FormattingTemplate? _formattingTemplate;
+  LorebookEvalResult _lastLorebookEvalResult = const LorebookEvalResult(
+    byPosition: {},
+    estimatedTokens: 0,
+  );
   bool _enableLorebook = true;
   bool _enableRegex = true;
   bool _enableFormatting = false;
@@ -431,6 +435,7 @@ class ChatProvider extends ChangeNotifier {
   Lorebook get globalLorebook => _globalLorebook;
   List<RegexScript> get globalRegexScripts => _globalRegexScripts;
   FormattingTemplate? get formattingTemplate => _formattingTemplate;
+  LorebookEvalResult get lastLorebookEvalResult => _lastLorebookEvalResult;
   bool get enableLorebook => _enableLorebook;
   bool get enableRegex => _enableRegex;
   bool get enableFormatting => _enableFormatting;
@@ -1415,7 +1420,11 @@ class ChatProvider extends ChangeNotifier {
   /// [recentMessages] should be ordered newest-first.
   LorebookEvalResult _evaluateLorebooks(List<String> recentMessages) {
     if (!_enableLorebook) {
-      return const LorebookEvalResult(byPosition: {}, estimatedTokens: 0);
+      _lastLorebookEvalResult = const LorebookEvalResult(
+        byPosition: {},
+        estimatedTokens: 0,
+      );
+      return _lastLorebookEvalResult;
     }
 
     final lorebooks = <Lorebook>[
@@ -1424,11 +1433,12 @@ class ChatProvider extends ChangeNotifier {
         _characterCard.characterBook!,
     ];
 
-    return PromptPipelineService.evaluateLorebooks(
+    _lastLorebookEvalResult = PromptPipelineService.evaluateLorebooks(
       lorebooks: lorebooks,
       recentMessages: recentMessages,
       characterName: _characterCard.name,
     );
+    return _lastLorebookEvalResult;
   }
 
   /// Collects depth-positioned entries from lorebook results and the character

@@ -51,7 +51,7 @@ Integrated 10 new API providers (Vertex AI, Blackbox AI, Minimax, OpenAI Compati
 
 *Focus: Decompose the god class, fix lorebook evaluation, establish per-subsystem libraries, rename ST-derived features for AIRP identity, and merge redundant configuration systems.*
 
-### Phase 1: ChatProvider Decomposition
+### (Moved as Final Phase, Deemed Highly Risky) Phase 1: ChatProvider Decomposition
 
 The 3,292-line `ChatProvider` god class must be broken into focused services:
 

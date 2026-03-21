@@ -304,8 +304,9 @@ class ModelSelector extends StatelessWidget {
                                     itemBuilder: (context, index) {
                                       final model = filteredModels[index];
                                       // Don't render the selected model again in this list
-                                      if (model.id == selectedModel)
+                                      if (model.id == selectedModel) {
                                         return const SizedBox.shrink();
+                                      }
 
                                       return _buildModelRow(
                                         context: context,

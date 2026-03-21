@@ -31,7 +31,7 @@ class Lorebook {
 
   Lorebook({
     this.name = '',
-    this.scanDepth = 10,
+    this.scanDepth = 15,
     this.tokenBudget = 2048,
     this.recursionSteps = 0,
     this.caseSensitive = false,
@@ -62,7 +62,7 @@ class Lorebook {
 
     return Lorebook(
       name: json['name'] as String? ?? '',
-      scanDepth: json['scan_depth'] as int? ?? 10,
+      scanDepth: json['scan_depth'] as int? ?? 15,
       tokenBudget: json['token_budget'] as int? ?? 2048,
       recursionSteps: json['recursive_scanning'] == true
           ? 1

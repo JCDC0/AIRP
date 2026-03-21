@@ -11,6 +11,7 @@ import '../../models/lorebook_models.dart';
 import '../../services/character_card_service.dart';
 import '../../services/library_service.dart';
 import '../../services/file_io_helper.dart';
+import '../../services/lorebook_service.dart';
 
 /// A panel for managing the AI character card (SillyTavern V1/V2 compatible).
 ///
@@ -804,7 +805,12 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
               ),
 
               // --- Lorebook Sub-section (collapsible) ---
-              _buildLorebookSection(card, themeProvider, scaleProvider),
+              _buildLorebookSection(
+                card,
+                themeProvider,
+                scaleProvider,
+                chatProvider.lastLorebookEvalResult.traceByEntryId,
+              ),
             ],
           ),
         ),
@@ -820,6 +826,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     CharacterCard card,
     ThemeProvider themeProvider,
     ScaleProvider scaleProvider,
+    Map<int, LorebookActivationTrace> traceByEntryId,
   ) {
     final book = card.characterBook;
     final entryCount = book?.entries.length ?? 0;
@@ -902,9 +909,60 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
               ),
             ),
           ),
+          if (traceByEntryId.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: ExpansionTile(
+                dense: true,
+                title: Text(
+                  'Activation Debug (${traceByEntryId.length})',
+                  style: TextStyle(
+                    fontSize: scaleProvider.systemFontSize * 0.72,
+                    color: themeProvider.faintColor,
+                  ),
+                ),
+                children: traceByEntryId.values.map((trace) {
+                  final statusColor = trace.activated
+                      ? Colors.greenAccent
+                      : themeProvider.faintColor;
+                  final statusLabel = trace.activated ? 'ACTIVE' : 'SKIPPED';
+                  final reason = trace.blockedBy ?? trace.reason.name;
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(
+                      trace.activated ? Icons.check_circle : Icons.info_outline,
+                      size: 14,
+                      color: statusColor,
+                    ),
+                    title: Text(
+                      trace.entryLabel,
+                      style: TextStyle(
+                        color: themeProvider.subtitleColor,
+                        fontSize: scaleProvider.systemFontSize * 0.68,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      '$statusLabel · $reason'
+                      '${trace.matchedKey != null ? ' · key: ${trace.matchedKey}' : ''}',
+                      style: TextStyle(
+                        color: statusColor.withAlpha(220),
+                        fontSize: scaleProvider.systemFontSize * 0.6,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           // Entry list
           ...book.entries.asMap().entries.map((e) {
             final entry = e.value;
+            final trace = traceByEntryId[entry.id];
+            final isActive = trace?.activated == true;
+            final matchedKey = trace?.matchedKey;
             final keywords = entry.keys.isNotEmpty
                 ? entry.keys.join(', ')
                 : '(no keywords)';
@@ -915,11 +973,15 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
             return ListTile(
               dense: true,
               leading: Icon(
-                entry.enabled ? Icons.bookmark : Icons.bookmark_border,
+                isActive
+                  ? Icons.check_circle
+                  : (entry.enabled ? Icons.bookmark : Icons.bookmark_border),
                 size: 16,
-                color: entry.enabled
-                    ? Colors.blueAccent
-                    : themeProvider.faintestColor,
+                color: isActive
+                  ? Colors.greenAccent
+                  : (entry.enabled
+                      ? Colors.blueAccent
+                      : themeProvider.faintestColor),
               ),
               title: Text(
                 entry.comment.isNotEmpty ? entry.comment : 'Entry ${e.key + 1}',
@@ -936,12 +998,28 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                   Text(
                     keywords,
                     style: TextStyle(
-                      color: Colors.orangeAccent.withAlpha(180),
+                      color: matchedKey != null
+                          ? Colors.greenAccent
+                          : Colors.orangeAccent.withAlpha(180),
                       fontSize: scaleProvider.systemFontSize * 0.65,
+                      fontWeight: matchedKey != null
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (matchedKey != null)
+                    Text(
+                      'Matched key: $matchedKey',
+                      style: TextStyle(
+                        color: Colors.greenAccent.withAlpha(220),
+                        fontSize: scaleProvider.systemFontSize * 0.58,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   if (snippet.isNotEmpty)
                     Text(
                       snippet,

@@ -541,6 +541,104 @@ void main() {
       expect(result.all.length, 1);
       expect(result.all.first.id, 1);
     });
+
+    test('recursive activation emits recursive trace reason', () {
+      final lorebook = Lorebook(
+        recursionSteps: 1,
+        entries: [
+          LorebookEntry(
+            id: 1,
+            keys: ['dragon'],
+            content: 'The dragon guards a castle.',
+          ),
+          LorebookEntry(
+            id: 2,
+            keys: ['castle'],
+            content: 'An ancient fortress.',
+          ),
+        ],
+      );
+
+      final result = LorebookService.evaluateEntries(
+        lorebook: lorebook,
+        recentMessages: ['A dragon appeared!'],
+      );
+
+      final byId = result.traceByEntryId;
+      expect(byId[1]?.reason, LorebookActivationReason.keyword);
+      expect(byId[2]?.reason, LorebookActivationReason.recursive);
+      expect(byId[2]?.matchedKey, 'castle');
+    });
+  });
+
+  group('Activation diagnostics', () {
+    test('captures matched key and activation reason', () {
+      final lorebook = Lorebook(entries: [
+        LorebookEntry(
+          id: 10,
+          keys: ['dragon'],
+          content: 'Dragon lore.',
+        ),
+      ]);
+
+      final result = LorebookService.evaluateEntries(
+        lorebook: lorebook,
+        recentMessages: ['The dragon wakes.'],
+      );
+
+      final trace = result.traceByEntryId[10];
+      expect(trace, isNotNull);
+      expect(trace!.activated, true);
+      expect(trace.reason, LorebookActivationReason.keyword);
+      expect(trace.matchedKey, 'dragon');
+      expect(trace.blockedBy, isNull);
+    });
+
+    test('captures secondary AND failure reason', () {
+      final lorebook = Lorebook(entries: [
+        LorebookEntry(
+          id: 11,
+          keys: ['sword'],
+          secondaryKeys: ['magic'],
+          selectiveLogic: true,
+          content: 'Magic sword lore.',
+        ),
+      ]);
+
+      final result = LorebookService.evaluateEntries(
+        lorebook: lorebook,
+        recentMessages: ['A sword is on the table.'],
+      );
+
+      final trace = result.traceByEntryId[11];
+      expect(trace, isNotNull);
+      expect(trace!.activated, false);
+      expect(trace.reason, LorebookActivationReason.rejected);
+      expect(trace.blockedBy, 'secondary_and_failed');
+    });
+
+    test('captures delay pending as timed effect block reason', () {
+      final state = LorebookSessionState(sessionId: 'diag-delay');
+      final lorebook = Lorebook(entries: [
+        LorebookEntry(
+          id: 12,
+          keys: ['phoenix'],
+          content: 'Phoenix lore.',
+          delay: 2,
+        ),
+      ]);
+
+      final result = LorebookService.evaluateEntries(
+        lorebook: lorebook,
+        recentMessages: ['The phoenix rises.'],
+        sessionState: state,
+      );
+
+      final trace = result.traceByEntryId[12];
+      expect(trace, isNotNull);
+      expect(trace!.activated, false);
+      expect(trace.blockedBy, 'delay_pending');
+    });
   });
 
   // ---------------------------------------------------------------------------

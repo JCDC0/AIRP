@@ -331,8 +331,9 @@ class _LibraryPanelState extends State<LibraryPanel> {
       // Determine what sections are present
       final sections = <String>[];
       if (settings != null) {
-        if (settings['generation'] != null)
+        if (settings['generation'] != null) {
           sections.add('Generation Parameters');
+        }
         if (settings['systemInstruction'] != null ||
             settings['advancedSystemInstruction'] != null) {
           sections.add('System Prompts');

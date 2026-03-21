@@ -9,14 +9,13 @@ import 'settings_panels/api_settings_panel.dart';
 import 'settings_panels/model_settings_panel.dart';
 import 'settings_panels/system_prompt_panel.dart';
 import 'settings_panels/character_card_panel.dart';
-import 'settings_panels/preset_panel.dart';
 import 'settings_panels/regex_panel.dart';
 import 'settings_panels/formatting_panel.dart';
 import 'settings_panels/generation_settings_panel.dart';
 import 'settings_panels/web_search_settings_panel.dart';
 import 'settings_panels/visual_settings_panel.dart';
 import 'settings_panels/scale_settings_panel.dart';
-import 'settings_panels/library_panel.dart';
+import 'settings_panels/settings_library_panel.dart';
 
 /// A drawer widget that contains all application settings.
 ///
@@ -208,13 +207,16 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     if (_apiKeyController.text != _getApiKey(chatProvider)) hasChanges = true;
 
     if (_localIpController.text != chatProvider.localIp) hasChanges = true;
-    if (_vertexAiEndpointController.text != chatProvider.vertexAiEndpoint)
+    if (_vertexAiEndpointController.text != chatProvider.vertexAiEndpoint) {
       hasChanges = true;
+    }
     if (_openAiCompatibleEndpointController.text !=
-        chatProvider.openAiCompatibleEndpoint)
+        chatProvider.openAiCompatibleEndpoint) {
       hasChanges = true;
-    if (_ollamaEndpointController.text != chatProvider.ollamaEndpoint)
+    }
+    if (_ollamaEndpointController.text != chatProvider.ollamaEndpoint) {
       hasChanges = true;
+    }
 
     if (_titleController.text != chatProvider.currentTitle) hasChanges = true;
 
@@ -490,46 +492,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     children: [const CharacterCardPanel()],
                   ),
 
-                  // --- Custom Rules & Presets ---
-                  ExpansionTile(
-                    key: Key('preset_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Config Packs",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                        shadows: themeProvider.enableBloom
-                            ? [
-                                Shadow(
-                                  color: themeProvider.bloomGlowColor,
-                                  blurRadius: 10,
-                                ),
-                              ]
-                            : [],
-                      ),
-                    ),
-                    trailing: Switch(
-                      value: chatProvider.enableAdvancedSystemPrompt,
-                      activeThumbColor: themeProvider.textColor,
-                      onChanged: (val) {
-                        chatProvider.setEnableAdvancedSystemPrompt(val);
-                        chatProvider.saveSettings();
-                      },
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [
-                      PresetPanel(
-                        mainPromptController: _mainPromptController,
-                        advancedPromptController: _advancedPromptController,
-                        promptTitleController: _promptTitleController,
-                        onPromptChanged: _checkForChanges,
-                      ),
-                    ],
-                  ),
-
                   // --- Regex Scripts ---
                   ExpansionTile(
                     key: Key('regex_${widget.resetVersion}'),
@@ -688,16 +650,35 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     key: Key('library_settings_${widget.resetVersion}'),
                     initiallyExpanded: false,
                     title: Text(
-                      "Save & Load Library",
+                      "Settings Library",
                       style: TextStyle(
                         color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize,
                       ),
                     ),
+                    subtitle: Text(
+                      'Config Packs · Snapshots',
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                    trailing: Switch(
+                      value: chatProvider.enableAdvancedSystemPrompt,
+                      activeThumbColor: themeProvider.textColor,
+                      onChanged: (val) {
+                        chatProvider.setEnableAdvancedSystemPrompt(val);
+                        chatProvider.saveSettings();
+                      },
+                    ),
                     collapsedIconColor: themeProvider.textColor,
                     iconColor: themeProvider.textColor,
-                    children: [const LibraryPanel()],
+                    children: [
+                      SettingsLibraryPanel(
+                        mainPromptController: _mainPromptController,
+                        advancedPromptController: _advancedPromptController,
+                        promptTitleController: _promptTitleController,
+                        onPromptChanged: _checkForChanges,
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 80),

@@ -16,9 +16,13 @@ class LorebookEvalResult {
   /// Uses a simple word-count × 1.3 heuristic.
   final int estimatedTokens;
 
+  /// Activation diagnostics for each evaluated entry.
+  final List<LorebookActivationTrace> activationTraces;
+
   const LorebookEvalResult({
     required this.byPosition,
     required this.estimatedTokens,
+    this.activationTraces = const [],
   });
 
   /// Convenience: all activated entries in a flat list sorted by
@@ -36,6 +40,63 @@ class LorebookEvalResult {
   /// Whether any entries were activated.
   bool get isEmpty => byPosition.values.every((l) => l.isEmpty);
   bool get isNotEmpty => !isEmpty;
+
+  /// Latest diagnostic trace per entry id.
+  Map<int, LorebookActivationTrace> get traceByEntryId {
+    final map = <int, LorebookActivationTrace>{};
+    for (final trace in activationTraces) {
+      map[trace.entryId] = trace;
+    }
+    return map;
+  }
+}
+
+/// High-level cause for an entry activation decision.
+enum LorebookActivationReason {
+  constant,
+  keyword,
+  recursive,
+  rejected,
+}
+
+/// Structured per-entry diagnostic emitted by evaluator.
+class LorebookActivationTrace {
+  final int entryId;
+  final String entryLabel;
+  final bool activated;
+  final LorebookActivationReason reason;
+  final String? matchedKey;
+  final String? secondaryMatchedKey;
+  final String? blockedBy;
+
+  const LorebookActivationTrace({
+    required this.entryId,
+    required this.entryLabel,
+    required this.activated,
+    required this.reason,
+    this.matchedKey,
+    this.secondaryMatchedKey,
+    this.blockedBy,
+  });
+}
+
+enum _LorebookActivationSource {
+  keyword,
+  recursive,
+}
+
+class _ActivationDecision {
+  final bool activated;
+  final LorebookActivationTrace trace;
+
+  const _ActivationDecision({required this.activated, required this.trace});
+}
+
+class _TimedEffectDecision {
+  final bool passed;
+  final String? blockedBy;
+
+  const _TimedEffectDecision({required this.passed, this.blockedBy});
 }
 
 /// Evaluates [LorebookEntry] items against recent messages to determine which
@@ -90,16 +151,21 @@ class LorebookService {
       return true;
     }).toList();
 
+    final activationTraces = <LorebookActivationTrace>[];
+
     // Phase 2-6: Evaluate each entry.
     final activated = <LorebookEntry>[];
     for (final entry in eligible) {
-      if (_shouldActivate(
+      final decision = _shouldActivate(
         entry: entry,
         corpus: corpus,
         caseSensitive: lorebook.caseSensitive,
         matchWholeWords: lorebook.matchWholeWords,
         sessionState: sessionState,
-      )) {
+        source: _LorebookActivationSource.keyword,
+      );
+      activationTraces.add(decision.trace);
+      if (decision.activated) {
         activated.add(entry);
       }
     }
@@ -113,6 +179,7 @@ class LorebookService {
       caseSensitive: lorebook.caseSensitive,
       matchWholeWords: lorebook.matchWholeWords,
       sessionState: sessionState,
+      activationTraces: activationTraces,
     );
 
     // Phase 8: Inclusion group conflict resolution.
@@ -136,6 +203,7 @@ class LorebookService {
     return LorebookEvalResult(
       byPosition: byPosition,
       estimatedTokens: totalTokens,
+      activationTraces: activationTraces,
     );
   }
 
@@ -177,12 +245,13 @@ class LorebookService {
   // ---------------------------------------------------------------------------
 
   /// Determines whether a single entry should activate.
-  static bool _shouldActivate({
+  static _ActivationDecision _shouldActivate({
     required LorebookEntry entry,
     required String corpus,
     required bool caseSensitive,
     required bool matchWholeWords,
     LorebookSessionState? sessionState,
+    required _LorebookActivationSource source,
   }) {
     final entryLabel = entry.comment.isNotEmpty
         ? entry.comment
@@ -190,11 +259,29 @@ class LorebookService {
 
     // Constant entries always activate (no keyword matching needed).
     if (entry.strategy == LorebookStrategy.constant) {
-      bool passed = _passTimedEffects(entry, sessionState);
-      if (passed) {
+      final timed = _passTimedEffects(entry, sessionState);
+      if (timed.passed) {
         developer.log('[$entryLabel] activated (Constant)', name: 'Lorebook');
+        return _ActivationDecision(
+          activated: true,
+          trace: LorebookActivationTrace(
+            entryId: entry.id,
+            entryLabel: entryLabel,
+            activated: true,
+            reason: LorebookActivationReason.constant,
+          ),
+        );
       }
-      return passed;
+      return _ActivationDecision(
+        activated: false,
+        trace: LorebookActivationTrace(
+          entryId: entry.id,
+          entryLabel: entryLabel,
+          activated: false,
+          reason: LorebookActivationReason.rejected,
+          blockedBy: timed.blockedBy,
+        ),
+      );
     }
 
     // Primary keyword match.
@@ -206,7 +293,16 @@ class LorebookService {
     );
 
     if (matchedKey == null) {
-      return false;
+      return _ActivationDecision(
+        activated: false,
+        trace: LorebookActivationTrace(
+          entryId: entry.id,
+          entryLabel: entryLabel,
+          activated: false,
+          reason: LorebookActivationReason.rejected,
+          blockedBy: 'no_primary_match',
+        ),
+      );
     }
 
     // Secondary keyword filter.
@@ -220,10 +316,35 @@ class LorebookService {
 
       if (entry.selectiveLogic) {
         // AND mode: secondary keys MUST also match.
-        if (secondaryHit == null) return false;
+        if (secondaryHit == null) {
+          return _ActivationDecision(
+            activated: false,
+            trace: LorebookActivationTrace(
+              entryId: entry.id,
+              entryLabel: entryLabel,
+              activated: false,
+              reason: LorebookActivationReason.rejected,
+              matchedKey: matchedKey,
+              blockedBy: 'secondary_and_failed',
+            ),
+          );
+        }
       } else {
         // NOT mode: secondary keys must NOT match.
-        if (secondaryHit != null) return false;
+        if (secondaryHit != null) {
+          return _ActivationDecision(
+            activated: false,
+            trace: LorebookActivationTrace(
+              entryId: entry.id,
+              entryLabel: entryLabel,
+              activated: false,
+              reason: LorebookActivationReason.rejected,
+              matchedKey: matchedKey,
+              secondaryMatchedKey: secondaryHit,
+              blockedBy: 'secondary_not_failed',
+            ),
+          );
+        }
       }
     }
 
@@ -234,45 +355,85 @@ class LorebookService {
           '[$entryLabel] matched "$matchedKey" but failed probability roll (${entry.probability}%)',
           name: 'Lorebook',
         );
-        return false;
+        return _ActivationDecision(
+          activated: false,
+          trace: LorebookActivationTrace(
+            entryId: entry.id,
+            entryLabel: entryLabel,
+            activated: false,
+            reason: LorebookActivationReason.rejected,
+            matchedKey: matchedKey,
+            blockedBy: 'probability_failed',
+          ),
+        );
       }
     }
 
     // Timed effects.
-    bool passed = _passTimedEffects(entry, sessionState);
-    if (passed) {
+    final timed = _passTimedEffects(entry, sessionState);
+    if (timed.passed) {
       developer.log(
         '[$entryLabel] activated via keyword: "$matchedKey"',
         name: 'Lorebook',
+      );
+      return _ActivationDecision(
+        activated: true,
+        trace: LorebookActivationTrace(
+          entryId: entry.id,
+          entryLabel: entryLabel,
+          activated: true,
+          reason: source == _LorebookActivationSource.recursive
+              ? LorebookActivationReason.recursive
+              : LorebookActivationReason.keyword,
+          matchedKey: matchedKey,
+        ),
       );
     } else {
       developer.log(
         '[$entryLabel] matched "$matchedKey" but blocked by Timed Effects',
         name: 'Lorebook',
       );
+      return _ActivationDecision(
+        activated: false,
+        trace: LorebookActivationTrace(
+          entryId: entry.id,
+          entryLabel: entryLabel,
+          activated: false,
+          reason: LorebookActivationReason.rejected,
+          matchedKey: matchedKey,
+          blockedBy: timed.blockedBy,
+        ),
+      );
     }
-    return passed;
   }
 
   /// Checks delay, cooldown, and sticky timed effects.
-  static bool _passTimedEffects(
+  static _TimedEffectDecision _passTimedEffects(
     LorebookEntry entry,
     LorebookSessionState? state,
   ) {
-    if (state == null) return true;
+    if (state == null) {
+      return const _TimedEffectDecision(passed: true);
+    }
 
     // Delay: entry needs N keyword matches before first activation.
     if (entry.delay != null && entry.delay! > 0) {
       state.incrementMatchCount(entry.id);
       if (!state.hasPassedDelay(entry.id, entry.delay!)) {
-        return false;
+        return _TimedEffectDecision(
+          passed: false,
+          blockedBy: 'delay_pending',
+        );
       }
     }
 
     // Cooldown: entry is on cooldown after sticky expired.
     if (entry.cooldown != null && entry.cooldown! > 0) {
       if (state.isOnCooldown(entry.id, entry.cooldown!)) {
-        return false;
+        return const _TimedEffectDecision(
+          passed: false,
+          blockedBy: 'cooldown_active',
+        );
       }
     }
 
@@ -280,11 +441,11 @@ class LorebookService {
     // force activation regardless of keyword match.
     if (entry.sticky != null && entry.sticky! > 0) {
       if (state.isStickyActive(entry.id, entry.sticky!)) {
-        return true;
+        return const _TimedEffectDecision(passed: true);
       }
     }
 
-    return true;
+    return const _TimedEffectDecision(passed: true);
   }
 
   // ---------------------------------------------------------------------------
@@ -320,6 +481,7 @@ class LorebookService {
     required bool caseSensitive,
     required bool matchWholeWords,
     LorebookSessionState? sessionState,
+    required List<LorebookActivationTrace> activationTraces,
   }) {
     if (recursionSteps <= 0 || remaining.isEmpty) return activated;
 
@@ -342,13 +504,16 @@ class LorebookService {
 
       bool anyNew = false;
       for (final entry in stillRemaining) {
-        if (_shouldActivate(
+        final decision = _shouldActivate(
           entry: entry,
           corpus: recursionCorpus,
           caseSensitive: caseSensitive,
           matchWholeWords: matchWholeWords,
           sessionState: sessionState,
-        )) {
+          source: _LorebookActivationSource.recursive,
+        );
+        activationTraces.add(decision.trace);
+        if (decision.activated) {
           allActivated.add(entry);
           anyNew = true;
         }
