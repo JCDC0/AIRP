@@ -49,112 +49,50 @@ Integrated 10 new API providers (Vertex AI, Blackbox AI, Minimax, OpenAI Compati
 
 ## 🚀 v0.6 — Architecture, Feature Maturity & Library System
 
-*Focus: Decompose the god class, fix lorebook evaluation, establish per-subsystem libraries, rename ST-derived features for AIRP identity, and merge redundant configuration systems.*
+*Focus: Establish per-subsystem libraries, integrate user-requested features/revisions, and finalize optimizations (Widget and God Class decomposition) sequentially safely at the end.*
 
-### (Moved as Final Phase, Deemed Highly Risky) Phase 1: ChatProvider Decomposition
+### ✅ Phase 1: Lorebook Engine Fix & Enhancement (Completed in v0.6.2)
+- Added activation debug logging (Evaluation Tracing) and matched-highlighting feedback.
+- Migrated SharedPreferences keys cleanly.
 
-The 3,292-line `ChatProvider` god class must be broken into focused services:
+### ✅ Phase 2: Character Card V3 Base Support (Completed in v0.6.3)
+- Implemented `kCharacterCardV3Schema` for exports.
+- Maintained legacy V2 UI backward compatibility via dynamic wrapper deserialization.
 
-- **SessionService** — Session CRUD, auto-save, merge, fork, switch.
-- **ModelRegistryService** — Model list state, fetching, deserialization. Remove 10 empty `fetch*Models()` stubs.
-- **ApiKeyService** — Secure storage migration and provider key management.
-- **WebSearchOrchestrator** — Search provider selection and BYOK dispatch.
-- **ImageGenService** — Image generation routing, download, and base64 storage.
-- Break `sendMessage()` into focused helper methods with clear separation of grounding, streaming, and post-processing phases.
-
-### Phase 2: Lorebook Engine Fix & Enhancement
-
-Fix the core keyword matching bug (default `scanDepth=2` is too small — most keywords never appear in a 2-message window):
-
-- Increase default scan depth to 10–20 messages.
-- Add activation debug logging (show which entries activated and why in a debug panel).
-- Add match-highlighting feedback in the lorebook entry list.
-- Test with real character cards containing 10+ entries across varied keywords.
-- Consider semantic/fuzzy keyword matching as an optional enhancement.
-
-### Phase 3: Feature Identity Pass
-
-Rename ST-derived subsystems to establish AIRP's own identity while maintaining import compatibility:
-
-- Lorebook → **World Lore** (or Context Library)
-- Regex Scripts → **Text Transforms**
-- Formatting Templates → **Style Rules**
-- Custom Rules & Presets → **Config Packs** (merged — see Phase 5)
-- Update all UI labels, SharedPreferences keys (with migration), and documentation.
+### ✅ Phase 3: Feature Identity Pass & Library Merge (Completed) 
+- Unified "Custom Rules & Presets" and "Save & Load Library" into the single **Settings Library** drawer panel.
+- Established consistent layout for Config Packs and Snapshots.
 
 ### Phase 4: Per-Subsystem Library System
-
 Add an in-app library for each subsystem so users can **swap resources instantly** without file import/export. All entries are stored locally and accessible via a quick-select list:
+- **Character Card Library**: Save/load/swap loaded character cards and their embedded elements natively.
+- **Lorebook Library**: Save/load/merge named lorebook sets instantly.
+- **Regex/Formatting Library**: Modular swap functionality for regex and formatting rules.
+- **UI Button Cleanup**: Remove the redundant and unnecessary individual copy/paste buttons found across almost every single field in the Character Card panel and Settings Library modules to drastically declutter the UI.
 
-#### Character Card Library
+### Phase 5: Pending Features, Revisions, & Removals
+- Finalize any pending user-requested features, mechanics tweaks, or functionality removals.
+- Fix image gen render pipeline (download bytes → base64 → `aiImage` field).
+- Fix PDF/doc/docx silent drop in attachment pipeline (surface errors via snackbar).
+- Refine overall chat UX based on targeted revisions before entering final optimization sweeps.
 
-- Save any loaded character card to the local library with one tap.
-- Quick-swap cards from a selectable list in the Character Card panel (dropdown or list view).
-- Each stored card includes its embedded lorebook, alternate greetings, and depth prompt.
-- Delete cards from the library individually.
-
-#### World Lore Library (Lorebook)
-
-- Save/load named lorebook sets from a local library.
-- Quick-swap between different world contexts (e.g., "Fantasy Kingdom," "Sci-Fi Station").
-- Merge lorebook sets when applying (add new entries, skip duplicates by key match).
-
-#### Text Transform Library (Regex)
-
-- Save/load named regex script sets.
-- Quick-apply curated transform packs from the library.
-- Built-in starter packs (e.g., "Clean Markdown," "Roleplay Enhancer").
-
-#### Style Rules Library (Formatting)
-
-- Save/load named formatting templates.
-- Quick-swap visual styling with a single tap.
-- Built-in defaults beyond the current pass-through templates (bold character names, italic thoughts, styled dialogue).
-
-### Phase 5: Merge Config Packs & Save/Load Library
-
-Currently two overlapping systems exist:
-
-- **Custom Rules & Presets (CRP)** — Targets generation parameters, system prompt, custom rules, and optional lorebook/regex/formatting.
-- **Save & Load Library (SLL)** — Exports/imports the entire app state as `.airp` files with per-category toggles.
-
-**Merge plan:**
-
-**Config Packs** (formerly CRP) handles targeted, shareable configuration:
-
-- Bundles: system prompt, generation settings (temperature, top_p, top_k, max_tokens), custom rules, and optionally attached lorebook/regex/formatting from the library.
-- Quick-apply from a local pack list — no file picker needed.
-- Import/export as `.json` for sharing.
-- Custom rules remain as toggle-able text directives stacked on the advanced prompt.
-
-**Full Backup** (formerly SLL) handles complete app state:
-
-- Single unified `.airp` file containing: conversations, system prompt, advanced prompt, generation parameters, layout scaling, visuals, character card + all library entries (character cards, lorebooks, regex sets, formatting templates, config packs), model history, and provider settings.
-- Smart import system handles the god JSON: per-category toggle on import preview, conversation merge by ID, prompt merge by title, library entries merged by name (no duplicates).
-- Export/import flow simplified: one button to export everything, one to import with a category picker.
-
-### Phase 6: Widget Decomposition & UI Cleanup
-
-- Split `message_bubble.dart` (1,217 lines) into: markdown renderer, image viewer, version navigator, context menu.
-- Split `chat_input_area.dart` (1,313 lines) into: toggle bar, attachment handler, input field.
-- Remove per-field copy/paste buttons from Character Card panel (24+ redundant buttons). Replace with a single "Copy Card JSON" action.
+### Phase 6: Widget Decomposition & UI Cleanup (Optimization)
+- Split `message_bubble.dart` (1,217 lines) into smaller sub-widgets: markdown renderer, image viewer, version navigator, context menu.
+- Split `chat_input_area.dart` (1,313 lines) into smaller pieces: toggle bar, attachment handler, input field.
 - Extract lorebook sub-section from `character_card_panel.dart` into its own widget.
-- Deduplicate particle effects in `effects_overlay.dart` into a shared `ParticleEffect<T>` base.
 - Audit `Consumer<ChatProvider>` over-rebuilds and migrate to fine-grained `Selector` patterns.
 
-### Phase 7: Pending v0.5.13 Completion
+### Phase 7: Documentation & README Polish (Second Last)
+- Perform a comprehensive final review and rewrite of `README.md` to perfectly capture all v0.6 features, UI interactions, and provider updates.
+- Remove deprecated mechanics from the documentation.
 
-- Fix image gen render pipeline (download bytes → base64 → `aiImage` field → `Image.memory()`).
-- Fix PDF/doc/docx silent drop in attachment pipeline (surface errors via snackbar).
-- Add provider capability guards for image gen (disable button when provider doesn't support it).
-- Fix DDG query URL encoding.
-- Add explicit unsupported-format feedback.
-
-### Phase 8: Documentation & Polish
-
-- Rewrite `README.md` with renamed features and updated architecture.
-- Update `GEMINI.md` to reflect new service boundaries.
-- Add inline code documentation for all new services.
+### Phase 8: ChatProvider God Class Decomposition (Final Phase - High Risk)
+The 3,292-line `ChatProvider` god class must be broken into focused services:
+- **SessionService** — Session CRUD, auto-save, merge, fork, switch.
+- **ModelRegistryService** — Model list state, fetching, deserialization. 
+- **ApiKeyService** — Secure storage migration and provider key management.
+- **WebSearchOrchestrator** & **ImageGenService**.
+- Extract massive logic out of `sendMessage()` into separated streaming and post-processing pipelines.
 
 ---
 
