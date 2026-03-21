@@ -12,37 +12,26 @@
 * **High-Performance Streaming**: Optimized streaming engine eliminates UI lag by updating only the active message bubble, ensuring silky-smooth performance even on lower-end devices.
 * **Background Streaming**: Send a message, switch to another conversation, and the response continues generating in the background. The conversation drawer shows a spinner on active streams and displays a notification card when the background stream completes.
 * **Dynamic Model Lists**: Fetch the latest available models directly from all API providers with pricing metadata (OpenRouter, NanoGPT).
-* **Intelligent Model Selector**: A powerful, searchable dialog with a **Bookmarking System** to pin favorites, real-time model counters per provider, raw API ID subtitles, and cost sorting.
-* **BYOK Web Search**: Provider-agnostic web search with 6 backends — Brave, Tavily, Serper, SearXNG, DuckDuckGo, and Provider-native grounding. Results are injected as context blocks that work across all AI providers, not just Gemini.
-* **Light & Dark Mode**: Full light/dark mode toggle with 20+ semantic color getters that adapt the entire UI.
-* **Response Versioning**: Regenerated responses are preserved as versions. Navigate between them with prev/next arrows and a version counter (e.g., "2/3") on each message bubble.
-* **Conversation Forking**: Fork a conversation from any AI message to create a new branch while preserving the original.
-* **Image Generation**: Toggle inline image generation (DALL-E/Flux) via a dedicated input bar button for compatible providers.
-* **Usage Stats**: Per-message token usage display (prompt + completion = total) toggled from the input bar.
-* **SillyTavern Character Cards (V2)**: Import character cards from PNG (V1/V2 tEXt/iTXt chunk parsing) or JSON files. Full V2 spec editor with 11+ fields including post-history instructions, alternate greetings, creator notes, depth prompt, and tags. Embedded lorebooks and regex scripts are auto-loaded on import. Export to JSON with round-trip fidelity.
-* **Lorebook System**: Full SillyTavern Character Book V2 parity. Keyword-triggered context injection with primary/secondary key filtering, AND/NOT logic, probability rolls, timed effects (delay, sticky, cooldown), inclusion group conflict resolution, recursive scanning, and token budget enforcement. 8 insertion positions matching SillyTavern.
-* **Regex Engine**: Post-processing pipeline with 3 modes — permanent (modifies stored text), display-only (render-time only), and prompt-only (alters sent prompt). Targets user input, AI output, world info, and reasoning independently. Supports macro-resolved patterns.
-* **Formatting Templates**: Template-based output styling with ordered rules for dialogue, thought, narration, and character name wrapping. Macro placeholders (`{{char}}`, `{{match}}`, etc.) are resolved at render time.
-* **Macro Engine**: Shared foundation powering lorebooks, regex, and formatting. 25+ macros across identity (`{{char}}`, `{{user}}`), time (`{{date}}`, `{{isotime}}`), randomization (`{{roll::2d6}}`, `{{pick::a::b}}`), variables (`{{getvar}}`, `{{setvar}}`), and utility (`{{newline}}`, `{{trim}}`). Recursive resolution with depth cap.
-* **Config Packs (Presets)**: Import and export configuration packs bundling system prompt, custom rules, generation settings, and optionally lorebook entries, regex scripts, and formatting templates. Quick-apply from a local pack list. Partial SillyTavern preset import with auto-extraction of compatible fields.
-* **Full Backup (Library)**: Export and import your entire AIRP configuration as `.airp` files with per-category toggles: Conversations, System Prompt, Advanced System Prompt, Generation Parameters, Layout & Scaling, Visuals & Atmosphere, Character Card, and Lorebook/Regex/Formatting. Smart import merges by ID and deduplicates.
-* **Searchable History**: Quickly find past conversations with integrated search. Star conversations to pin them in a dedicated "Starred" section at the top of the drawer.
-* **Developer Friendly**: Full Markdown support with **syntax highlighting** for code blocks and one-click code copying.
-* **Message Management**: Edit, copy, delete, or regenerate specific messages within a chat.
-* **Deep Visual Customization**: Independent color pickers for user bubble, user text, AI bubble, and AI text colors. Separate opacity sliders for background dimmer and message bubbles. 16 thematic font presets.
-* **Atmospheric Effects**: Toggle "Bloom" for a glow dependent on your chosen color, or enable environmental effects like **Floating Motes**, **Rain**, or **Fireflies** — each with configurable density/intensity sliders.
-* **Advanced Prompting Engine**: Create, edit, and toggle individual custom rule "tweaks" that stack on top of your main persona. Full SillyTavern-compatible character card import/export with lorebook, regex, and formatting subsystems.
-* **Multimodal Support**: Send images to compatible models.
-* **File Attachment Support**: Attach PDFs and text-based files (txt, md, dart, etc.) to your messages for AI analysis.
-* **Token Counting**: Persistent, real-time context usage display in the app header with color-coded indicators (green → yellow → orange → red) as the context window fills.
-* **Enhanced Zoom Controls**: Pinch-to-zoom the conversation for better readability. Desktop includes a floating zoom-mode toggle, while mobile shows the reset button when zoomed.
-* **Quick Input Toggles**: A row of feature toggle buttons directly in the input area — Web Search, Image Gen, Usage Stats, and Reasoning (cycles none → low → medium → high) — with contextual hint text that changes based on active mode.
-* **Inline Typing Indicator**: A three-dots typing animation is rendered inside the active AI bubble as a fallback loading indicator (when border/loading animations are disabled), then disappears as soon as response text/reasoning appears.
-* **Keyboard Shortcut Send**: Supports **Ctrl+Enter** (Windows/Linux) and **Cmd+Enter** (macOS) to send quickly from hardware keyboards.
-* **Scroll Navigation**: Scroll-to-top and scroll-to-bottom buttons for quick navigation in long conversations.
-* **Secure Key Storage**: API keys are stored in platform-encrypted secure storage rather than plain text, with automatic migration from legacy storage.
-* **Auto-Save**: Conversations auto-save with a debounced timer after every change.
-* **Scalability & Multi-Device Support**: Optimized for Phones, Tablets, and Desktops/Laptops with intelligent auto-detection on first install and a first-run glow indicator guiding users to configure scaling.
+* **Intelligent Model Selector**: A powerful, searchable dialog with a **Bookmarking System**, real-time model counters per provider, raw API ID subtitles, and cost sorting.
+* **BYOK Web Search**: Provider-agnostic web search with 6 backends natively injected as context blocks across all AI providers.
+* **Light & Dark Mode**: Full toggle with 20+ semantic color getters that adapt the entire UI.
+* **Response Versioning & Forking**: Regenerated responses are preserved as versions. Fork a conversation from any message to create a new branch.
+* **Image Generation**: Toggle inline image generation (DALL-E/Flux) for compatible providers.
+* **Usage Stats**: Per-message token usage display (prompt + completion = total).
+* **Character Cards (V2 & V3)**: Import character cards from PNG or JSON files with full V2 and V3 schema support, in-app editing, and embedded lorebook/regex loading.
+* **Lorebook System & UI Diagnostics**: Full SillyTavern Character Book V2 parity with real-time UI Evaluation Tracing for insight into entry activation.
+* **Regex Engine**: Post-processing pipeline with 3 modes (permanent, display-only, prompt-only) targeting user input, AI output, world info, and reasoning.
+* **Formatting Templates**: Template-based output styling (`{{match}}`) with ordered rules for dialogue, thought, narration, and character names.
+* **Macro Engine**: Shared foundation with 25+ dynamic placeholders (`{{char}}`, `{{time}}`, `{{roll::2d6}}`, `{{setvar}}`, etc.).
+* **Config Packs (Presets)**: Bundle system prompts, custom rules, and generation settings into shareable local packs.
+* **Full Backup (Library)**: Export and import your entire AIRP configuration as `.airp` files with intelligent merging.
+* **Searchable History**: Query past conversations or star them to pin them at the top of the drawer.
+* **Message Management**: Edit, copy, delete, or regenerate specific messages, featuring full Markdown support and syntax highlighting.
+* **Deep Visual Customization**: Independent color pickers, bubble opacities, 16 thematic fonts, and atmospheric particle effects (Rain, Fireflies, Motes).
+* **Advanced Prompting Engine**: Layered reasoning directives, custom rules, and Persona "Tweaks" toggled on the fly.
+* **Multimodal & File Support**: Attach images, PDFs, and text-based files for AI analysis.
+* **Token Counting & Safety**: Real-time context boundary indicators and toggles to disable API-side safety filters.
+* **Scalability & Multi-Device Support**: Optimized for Phones, Tablets, and Desktops with granular layout controls and gesture zooming.
 
 ## Scalability & Multi-Device Support
 
@@ -243,14 +232,14 @@ Slide from the **right** edge or tap the **Settings** icon.
    * **Edit**: Tap the **Pencil Icon** to modify a rule's name or content.
    * **Stacking**: Active rules are automatically prepended to the Main System Prompt when sending the request to the AI.
 
-3. **SillyTavern Character Cards (V2)**:
-   * **Import**: Load character cards from **PNG files** (V1/V2 tEXt/iTXt compressed chunk parsing) or **JSON files** with full SillyTavern V2 spec compatibility. Embedded `character_book` lorebooks and scoped regex scripts are auto-loaded.
+3. **Character Cards (V3 Base & V2 Compatibility)**:
+   * **Import**: Load character cards from **PNG files** (V1/V2 tEXt/iTXt compressed chunk parsing) or **JSON files**. The system intelligently decompiles the newer V3 standard wrapper schemas back into flat V2 properties preventing breakages, and retains full SillyTavern V2 parsing. Embedded `character_book` lorebooks and scoped regex scripts are auto-loaded.
    * **In-App Editor**: Edit 11+ character fields — Name, Description, Personality, Scenario, First Message, Example Dialogue, System Prompt, Post-History Instructions, Creator Notes, Creator, and Character Version.
    * **Alternate Greetings**: Manage multiple first messages that can be cycled.
    * **Depth Prompt**: Configure text injected at a specific depth in the message history with role assignment (system/user/assistant).
    * **Tags**: View and manage character tags for organization.
    * **Embedded Lorebook**: View and edit the character's embedded lorebook entries directly within the character card panel.
-   * **Export**: Save character cards to JSON with full V2 round-trip fidelity.
+   * **Export**: Save character cards to JSON, seamlessly packaging them via the native `kCharacterCardV3Schema` structure.
    * **Clear Card**: Remove the active character card without losing your custom rules.
 
 ---
@@ -310,7 +299,8 @@ The Lorebook is a keyword-triggered context injection system with full SillyTave
    * **Case Sensitive**: Whether keyword matching is case-sensitive.
    * **Match Whole Words**: Whether keywords must match as whole words.
    * **Recursion Steps**: How many times activated entries are re-scanned for more keyword matches (0 = no recursion).
-4. Tap the **+** button to add entries, or **Import** a lorebook JSON file.
+4. **View Diagnostics**: Review the visual **Evaluation Tracing** data listed below entries after sending a message to see exactly which constraints or keywords triggered or blocked an entry from activating.
+5. Tap the **+** button to add entries, or **Import** a lorebook JSON file.
 
 ### Lorebook Entries
 
