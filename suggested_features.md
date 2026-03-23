@@ -45,6 +45,14 @@ Major roleplay engine release building four subsystems on a shared macro engine:
 
 Integrated 10 new API providers (Vertex AI, Blackbox AI, Minimax, OpenAI Compatible, Deepseek, Ollama, Qwen, xAI, Z.ai, Mistral) using existing OpenAI-compatible pipeline. Added endpoint configurations for custom hostings. Fixed system prompt persistence on web reload. Refined fork feature to spawn single-message conversations. Patch releases (0.5.14.1–0.5.14.8) streamlined provider/model settings, fixed text input bugs, added starred providers, expanded model details display, and fixed conversation bookmark/deletion persistence.
 
+### v0.6.5 — Reasoning Efficiency, Edit Safety & Recovery
+
+- Added centralized `<think>` parsing/sanitization to prevent reasoning blocks from polluting re-sent context/history.
+- Added global reasoning efficiency controls and policy-driven retroactive session patching.
+- Added normal-mode edit safety: reasoning is read-only by default, with raw assistant-block edits gated behind Developer Mode.
+- Added backup-based rollback action for session-policy migrations.
+- Added reasoning-only fallback recovery marker for responses that omit visible final text.
+
 ---
 
 ## 🚀 v0.6 — Architecture, Feature Maturity & Library System

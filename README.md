@@ -21,12 +21,14 @@
 * **Character Cards (V2 & V3)**: Import character cards from PNG or JSON files with full V2 and V3 schema support, in-app editing, and embedded lorebook/regex loading.
 * **Lorebook System & UI Diagnostics**: Full SillyTavern Character Book V2 parity with real-time UI Evaluation Tracing for insight into entry activation.
 * **Regex Engine**: Post-processing pipeline with 3 modes (permanent, display-only, prompt-only) targeting user input, AI output, world info, and reasoning.
+* **Reasoning Efficiency Controls**: Optional global sanitization strips `<think>` blocks from stored sessions and outbound context to reduce memory/token overhead while preserving visible final answers.
+* **Developer Safety Controls**: Developer mode unlocks raw assistant-block editing and one-click rollback to the latest session backup after policy migrations.
 * **Formatting Templates**: Template-based output styling (`{{match}}`) with ordered rules for dialogue, thought, narration, and character names.
 * **Macro Engine**: Shared foundation with 25+ dynamic placeholders (`{{char}}`, `{{time}}`, `{{roll::2d6}}`, `{{setvar}}`, etc.).
 * **Config Packs (Presets)**: Bundle system prompts, custom rules, and generation settings into shareable local packs.
 * **Full Backup (Library)**: Export and import your entire AIRP configuration as `.airp` files with intelligent merging.
 * **Searchable History**: Query past conversations or star them to pin them at the top of the drawer.
-* **Message Management**: Edit, copy, delete, or regenerate specific messages, featuring full Markdown support and syntax highlighting.
+* **Message Management**: Edit, copy, delete, or regenerate specific messages, featuring full Markdown support and syntax highlighting. By default, reasoning blocks are read-only during edit; raw full-block editing is opt-in via Developer Mode.
 * **Deep Visual Customization**: Independent color pickers, bubble opacities, 16 thematic fonts, and atmospheric particle effects (Rain, Fireflies, Motes).
 * **Advanced Prompting Engine**: Layered reasoning directives, custom rules, and Persona "Tweaks" toggled on the fly.
 * **Multimodal & File Support**: Attach images, PDFs, and text-based files for AI analysis.
