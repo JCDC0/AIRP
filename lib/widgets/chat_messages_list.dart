@@ -182,8 +182,12 @@ class ChatMessagesList extends StatelessWidget {
   void _showEditDialog(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final message = chatProvider.messages[index];
+    final readOnlyReasoning = chatProvider.getReadOnlyReasoningForEdit(message);
+    final canRawEdit =
+        chatProvider.enableDeveloperMode && chatProvider.enableRawReasoningEdit;
     final TextEditingController editController = TextEditingController(
-      text: chatProvider.messages[index].text,
+      text: chatProvider.getEditableMessageText(message),
     );
 
     showDialog(
@@ -194,14 +198,42 @@ class ChatMessagesList extends StatelessWidget {
           "Edit Message",
           style: TextStyle(color: themeProvider.textColor),
         ),
-        content: TextField(
-          controller: editController,
-          maxLines: null,
-          style: TextStyle(color: themeProvider.subtitleColor),
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            filled: true,
-            fillColor: themeProvider.containerFillColor,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (readOnlyReasoning.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: themeProvider.containerFillColor,
+                    border: Border.all(color: themeProvider.borderColor),
+                  ),
+                  child: Text(
+                    'Reasoning is read-only in normal mode.',
+                    style: TextStyle(
+                      color: themeProvider.subtitleColor,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              TextField(
+                controller: editController,
+                maxLines: null,
+                style: TextStyle(color: themeProvider.subtitleColor),
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: themeProvider.containerFillColor,
+                  labelText: canRawEdit ? 'Raw message' : 'Visible response',
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -211,7 +243,11 @@ class ChatMessagesList extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              chatProvider.editMessage(index, editController.text);
+              chatProvider.editMessage(
+                index,
+                editController.text,
+                rawEdit: canRawEdit,
+              );
               Navigator.pop(context);
             },
             child: Text(

@@ -15,6 +15,7 @@ import '../services/lorebook_service.dart';
 import '../services/macro_service.dart';
 import '../services/prompt_pipeline_service.dart';
 import '../services/regex_service.dart';
+import '../services/reasoning_utils.dart';
 import '../services/secure_storage_service.dart';
 import '../services/web_search_service.dart';
 import '../utils/constants.dart';
@@ -27,6 +28,11 @@ import '../utils/constants.dart';
 class ChatProvider extends ChangeNotifier {
   static const String _characterCardKeyV3 = 'airp_character_card_v3';
   static const String _characterCardKeyV2 = 'airp_character_card';
+  static const String _sessionsKey = 'airp_sessions';
+  static const String _sessionsBackupLatestKey = 'airp_sessions_backup_latest';
+  static const String _sessionsBackupTsKey = 'airp_sessions_backup_latest_ts';
+  static const String _reasoningPolicyMarkerKey =
+      'airp_reasoning_policy_marker';
 
   // --- Background stream infrastructure ---
   final Map<String, StreamSubscription> _activeStreams = {};
@@ -369,6 +375,10 @@ class ChatProvider extends ChangeNotifier {
   bool _enableReasoning = false;
   bool _enableGenerationSettings = true;
   bool _enableMaxOutputTokens = true;
+  bool _enableReasoningEfficiency = true;
+  bool _persistReasoningBlocks = true;
+  bool _enableDeveloperMode = false;
+  bool _enableRawReasoningEdit = false;
 
   // --- Lorebook / Regex / Formatting state ---
   Lorebook _globalLorebook = Lorebook(name: 'Global');
@@ -433,6 +443,10 @@ class ChatProvider extends ChangeNotifier {
   bool get enableReasoning => _enableReasoning;
   bool get enableGenerationSettings => _enableGenerationSettings;
   bool get enableMaxOutputTokens => _enableMaxOutputTokens;
+  bool get enableReasoningEfficiency => _enableReasoningEfficiency;
+  bool get persistReasoningBlocks => _persistReasoningBlocks;
+  bool get enableDeveloperMode => _enableDeveloperMode;
+  bool get enableRawReasoningEdit => _enableRawReasoningEdit;
 
   // --- Lorebook / Regex / Formatting getters ---
   Lorebook get globalLorebook => _globalLorebook;
@@ -538,13 +552,16 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _loadSessions() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? data = prefs.getString('airp_sessions');
+    final String? data = prefs.getString(_sessionsKey);
     if (data != null) {
       try {
         final List<dynamic> jsonList = jsonDecode(data);
         _savedSessions = jsonList
             .map((j) => ChatSessionData.fromJson(j))
             .toList();
+        if (_shouldStripReasoningFromStorage) {
+          await _applyReasoningStoragePolicyGlobally();
+        }
         notifyListeners();
       } catch (e) {
         debugPrint("Error loading sessions: $e");
@@ -765,6 +782,16 @@ class ChatProvider extends ChangeNotifier {
         prefs.getBool('airp_enable_generation_settings') ?? true;
     _enableMaxOutputTokens =
         prefs.getBool('airp_enable_max_output_tokens') ?? true;
+    _enableReasoningEfficiency =
+        prefs.getBool('airp_enable_reasoning_efficiency') ?? true;
+    _persistReasoningBlocks =
+        prefs.getBool('airp_persist_reasoning_blocks') ?? true;
+    _enableDeveloperMode = prefs.getBool('airp_enable_developer_mode') ?? false;
+    _enableRawReasoningEdit =
+        prefs.getBool('airp_enable_raw_reasoning_edit') ?? false;
+    if (!_enableDeveloperMode) {
+      _enableRawReasoningEdit = false;
+    }
 
     await _loadCharacterCard();
     await _loadSillyTavernState();
@@ -1215,6 +1242,33 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setEnableReasoningEfficiency(bool val) async {
+    if (_enableReasoningEfficiency == val) return;
+    _enableReasoningEfficiency = val;
+    notifyListeners();
+    await _applyReasoningStoragePolicyGlobally();
+  }
+
+  Future<void> setPersistReasoningBlocks(bool val) async {
+    if (_persistReasoningBlocks == val) return;
+    _persistReasoningBlocks = val;
+    notifyListeners();
+    await _applyReasoningStoragePolicyGlobally();
+  }
+
+  void setEnableDeveloperMode(bool val) {
+    _enableDeveloperMode = val;
+    if (!val) {
+      _enableRawReasoningEdit = false;
+    }
+    notifyListeners();
+  }
+
+  void setEnableRawReasoningEdit(bool val) {
+    _enableRawReasoningEdit = _enableDeveloperMode ? val : false;
+    notifyListeners();
+  }
+
   Future<void> saveSettings({bool showConfirmation = true}) async {
     final prefs = await SharedPreferences.getInstance();
     await _persistApiKey(
@@ -1331,6 +1385,19 @@ class ChatProvider extends ChangeNotifier {
       'airp_enable_max_output_tokens',
       _enableMaxOutputTokens,
     );
+    await prefs.setBool(
+      'airp_enable_reasoning_efficiency',
+      _enableReasoningEfficiency,
+    );
+    await prefs.setBool(
+      'airp_persist_reasoning_blocks',
+      _persistReasoningBlocks,
+    );
+    await prefs.setBool('airp_enable_developer_mode', _enableDeveloperMode);
+    await prefs.setBool(
+      'airp_enable_raw_reasoning_edit',
+      _enableRawReasoningEdit,
+    );
 
     // Persist lorebook / regex / formatting state alongside main settings
     await _saveSillyTavernState();
@@ -1429,6 +1496,127 @@ class ChatProvider extends ChangeNotifier {
 
   /// Public accessor for the current macro context (used by display widgets).
   MacroContext get macroContext => _buildMacroContext();
+
+  String getEditableMessageText(ChatMessage message) {
+    if (message.isUser) return message.text;
+    if (_enableDeveloperMode && _enableRawReasoningEdit) return message.text;
+    return ReasoningUtils.split(message.text).content;
+  }
+
+  String getReadOnlyReasoningForEdit(ChatMessage message) {
+    if (message.isUser) return '';
+    if (_enableDeveloperMode && _enableRawReasoningEdit) return '';
+    return ReasoningUtils.split(message.text).reasoning;
+  }
+
+  bool get _shouldStripReasoningFromStorage =>
+      _enableReasoningEfficiency || !_persistReasoningBlocks;
+
+  String _sanitizeForContext(String text) =>
+      ReasoningUtils.stripThinkBlocks(text);
+
+  ChatMessage _sanitizeMessageForStorage(ChatMessage message) {
+    final sanitizedText = _sanitizeForContext(message.text);
+    final sanitizedVersions = message.regenerationVersions
+        .map(_sanitizeForContext)
+        .toList();
+    return message.copyWith(
+      text: sanitizedText,
+      regenerationVersions: sanitizedVersions,
+      currentVersionIndex: sanitizedVersions.isNotEmpty
+          ? message.currentVersionIndex.clamp(0, sanitizedVersions.length - 1)
+          : 0,
+      reasoningRecovered: false,
+    );
+  }
+
+  Future<void> _backupSessionsBeforePolicyPatch(
+    SharedPreferences prefs,
+    String currentSessionsJson,
+  ) async {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    await prefs.setString(_sessionsBackupLatestKey, currentSessionsJson);
+    await prefs.setInt(_sessionsBackupTsKey, ts);
+  }
+
+  Future<void> _applyReasoningStoragePolicyGlobally() async {
+    final prefs = await SharedPreferences.getInstance();
+    final targetMarker =
+        'eff=$_enableReasoningEfficiency|persist=$_persistReasoningBlocks';
+
+    if (!_shouldStripReasoningFromStorage) {
+      await prefs.setString(_reasoningPolicyMarkerKey, targetMarker);
+      return;
+    }
+
+    final currentMarker = prefs.getString(_reasoningPolicyMarkerKey);
+    if (currentMarker == targetMarker) {
+      return;
+    }
+
+    final currentRaw = prefs.getString(_sessionsKey);
+    if (currentRaw != null && currentRaw.isNotEmpty) {
+      await _backupSessionsBeforePolicyPatch(prefs, currentRaw);
+    }
+
+    _savedSessions = _savedSessions
+        .map(
+          (session) => ChatSessionData(
+            id: session.id,
+            title: session.title,
+            messages: session.messages.map(_sanitizeMessageForStorage).toList(),
+            modelName: session.modelName,
+            tokenCount: session.tokenCount,
+            systemInstruction: session.systemInstruction,
+            backgroundImage: session.backgroundImage,
+            provider: session.provider,
+            isBookmarked: session.isBookmarked,
+          ),
+        )
+        .toList();
+
+    _messages = _messages.map(_sanitizeMessageForStorage).toList();
+
+    final serialized = jsonEncode(
+      _savedSessions.map((s) => s.toJson()).toList(),
+    );
+    await prefs.setString(_sessionsKey, serialized);
+    await prefs.setString(_reasoningPolicyMarkerKey, targetMarker);
+    notifyListeners();
+  }
+
+  Future<bool> hasSessionsBackup() async {
+    final prefs = await SharedPreferences.getInstance();
+    final backup = prefs.getString(_sessionsBackupLatestKey);
+    return backup != null && backup.isNotEmpty;
+  }
+
+  Future<int?> getLatestSessionsBackupTimestamp() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_sessionsBackupTsKey);
+  }
+
+  Future<bool> restoreLatestSessionsBackup() async {
+    final prefs = await SharedPreferences.getInstance();
+    final backup = prefs.getString(_sessionsBackupLatestKey);
+    if (backup == null || backup.isEmpty) {
+      return false;
+    }
+
+    try {
+      final decoded = jsonDecode(backup) as List<dynamic>;
+      _savedSessions = decoded
+          .map((j) => ChatSessionData.fromJson(Map<String, dynamic>.from(j)))
+          .toList();
+      await prefs.setString(_sessionsKey, backup);
+      await prefs.remove(_reasoningPolicyMarkerKey);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Restore sessions backup failed: $e');
+      return false;
+    }
+  }
 
   /// Evaluates all active lorebooks against [recentMessages] and returns
   /// a merged [LorebookEvalResult].
@@ -1559,9 +1747,12 @@ class ChatProvider extends ChangeNotifier {
 
       for (var msg in limitedMessages) {
         final String role = msg.isUser ? 'user' : 'model';
+        final String contextText = msg.isUser
+            ? msg.text
+            : _sanitizeForContext(msg.text);
         if (msg.isUser && msg.imagePaths.isNotEmpty) {
           List<Part> parts = [];
-          if (msg.text.isNotEmpty) parts.add(TextPart(msg.text));
+          if (contextText.isNotEmpty) parts.add(TextPart(contextText));
           for (String path in msg.imagePaths) {
             if (await FileIOHelper.fileExists(path)) {
               final bytes = await FileIOHelper.readBytes(path);
@@ -1574,13 +1765,13 @@ class ChatProvider extends ChangeNotifier {
           history.add(Content(role, parts));
         } else if (history.isNotEmpty && history.last.role == role) {
           final List<Part> existingParts = history.last.parts.toList();
-          existingParts.add(TextPart("\n\n${msg.text}"));
+          existingParts.add(TextPart("\n\n$contextText"));
           history[history.length - 1] = Content(role, existingParts);
         } else {
           history.add(
             msg.isUser
-                ? Content.text(msg.text)
-                : Content.model([TextPart(msg.text)]),
+                ? Content.text(contextText)
+                : Content.model([TextPart(contextText)]),
           );
         }
       }
@@ -1644,7 +1835,9 @@ class ChatProvider extends ChangeNotifier {
     }
 
     // --- Evaluate lorebooks ---
-    final recentMsgs = _messages.reversed.map((m) => m.text).toList();
+    final recentMsgs = _messages.reversed
+        .map((m) => _sanitizeForContext(m.text))
+        .toList();
     final lorebookResult = _evaluateLorebooks(recentMsgs);
     final depthEntries = _collectDepthEntries(lorebookResult);
 
@@ -2052,6 +2245,17 @@ class ChatProvider extends ChangeNotifier {
               }
             }
 
+            final split = ReasoningUtils.split(fullText);
+            var recoveredFromReasoning = false;
+            if (split.reasoning.isNotEmpty && split.content.trim().isEmpty) {
+              fullText = split.reasoning;
+              recoveredFromReasoning = true;
+            }
+
+            if (_shouldStripReasoningFromStorage) {
+              fullText = _sanitizeForContext(fullText);
+            }
+
             if (_currentSessionId == streamSessionId) {
               final lastMessage = _messages.last;
               final updatedVersions = List<String>.from(
@@ -2065,6 +2269,7 @@ class ChatProvider extends ChangeNotifier {
 
               _messages.last = lastMessage.copyWith(
                 text: fullText,
+                reasoningRecovered: recoveredFromReasoning,
                 clearContentNotifier: true,
                 regenerationVersions: updatedVersions,
                 currentVersionIndex: updatedVersions.isNotEmpty
@@ -2081,7 +2286,11 @@ class ChatProvider extends ChangeNotifier {
               if (!_enableGrounding) updateTokenCount();
             } else {
               // Background completion: update saved session and show notification
-              _finalizeBackgroundSession(streamSessionId, fullText);
+              _finalizeBackgroundSession(
+                streamSessionId,
+                fullText,
+                reasoningRecovered: recoveredFromReasoning,
+              );
               _showBackgroundNotification(streamSessionId, fullText);
             }
           }
@@ -2118,7 +2327,11 @@ class ChatProvider extends ChangeNotifier {
   }
 
   /// Updates a saved session's last AI message with the final text (background).
-  void _finalizeBackgroundSession(String sessionId, String finalText) {
+  void _finalizeBackgroundSession(
+    String sessionId,
+    String finalText, {
+    bool reasoningRecovered = false,
+  }) {
     final idx = _savedSessions.indexWhere((s) => s.id == sessionId);
     if (idx == -1) return;
 
@@ -2127,6 +2340,9 @@ class ChatProvider extends ChangeNotifier {
 
     final messages = List<ChatMessage>.from(session.messages);
     if (messages.isNotEmpty && !messages.last.isUser) {
+      if (_shouldStripReasoningFromStorage) {
+        finalText = _sanitizeForContext(finalText);
+      }
       final lastMessage = messages.last;
       final updatedVersions = List<String>.from(
         lastMessage.regenerationVersions,
@@ -2138,6 +2354,7 @@ class ChatProvider extends ChangeNotifier {
       }
       messages[messages.length - 1] = lastMessage.copyWith(
         text: finalText,
+        reasoningRecovered: reasoningRecovered,
         clearContentNotifier: true,
         regenerationVersions: updatedVersions,
         currentVersionIndex: updatedVersions.isNotEmpty
@@ -2377,7 +2594,9 @@ class ChatProvider extends ChangeNotifier {
     }
     if (title.isEmpty) title = "New Conversation";
 
-    final messagesSnapshot = List<ChatMessage>.from(_messages);
+    final messagesSnapshot = _shouldStripReasoningFromStorage
+        ? _messages.map(_sanitizeMessageForStorage).toList()
+        : List<ChatMessage>.from(_messages);
     final tokenCountSnapshot = _tokenCount;
     final modelNameSnapshot = _selectedModel;
     final providerNameSnapshot = _currentProvider.name;
@@ -2418,7 +2637,7 @@ class ChatProvider extends ChangeNotifier {
     final String data = jsonEncode(
       _savedSessions.map((s) => s.toJson()).toList(),
     );
-    await prefs.setString('airp_sessions', data);
+    await prefs.setString(_sessionsKey, data);
   }
 
   Future<void> bookmarkSession(String sessionId, bool isBookmarked) async {
@@ -2445,7 +2664,7 @@ class ChatProvider extends ChangeNotifier {
     final String data = jsonEncode(
       _savedSessions.map((s) => s.toJson()).toList(),
     );
-    await prefs.setString('airp_sessions', data);
+    await prefs.setString(_sessionsKey, data);
   }
 
   void createNewSession() {
@@ -2546,7 +2765,7 @@ class ChatProvider extends ChangeNotifier {
     final String data = jsonEncode(
       _savedSessions.map((s) => s.toJson()).toList(),
     );
-    await prefs.setString('airp_sessions', data);
+    await prefs.setString(_sessionsKey, data);
   }
 
   void deleteMessage(int index) {
@@ -2557,10 +2776,28 @@ class ChatProvider extends ChangeNotifier {
     initializeModel();
   }
 
-  void editMessage(int index, String newText) {
-    _messages[index] = ChatMessage(
-      text: newText,
-      isUser: _messages[index].isUser,
+  void editMessage(int index, String newText, {bool rawEdit = false}) {
+    final existing = _messages[index];
+    final canRawEdit =
+        _enableDeveloperMode && _enableRawReasoningEdit && rawEdit;
+
+    var updatedText = newText;
+    if (!existing.isUser && !canRawEdit) {
+      final split = ReasoningUtils.split(existing.text);
+      if (split.reasoning.isNotEmpty &&
+          !_shouldStripReasoningFromStorage &&
+          _persistReasoningBlocks) {
+        updatedText = '<think>\n${split.reasoning}\n</think>\n$newText';
+      }
+    }
+
+    if (_shouldStripReasoningFromStorage) {
+      updatedText = _sanitizeForContext(updatedText);
+    }
+
+    _messages[index] = existing.copyWith(
+      text: updatedText,
+      reasoningRecovered: false,
     );
     notifyListeners();
     _scheduleAutoSave();
@@ -2973,7 +3210,7 @@ class ChatProvider extends ChangeNotifier {
             .map(
               (m) => m.isUser
                   ? Content.text(m.text)
-                  : Content.model([TextPart(m.text)]),
+                  : Content.model([TextPart(_sanitizeForContext(m.text))]),
             )
             .toList();
         final response = await _model.countTokens(contents);
@@ -2986,7 +3223,10 @@ class ChatProvider extends ChangeNotifier {
       int totalChars = 0;
       int imgCount = 0;
       for (var msg in _messages) {
-        totalChars += msg.text.length;
+        final effectiveText = msg.isUser
+            ? msg.text
+            : _sanitizeForContext(msg.text);
+        totalChars += effectiveText.length;
         imgCount += msg.imagePaths.length;
       }
       _tokenCount = (totalChars / 3.5).ceil() + (imgCount * 200);
@@ -3084,6 +3324,10 @@ class ChatProvider extends ChangeNotifier {
         'enableReasoning': _enableReasoning,
         'enableGenerationSettings': _enableGenerationSettings,
         'enableMaxOutputTokens': _enableMaxOutputTokens,
+        'enableReasoningEfficiency': _enableReasoningEfficiency,
+        'persistReasoningBlocks': _persistReasoningBlocks,
+        'enableDeveloperMode': _enableDeveloperMode,
+        'enableRawReasoningEdit': _enableRawReasoningEdit,
         'enableGrounding': _enableGrounding,
         // enableImageGen intentionally omitted — image gen is model-driven.
         'enableUsage': _enableUsage,
@@ -3147,6 +3391,17 @@ class ChatProvider extends ChangeNotifier {
         tog['enableGenerationSettings'] as bool? ?? _enableGenerationSettings;
     _enableMaxOutputTokens =
         tog['enableMaxOutputTokens'] as bool? ?? _enableMaxOutputTokens;
+    _enableReasoningEfficiency =
+        tog['enableReasoningEfficiency'] as bool? ?? _enableReasoningEfficiency;
+    _persistReasoningBlocks =
+        tog['persistReasoningBlocks'] as bool? ?? _persistReasoningBlocks;
+    _enableDeveloperMode =
+        tog['enableDeveloperMode'] as bool? ?? _enableDeveloperMode;
+    _enableRawReasoningEdit =
+        tog['enableRawReasoningEdit'] as bool? ?? _enableRawReasoningEdit;
+    if (!_enableDeveloperMode) {
+      _enableRawReasoningEdit = false;
+    }
     _enableGrounding = tog['enableGrounding'] as bool? ?? _enableGrounding;
     // enableImageGen is no longer stored — image gen is model-driven.
     _enableUsage = tog['enableUsage'] as bool? ?? _enableUsage;
@@ -3252,6 +3507,7 @@ class ChatProvider extends ChangeNotifier {
 
     notifyListeners();
     await saveSettings(showConfirmation: false);
+    await _applyReasoningStoragePolicyGlobally();
   }
 
   /// Concatenates imported sessions with existing ones, skipping duplicates by ID.
@@ -3259,7 +3515,25 @@ class ChatProvider extends ChangeNotifier {
     final existingIds = _savedSessions.map((s) => s.id).toSet();
     for (final session in incoming) {
       if (!existingIds.contains(session.id)) {
-        _savedSessions.add(session);
+        if (_shouldStripReasoningFromStorage) {
+          _savedSessions.add(
+            ChatSessionData(
+              id: session.id,
+              title: session.title,
+              messages: session.messages
+                  .map(_sanitizeMessageForStorage)
+                  .toList(),
+              modelName: session.modelName,
+              tokenCount: session.tokenCount,
+              systemInstruction: session.systemInstruction,
+              backgroundImage: session.backgroundImage,
+              provider: session.provider,
+              isBookmarked: session.isBookmarked,
+            ),
+          );
+        } else {
+          _savedSessions.add(session);
+        }
         existingIds.add(session.id);
       }
     }

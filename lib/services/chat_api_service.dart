@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/chat_models.dart';
 import 'file_io_helper.dart';
+import 'reasoning_utils.dart';
 
 /// A service class that handles communication with various AI provider APIs.
 ///
@@ -167,7 +168,9 @@ class ChatApiService {
     for (var msg in history) {
       messagesPayload.add({
         "role": msg.isUser ? "user" : "assistant",
-        "content": msg.text,
+        "content": msg.isUser
+            ? msg.text
+            : ReasoningUtils.stripThinkBlocks(msg.text),
       });
     }
 
@@ -384,10 +387,13 @@ class ChatApiService {
 
     final List<Map<String, dynamic>> contents = [];
     for (var msg in history) {
+      final msgText = msg.isUser
+          ? msg.text
+          : ReasoningUtils.stripThinkBlocks(msg.text);
       contents.add({
         "role": msg.isUser ? "user" : "model",
         "parts": [
-          {"text": msg.text},
+          {"text": msgText},
         ],
       });
     }

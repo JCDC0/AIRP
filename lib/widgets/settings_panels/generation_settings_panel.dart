@@ -249,6 +249,124 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
+            "Reasoning Efficiency",
+            style: TextStyle(fontSize: scaleProvider.systemFontSize),
+          ),
+          subtitle: Text(
+            "Strip <think> blocks from stored sessions and outbound context",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
+          value: chatProvider.enableReasoningEfficiency,
+          activeThumbColor: Colors.tealAccent,
+          onChanged: (val) async {
+            await chatProvider.setEnableReasoningEfficiency(val);
+            await chatProvider.saveSettings();
+          },
+        ),
+
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            "Persist Reasoning Blocks",
+            style: TextStyle(fontSize: scaleProvider.systemFontSize),
+          ),
+          subtitle: Text(
+            "Keep think blocks in local JSON when efficiency mode is OFF",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
+          value: chatProvider.persistReasoningBlocks,
+          activeThumbColor: Colors.cyanAccent,
+          onChanged: (val) async {
+            await chatProvider.setPersistReasoningBlocks(val);
+            await chatProvider.saveSettings();
+          },
+        ),
+
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            "Developer Mode",
+            style: TextStyle(fontSize: scaleProvider.systemFontSize),
+          ),
+          subtitle: Text(
+            "Unlock advanced reasoning controls",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
+          value: chatProvider.enableDeveloperMode,
+          activeThumbColor: Colors.amberAccent,
+          onChanged: (val) {
+            chatProvider.setEnableDeveloperMode(val);
+            chatProvider.saveSettings();
+          },
+        ),
+
+        Opacity(
+          opacity: chatProvider.enableDeveloperMode ? 1.0 : 0.5,
+          child: AbsorbPointer(
+            absorbing: !chatProvider.enableDeveloperMode,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    "Raw Reasoning Edit",
+                    style: TextStyle(fontSize: scaleProvider.systemFontSize),
+                  ),
+                  subtitle: Text(
+                    "Allow editing full assistant block including <think> tags",
+                    style: TextStyle(
+                      fontSize: scaleProvider.systemFontSize * 0.8,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  value: chatProvider.enableRawReasoningEdit,
+                  activeThumbColor: Colors.orangeAccent,
+                  onChanged: (val) {
+                    chatProvider.setEnableRawReasoningEdit(val);
+                    chatProvider.saveSettings();
+                  },
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final restored = await chatProvider
+                          .restoreLatestSessionsBackup();
+                      if (!context.mounted) return;
+                      final messenger = ScaffoldMessenger.of(context);
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            restored
+                                ? 'Restored latest session backup.'
+                                : 'No valid backup found to restore.',
+                          ),
+                          duration: const Duration(milliseconds: 1400),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.restore),
+                    label: const Text('Restore Latest Session Backup'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Divider(),
+
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
             "Generation Settings",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,

@@ -11,6 +11,7 @@ void main() {
       modelName: 'model-x',
       usage: {'tokens': 42},
       thoughtSignature: 'sig',
+      reasoningRecovered: true,
     );
 
     final json = message.toJson();
@@ -23,6 +24,7 @@ void main() {
     expect(restored.modelName, message.modelName);
     expect(restored.usage, message.usage);
     expect(restored.thoughtSignature, message.thoughtSignature);
+    expect(restored.reasoningRecovered, message.reasoningRecovered);
   });
 
   test('ChatSessionData defaults are applied', () {
@@ -31,5 +33,10 @@ void main() {
     expect(session.provider, 'gemini');
     expect(session.modelName, 'models/gemini-3-flash-preview');
     expect(session.messages, isEmpty);
+  });
+
+  test('ChatMessage reasoningRecovered defaults to false', () {
+    final message = ChatMessage.fromJson({'text': 'x', 'isUser': false});
+    expect(message.reasoningRecovered, false);
   });
 }

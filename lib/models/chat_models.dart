@@ -117,6 +117,9 @@ class ChatMessage {
   /// A signature for reasoning-capable models to maintain context.
   final String? thoughtSignature;
 
+  /// True when final visible text was recovered from reasoning-only output.
+  final bool reasoningRecovered;
+
   /// A notifier for streaming message content.
   final ValueNotifier<String>? contentNotifier;
 
@@ -136,6 +139,7 @@ class ChatMessage {
     this.modelName,
     this.usage,
     this.thoughtSignature,
+    this.reasoningRecovered = false,
     this.contentNotifier,
     this.regenerationVersions = const [],
     this.currentVersionIndex = 0,
@@ -149,6 +153,7 @@ class ChatMessage {
     'modelName': modelName,
     'usage': usage,
     'thoughtSignature': thoughtSignature,
+    'reasoningRecovered': reasoningRecovered,
     'regenerationVersions': regenerationVersions,
     'currentVersionIndex': currentVersionIndex,
   };
@@ -161,6 +166,7 @@ class ChatMessage {
     modelName: json['modelName'],
     usage: json['usage'],
     thoughtSignature: json['thoughtSignature'],
+    reasoningRecovered: json['reasoningRecovered'] as bool? ?? false,
     regenerationVersions: List<String>.from(json['regenerationVersions'] ?? []),
     currentVersionIndex: json['currentVersionIndex'] ?? 0,
   );
@@ -173,6 +179,7 @@ class ChatMessage {
     String? modelName,
     Map<String, dynamic>? usage,
     String? thoughtSignature,
+    bool? reasoningRecovered,
     ValueNotifier<String>? contentNotifier,
     bool clearContentNotifier = false,
     List<String>? regenerationVersions,
@@ -186,6 +193,7 @@ class ChatMessage {
       modelName: modelName ?? this.modelName,
       usage: usage ?? this.usage,
       thoughtSignature: thoughtSignature ?? this.thoughtSignature,
+      reasoningRecovered: reasoningRecovered ?? this.reasoningRecovered,
       contentNotifier: clearContentNotifier
           ? null
           : (contentNotifier ?? this.contentNotifier),

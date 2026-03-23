@@ -14,6 +14,7 @@ import '../providers/scale_provider.dart';
 import '../services/file_io_helper.dart';
 import '../services/formatting_service.dart';
 import '../services/regex_service.dart';
+import '../services/reasoning_utils.dart';
 import '../utils/constants.dart';
 
 /// A widget that displays a single chat message bubble.
@@ -425,10 +426,10 @@ class MessageBubble extends StatelessWidget {
       fontSize: scaleProvider.chatFontSize - 2,
     );
 
-    final splitContent = _extractReasoning(text);
-    final reasoningText = splitContent['reasoning'] as String;
-    final visibleText = splitContent['content'] as String;
-    final isReasoningDone = splitContent['isDone'] as bool;
+    final splitContent = ReasoningUtils.split(text);
+    final reasoningText = splitContent.reasoning;
+    final visibleText = splitContent.content;
+    final isReasoningDone = splitContent.isDone;
     final bool hasReasoning = reasoningText.trim().isNotEmpty;
     final bool hasVisibleText = visibleText.trim().isNotEmpty;
     final bool hasAttachments =
@@ -446,37 +447,57 @@ class MessageBubble extends StatelessWidget {
         if (!msg.isUser && msg.modelName != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 6.0),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: themeProvider.containerFillColor,
-                borderRadius: BorderRadius.circular(4),
-                boxShadow: useBloom
-                    ? [
-                        BoxShadow(
-                          color: themeProvider.containerFillColor,
-                          blurRadius: 4,
-                        ),
-                      ]
-                    : [],
-              ),
-              child: Text(
-                cleanModelName(msg.modelName!),
-                style: TextStyle(
-                  fontSize: scaleProvider.chatFontSize - 4,
-                  color: textColor.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  shadows: useBloom
-                      ? [
-                          Shadow(
-                            color: textColor.withValues(alpha: 0.9),
-                            blurRadius: 4,
-                          ),
-                        ]
-                      : [],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: themeProvider.containerFillColor,
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: useBloom
+                        ? [
+                            BoxShadow(
+                              color: themeProvider.containerFillColor,
+                              blurRadius: 4,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Text(
+                    cleanModelName(msg.modelName!),
+                    style: TextStyle(
+                      fontSize: scaleProvider.chatFontSize - 4,
+                      color: textColor.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      shadows: useBloom
+                          ? [
+                              Shadow(
+                                color: textColor.withValues(alpha: 0.9),
+                                blurRadius: 4,
+                              ),
+                            ]
+                          : [],
+                    ),
+                  ),
                 ),
-              ),
+                if (msg.reasoningRecovered)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Recovered final answer from reasoning-only output',
+                      style: TextStyle(
+                        fontSize: scaleProvider.chatFontSize - 5,
+                        color: Colors.amberAccent,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
 
@@ -1072,25 +1093,6 @@ class _ThinkingOrbitPainter extends CustomPainter {
 }
 
 // --- REASONING HELPERS ---
-
-Map<String, dynamic> _extractReasoning(String text) {
-  // Matches <think> content </think> (handling unclosed tag for streaming)
-  final RegExp thinkRegex = RegExp(r'<think>(.*?)(?:</think>|$)', dotAll: true);
-  final match = thinkRegex.firstMatch(text);
-
-  if (match != null) {
-    final reasoning = match.group(1)?.trim() ?? '';
-    // Check if the closing tag exists in the full match
-    final bool hasClosing = match.group(0)!.contains('</think>');
-
-    // Remove the think block from the main text
-    final content = text.replaceFirst(match.group(0)!, '').trim();
-    return {'reasoning': reasoning, 'content': content, 'isDone': hasClosing};
-  }
-
-  // If no reasoning found, effectively "done" with reasoning (none exists)
-  return {'reasoning': '', 'content': text, 'isDone': true};
-}
 
 class ReasoningView extends StatefulWidget {
   final String reasoning;
