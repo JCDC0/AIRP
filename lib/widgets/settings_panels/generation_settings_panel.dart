@@ -18,6 +18,45 @@ class GenerationSettingsPanel extends StatefulWidget {
 }
 
 class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
+  Future<bool> _confirmEnableRawEdit(
+    BuildContext context,
+    ThemeProvider themeProvider,
+  ) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: themeProvider.dropdownColor,
+        title: Text(
+          'Enable Raw Reasoning Edit?',
+          style: TextStyle(color: themeProvider.textColor),
+        ),
+        content: Text(
+          'This allows editing the full assistant block, including <think> tags. '
+          'Improper edits may corrupt context and reduce model quality.',
+          style: TextStyle(color: themeProvider.subtitleColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Enable'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
+  String _formatBackupTimestamp(int? ts) {
+    if (ts == null) return 'No backup metadata available.';
+    final dt = DateTime.fromMillisecondsSinceEpoch(ts);
+    return 'Latest backup: ${dt.toLocal()}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -330,32 +369,86 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   ),
                   value: chatProvider.enableRawReasoningEdit,
                   activeThumbColor: Colors.orangeAccent,
-                  onChanged: (val) {
-                    chatProvider.setEnableRawReasoningEdit(val);
-                    chatProvider.saveSettings();
+                  onChanged: (val) async {
+                    if (!val) {
+                      chatProvider.setEnableRawReasoningEdit(false);
+                      await chatProvider.saveSettings();
+                      return;
+                    }
+
+                    var allow = true;
+                    if (!chatProvider.rawReasoningEditWarningAcknowledged) {
+                      allow = await _confirmEnableRawEdit(
+                        context,
+                        themeProvider,
+                      );
+                    }
+
+                    if (!allow) return;
+
+                    if (!chatProvider.rawReasoningEditWarningAcknowledged) {
+                      chatProvider.setRawReasoningEditWarningAcknowledged(true);
+                    }
+
+                    chatProvider.setEnableRawReasoningEdit(true);
+                    await chatProvider.saveSettings();
                   },
                 ),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () async {
-                      final restored = await chatProvider
-                          .restoreLatestSessionsBackup();
-                      if (!context.mounted) return;
-                      final messenger = ScaffoldMessenger.of(context);
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            restored
-                                ? 'Restored latest session backup.'
-                                : 'No valid backup found to restore.',
+                  child: FutureBuilder<bool>(
+                    future: chatProvider.hasSessionsBackup(),
+                    builder: (context, hasBackupSnap) {
+                      final hasBackup = hasBackupSnap.data ?? false;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextButton.icon(
+                            onPressed: hasBackup
+                                ? () async {
+                                    final restored = await chatProvider
+                                        .restoreLatestSessionsBackup();
+                                    if (!context.mounted) return;
+                                    final messenger = ScaffoldMessenger.of(
+                                      context,
+                                    );
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          restored
+                                              ? 'Restored latest session backup.'
+                                              : 'No valid backup found to restore.',
+                                        ),
+                                        duration: const Duration(
+                                          milliseconds: 1400,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                : null,
+                            icon: const Icon(Icons.restore),
+                            label: const Text('Restore Latest Session Backup'),
                           ),
-                          duration: const Duration(milliseconds: 1400),
-                        ),
+                          FutureBuilder<int?>(
+                            future: chatProvider
+                                .getLatestSessionsBackupTimestamp(),
+                            builder: (context, tsSnap) {
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 12),
+                                child: Text(
+                                  _formatBackupTimestamp(tsSnap.data),
+                                  style: TextStyle(
+                                    fontSize:
+                                        scaleProvider.systemFontSize * 0.75,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       );
                     },
-                    icon: const Icon(Icons.restore),
-                    label: const Text('Restore Latest Session Backup'),
                   ),
                 ),
               ],

@@ -33,6 +33,8 @@ class ChatProvider extends ChangeNotifier {
   static const String _sessionsBackupTsKey = 'airp_sessions_backup_latest_ts';
   static const String _reasoningPolicyMarkerKey =
       'airp_reasoning_policy_marker';
+  static const String _rawEditWarningAckKey =
+      'airp_raw_reasoning_edit_warning_ack';
 
   // --- Background stream infrastructure ---
   final Map<String, StreamSubscription> _activeStreams = {};
@@ -379,6 +381,7 @@ class ChatProvider extends ChangeNotifier {
   bool _persistReasoningBlocks = true;
   bool _enableDeveloperMode = false;
   bool _enableRawReasoningEdit = false;
+  bool _rawReasoningEditWarningAcknowledged = false;
 
   // --- Lorebook / Regex / Formatting state ---
   Lorebook _globalLorebook = Lorebook(name: 'Global');
@@ -447,6 +450,8 @@ class ChatProvider extends ChangeNotifier {
   bool get persistReasoningBlocks => _persistReasoningBlocks;
   bool get enableDeveloperMode => _enableDeveloperMode;
   bool get enableRawReasoningEdit => _enableRawReasoningEdit;
+  bool get rawReasoningEditWarningAcknowledged =>
+      _rawReasoningEditWarningAcknowledged;
 
   // --- Lorebook / Regex / Formatting getters ---
   Lorebook get globalLorebook => _globalLorebook;
@@ -789,6 +794,8 @@ class ChatProvider extends ChangeNotifier {
     _enableDeveloperMode = prefs.getBool('airp_enable_developer_mode') ?? false;
     _enableRawReasoningEdit =
         prefs.getBool('airp_enable_raw_reasoning_edit') ?? false;
+    _rawReasoningEditWarningAcknowledged =
+        prefs.getBool(_rawEditWarningAckKey) ?? false;
     if (!_enableDeveloperMode) {
       _enableRawReasoningEdit = false;
     }
@@ -1269,6 +1276,11 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setRawReasoningEditWarningAcknowledged(bool val) {
+    _rawReasoningEditWarningAcknowledged = val;
+    notifyListeners();
+  }
+
   Future<void> saveSettings({bool showConfirmation = true}) async {
     final prefs = await SharedPreferences.getInstance();
     await _persistApiKey(
@@ -1397,6 +1409,10 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setBool(
       'airp_enable_raw_reasoning_edit',
       _enableRawReasoningEdit,
+    );
+    await prefs.setBool(
+      _rawEditWarningAckKey,
+      _rawReasoningEditWarningAcknowledged,
     );
 
     // Persist lorebook / regex / formatting state alongside main settings
@@ -1542,7 +1558,7 @@ class ChatProvider extends ChangeNotifier {
   Future<void> _applyReasoningStoragePolicyGlobally() async {
     final prefs = await SharedPreferences.getInstance();
     final targetMarker =
-        'eff=$_enableReasoningEfficiency|persist=$_persistReasoningBlocks';
+        'v2|eff=$_enableReasoningEfficiency|persist=$_persistReasoningBlocks';
 
     if (!_shouldStripReasoningFromStorage) {
       await prefs.setString(_reasoningPolicyMarkerKey, targetMarker);
@@ -3328,6 +3344,8 @@ class ChatProvider extends ChangeNotifier {
         'persistReasoningBlocks': _persistReasoningBlocks,
         'enableDeveloperMode': _enableDeveloperMode,
         'enableRawReasoningEdit': _enableRawReasoningEdit,
+        'rawReasoningEditWarningAcknowledged':
+            _rawReasoningEditWarningAcknowledged,
         'enableGrounding': _enableGrounding,
         // enableImageGen intentionally omitted — image gen is model-driven.
         'enableUsage': _enableUsage,
@@ -3399,6 +3417,9 @@ class ChatProvider extends ChangeNotifier {
         tog['enableDeveloperMode'] as bool? ?? _enableDeveloperMode;
     _enableRawReasoningEdit =
         tog['enableRawReasoningEdit'] as bool? ?? _enableRawReasoningEdit;
+    _rawReasoningEditWarningAcknowledged =
+        tog['rawReasoningEditWarningAcknowledged'] as bool? ??
+        _rawReasoningEditWarningAcknowledged;
     if (!_enableDeveloperMode) {
       _enableRawReasoningEdit = false;
     }

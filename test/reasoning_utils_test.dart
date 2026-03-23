@@ -21,6 +21,15 @@ void main() {
       expect(result.isDone, true);
     });
 
+    test('handles case-insensitive think tags', () {
+      const input = '<THINK>inner</THINK>final answer';
+      final result = ReasoningUtils.split(input);
+
+      expect(result.reasoning, 'inner');
+      expect(result.content, 'final answer');
+      expect(result.isDone, true);
+    });
+
     test('merges multiple think blocks', () {
       const input = '<think>a</think>mid<think>b</think>end';
       final result = ReasoningUtils.split(input);
@@ -46,6 +55,16 @@ void main() {
       final result = ReasoningUtils.stripThinkBlocks(input);
 
       expect(result, 'beforemiddleafter');
+    });
+  });
+
+  group('ReasoningUtils.hasThinkBlocks', () {
+    test('returns true when think block exists', () {
+      expect(ReasoningUtils.hasThinkBlocks('a<think>x</think>b'), true);
+    });
+
+    test('returns false when think block does not exist', () {
+      expect(ReasoningUtils.hasThinkBlocks('plain response'), false);
     });
   });
 }
