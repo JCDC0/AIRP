@@ -53,6 +53,12 @@ Integrated 10 new API providers (Vertex AI, Blackbox AI, Minimax, OpenAI Compati
 - Added backup-based rollback action for session-policy migrations.
 - Added reasoning-only fallback recovery marker for responses that omit visible final text.
 
+### v0.6.7 — Reasoning Mode Exclusivity
+
+- Enforced mutual exclusivity between Reasoning Efficiency and Persist Reasoning Blocks in provider state and settings import/load paths.
+- Updated reasoning policy marker version to re-evaluate previous independent-toggle states safely.
+- Clarified settings panel labels so mode switching behavior is explicit.
+
 ---
 
 ## 🚀 v0.6 — Architecture, Feature Maturity & Library System

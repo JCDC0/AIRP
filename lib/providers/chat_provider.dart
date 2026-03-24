@@ -791,6 +791,7 @@ class ChatProvider extends ChangeNotifier {
         prefs.getBool('airp_enable_reasoning_efficiency') ?? true;
     _persistReasoningBlocks =
         prefs.getBool('airp_persist_reasoning_blocks') ?? true;
+    _normalizeReasoningStorageMode();
     _enableDeveloperMode = prefs.getBool('airp_enable_developer_mode') ?? false;
     _enableRawReasoningEdit =
         prefs.getBool('airp_enable_raw_reasoning_edit') ?? false;
@@ -1250,15 +1251,25 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> setEnableReasoningEfficiency(bool val) async {
-    if (_enableReasoningEfficiency == val) return;
+    if (_enableReasoningEfficiency == val &&
+        (!val || !_persistReasoningBlocks)) {
+      return;
+    }
     _enableReasoningEfficiency = val;
+    _persistReasoningBlocks = !val;
+    _normalizeReasoningStorageMode();
     notifyListeners();
     await _applyReasoningStoragePolicyGlobally();
   }
 
   Future<void> setPersistReasoningBlocks(bool val) async {
-    if (_persistReasoningBlocks == val) return;
+    if (_persistReasoningBlocks == val &&
+        (val || !_enableReasoningEfficiency)) {
+      return;
+    }
     _persistReasoningBlocks = val;
+    _enableReasoningEfficiency = !val;
+    _normalizeReasoningStorageMode();
     notifyListeners();
     await _applyReasoningStoragePolicyGlobally();
   }
@@ -1525,6 +1536,19 @@ class ChatProvider extends ChangeNotifier {
     return ReasoningUtils.split(message.text).reasoning;
   }
 
+  void _normalizeReasoningStorageMode() {
+    // Keep modes mutually exclusive to avoid contradictory toggle states.
+    if (_enableReasoningEfficiency) {
+      _persistReasoningBlocks = false;
+      return;
+    }
+    if (_persistReasoningBlocks) {
+      _enableReasoningEfficiency = false;
+      return;
+    }
+    _persistReasoningBlocks = true;
+  }
+
   bool get _shouldStripReasoningFromStorage =>
       _enableReasoningEfficiency || !_persistReasoningBlocks;
 
@@ -1557,8 +1581,9 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _applyReasoningStoragePolicyGlobally() async {
     final prefs = await SharedPreferences.getInstance();
+    _normalizeReasoningStorageMode();
     final targetMarker =
-        'v2|eff=$_enableReasoningEfficiency|persist=$_persistReasoningBlocks';
+        'v3|eff=$_enableReasoningEfficiency|persist=$_persistReasoningBlocks';
 
     if (!_shouldStripReasoningFromStorage) {
       await prefs.setString(_reasoningPolicyMarkerKey, targetMarker);
@@ -3413,6 +3438,7 @@ class ChatProvider extends ChangeNotifier {
         tog['enableReasoningEfficiency'] as bool? ?? _enableReasoningEfficiency;
     _persistReasoningBlocks =
         tog['persistReasoningBlocks'] as bool? ?? _persistReasoningBlocks;
+    _normalizeReasoningStorageMode();
     _enableDeveloperMode =
         tog['enableDeveloperMode'] as bool? ?? _enableDeveloperMode;
     _enableRawReasoningEdit =

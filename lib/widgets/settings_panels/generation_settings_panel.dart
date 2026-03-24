@@ -292,7 +292,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
             style: TextStyle(fontSize: scaleProvider.systemFontSize),
           ),
           subtitle: Text(
-            "Strip <think> blocks from stored sessions and outbound context",
+            "Strip <think> blocks from stored sessions and outbound context (disables persistence)",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize * 0.8,
               color: Colors.grey,
@@ -313,7 +313,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
             style: TextStyle(fontSize: scaleProvider.systemFontSize),
           ),
           subtitle: Text(
-            "Keep think blocks in local JSON when efficiency mode is OFF",
+            "Keep think blocks in local JSON (turns efficiency mode off)",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize * 0.8,
               color: Colors.grey,
