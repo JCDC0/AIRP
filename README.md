@@ -1,6 +1,6 @@
 # AIRP - Roleplay Chatbot
 
-**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models, the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), and 16 additional providers. It features a full SillyTavern-compatible roleplay engine with lorebooks, regex post-processing, formatting templates, and a macro system — all built on importable character cards with V2 spec parity. Includes a BYOK web search system with 6 backends, full light/dark mode theming, deep visual customization, and persistent local history with search capabilities.
+**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models, the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), and 17 additional providers. It features a full SillyTavern-compatible roleplay engine with lorebooks, regex post-processing, formatting templates, and a macro system — all built on importable character cards with V2 spec parity. Includes a BYOK web search system with 6 backends, full light/dark mode theming, deep visual customization, and persistent local history with search capabilities.
 
 ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
@@ -78,88 +78,40 @@ AIRP is designed to be your companion across all your devices. Whether you are o
 
 This app follows a **BYOK (Bring Your Own Key)** architecture. API keys are stored in platform-encrypted secure storage on your device.
 
-### 1. Google Gemini
+### Supported Providers at a Glance
 
-1. Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
-2. Select **Gemini** from the top dropdown.
-3. Open the **Settings Drawer** (slide from right or click the gear icon).
-4. Paste your key into the API Key field.
-5. **Important:** Click the **Floating Save Button** (cyan circle) that appears at the bottom right.
+* **Google Gemini**: [Google AI Studio](https://aistudio.google.com/)
+* **OpenRouter**: [OpenRouter](https://openrouter.ai/)
+* **OpenAI**: [OpenAI Platform](https://platform.openai.com/)
+* **HuggingFace**: [HuggingFace tokens](https://huggingface.co/settings/tokens)
+* **ArliAI**: [ArliAI](https://arliai.com/)
+* **NanoGPT**: [NanoGPT](https://nano-gpt.com/)
+* **Groq**: [Groq Console](https://console.groq.com/)
+* **Vertex AI**: [Google Cloud Vertex AI](https://cloud.google.com/vertex-ai)
+* **Blackbox AI**: [Blackbox AI](https://www.blackbox.ai/)
+* **Minimax**: [MiniMax](https://www.minimax.io/)
+* **Deepseek**: [DeepSeek Platform](https://platform.deepseek.com/)
+* **Ollama**: [Ollama](https://ollama.com/)
+* **Qwen**: [Qwen](https://qwenlm.ai/)
+* **xAI**: [xAI](https://x.ai/)
+* **Z.ai**: [Z.ai](https://z.ai/)
+* **Mistral**: [Mistral Console](https://console.mistral.ai/)
+* **OpenAI Compatible**: any self-hosted or third-party OpenAI-compatible endpoint
+* **Local**: [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/)
 
-### 2. OpenRouter
+### General Setup
 
-1. Obtain an API key from [OpenRouter.ai](https://openrouter.ai/).
-2. Select **OpenRouter** from the top dropdown.
-3. Open the **Settings Drawer**.
-4. Paste your key.
-5. **Important:** Click the **Floating Save Button**.
+1. Choose a provider from the top dropdown.
+2. Open the **Settings Drawer** (slide from the right or click the gear icon).
+3. Paste your key or endpoint into the relevant field.
+4. For providers that fetch models dynamically, press **Refresh Model List** after saving.
+5. Click the **Floating Save Button** at the bottom right.
 
-### 3. OpenAI
+### Provider Notes
 
-1. Obtain an API key from [OpenAI Platform](https://platform.openai.com/).
-2. Select **OpenAI** from the top dropdown.
-3. Open the **Settings Drawer**.
-4. Paste your key.
-5. **Important:** Click the **Floating Save Button**.
-
-### 4. HuggingFace (Serverless Inference)
-
-1. Obtain an Access Token from [HuggingFace Settings](https://huggingface.co/settings/tokens).
-2. Select **HuggingFace** from the top dropdown.
-3. Open the **Settings Drawer**.
-4. Paste your token.
-5. **Important:** Click the **Floating Save Button**.
-
-### 5. ArliAI
-
-1. Obtain an API key from [ArliAI](https://arliai.com/).
-2. Select **ArliAI** from the top dropdown.
-3. Open the **Settings Drawer**.
-4. Paste your key.
-5. **Important:** Click the **Floating Save Button**.
-
-### 6. NanoGPT
-
-1. Obtain an API key from [NanoGPT](https://nano-gpt.com/).
-2. Select **NanoGPT** from the top dropdown.
-3. Open the **Settings Drawer**.
-4. Paste your key.
-5. **Important:** Click the **Floating Save Button**.
-
-### 7. Groq
-
-1. Obtain an API key from [Groq Console](https://console.groq.com/).
-2. Select **Groq** from the top dropdown.
-3. Open the **Settings Drawer**.
-4. Paste your key.
-5. **Important:** Click the **Floating Save Button**.
-
-### 8. Local Network AI (LM Studio / Ollama)
-
-Connect to an LLM running on your own computer or home server.
-
-1. **Prepare your Server**:
-   * **LM Studio**: Start the Local Server. Ensure "Cross-Origin-Resource-Sharing (CORS)" is enabled and the server is listening on your local network IP (not just localhost).
-   * **Ollama**: Run `OLLAMA_HOST=0.0.0.0 ollama serve`.
-2. **Find your IP**: Get the IPv4 address of your computer (e.g., `192.168.1.15` and add the port number next to it that comes with your local AI service).
-3. **Configure AIRP**:
-   * Select **Local** from the top dropdown.
-   * Open the **Settings Drawer**.
-   * Enter the URL in the **Local Server Address** field.
-     * Format: `http://<YOUR_PC_IP>:<PORT>/v1`
-     * Example: `http://192.168.1.15:1234/v1`
-   * (Optional) Enter a specific model ID if your server requires it.
-   * Click the **Floating Save Button**.
-
-### 9. Additional API Providers (xAI, Deepseek, Mistral, Minimax, Qwen, Z.ai, Blackbox AI, Vertex AI, Custom OpenAI-Compatible)
-
-AIRP supports several additional APIs through a unified OpenAI-compatible pipeline.
-1. Obtain an API key from the respective provider's console.
-2. Select the provider (e.g., **Deepseek**, **Mistral**, **xAI**, **OpenAI Compatible**) from the top dropdown.
-3. Open the **Settings Drawer**.
-4. Paste your key into the API Key field.
-5. (Optional) For the **OpenAI Compatible** provider, expand the **API Endpoint settings** panel to define a custom URL.
-6. **Important:** Click the **Floating Save Button**.
+* **Local Network AI (LM Studio / Ollama)**: start your local server, make sure it is reachable on your network, then enter a URL like `http://<YOUR_PC_IP>:<PORT>/v1` in the local server field.
+* **OpenAI Compatible**: expand the API Endpoint settings panel and enter your custom base URL.
+* **Gemini, OpenRouter, OpenAI, HuggingFace, ArliAI, NanoGPT, Groq, Vertex AI, Blackbox AI, Minimax, Deepseek, Qwen, xAI, Z.ai, Mistral**: paste the provider key in the API Key field and save.
 
 ---
 
