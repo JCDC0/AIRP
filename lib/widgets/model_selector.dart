@@ -106,7 +106,11 @@ class ModelSelector extends StatelessWidget {
       context: context,
       builder: (context) {
         String searchQuery = "";
-        String sortMode = "Name (A-Z)"; // Updated default
+        final initialSort = Provider.of<ChatProvider>(
+          context,
+          listen: false,
+        ).modelPickerSortMode;
+        String sortMode = initialSort;
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -201,6 +205,7 @@ class ModelSelector extends StatelessWidget {
                       setDialogState(() {
                         sortMode = val;
                       });
+                      chatProvider.setModelPickerSortMode(val);
                     },
                     itemBuilder: (context) => [
                       const PopupMenuItem(

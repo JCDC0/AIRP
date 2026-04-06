@@ -61,6 +61,8 @@ class LibraryService {
       library['provider'] = chatExport['provider'];
       library['models'] = chatExport['models'];
       library['modelBookmarks'] = chatExport['modelBookmarks'];
+      library['starredProviders'] = chatExport['starredProviders'];
+      library['ui'] = chatExport['ui'];
       library['localIp'] = chatExport['localIp'];
       library['localModelName'] = chatExport['localModelName'];
     }
@@ -147,6 +149,12 @@ class LibraryService {
       }
       if (data.containsKey('modelBookmarks')) {
         chatSettings['modelBookmarks'] = data['modelBookmarks'];
+      }
+      if (data.containsKey('starredProviders')) {
+        chatSettings['starredProviders'] = data['starredProviders'];
+      }
+      if (data.containsKey('ui')) {
+        chatSettings['ui'] = data['ui'];
       }
       if (data.containsKey('localIp')) {
         chatSettings['localIp'] = data['localIp'];

@@ -16,6 +16,7 @@ import '../services/macro_service.dart';
 import '../services/prompt_pipeline_service.dart';
 import '../services/regex_service.dart';
 import '../services/reasoning_utils.dart';
+import '../services/global_settings_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/web_search_service.dart';
 import '../utils/constants.dart';
@@ -166,6 +167,8 @@ class ChatProvider extends ChangeNotifier {
   String _openAiCompatibleEndpoint = '';
   String _ollamaEndpoint = 'http://localhost:11434';
   final Set<AiProvider> _starredProviders = {};
+  final GlobalSettingsService _globalSettings = GlobalSettingsService();
+  String _modelPickerSortMode = GlobalSettingsService.defaultModelSortMode;
 
   AiProvider get currentProvider => _currentProvider;
   String get geminiKey => _geminiKey;
@@ -191,6 +194,7 @@ class ChatProvider extends ChangeNotifier {
   String get openAiCompatibleEndpoint => _openAiCompatibleEndpoint;
   String get ollamaEndpoint => _ollamaEndpoint;
   Set<AiProvider> get starredProviders => _starredProviders;
+  String get modelPickerSortMode => _modelPickerSortMode;
 
   String _selectedGeminiModel = 'models/gemini-3-flash-preview';
   String _openRouterModel = 'z-ai/glm-4.5-air:free';
@@ -510,7 +514,6 @@ class ChatProvider extends ChangeNotifier {
     _loadSettings();
     _loadSessions();
     _loadSystemPrompts();
-    _loadModelBookmarks();
   }
 
   @override
@@ -527,18 +530,14 @@ class ChatProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> _loadModelBookmarks() async {
-    final prefs = await SharedPreferences.getInstance();
-    // Migration: rename legacy key to airp_ prefixed key
-    if (prefs.containsKey('bookmarked_models') &&
-        !prefs.containsKey('airp_bookmarked_models')) {
-      final legacy = prefs.getStringList('bookmarked_models')!;
-      await prefs.setStringList('airp_bookmarked_models', legacy);
-      await prefs.remove('bookmarked_models');
-    }
-    _bookmarkedModels =
-        prefs.getStringList('airp_bookmarked_models')?.toSet() ?? {};
-    notifyListeners();
+  Future<void> _loadGlobalSettings(SharedPreferences prefs) async {
+    _bookmarkedModels = await _globalSettings.loadModelBookmarks(prefs: prefs);
+    _starredProviders
+      ..clear()
+      ..addAll(await _globalSettings.loadStarredProviders(prefs: prefs));
+    _modelPickerSortMode = await _globalSettings.loadModelPickerSortMode(
+      prefs: prefs,
+    );
   }
 
   Future<void> toggleModelBookmark(String modelId) async {
@@ -548,11 +547,7 @@ class ChatProvider extends ChangeNotifier {
       _bookmarkedModels.add(modelId);
     }
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      'airp_bookmarked_models',
-      _bookmarkedModels.toList(),
-    );
+    await _globalSettings.saveModelBookmarks(_bookmarkedModels);
   }
 
   Future<void> _loadSessions() async {
@@ -618,6 +613,8 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+
+    await _loadGlobalSettings(prefs);
 
     _geminiKey = await _loadApiKeyFromStorage(
       prefs: prefs,
@@ -1132,6 +1129,17 @@ class ChatProvider extends ChangeNotifier {
       _starredProviders.add(provider);
     }
     notifyListeners();
+    _globalSettings.saveStarredProviders(_starredProviders);
+  }
+
+  Future<void> setModelPickerSortMode(String sortMode) async {
+    final normalized = GlobalSettingsService.normalizeSortMode(sortMode);
+    if (normalized == _modelPickerSortMode) {
+      return;
+    }
+    _modelPickerSortMode = normalized;
+    notifyListeners();
+    await _globalSettings.saveModelPickerSortMode(_modelPickerSortMode);
   }
 
   Future<void> fetchVertexAiModels() async {}
@@ -1424,6 +1432,12 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setBool(
       _rawEditWarningAckKey,
       _rawReasoningEditWarningAcknowledged,
+    );
+    await _globalSettings.saveModelBookmarks(_bookmarkedModels, prefs: prefs);
+    await _globalSettings.saveStarredProviders(_starredProviders, prefs: prefs);
+    await _globalSettings.saveModelPickerSortMode(
+      _modelPickerSortMode,
+      prefs: prefs,
     );
 
     // Persist lorebook / regex / formatting state alongside main settings
@@ -1977,6 +1991,24 @@ class ChatProvider extends ChangeNotifier {
         _nonStreamingLoading = true;
         notifyListeners();
 
+        final imageModelName = _currentProvider == AiProvider.nanoGptImage
+            ? _nanoGptImageModel
+            : _selectedModel;
+
+        // Add placeholder message immediately to show generation is in progress
+        final placeholderMessage = ChatMessage(
+          text: "Generating image...",
+          isUser: false,
+          modelName: imageModelName,
+        );
+
+        if (_currentSessionId == streamSessionId) {
+          _messages.add(placeholderMessage);
+        } else {
+          _addMessageToSavedSession(streamSessionId, placeholderMessage);
+        }
+        notifyListeners();
+
         String? base64Result;
 
         if (_currentProvider == AiProvider.gemini &&
@@ -2002,10 +2034,8 @@ class ChatProvider extends ChangeNotifier {
               activeKey = _nanoGptKey;
               provider = 'nanogpt';
             default:
-              // For any other provider with an image-gen model selected,
-              // attempt via OpenAI-compatible images endpoint using their key.
               activeKey = _getProviderKey(_currentProvider);
-              provider = 'openai'; // fallback shape
+              provider = 'openai';
           }
 
           base64Result = await ChatApiService.generateImage(
@@ -2025,39 +2055,47 @@ class ChatProvider extends ChangeNotifier {
           return;
         }
 
-        final imageModelName = _currentProvider == AiProvider.nanoGptImage
-            ? _nanoGptImageModel
-            : _selectedModel;
-
         if (base64Result != null && !base64Result.startsWith('Error')) {
+          final successMessage = ChatMessage(
+            text: '',
+            isUser: false,
+            modelName: imageModelName,
+            aiImage: base64Result,
+          );
+
           if (_currentSessionId == streamSessionId) {
-            _messages.add(
-              ChatMessage(
-                text: '',
-                isUser: false,
-                modelName: imageModelName,
-                aiImage: base64Result,
-              ),
-            );
+            final idx = _messages.indexOf(placeholderMessage);
+            if (idx != -1) {
+              _messages[idx] = successMessage;
+            } else {
+              _messages.add(successMessage);
+            }
           } else {
-            _addMessageToSavedSession(
+            _replaceMessageInSavedSession(
               streamSessionId,
-              ChatMessage(
-                text: '',
-                isUser: false,
-                modelName: imageModelName,
-                aiImage: base64Result,
-              ),
+              placeholderMessage,
+              successMessage,
             );
           }
         } else {
+          final errorMessage = ChatMessage(
+            text: base64Result ?? 'Image generation failed.',
+            isUser: false,
+            modelName: imageModelName,
+          );
+
           if (_currentSessionId == streamSessionId) {
-            _messages.add(
-              ChatMessage(
-                text: base64Result ?? 'Image generation failed.',
-                isUser: false,
-                modelName: imageModelName,
-              ),
+            final idx = _messages.indexOf(placeholderMessage);
+            if (idx != -1) {
+              _messages[idx] = errorMessage;
+            } else {
+              _messages.add(errorMessage);
+            }
+          } else {
+            _replaceMessageInSavedSession(
+              streamSessionId,
+              placeholderMessage,
+              errorMessage,
             );
           }
         }
@@ -2428,6 +2466,36 @@ class ChatProvider extends ChangeNotifier {
     final session = _savedSessions[idx];
     final messages = List<ChatMessage>.from(session.messages);
     messages.add(message);
+
+    _savedSessions[idx] = ChatSessionData(
+      id: session.id,
+      title: session.title,
+      messages: messages,
+      modelName: session.modelName,
+      tokenCount: session.tokenCount,
+      systemInstruction: session.systemInstruction,
+      backgroundImage: session.backgroundImage,
+      provider: session.provider,
+      isBookmarked: session.isBookmarked,
+    );
+  }
+
+  void _replaceMessageInSavedSession(
+    String sessionId,
+    ChatMessage oldMsg,
+    ChatMessage newMsg,
+  ) {
+    final idx = _savedSessions.indexWhere((s) => s.id == sessionId);
+    if (idx == -1) return;
+
+    final session = _savedSessions[idx];
+    final messages = List<ChatMessage>.from(session.messages);
+    final pIdx = messages.indexOf(oldMsg);
+    if (pIdx != -1) {
+      messages[pIdx] = newMsg;
+    } else {
+      messages.add(newMsg);
+    }
 
     _savedSessions[idx] = ChatSessionData(
       id: session.id,
@@ -3387,6 +3455,8 @@ class ChatProvider extends ChangeNotifier {
         'groq': _groqModel,
       },
       'modelBookmarks': _bookmarkedModels.toList(),
+      'starredProviders': _starredProviders.map((p) => p.name).toList(),
+      'ui': {'modelPickerSortMode': _modelPickerSortMode},
       'localIp': _localIp,
       'localModelName': _localModelName,
       'systemInstruction': _systemInstruction,
@@ -3475,12 +3545,35 @@ class ChatProvider extends ChangeNotifier {
 
     final bookmarks = data['modelBookmarks'] as List<dynamic>?;
     if (bookmarks != null) {
-      _bookmarkedModels = bookmarks.map((e) => e.toString()).toSet();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(
-        'airp_bookmarked_models',
-        _bookmarkedModels.toList(),
+      _bookmarkedModels = bookmarks
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toSet();
+      await _globalSettings.saveModelBookmarks(_bookmarkedModels);
+    }
+
+    final starredProviders = data['starredProviders'] as List<dynamic>?;
+    if (starredProviders != null) {
+      _starredProviders.clear();
+      for (final raw in starredProviders) {
+        final providerName = raw.toString();
+        try {
+          _starredProviders.add(
+            AiProvider.values.firstWhere((p) => p.name == providerName),
+          );
+        } catch (_) {
+          continue;
+        }
+      }
+      await _globalSettings.saveStarredProviders(_starredProviders);
+    }
+
+    final ui = data['ui'] as Map<String, dynamic>?;
+    if (ui != null && ui['modelPickerSortMode'] is String) {
+      _modelPickerSortMode = GlobalSettingsService.normalizeSortMode(
+        ui['modelPickerSortMode'] as String,
       );
+      await _globalSettings.saveModelPickerSortMode(_modelPickerSortMode);
     }
 
     _localIp = data['localIp'] as String? ?? _localIp;

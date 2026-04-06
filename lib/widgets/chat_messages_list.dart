@@ -34,6 +34,7 @@ class ChatMessagesList extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final msg = chatProvider.messages[index];
     final bool isLastMessage = index == chatProvider.messages.length - 1;
+    final bool isActionLocked = chatProvider.isLoading;
     final bool useBloom = themeProvider.enableBloom;
 
     showModalBottomSheet(
@@ -89,27 +90,32 @@ class ChatMessagesList extends StatelessWidget {
                       },
                     ),
 
-                    _buildMenuIcon(
-                      icon: Icons.edit,
-                      label: "Edit",
-                      color: Colors.orangeAccent,
-                      themeProvider: themeProvider,
-                      useBloom: useBloom,
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showEditDialog(context, index);
-                      },
+                    Opacity(
+                      opacity: isActionLocked ? 0.3 : 1.0,
+                      child: _buildMenuIcon(
+                        icon: Icons.edit,
+                        label: "Edit",
+                        color: Colors.orangeAccent,
+                        themeProvider: themeProvider,
+                        useBloom: useBloom,
+                        onTap: isActionLocked
+                            ? null
+                            : () {
+                                Navigator.pop(context);
+                                _showEditDialog(context, index);
+                              },
+                      ),
                     ),
 
                     Opacity(
-                      opacity: isLastMessage ? 1.0 : 0.3,
+                      opacity: (isLastMessage && !isActionLocked) ? 1.0 : 0.3,
                       child: _buildMenuIcon(
                         icon: Icons.refresh,
                         label: "Retry",
                         color: Colors.greenAccent,
                         themeProvider: themeProvider,
                         useBloom: useBloom,
-                        onTap: isLastMessage
+                        onTap: (isLastMessage && !isActionLocked)
                             ? () {
                                 Navigator.pop(context);
                                 _confirmRegenerate(context, index);
@@ -118,16 +124,21 @@ class ChatMessagesList extends StatelessWidget {
                       ),
                     ),
 
-                    _buildMenuIcon(
-                      icon: Icons.delete,
-                      label: "Delete",
-                      color: Colors.redAccent,
-                      themeProvider: themeProvider,
-                      useBloom: useBloom,
-                      onTap: () {
-                        Navigator.pop(context);
-                        _confirmDeleteMessage(context, index);
-                      },
+                    Opacity(
+                      opacity: isActionLocked ? 0.3 : 1.0,
+                      child: _buildMenuIcon(
+                        icon: Icons.delete,
+                        label: "Delete",
+                        color: Colors.redAccent,
+                        themeProvider: themeProvider,
+                        useBloom: useBloom,
+                        onTap: isActionLocked
+                            ? null
+                            : () {
+                                Navigator.pop(context);
+                                _confirmDeleteMessage(context, index);
+                              },
+                      ),
                     ),
                   ],
                 ),
@@ -181,6 +192,9 @@ class ChatMessagesList extends StatelessWidget {
 
   void _showEditDialog(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    if (chatProvider.isLoading) {
+      return;
+    }
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final message = chatProvider.messages[index];
     final readOnlyReasoning = chatProvider.getReadOnlyReasoningForEdit(message);
@@ -262,6 +276,9 @@ class ChatMessagesList extends StatelessWidget {
 
   void _confirmDeleteMessage(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    if (chatProvider.isLoading) {
+      return;
+    }
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     showDialog(
       context: context,
@@ -303,6 +320,9 @@ class ChatMessagesList extends StatelessWidget {
 
   void _confirmRegenerate(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    if (chatProvider.isLoading) {
+      return;
+    }
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     showDialog(
       context: context,
@@ -469,17 +489,26 @@ class ChatMessagesList extends StatelessWidget {
                             ),
                           );
                         },
-                        onEdit: () => _showEditDialog(context, index),
-                        onRegenerate: () => _confirmRegenerate(context, index),
-                        onDelete: () => _confirmDeleteMessage(context, index),
+                          onEdit: chatProvider.isLoading
+                            ? null
+                            : () => _showEditDialog(context, index),
+                          onRegenerate:
+                            (!isLastMessage || chatProvider.isLoading)
+                            ? null
+                            : () => _confirmRegenerate(context, index),
+                          onDelete: chatProvider.isLoading
+                            ? null
+                            : () => _confirmDeleteMessage(context, index),
                         onNextVersion:
                             message.regenerationVersions.length > 1 &&
-                                !message.isUser
+                              !message.isUser &&
+                              !chatProvider.isLoading
                             ? () => chatProvider.nextMessageVersion(index)
                             : null,
                         onPreviousVersion:
                             message.regenerationVersions.length > 1 &&
-                                !message.isUser
+                              !message.isUser &&
+                              !chatProvider.isLoading
                             ? () => chatProvider.previousMessageVersion(index)
                             : null,
                         onBranch: !message.isUser

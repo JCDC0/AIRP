@@ -47,6 +47,15 @@ void main() {
       expect(result.content, '');
       expect(result.isDone, false);
     });
+
+    test('does not truncate long reasoning payloads', () {
+      final reasoning = List<String>.filled(200, 'reason').join(' ');
+      final input = '<think>$reasoning</think>visible';
+      final result = ReasoningUtils.split(input);
+
+      expect(result.reasoning, reasoning);
+      expect(result.content, 'visible');
+    });
   });
 
   group('ReasoningUtils.stripThinkBlocks', () {

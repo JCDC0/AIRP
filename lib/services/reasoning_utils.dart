@@ -10,7 +10,7 @@ class ReasoningSplitResult {
   });
 }
 
-/// Utility helpers for parsing and stripping <think> reasoning blocks.
+/// Utility helpers for parsing and stripping &lt;think&gt; reasoning blocks.
 class ReasoningUtils {
   ReasoningUtils._();
 
