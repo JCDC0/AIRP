@@ -50,6 +50,7 @@ void main() {
         modelName: 'model-b',
         tokenCount: 12,
         systemInstruction: '',
+        provider: 'openAi',
         messages: const [
           ChatMessage(text: 'hello', isUser: true),
         ],
@@ -61,5 +62,6 @@ void main() {
     expect(compacted.first.messages.first.text, 'hello');
     expect(compacted.first.messages.first.regenerationVersions, isEmpty);
     expect(compacted.first.messages.first.currentVersionIndex, 0);
+    expect(compacted.first.provider, 'openAi');
   });
 }
