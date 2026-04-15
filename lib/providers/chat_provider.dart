@@ -1709,8 +1709,14 @@ class ChatProvider extends ChangeNotifier {
       compactedPayload,
     );
     if (compactedWritten) {
+      final compactedMessageCount = _savedSessions
+          .expand((session) => session.messages)
+          .where(_hasRegenerationHistory)
+          .length;
       debugPrint(
-        'Sessions persisted after compacting regeneration history due to storage limits (size ${originalPayload.length} -> ${compactedPayload.length}).',
+        'Sessions persisted after compacting regeneration history due to storage limits '
+        '(size ${originalPayload.length} -> ${compactedPayload.length}, '
+        'sessions=${compacted.length}, compactedMessages=$compactedMessageCount).',
       );
       return;
     }

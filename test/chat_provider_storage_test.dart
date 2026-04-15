@@ -41,4 +41,25 @@ void main() {
     expect(compacted.first.tokenCount, 1234);
     expect(compacted.first.modelName, 'model-a');
   });
+
+  test('compactSessionsForStorage leaves plain messages unchanged', () {
+    final sessions = [
+      ChatSessionData(
+        id: 's2',
+        title: 'Plain',
+        modelName: 'model-b',
+        tokenCount: 12,
+        systemInstruction: '',
+        messages: const [
+          ChatMessage(text: 'hello', isUser: true),
+        ],
+      ),
+    ];
+
+    final compacted = ChatProvider.compactSessionsForStorage(sessions);
+
+    expect(compacted.first.messages.first.text, 'hello');
+    expect(compacted.first.messages.first.regenerationVersions, isEmpty);
+    expect(compacted.first.messages.first.currentVersionIndex, 0);
+  });
 }
