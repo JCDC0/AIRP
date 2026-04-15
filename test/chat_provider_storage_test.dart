@@ -14,7 +14,7 @@ void main() {
         provider: 'gemini',
         messages: [
           ChatMessage(
-            text: 'final',
+            text: 'stale-visible-text',
             isUser: false,
             regenerationVersions: const ['draft', 'final'],
             currentVersionIndex: 1,

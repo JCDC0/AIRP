@@ -1646,7 +1646,17 @@ class ChatProvider extends ChangeNotifier {
     if (!_hasRegenerationHistory(message)) {
       return message;
     }
+    final hasVersions = message.regenerationVersions.isNotEmpty;
+    final selectedText = hasVersions
+        ? message.regenerationVersions[
+            message.currentVersionIndex.clamp(
+              0,
+              message.regenerationVersions.length - 1,
+            ),
+          ]
+        : message.text;
     return message.copyWith(
+      text: selectedText,
       regenerationVersions: const <String>[],
       currentVersionIndex: 0,
       clearContentNotifier: true,
