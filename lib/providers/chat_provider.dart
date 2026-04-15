@@ -1594,16 +1594,17 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> _applyReasoningStoragePolicyGlobally() async {
-    final prefs = await SharedPreferences.getInstance();
     _normalizeReasoningStorageMode();
     final targetMarker =
         'v3|eff=$_enableReasoningEfficiency|persist=$_persistReasoningBlocks';
 
     if (!_shouldStripReasoningFromStorage) {
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_reasoningPolicyMarkerKey, targetMarker);
       return;
     }
 
+    final prefs = await SharedPreferences.getInstance();
     final currentMarker = prefs.getString(_reasoningPolicyMarkerKey);
     if (currentMarker == targetMarker) {
       return;
@@ -1632,12 +1633,80 @@ class ChatProvider extends ChangeNotifier {
 
     _messages = _messages.map(_sanitizeMessageForStorage).toList();
 
-    final serialized = jsonEncode(
-      _savedSessions.map((s) => s.toJson()).toList(),
-    );
-    await prefs.setString(_sessionsKey, serialized);
+    await _persistSessions();
     await prefs.setString(_reasoningPolicyMarkerKey, targetMarker);
     notifyListeners();
+  }
+
+  static ChatMessage _stripRegenerationHistory(ChatMessage message) {
+    if (message.regenerationVersions.isEmpty && message.currentVersionIndex == 0) {
+      return message;
+    }
+    return message.copyWith(
+      regenerationVersions: const <String>[],
+      currentVersionIndex: 0,
+      clearContentNotifier: true,
+    );
+  }
+
+  static ChatSessionData _compactSessionForStorage(ChatSessionData session) {
+    final compactMessages = session.messages
+        .map(_stripRegenerationHistory)
+        .toList();
+    return ChatSessionData(
+      id: session.id,
+      title: session.title,
+      messages: compactMessages,
+      modelName: session.modelName,
+      tokenCount: session.tokenCount,
+      systemInstruction: session.systemInstruction,
+      backgroundImage: session.backgroundImage,
+      provider: session.provider,
+      isBookmarked: session.isBookmarked,
+    );
+  }
+
+  @visibleForTesting
+  static List<ChatSessionData> compactSessionsForStorage(
+    List<ChatSessionData> sessions,
+  ) {
+    return sessions.map(_compactSessionForStorage).toList();
+  }
+
+  Future<bool> _tryPersistSessionsSnapshot(
+    SharedPreferences prefs,
+    List<ChatSessionData> sessions,
+  ) async {
+    final payload = jsonEncode(sessions.map((s) => s.toJson()).toList());
+    try {
+      return await prefs.setString(_sessionsKey, payload);
+    } catch (e) {
+      debugPrint('Session persistence failed: $e');
+      return false;
+    }
+  }
+
+  Future<void> _persistSessions() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (await _tryPersistSessionsSnapshot(prefs, _savedSessions)) {
+      return;
+    }
+
+    // On web, SharedPreferences uses browser storage quotas.
+    // If the full payload does not fit, retry with regeneration history removed.
+    final compacted = compactSessionsForStorage(_savedSessions);
+    final compactedWritten = await _tryPersistSessionsSnapshot(prefs, compacted);
+    if (compactedWritten) {
+      _savedSessions = compacted;
+      debugPrint(
+        'Sessions persisted after compacting regeneration history due storage limits.',
+      );
+      return;
+    }
+
+    debugPrint(
+      'Unable to persist sessions. Browser/app storage quota may be exhausted.',
+    );
   }
 
   Future<bool> hasSessionsBackup() async {
@@ -2742,11 +2811,7 @@ class ChatProvider extends ChangeNotifier {
     _savedSessions.insert(0, sessionData);
     notifyListeners();
 
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(
-      _savedSessions.map((s) => s.toJson()).toList(),
-    );
-    await prefs.setString(_sessionsKey, data);
+    await _persistSessions();
   }
 
   Future<void> bookmarkSession(String sessionId, bool isBookmarked) async {
@@ -2769,11 +2834,7 @@ class ChatProvider extends ChangeNotifier {
     _savedSessions[index] = updatedSession;
     notifyListeners();
 
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(
-      _savedSessions.map((s) => s.toJson()).toList(),
-    );
-    await prefs.setString(_sessionsKey, data);
+    await _persistSessions();
   }
 
   void createNewSession() {
@@ -2870,11 +2931,7 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(
-      _savedSessions.map((s) => s.toJson()).toList(),
-    );
-    await prefs.setString(_sessionsKey, data);
+    await _persistSessions();
   }
 
   void deleteMessage(int index) {
