@@ -1594,17 +1594,16 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> _applyReasoningStoragePolicyGlobally() async {
+    final prefs = await SharedPreferences.getInstance();
     _normalizeReasoningStorageMode();
     final targetMarker =
         'v3|eff=$_enableReasoningEfficiency|persist=$_persistReasoningBlocks';
 
     if (!_shouldStripReasoningFromStorage) {
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_reasoningPolicyMarkerKey, targetMarker);
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
     final currentMarker = prefs.getString(_reasoningPolicyMarkerKey);
     if (currentMarker == targetMarker) {
       return;
@@ -1697,7 +1696,6 @@ class ChatProvider extends ChangeNotifier {
     final compacted = compactSessionsForStorage(_savedSessions);
     final compactedWritten = await _tryPersistSessionsSnapshot(prefs, compacted);
     if (compactedWritten) {
-      _savedSessions = compacted;
       debugPrint(
         'Sessions persisted after compacting regeneration history due to storage limits.',
       );
