@@ -1646,16 +1646,7 @@ class ChatProvider extends ChangeNotifier {
     if (!_hasRegenerationHistory(message)) {
       return message;
     }
-    var selectedText = message.text;
-    if (message.regenerationVersions.isNotEmpty) {
-      final selectedIndex = message.currentVersionIndex.clamp(
-        0,
-        message.regenerationVersions.length - 1,
-      );
-      selectedText = message.regenerationVersions[selectedIndex];
-    }
     return message.copyWith(
-      text: selectedText,
       regenerationVersions: const <String>[],
       currentVersionIndex: 0,
       clearContentNotifier: true,
@@ -1719,8 +1710,7 @@ class ChatProvider extends ChangeNotifier {
     );
     if (compactedWritten) {
       debugPrint(
-        'Sessions persisted after compacting regeneration history due to storage limits '
-        '(size ${originalPayload.length} -> ${compactedPayload.length}).',
+        'Sessions persisted after compacting regeneration history due to storage limits (size ${originalPayload.length} -> ${compactedPayload.length}).',
       );
       return;
     }
