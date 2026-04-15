@@ -1637,8 +1637,13 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  static bool _hasRegenerationHistory(ChatMessage message) {
+    return message.regenerationVersions.isNotEmpty ||
+        message.currentVersionIndex != 0;
+  }
+
   static ChatMessage _stripRegenerationHistory(ChatMessage message) {
-    if (message.regenerationVersions.isEmpty && message.currentVersionIndex == 0) {
+    if (!_hasRegenerationHistory(message)) {
       return message;
     }
     return message.copyWith(
@@ -1687,6 +1692,7 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _persistSessions() async {
     final prefs = await SharedPreferences.getInstance();
+    final originalPayload = jsonEncode(_savedSessions.map((s) => s.toJson()).toList());
     if (await _tryPersistSessionsSnapshot(prefs, _savedSessions)) {
       return;
     }
@@ -1696,8 +1702,10 @@ class ChatProvider extends ChangeNotifier {
     final compacted = compactSessionsForStorage(_savedSessions);
     final compactedWritten = await _tryPersistSessionsSnapshot(prefs, compacted);
     if (compactedWritten) {
+      final compactedPayload = jsonEncode(compacted.map((s) => s.toJson()).toList());
       debugPrint(
-        'Sessions persisted after compacting regeneration history due to storage limits.',
+        'Sessions persisted after compacting regeneration history due to storage limits '
+        '(size ${originalPayload.length} -> ${compactedPayload.length}).',
       );
       return;
     }

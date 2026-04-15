@@ -31,6 +31,10 @@ void main() {
 
     expect(compacted, hasLength(1));
     expect(compacted.first.messages.first.text, 'Final answer');
+    expect(
+      compacted.first.messages.first.text,
+      sessions.first.messages.first.regenerationVersions[1],
+    );
     expect(compacted.first.messages.first.regenerationVersions, isEmpty);
     expect(compacted.first.messages.first.currentVersionIndex, 0);
     expect(compacted.first.messages[1].text, 'User prompt');
