@@ -1699,7 +1699,7 @@ class ChatProvider extends ChangeNotifier {
     if (compactedWritten) {
       _savedSessions = compacted;
       debugPrint(
-        'Sessions persisted after compacting regeneration history due storage limits.',
+        'Sessions persisted after compacting regeneration history due to storage limits.',
       );
       return;
     }
