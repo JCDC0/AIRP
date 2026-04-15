@@ -14,7 +14,7 @@ void main() {
         provider: 'gemini',
         messages: [
           ChatMessage(
-            text: 'Final answer',
+            text: 'final',
             isUser: false,
             regenerationVersions: const ['draft', 'final'],
             currentVersionIndex: 1,
@@ -30,10 +30,10 @@ void main() {
     final compacted = ChatProvider.compactSessionsForStorage(sessions);
 
     expect(compacted, hasLength(1));
-    expect(compacted.first.messages.first.text, 'Final answer');
     expect(
       compacted.first.messages.first.text,
-      sessions.first.messages.first.regenerationVersions[1],
+      sessions.first.messages.first.regenerationVersions[
+          sessions.first.messages.first.currentVersionIndex],
     );
     expect(compacted.first.messages.first.regenerationVersions, isEmpty);
     expect(compacted.first.messages.first.currentVersionIndex, 0);

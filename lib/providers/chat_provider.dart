@@ -1677,11 +1677,14 @@ class ChatProvider extends ChangeNotifier {
     return sessions.map(_compactSessionForStorage).toList();
   }
 
+  String _encodeSessionsPayload(List<ChatSessionData> sessions) {
+    return jsonEncode(sessions.map((s) => s.toJson()).toList());
+  }
+
   Future<bool> _tryPersistSessionsSnapshot(
     SharedPreferences prefs,
-    List<ChatSessionData> sessions,
+    String payload,
   ) async {
-    final payload = jsonEncode(sessions.map((s) => s.toJson()).toList());
     try {
       return await prefs.setString(_sessionsKey, payload);
     } catch (e) {
@@ -1692,17 +1695,20 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _persistSessions() async {
     final prefs = await SharedPreferences.getInstance();
-    final originalPayload = jsonEncode(_savedSessions.map((s) => s.toJson()).toList());
-    if (await _tryPersistSessionsSnapshot(prefs, _savedSessions)) {
+    final originalPayload = _encodeSessionsPayload(_savedSessions);
+    if (await _tryPersistSessionsSnapshot(prefs, originalPayload)) {
       return;
     }
 
     // On web, SharedPreferences uses browser storage quotas.
     // If the full payload does not fit, retry with regeneration history removed.
     final compacted = compactSessionsForStorage(_savedSessions);
-    final compactedWritten = await _tryPersistSessionsSnapshot(prefs, compacted);
+    final compactedPayload = _encodeSessionsPayload(compacted);
+    final compactedWritten = await _tryPersistSessionsSnapshot(
+      prefs,
+      compactedPayload,
+    );
     if (compactedWritten) {
-      final compactedPayload = jsonEncode(compacted.map((s) => s.toJson()).toList());
       debugPrint(
         'Sessions persisted after compacting regeneration history due to storage limits '
         '(size ${originalPayload.length} -> ${compactedPayload.length}).',
