@@ -1700,6 +1700,17 @@ class ChatProvider extends ChangeNotifier {
       return;
     }
 
+    final strippedRegenerationCount = _savedSessions
+        .expand((session) => session.messages)
+        .where(_hasRegenerationHistory)
+        .length;
+    if (strippedRegenerationCount == 0) {
+      debugPrint(
+        'Unable to persist sessions. Browser/app storage quota may be exhausted.',
+      );
+      return;
+    }
+
     // On web, SharedPreferences uses browser storage quotas.
     // If the full payload does not fit, retry with regeneration history removed.
     final compacted = compactSessionsForStorage(_savedSessions);
@@ -1709,10 +1720,6 @@ class ChatProvider extends ChangeNotifier {
       compactedPayload,
     );
     if (compactedWritten) {
-      final strippedRegenerationCount = _savedSessions
-          .expand((session) => session.messages)
-          .where(_hasRegenerationHistory)
-          .length;
       debugPrint(
         'Sessions persisted after compacting regeneration history due to storage limits '
         '(size ${originalPayload.length} -> ${compactedPayload.length}, '

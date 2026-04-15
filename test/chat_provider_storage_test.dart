@@ -20,10 +20,7 @@ void main() {
             regenerationVersions: const ['draft', 'final'],
             currentVersionIndex: 1,
           ),
-          ChatMessage(
-            text: 'User prompt',
-            isUser: true,
-          ),
+          ChatMessage(text: 'User prompt', isUser: true),
         ],
       ),
     ];
@@ -31,10 +28,7 @@ void main() {
     final compacted = ChatProvider.compactSessionsForStorage(sessions);
 
     expect(compacted, hasLength(1));
-    expect(
-      compacted.first.messages.first.text,
-      originalVisibleText,
-    );
+    expect(compacted.first.messages.first.text, originalVisibleText);
     expect(compacted.first.messages.first.regenerationVersions, isEmpty);
     expect(compacted.first.messages.first.currentVersionIndex, 0);
     expect(compacted.first.messages[1].text, 'User prompt');
@@ -51,9 +45,7 @@ void main() {
         tokenCount: 12,
         systemInstruction: '',
         provider: 'openAi',
-        messages: const [
-          ChatMessage(text: 'hello', isUser: true),
-        ],
+        messages: [ChatMessage(text: 'hello', isUser: true)],
       ),
     ];
 
