@@ -2861,9 +2861,9 @@ class ChatProvider extends ChangeNotifier {
     await _persistSessions();
   }
 
-  void createNewSession() {
+  void createNewSession({bool saveCurrentSession = true}) {
     // Save current session before switching if it has content
-    if (_messages.isNotEmpty) {
+    if (saveCurrentSession && _messages.isNotEmpty) {
       autoSaveCurrentSession();
     }
 
@@ -2938,7 +2938,7 @@ class ChatProvider extends ChangeNotifier {
     initializeModel();
   }
 
-  void deleteSession(String id) async {
+  Future<void> deleteSession(String id) async {
     // Cancel any active stream for this session
     final sub = _activeStreams.remove(id);
     if (sub != null) {
@@ -2950,7 +2950,7 @@ class ChatProvider extends ChangeNotifier {
 
     _savedSessions.removeWhere((s) => s.id == id);
     if (id == _currentSessionId) {
-      createNewSession();
+      createNewSession(saveCurrentSession: false);
     } else {
       notifyListeners();
     }
