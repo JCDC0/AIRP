@@ -1646,15 +1646,14 @@ class ChatProvider extends ChangeNotifier {
     if (!_hasRegenerationHistory(message)) {
       return message;
     }
-    final hasVersions = message.regenerationVersions.isNotEmpty;
-    final selectedText = hasVersions
-        ? message.regenerationVersions[
-            message.currentVersionIndex.clamp(
-              0,
-              message.regenerationVersions.length - 1,
-            ),
-          ]
-        : message.text;
+    var selectedText = message.text;
+    if (message.regenerationVersions.isNotEmpty) {
+      final selectedIndex = message.currentVersionIndex.clamp(
+        0,
+        message.regenerationVersions.length - 1,
+      );
+      selectedText = message.regenerationVersions[selectedIndex];
+    }
     return message.copyWith(
       text: selectedText,
       regenerationVersions: const <String>[],

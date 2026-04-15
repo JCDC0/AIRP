@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('compactSessionsForStorage removes regeneration history only', () {
+    const expectedSelectedVersion = 'final';
     final sessions = [
       ChatSessionData(
         id: 's1',
@@ -14,9 +15,9 @@ void main() {
         provider: 'gemini',
         messages: [
           ChatMessage(
-            text: 'stale-visible-text',
+            text: 'version-0',
             isUser: false,
-            regenerationVersions: const ['draft', 'final'],
+            regenerationVersions: const ['draft', expectedSelectedVersion],
             currentVersionIndex: 1,
           ),
           ChatMessage(
@@ -32,8 +33,7 @@ void main() {
     expect(compacted, hasLength(1));
     expect(
       compacted.first.messages.first.text,
-      sessions.first.messages.first.regenerationVersions[
-          sessions.first.messages.first.currentVersionIndex],
+      expectedSelectedVersion,
     );
     expect(compacted.first.messages.first.regenerationVersions, isEmpty);
     expect(compacted.first.messages.first.currentVersionIndex, 0);
