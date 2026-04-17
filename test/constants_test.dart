@@ -6,4 +6,11 @@ void main() {
     final result = cleanModelName('meta-llama/llama-3.1:free');
     expect(result, 'Llama 3.1 (Free)');
   });
+
+  test('NVIDIA provider models endpoint is configured', () {
+    expect(
+      ApiConstants.nvidiaBaseUrl,
+      'https://integrate.api.nvidia.com/v1/models',
+    );
+  });
 }

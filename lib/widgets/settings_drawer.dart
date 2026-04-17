@@ -128,6 +128,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
         return provider.huggingFaceKey;
       case AiProvider.groq:
         return provider.groqKey;
+      case AiProvider.nvidia:
+        return provider.nvidiaKey;
       case AiProvider.vertexAi:
         return provider.vertexAiKey;
       case AiProvider.blackboxAi:

@@ -62,6 +62,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         return 'HuggingFace';
       case AiProvider.groq:
         return 'Groq';
+      case AiProvider.nvidia:
+        return 'NVIDIA';
       case AiProvider.vertexAi:
         return 'Vertex AI';
       case AiProvider.blackboxAi:
@@ -83,6 +85,12 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       case AiProvider.mistral:
         return 'Mistral';
     }
+  }
+
+  static List<AiProvider> _availableProviders() {
+    return AiProvider.values
+        .where((provider) => provider != AiProvider.nanoGptImage)
+        .toList();
   }
 
   @override
@@ -270,9 +278,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       barrierColor: Colors.black26,
       builder: (dialogContext) => Consumer<ChatProvider>(
         builder: (ctx, cp, _) {
-          final List<AiProvider> sortedProviders = List<AiProvider>.from(
-            AiProvider.values,
-          );
+          final List<AiProvider> sortedProviders = _availableProviders();
           sortedProviders.sort((a, b) {
             final bool aStarred = cp.starredProviders.contains(a);
             final bool bStarred = cp.starredProviders.contains(b);
@@ -434,6 +440,13 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           chatProvider.groqModelsList,
           chatProvider.groqModel,
           'Select Groq Model',
+        );
+      case AiProvider.nvidia:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.nvidiaModelsList,
+          chatProvider.nvidiaModel,
+          'Select NVIDIA Model',
         );
       case AiProvider.vertexAi:
         return _standardModelSelector(

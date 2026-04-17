@@ -11,6 +11,7 @@ enum AiProvider {
   nanoGptImage,
   huggingFace,
   groq,
+  nvidia,
   vertexAi,
   blackboxAi,
   minimax,

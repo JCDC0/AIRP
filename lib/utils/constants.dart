@@ -92,6 +92,7 @@ class ApiConstants {
   static const String huggingFaceBaseUrl =
       "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100";
   static const String groqBaseUrl = "https://api.groq.com/openai/v1/models";
+  static const String nvidiaBaseUrl = "https://integrate.api.nvidia.com/v1/models";
 
   // New providers (v0.5.14)
   static const String blackboxAiBaseUrl = "https://api.blackbox.ai/api/models";
@@ -112,6 +113,7 @@ class ApiConstants {
   static const String prefListOpenAi = 'airp_list_openai';
   static const String prefListHuggingFace = 'airp_list_huggingface';
   static const String prefListGroq = 'airp_list_groq';
+  static const String prefListNvidia = 'airp_list_nvidia';
   static const String prefListVertexAi = 'airp_list_vertexai';
   static const String prefListBlackboxAi = 'airp_list_blackboxai';
   static const String prefListMinimax = 'airp_list_minimax';
@@ -130,6 +132,7 @@ class ApiConstants {
   static const String prefKeyNanoGpt = 'airp_key_nanogpt';
   static const String prefKeyHuggingFace = 'airp_key_huggingface';
   static const String prefKeyGroq = 'airp_key_groq';
+  static const String prefKeyNvidia = 'airp_key_nvidia';
   static const String prefKeyVertexAi = 'airp_key_vertexai';
   static const String prefKeyBlackboxAi = 'airp_key_blackboxai';
   static const String prefKeyMinimax = 'airp_key_minimax';
@@ -148,6 +151,7 @@ class ApiConstants {
   static const String secureKeyNanoGpt = 'secure_airp_key_nanogpt';
   static const String secureKeyHuggingFace = 'secure_airp_key_huggingface';
   static const String secureKeyGroq = 'secure_airp_key_groq';
+  static const String secureKeyNvidia = 'secure_airp_key_nvidia';
   static const String secureKeyVertexAi = 'secure_airp_key_vertexai';
   static const String secureKeyBlackboxAi = 'secure_airp_key_blackboxai';
   static const String secureKeyMinimax = 'secure_airp_key_minimax';
@@ -167,6 +171,7 @@ class ApiConstants {
   static const String prefModelOpenAi = 'airp_model_openai';
   static const String prefModelHuggingFace = 'airp_model_huggingface';
   static const String prefModelGroq = 'airp_model_groq';
+  static const String prefModelNvidia = 'airp_model_nvidia';
   static const String prefModelVertexAi = 'airp_model_vertexai';
   static const String prefModelBlackboxAi = 'airp_model_blackboxai';
   static const String prefModelMinimax = 'airp_model_minimax';

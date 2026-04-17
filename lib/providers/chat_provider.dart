@@ -76,6 +76,7 @@ class ChatProvider extends ChangeNotifier {
   List<ModelInfo> _openAiModelsList = [];
   List<ModelInfo> _huggingFaceModelsList = [];
   List<ModelInfo> _groqModelsList = [];
+  List<ModelInfo> _nvidiaModelsList = [];
 
   // Additional provider model lists
   final List<ModelInfo> _vertexAiModelsList = [];
@@ -97,6 +98,7 @@ class ChatProvider extends ChangeNotifier {
   List<ModelInfo> get openAiModelsList => _openAiModelsList;
   List<ModelInfo> get huggingFaceModelsList => _huggingFaceModelsList;
   List<ModelInfo> get groqModelsList => _groqModelsList;
+  List<ModelInfo> get nvidiaModelsList => _nvidiaModelsList;
   List<ModelInfo> get vertexAiModelsList => _vertexAiModelsList;
   List<ModelInfo> get blackboxAiModelsList => _blackboxAiModelsList;
   List<ModelInfo> get minimaxModelsList => _minimaxModelsList;
@@ -115,6 +117,7 @@ class ChatProvider extends ChangeNotifier {
   bool _isLoadingOpenAiModels = false;
   bool _isLoadingHuggingFaceModels = false;
   bool _isLoadingGroqModels = false;
+  bool _isLoadingNvidiaModels = false;
 
   bool get isLoadingGeminiModels => _isLoadingGeminiModels;
   bool get isLoadingOpenRouterModels => _isLoadingOpenRouterModels;
@@ -123,6 +126,7 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingOpenAiModels => _isLoadingOpenAiModels;
   bool get isLoadingHuggingFaceModels => _isLoadingHuggingFaceModels;
   bool get isLoadingGroqModels => _isLoadingGroqModels;
+  bool get isLoadingNvidiaModels => _isLoadingNvidiaModels;
   bool get isLoadingVertexAiModels => false;
   bool get isLoadingBlackboxAiModels => false;
   bool get isLoadingMinimaxModels => false;
@@ -141,7 +145,8 @@ class ChatProvider extends ChangeNotifier {
       _isLoadingNanoGptModels ||
       _isLoadingOpenAiModels ||
       _isLoadingHuggingFaceModels ||
-      _isLoadingGroqModels;
+      _isLoadingGroqModels ||
+      _isLoadingNvidiaModels;
 
   AiProvider _currentProvider = AiProvider.gemini;
   String _geminiKey = '';
@@ -151,6 +156,7 @@ class ChatProvider extends ChangeNotifier {
   String _nanoGptKey = '';
   String _huggingFaceKey = '';
   String _groqKey = '';
+  String _nvidiaKey = '';
   final String _vertexAiKey = '';
   final String _blackboxAiKey = '';
   final String _minimaxKey = '';
@@ -178,6 +184,7 @@ class ChatProvider extends ChangeNotifier {
   String get nanoGptKey => _nanoGptKey;
   String get huggingFaceKey => _huggingFaceKey;
   String get groqKey => _groqKey;
+  String get nvidiaKey => _nvidiaKey;
   String get vertexAiKey => _vertexAiKey;
   String get blackboxAiKey => _blackboxAiKey;
   String get minimaxKey => _minimaxKey;
@@ -204,6 +211,7 @@ class ChatProvider extends ChangeNotifier {
   String _openAiModel = 'gpt-4o';
   String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
   String _groqModel = 'llama3-8b-8192';
+  String _nvidiaModel = 'nvidia/llama-3.1-nemotron-ultra-253b-v1';
   final String _vertexAiModel = '';
   final String _blackboxAiModel = '';
   final String _minimaxModel = '';
@@ -224,6 +232,7 @@ class ChatProvider extends ChangeNotifier {
   String get openAiModel => _openAiModel;
   String get huggingFaceModel => _huggingFaceModel;
   String get groqModel => _groqModel;
+  String get nvidiaModel => _nvidiaModel;
   String get vertexAiModel => _vertexAiModel;
   String get blackboxAiModel => _blackboxAiModel;
   String get minimaxModel => _minimaxModel;
@@ -273,6 +282,10 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.groq:
         currentList = _groqModelsList;
         currentId = _groqModel;
+        break;
+      case AiProvider.nvidia:
+        currentList = _nvidiaModelsList;
+        currentId = _nvidiaModel;
         break;
       case AiProvider.local:
         return 32768; // Default for local
@@ -325,6 +338,10 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.groq:
         currentList = _groqModelsList;
         currentId = _groqModel;
+        break;
+      case AiProvider.nvidia:
+        currentList = _nvidiaModelsList;
+        currentId = _nvidiaModel;
         break;
       case AiProvider.local:
         return null; // Local models don't have ModelInfo
@@ -651,6 +668,11 @@ class ChatProvider extends ChangeNotifier {
       secureKey: ApiConstants.secureKeyGroq,
       prefsKey: ApiConstants.prefKeyGroq,
     );
+    _nvidiaKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyNvidia,
+      prefsKey: ApiConstants.prefKeyNvidia,
+    );
     _localIp =
         prefs.getString(ApiConstants.prefLocalIp) ?? ChatDefaults.localIp;
     _localModelName =
@@ -668,11 +690,13 @@ class ChatProvider extends ChangeNotifier {
     } else if (providerString == 'nanoGpt') {
       _currentProvider = AiProvider.nanoGpt;
     } else if (providerString == 'nanoGptImage') {
-      _currentProvider = AiProvider.nanoGptImage;
+      _currentProvider = AiProvider.nanoGpt;
     } else if (providerString == 'huggingFace') {
       _currentProvider = AiProvider.huggingFace;
     } else if (providerString == 'groq') {
       _currentProvider = AiProvider.groq;
+    } else if (providerString == 'nvidia') {
+      _currentProvider = AiProvider.nvidia;
     } else {
       _currentProvider = AiProvider.gemini;
     }
@@ -701,6 +725,9 @@ class ChatProvider extends ChangeNotifier {
     _groqModelsList = _deserializeModels(
       prefs.getStringList(ApiConstants.prefListGroq),
     );
+    _nvidiaModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListNvidia),
+    );
 
     _selectedGeminiModel =
         prefs.getString(ApiConstants.prefModelGemini) ??
@@ -720,6 +747,9 @@ class ChatProvider extends ChangeNotifier {
         'meta-llama/Meta-Llama-3-8B-Instruct';
     _groqModel =
         prefs.getString(ApiConstants.prefModelGroq) ?? 'llama3-8b-8192';
+    _nvidiaModel =
+        prefs.getString(ApiConstants.prefModelNvidia) ??
+        'nvidia/llama-3.1-nemotron-ultra-253b-v1';
 
     _selectedModel = _getProviderModel(_currentProvider);
 
@@ -1012,6 +1042,8 @@ class ChatProvider extends ChangeNotifier {
         return _huggingFaceModel;
       case AiProvider.groq:
         return _groqModel;
+      case AiProvider.nvidia:
+        return _nvidiaModel;
       case AiProvider.local:
         return "Local Network AI";
       default:
@@ -1045,6 +1077,9 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.groq:
         _groqModel = model;
         break;
+      case AiProvider.nvidia:
+        _nvidiaModel = model;
+        break;
       case AiProvider.local:
         break;
       default:
@@ -1069,6 +1104,8 @@ class ChatProvider extends ChangeNotifier {
         return _huggingFaceKey;
       case AiProvider.groq:
         return _groqKey;
+      case AiProvider.nvidia:
+        return _nvidiaKey;
       case AiProvider.local:
         return "local-key";
       default:
@@ -1099,6 +1136,9 @@ class ChatProvider extends ChangeNotifier {
         break;
       case AiProvider.groq:
         _groqKey = key;
+        break;
+      case AiProvider.nvidia:
+        _nvidiaKey = key;
         break;
       case AiProvider.local:
         break;
@@ -1349,12 +1389,19 @@ class ChatProvider extends ChangeNotifier {
       prefsKey: ApiConstants.prefKeyGroq,
       value: _groqKey,
     );
+    await _persistApiKey(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyNvidia,
+      prefsKey: ApiConstants.prefKeyNvidia,
+      value: _nvidiaKey,
+    );
     await prefs.setString(ApiConstants.prefModelArliAi, _arliAiModel);
     await prefs.setString(ApiConstants.prefModelNanoGpt, _nanoGptModel);
     await prefs.setString('airp_model_nanogpt_image', _nanoGptImageModel);
     await prefs.setString(ApiConstants.prefModelOpenAi, _openAiModel);
     await prefs.setString(ApiConstants.prefModelHuggingFace, _huggingFaceModel);
     await prefs.setString(ApiConstants.prefModelGroq, _groqModel);
+    await prefs.setString(ApiConstants.prefModelNvidia, _nvidiaModel);
     await prefs.setDouble('airp_top_p', _topP);
     await prefs.setInt('airp_top_k', _topK);
     await prefs.setInt('airp_max_output', _maxOutputTokens);
@@ -2312,6 +2359,9 @@ class ChatProvider extends ChangeNotifier {
         } else if (_currentProvider == AiProvider.groq) {
           baseUrl = "https://api.groq.com/openai/v1/chat/completions";
           apiKey = _groqKey;
+        } else if (_currentProvider == AiProvider.nvidia) {
+          baseUrl = "https://integrate.api.nvidia.com/v1/chat/completions";
+          apiKey = _nvidiaKey;
         } else if (_currentProvider == AiProvider.local) {
           baseUrl = _localIp.trim();
           if (baseUrl.endsWith('/')) {
@@ -2908,6 +2958,13 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.nanoGpt;
       _selectedModel = session.modelName;
       _nanoGptModel = session.modelName;
+    } else if (session.provider == 'nanoGptImage') {
+      _currentProvider = AiProvider.nanoGpt;
+      _selectedModel = _nanoGptModel;
+    } else if (session.provider == 'nvidia') {
+      _currentProvider = AiProvider.nvidia;
+      _selectedModel = session.modelName;
+      _nvidiaModel = session.modelName;
     } else if (session.provider == 'arliAi') {
       _currentProvider = AiProvider.arliAi;
       _selectedModel = session.modelName;
@@ -3181,73 +3238,6 @@ class ChatProvider extends ChangeNotifier {
       },
     );
 
-    // Fetch image models from the dedicated NanoGPT image-models endpoint.
-    // This endpoint is public (no auth required) and returns all available
-    // image generation models with rich metadata and per-image pricing.
-    await _fetchProviderModels(
-      apiKey: '',
-      url: ApiConstants.nanoGptImageModelsUrl,
-      prefKey: ApiConstants.prefListNanoGptImage,
-      parser: (json) {
-        final List<dynamic> dataList = json['data'] ?? [];
-        return dataList.map<ModelInfo>((e) {
-          final rawId = e['id'].toString();
-
-          // NanoGPT image models use per-image pricing instead of per-token.
-          // Extract a representative price string from the pricing map.
-          String pricingStr = '';
-          final pricingData = e['pricing'];
-          if (pricingData is Map) {
-            final perImage = pricingData['per_image'];
-            if (perImage is Map && perImage.isNotEmpty) {
-              // Use the first resolution's price as the representative cost.
-              final firstPrice = perImage.values.first;
-              pricingStr = '\$$firstPrice/image';
-            }
-          }
-
-          return ModelInfo(
-            id: rawId,
-            name: e['name']?.toString() ?? cleanModelName(rawId),
-            description:
-                e['description']?.toString() ??
-                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            pricing: pricingStr,
-            created: e['created'],
-            rawData: e,
-          );
-        }).toList();
-      },
-      updateList: (list) => _nanoGptImageModelsList = list,
-      updateLoading: (_) {}, // Shares loading state with text models above.
-      headers: {}, // No auth required for this public endpoint.
-      currentModel: _nanoGptImageModel,
-      updateSelectedModel: (val) {
-        _nanoGptImageModel = val;
-        if (_currentProvider == AiProvider.nanoGptImage) {
-          _selectedModel = _nanoGptImageModel;
-        }
-      },
-    );
-
-    // If the fetch failed or returned empty, fall back to a hard-coded default
-    // so the picker is never empty.
-    if (_nanoGptImageModelsList.isEmpty) {
-      _nanoGptImageModelsList = [
-        ModelInfo(id: 'hidream', name: 'HiDream'),
-        ModelInfo(id: 'chroma', name: 'Chroma'),
-        ModelInfo(id: 'z-image-turbo', name: 'Z Image Turbo'),
-        ModelInfo(id: 'qwen-image', name: 'Qwen Image'),
-      ];
-      if (!_nanoGptImageModelsList.any((m) => m.id == _nanoGptImageModel)) {
-        _nanoGptImageModel = _nanoGptImageModelsList.first.id;
-        if (_currentProvider == AiProvider.nanoGptImage) {
-          _selectedModel = _nanoGptImageModel;
-        }
-      }
-    }
-
-    notifyListeners();
   }
 
   Future<void> fetchOpenAiModels() async {
@@ -3350,6 +3340,38 @@ class ChatProvider extends ChangeNotifier {
       updateSelectedModel: (val) {
         _groqModel = val;
         if (_currentProvider == AiProvider.groq) _selectedModel = _groqModel;
+      },
+    );
+  }
+
+  Future<void> fetchNvidiaModels() async {
+    await _fetchProviderModels(
+      apiKey: _nvidiaKey,
+      url: ApiConstants.nvidiaBaseUrl,
+      prefKey: ApiConstants.prefListNvidia,
+      parser: (json) {
+        final List<dynamic> dataList = json['data'] ?? [];
+        return dataList.map<ModelInfo>((e) {
+          final rawId = e['id'].toString();
+          return ModelInfo(
+            id: rawId,
+            name: e['name']?.toString() ?? cleanModelName(rawId),
+            description:
+                e['description']?.toString() ??
+                "Owned by: ${e['owned_by'] ?? 'NVIDIA'}",
+            contextLength:
+                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            created: e['created'],
+            rawData: e,
+          );
+        }).toList();
+      },
+      updateList: (list) => _nvidiaModelsList = list,
+      updateLoading: (val) => _isLoadingNvidiaModels = val,
+      currentModel: _nvidiaModel,
+      updateSelectedModel: (val) {
+        _nvidiaModel = val;
+        if (_currentProvider == AiProvider.nvidia) _selectedModel = _nvidiaModel;
       },
     );
   }
@@ -3534,6 +3556,7 @@ class ChatProvider extends ChangeNotifier {
         'openAi': _openAiModel,
         'huggingFace': _huggingFaceModel,
         'groq': _groqModel,
+        'nvidia': _nvidiaModel,
       },
       'modelBookmarks': _bookmarkedModels.toList(),
       'starredProviders': _starredProviders.map((p) => p.name).toList(),
@@ -3608,9 +3631,13 @@ class ChatProvider extends ChangeNotifier {
     final providerName = data['provider'] as String?;
     if (providerName != null) {
       try {
+        if (providerName == AiProvider.nanoGptImage.name) {
+          _currentProvider = AiProvider.nanoGpt;
+        } else {
         _currentProvider = AiProvider.values.firstWhere(
           (p) => p.name == providerName,
         );
+        }
       } catch (_) {}
     }
 
@@ -3622,6 +3649,7 @@ class ChatProvider extends ChangeNotifier {
     _openAiModel = models['openAi'] as String? ?? _openAiModel;
     _huggingFaceModel = models['huggingFace'] as String? ?? _huggingFaceModel;
     _groqModel = models['groq'] as String? ?? _groqModel;
+    _nvidiaModel = models['nvidia'] as String? ?? _nvidiaModel;
     _selectedModel = _getProviderModel(_currentProvider);
 
     final bookmarks = data['modelBookmarks'] as List<dynamic>?;
@@ -3807,6 +3835,9 @@ class ChatProvider extends ChangeNotifier {
         break;
       case AiProvider.groq:
         await fetchGroqModels();
+        break;
+      case AiProvider.nvidia:
+        await fetchNvidiaModels();
         break;
       case AiProvider.local:
         break;

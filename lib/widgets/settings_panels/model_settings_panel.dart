@@ -46,6 +46,8 @@ class ModelSettingsPanel extends StatelessWidget {
         return provider.huggingFaceModelsList.length;
       case AiProvider.groq:
         return provider.groqModelsList.length;
+      case AiProvider.nvidia:
+        return provider.nvidiaModelsList.length;
       case AiProvider.local:
         return 1; // Local models are custom
       default:
@@ -304,6 +306,17 @@ class ModelSettingsPanel extends StatelessWidget {
             onRefresh: chatProvider.fetchGroqModels,
             refreshButtonColor: Colors.deepOrangeAccent,
             controller: groqModelController,
+          ),
+
+        if (chatProvider.currentProvider == AiProvider.nvidia)
+          ProviderModelSelector(
+            modelsList: chatProvider.nvidiaModelsList,
+            selectedModel: chatProvider.nvidiaModel,
+            onSelected: chatProvider.setModel,
+            placeholder: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+            isLoading: chatProvider.isLoadingNvidiaModels,
+            onRefresh: chatProvider.fetchNvidiaModels,
+            refreshButtonColor: Colors.lightGreenAccent,
           ),
         const SizedBox(height: 16),
 
