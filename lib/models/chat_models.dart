@@ -8,7 +8,7 @@ enum AiProvider {
   local,
   arliAi,
   nanoGpt,
-  nanoGptImage,
+  nvidia,
   huggingFace,
   groq,
   vertexAi,

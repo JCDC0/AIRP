@@ -84,10 +84,7 @@ class ApiConstants {
   static const String arliAiBaseUrl = "https://api.arliai.com/v1/models";
   static const String nanoGptBaseUrl =
       "https://nano-gpt.com/api/v1/models?detailed=true";
-  static const String nanoGptImageModelsUrl =
-      "https://nano-gpt.com/api/v1/image-models";
-  static const String nanoGptImageGenUrl =
-      "https://nano-gpt.com/api/v1/images/generations";
+  static const String nvidiaBaseUrl = "https://integrate.api.nvidia.com/v1/models";
   static const String openAiBaseUrl = "https://api.openai.com/v1/models";
   static const String huggingFaceBaseUrl =
       "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100";
@@ -108,7 +105,7 @@ class ApiConstants {
   static const String prefListOpenRouter = 'airp_list_openrouter';
   static const String prefListArliAi = 'airp_list_arliai';
   static const String prefListNanoGpt = 'airp_list_nanogpt';
-  static const String prefListNanoGptImage = 'airp_list_nanogpt_image';
+  static const String prefListNvidia = 'airp_list_nvidia';
   static const String prefListOpenAi = 'airp_list_openai';
   static const String prefListHuggingFace = 'airp_list_huggingface';
   static const String prefListGroq = 'airp_list_groq';
@@ -128,6 +125,7 @@ class ApiConstants {
   static const String prefKeyOpenAi = 'airp_key_openai';
   static const String prefKeyArliAi = 'airp_key_arliai';
   static const String prefKeyNanoGpt = 'airp_key_nanogpt';
+  static const String prefKeyNvidia = 'airp_key_nvidia';
   static const String prefKeyHuggingFace = 'airp_key_huggingface';
   static const String prefKeyGroq = 'airp_key_groq';
   static const String prefKeyVertexAi = 'airp_key_vertexai';
@@ -146,6 +144,7 @@ class ApiConstants {
   static const String secureKeyOpenAi = 'secure_airp_key_openai';
   static const String secureKeyArliAi = 'secure_airp_key_arliai';
   static const String secureKeyNanoGpt = 'secure_airp_key_nanogpt';
+  static const String secureKeyNvidia = 'secure_airp_key_nvidia';
   static const String secureKeyHuggingFace = 'secure_airp_key_huggingface';
   static const String secureKeyGroq = 'secure_airp_key_groq';
   static const String secureKeyVertexAi = 'secure_airp_key_vertexai';
@@ -164,6 +163,7 @@ class ApiConstants {
   static const String prefModelOpenRouter = 'airp_model_openrouter';
   static const String prefModelArliAi = 'airp_model_arliai';
   static const String prefModelNanoGpt = 'airp_model_nanogpt';
+  static const String prefModelNvidia = 'airp_model_nvidia';
   static const String prefModelOpenAi = 'airp_model_openai';
   static const String prefModelHuggingFace = 'airp_model_huggingface';
   static const String prefModelGroq = 'airp_model_groq';

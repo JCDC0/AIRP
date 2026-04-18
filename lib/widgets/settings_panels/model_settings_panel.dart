@@ -38,8 +38,8 @@ class ModelSettingsPanel extends StatelessWidget {
         return provider.arliAiModelsList.length;
       case AiProvider.nanoGpt:
         return provider.nanoGptModelsList.length;
-      case AiProvider.nanoGptImage:
-        return provider.nanoGptImageModelsList.length;
+      case AiProvider.nvidia:
+        return provider.nvidiaModelsList.length;
       case AiProvider.openAi:
         return provider.openAiModelsList.length;
       case AiProvider.huggingFace:
@@ -258,15 +258,15 @@ class ModelSettingsPanel extends StatelessWidget {
             refreshButtonColor: Colors.yellowAccent,
           ),
 
-        if (chatProvider.currentProvider == AiProvider.nanoGptImage)
+        if (chatProvider.currentProvider == AiProvider.nvidia)
           ProviderModelSelector(
-            modelsList: chatProvider.nanoGptImageModelsList,
-            selectedModel: chatProvider.nanoGptImageModel,
+            modelsList: chatProvider.nvidiaModelsList,
+            selectedModel: chatProvider.nvidiaModel,
             onSelected: chatProvider.setModel,
-            placeholder: 'nano-banana',
-            isLoading: chatProvider.isLoadingNanoGptModels,
-            onRefresh: chatProvider.fetchNanoGptModels,
-            refreshButtonColor: Colors.purpleAccent,
+            placeholder: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+            isLoading: chatProvider.isLoadingNvidiaModels,
+            onRefresh: chatProvider.fetchNvidiaModels,
+            refreshButtonColor: Colors.lightGreenAccent,
           ),
 
         if (chatProvider.currentProvider == AiProvider.openAi)

@@ -158,6 +158,36 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'provider picker includes NVIDIA and excludes NanoGPT Image',
+    (WidgetTester tester) async {
+      final chatProvider = ChatProvider();
+      final themeProvider = ThemeProvider();
+      final scaleProvider = ScaleProvider();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          chatProvider: chatProvider,
+          themeProvider: themeProvider,
+          scaleProvider: scaleProvider,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(ChatAppBar.providerPickerTriggerKey));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey<String>('provider-label-nvidia')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('provider-label-nanoGptImage')),
+        findsNothing,
+      );
+    },
+  );
 }
 
 /// Mirrors [ChatAppBar._providerDisplayName] so tests can validate ordering
@@ -172,8 +202,8 @@ String _providerDisplayNameForTest(AiProvider provider) {
       return 'ArliAI';
     case AiProvider.nanoGpt:
       return 'NanoGPT';
-    case AiProvider.nanoGptImage:
-      return 'NanoGPT Image';
+    case AiProvider.nvidia:
+      return 'NVIDIA';
     case AiProvider.local:
       return 'Local';
     case AiProvider.openAi:

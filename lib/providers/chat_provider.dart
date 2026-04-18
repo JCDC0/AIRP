@@ -72,7 +72,7 @@ class ChatProvider extends ChangeNotifier {
   List<ModelInfo> _openRouterModelsList = [];
   List<ModelInfo> _arliAiModelsList = [];
   List<ModelInfo> _nanoGptModelsList = [];
-  List<ModelInfo> _nanoGptImageModelsList = [];
+  List<ModelInfo> _nvidiaModelsList = [];
   List<ModelInfo> _openAiModelsList = [];
   List<ModelInfo> _huggingFaceModelsList = [];
   List<ModelInfo> _groqModelsList = [];
@@ -93,7 +93,7 @@ class ChatProvider extends ChangeNotifier {
   List<ModelInfo> get openRouterModelsList => _openRouterModelsList;
   List<ModelInfo> get arliAiModelsList => _arliAiModelsList;
   List<ModelInfo> get nanoGptModelsList => _nanoGptModelsList;
-  List<ModelInfo> get nanoGptImageModelsList => _nanoGptImageModelsList;
+  List<ModelInfo> get nvidiaModelsList => _nvidiaModelsList;
   List<ModelInfo> get openAiModelsList => _openAiModelsList;
   List<ModelInfo> get huggingFaceModelsList => _huggingFaceModelsList;
   List<ModelInfo> get groqModelsList => _groqModelsList;
@@ -112,6 +112,7 @@ class ChatProvider extends ChangeNotifier {
   bool _isLoadingOpenRouterModels = false;
   bool _isLoadingArliAiModels = false;
   bool _isLoadingNanoGptModels = false;
+  bool _isLoadingNvidiaModels = false;
   bool _isLoadingOpenAiModels = false;
   bool _isLoadingHuggingFaceModels = false;
   bool _isLoadingGroqModels = false;
@@ -120,6 +121,7 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingOpenRouterModels => _isLoadingOpenRouterModels;
   bool get isLoadingArliAiModels => _isLoadingArliAiModels;
   bool get isLoadingNanoGptModels => _isLoadingNanoGptModels;
+  bool get isLoadingNvidiaModels => _isLoadingNvidiaModels;
   bool get isLoadingOpenAiModels => _isLoadingOpenAiModels;
   bool get isLoadingHuggingFaceModels => _isLoadingHuggingFaceModels;
   bool get isLoadingGroqModels => _isLoadingGroqModels;
@@ -139,6 +141,7 @@ class ChatProvider extends ChangeNotifier {
       _isLoadingOpenRouterModels ||
       _isLoadingArliAiModels ||
       _isLoadingNanoGptModels ||
+      _isLoadingNvidiaModels ||
       _isLoadingOpenAiModels ||
       _isLoadingHuggingFaceModels ||
       _isLoadingGroqModels;
@@ -149,6 +152,7 @@ class ChatProvider extends ChangeNotifier {
   String _openAiKey = '';
   String _arliAiKey = '';
   String _nanoGptKey = '';
+  String _nvidiaKey = '';
   String _huggingFaceKey = '';
   String _groqKey = '';
   final String _vertexAiKey = '';
@@ -176,6 +180,7 @@ class ChatProvider extends ChangeNotifier {
   String get openAiKey => _openAiKey;
   String get arliAiKey => _arliAiKey;
   String get nanoGptKey => _nanoGptKey;
+  String get nvidiaKey => _nvidiaKey;
   String get huggingFaceKey => _huggingFaceKey;
   String get groqKey => _groqKey;
   String get vertexAiKey => _vertexAiKey;
@@ -200,7 +205,7 @@ class ChatProvider extends ChangeNotifier {
   String _openRouterModel = 'z-ai/glm-4.5-air:free';
   String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
   String _nanoGptModel = 'gpt-4o';
-  String _nanoGptImageModel = 'hidream';
+  String _nvidiaModel = 'nvidia/llama-3.1-nemotron-ultra-253b-v1';
   String _openAiModel = 'gpt-4o';
   String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
   String _groqModel = 'llama3-8b-8192';
@@ -220,7 +225,7 @@ class ChatProvider extends ChangeNotifier {
   String get openRouterModel => _openRouterModel;
   String get arliAiModel => _arliAiModel;
   String get nanoGptModel => _nanoGptModel;
-  String get nanoGptImageModel => _nanoGptImageModel;
+  String get nvidiaModel => _nvidiaModel;
   String get openAiModel => _openAiModel;
   String get huggingFaceModel => _huggingFaceModel;
   String get groqModel => _groqModel;
@@ -258,9 +263,9 @@ class ChatProvider extends ChangeNotifier {
         currentList = _nanoGptModelsList;
         currentId = _nanoGptModel;
         break;
-      case AiProvider.nanoGptImage:
-        currentList = _nanoGptImageModelsList;
-        currentId = _nanoGptImageModel;
+      case AiProvider.nvidia:
+        currentList = _nvidiaModelsList;
+        currentId = _nvidiaModel;
         break;
       case AiProvider.openAi:
         currentList = _openAiModelsList;
@@ -310,9 +315,9 @@ class ChatProvider extends ChangeNotifier {
         currentList = _nanoGptModelsList;
         currentId = _nanoGptModel;
         break;
-      case AiProvider.nanoGptImage:
-        currentList = _nanoGptImageModelsList;
-        currentId = _nanoGptImageModel;
+      case AiProvider.nvidia:
+        currentList = _nvidiaModelsList;
+        currentId = _nvidiaModel;
         break;
       case AiProvider.openAi:
         currentList = _openAiModelsList;
@@ -412,7 +417,6 @@ class ChatProvider extends ChangeNotifier {
   /// Used by the UI and sendMessage() to skip the normal chat pipeline and
   /// call the appropriate images API instead.
   bool get isImageGenModel {
-    if (_currentProvider == AiProvider.nanoGptImage) return true;
     return ModelInfo.detectImageGen(_selectedModel, null);
   }
 
@@ -641,6 +645,11 @@ class ChatProvider extends ChangeNotifier {
       secureKey: ApiConstants.secureKeyNanoGpt,
       prefsKey: ApiConstants.prefKeyNanoGpt,
     );
+    _nvidiaKey = await _loadApiKeyFromStorage(
+      prefs: prefs,
+      secureKey: ApiConstants.secureKeyNvidia,
+      prefsKey: ApiConstants.prefKeyNvidia,
+    );
     _huggingFaceKey = await _loadApiKeyFromStorage(
       prefs: prefs,
       secureKey: ApiConstants.secureKeyHuggingFace,
@@ -667,8 +676,10 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.arliAi;
     } else if (providerString == 'nanoGpt') {
       _currentProvider = AiProvider.nanoGpt;
+    } else if (providerString == 'nvidia') {
+      _currentProvider = AiProvider.nvidia;
     } else if (providerString == 'nanoGptImage') {
-      _currentProvider = AiProvider.nanoGptImage;
+      _currentProvider = AiProvider.nanoGpt;
     } else if (providerString == 'huggingFace') {
       _currentProvider = AiProvider.huggingFace;
     } else if (providerString == 'groq') {
@@ -689,8 +700,8 @@ class ChatProvider extends ChangeNotifier {
     _nanoGptModelsList = _deserializeModels(
       prefs.getStringList(ApiConstants.prefListNanoGpt),
     );
-    _nanoGptImageModelsList = _deserializeModels(
-      prefs.getStringList(ApiConstants.prefListNanoGptImage),
+    _nvidiaModelsList = _deserializeModels(
+      prefs.getStringList(ApiConstants.prefListNvidia),
     );
     _openAiModelsList = _deserializeModels(
       prefs.getStringList(ApiConstants.prefListOpenAi),
@@ -712,8 +723,9 @@ class ChatProvider extends ChangeNotifier {
         prefs.getString(ApiConstants.prefModelArliAi) ??
         'Mistral-Nemo-12B-Instruct-v1';
     _nanoGptModel = prefs.getString(ApiConstants.prefModelNanoGpt) ?? 'gpt-4o';
-    _nanoGptImageModel =
-        prefs.getString('airp_model_nanogpt_image') ?? 'hidream';
+    _nvidiaModel =
+      prefs.getString(ApiConstants.prefModelNvidia) ??
+      'nvidia/llama-3.1-nemotron-ultra-253b-v1';
     _openAiModel = prefs.getString(ApiConstants.prefModelOpenAi) ?? 'gpt-4o';
     _huggingFaceModel =
         prefs.getString(ApiConstants.prefModelHuggingFace) ??
@@ -1004,8 +1016,6 @@ class ChatProvider extends ChangeNotifier {
         return _arliAiModel;
       case AiProvider.nanoGpt:
         return _nanoGptModel;
-      case AiProvider.nanoGptImage:
-        return _nanoGptImageModel;
       case AiProvider.openAi:
         return _openAiModel;
       case AiProvider.huggingFace:
@@ -1033,8 +1043,8 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.nanoGpt:
         _nanoGptModel = model;
         break;
-      case AiProvider.nanoGptImage:
-        _nanoGptImageModel = model;
+      case AiProvider.nvidia:
+        _nvidiaModel = model;
         break;
       case AiProvider.openAi:
         _openAiModel = model;
@@ -1063,8 +1073,9 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.arliAi:
         return _arliAiKey;
       case AiProvider.nanoGpt:
-      case AiProvider.nanoGptImage: // Shared key
         return _nanoGptKey;
+      case AiProvider.nvidia:
+        return _nvidiaKey;
       case AiProvider.huggingFace:
         return _huggingFaceKey;
       case AiProvider.groq:
@@ -1091,8 +1102,10 @@ class ChatProvider extends ChangeNotifier {
         _arliAiKey = key;
         break;
       case AiProvider.nanoGpt:
-      case AiProvider.nanoGptImage: // Shared key
         _nanoGptKey = key;
+        break;
+      case AiProvider.nvidia:
+        _nvidiaKey = key;
         break;
       case AiProvider.huggingFace:
         _huggingFaceKey = key;
@@ -1351,7 +1364,7 @@ class ChatProvider extends ChangeNotifier {
     );
     await prefs.setString(ApiConstants.prefModelArliAi, _arliAiModel);
     await prefs.setString(ApiConstants.prefModelNanoGpt, _nanoGptModel);
-    await prefs.setString('airp_model_nanogpt_image', _nanoGptImageModel);
+    await prefs.setString(ApiConstants.prefModelNvidia, _nvidiaModel);
     await prefs.setString(ApiConstants.prefModelOpenAi, _openAiModel);
     await prefs.setString(ApiConstants.prefModelHuggingFace, _huggingFaceModel);
     await prefs.setString(ApiConstants.prefModelGroq, _groqModel);
@@ -2084,9 +2097,7 @@ class ChatProvider extends ChangeNotifier {
         _nonStreamingLoading = true;
         notifyListeners();
 
-        final imageModelName = _currentProvider == AiProvider.nanoGptImage
-            ? _nanoGptImageModel
-            : _selectedModel;
+        final imageModelName = _selectedModel;
 
         // Add placeholder message immediately to show generation is in progress
         final placeholderMessage = ChatMessage(
@@ -2123,9 +2134,12 @@ class ChatProvider extends ChangeNotifier {
             case AiProvider.openAi:
               activeKey = _openAiKey;
               provider = 'openai';
-            case AiProvider.nanoGptImage:
+            case AiProvider.nanoGpt:
               activeKey = _nanoGptKey;
               provider = 'nanogpt';
+            case AiProvider.nvidia:
+              activeKey = _nvidiaKey;
+              provider = 'openai';
             default:
               activeKey = _getProviderKey(_currentProvider);
               provider = 'openai';
@@ -2134,9 +2148,7 @@ class ChatProvider extends ChangeNotifier {
           base64Result = await ChatApiService.generateImage(
             apiKey: activeKey,
             prompt: messageText,
-            model: _currentProvider == AiProvider.nanoGptImage
-                ? _nanoGptImageModel
-                : _selectedModel,
+            model: _selectedModel,
             provider: provider,
             size: '${_imageGenWidth}x$_imageGenHeight',
           );
@@ -3181,73 +3193,6 @@ class ChatProvider extends ChangeNotifier {
       },
     );
 
-    // Fetch image models from the dedicated NanoGPT image-models endpoint.
-    // This endpoint is public (no auth required) and returns all available
-    // image generation models with rich metadata and per-image pricing.
-    await _fetchProviderModels(
-      apiKey: '',
-      url: ApiConstants.nanoGptImageModelsUrl,
-      prefKey: ApiConstants.prefListNanoGptImage,
-      parser: (json) {
-        final List<dynamic> dataList = json['data'] ?? [];
-        return dataList.map<ModelInfo>((e) {
-          final rawId = e['id'].toString();
-
-          // NanoGPT image models use per-image pricing instead of per-token.
-          // Extract a representative price string from the pricing map.
-          String pricingStr = '';
-          final pricingData = e['pricing'];
-          if (pricingData is Map) {
-            final perImage = pricingData['per_image'];
-            if (perImage is Map && perImage.isNotEmpty) {
-              // Use the first resolution's price as the representative cost.
-              final firstPrice = perImage.values.first;
-              pricingStr = '\$$firstPrice/image';
-            }
-          }
-
-          return ModelInfo(
-            id: rawId,
-            name: e['name']?.toString() ?? cleanModelName(rawId),
-            description:
-                e['description']?.toString() ??
-                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            pricing: pricingStr,
-            created: e['created'],
-            rawData: e,
-          );
-        }).toList();
-      },
-      updateList: (list) => _nanoGptImageModelsList = list,
-      updateLoading: (_) {}, // Shares loading state with text models above.
-      headers: {}, // No auth required for this public endpoint.
-      currentModel: _nanoGptImageModel,
-      updateSelectedModel: (val) {
-        _nanoGptImageModel = val;
-        if (_currentProvider == AiProvider.nanoGptImage) {
-          _selectedModel = _nanoGptImageModel;
-        }
-      },
-    );
-
-    // If the fetch failed or returned empty, fall back to a hard-coded default
-    // so the picker is never empty.
-    if (_nanoGptImageModelsList.isEmpty) {
-      _nanoGptImageModelsList = [
-        ModelInfo(id: 'hidream', name: 'HiDream'),
-        ModelInfo(id: 'chroma', name: 'Chroma'),
-        ModelInfo(id: 'z-image-turbo', name: 'Z Image Turbo'),
-        ModelInfo(id: 'qwen-image', name: 'Qwen Image'),
-      ];
-      if (!_nanoGptImageModelsList.any((m) => m.id == _nanoGptImageModel)) {
-        _nanoGptImageModel = _nanoGptImageModelsList.first.id;
-        if (_currentProvider == AiProvider.nanoGptImage) {
-          _selectedModel = _nanoGptImageModel;
-        }
-      }
-    }
-
-    notifyListeners();
   }
 
   Future<void> fetchOpenAiModels() async {
@@ -3350,6 +3295,40 @@ class ChatProvider extends ChangeNotifier {
       updateSelectedModel: (val) {
         _groqModel = val;
         if (_currentProvider == AiProvider.groq) _selectedModel = _groqModel;
+      },
+    );
+  }
+
+  Future<void> fetchNvidiaModels() async {
+    await _fetchProviderModels(
+      apiKey: _nvidiaKey,
+      url: ApiConstants.nvidiaBaseUrl,
+      prefKey: ApiConstants.prefListNvidia,
+      parser: (json) {
+        final List<dynamic> dataList = json['data'] ?? [];
+        return dataList.map<ModelInfo>((e) {
+          final rawId = e['id'].toString();
+          return ModelInfo(
+            id: rawId,
+            name: e['name']?.toString() ?? cleanModelName(rawId),
+            description:
+                e['description']?.toString() ??
+                "Owned by: ${e['owned_by'] ?? 'NVIDIA'}",
+            contextLength:
+                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
+            created: e['created'],
+            rawData: e,
+          );
+        }).toList();
+      },
+      updateList: (list) => _nvidiaModelsList = list,
+      updateLoading: (val) => _isLoadingNvidiaModels = val,
+      currentModel: _nvidiaModel,
+      updateSelectedModel: (val) {
+        _nvidiaModel = val;
+        if (_currentProvider == AiProvider.nvidia) {
+          _selectedModel = _nvidiaModel;
+        }
       },
     );
   }
@@ -3531,6 +3510,7 @@ class ChatProvider extends ChangeNotifier {
         'openRouter': _openRouterModel,
         'arliAi': _arliAiModel,
         'nanoGpt': _nanoGptModel,
+        'nvidia': _nvidiaModel,
         'openAi': _openAiModel,
         'huggingFace': _huggingFaceModel,
         'groq': _groqModel,
@@ -3619,6 +3599,7 @@ class ChatProvider extends ChangeNotifier {
     _openRouterModel = models['openRouter'] as String? ?? _openRouterModel;
     _arliAiModel = models['arliAi'] as String? ?? _arliAiModel;
     _nanoGptModel = models['nanoGpt'] as String? ?? _nanoGptModel;
+    _nvidiaModel = models['nvidia'] as String? ?? _nvidiaModel;
     _openAiModel = models['openAi'] as String? ?? _openAiModel;
     _huggingFaceModel = models['huggingFace'] as String? ?? _huggingFaceModel;
     _groqModel = models['groq'] as String? ?? _groqModel;
@@ -3799,8 +3780,10 @@ class ChatProvider extends ChangeNotifier {
         await fetchArliAiModels();
         break;
       case AiProvider.nanoGpt:
-      case AiProvider.nanoGptImage:
         await fetchNanoGptModels();
+        break;
+      case AiProvider.nvidia:
+        await fetchNvidiaModels();
         break;
       case AiProvider.huggingFace:
         await fetchHuggingFaceModels();

@@ -122,8 +122,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       case AiProvider.arliAi:
         return provider.arliAiKey;
       case AiProvider.nanoGpt:
-      case AiProvider.nanoGptImage: // Shared key
         return provider.nanoGptKey;
+      case AiProvider.nvidia:
+        return provider.nvidiaKey;
       case AiProvider.huggingFace:
         return provider.huggingFaceKey;
       case AiProvider.groq:

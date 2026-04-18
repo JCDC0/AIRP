@@ -52,8 +52,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         return 'ArliAI';
       case AiProvider.nanoGpt:
         return 'NanoGPT';
-      case AiProvider.nanoGptImage:
-        return 'NanoGPT Image';
+      case AiProvider.nvidia:
+        return 'NVIDIA';
       case AiProvider.local:
         return 'Local';
       case AiProvider.openAi:
@@ -407,12 +407,12 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           chatProvider.nanoGptModel,
           'Select NanoGPT Model',
         );
-      case AiProvider.nanoGptImage:
+      case AiProvider.nvidia:
         return _standardModelSelector(
           chatProvider,
-          chatProvider.nanoGptImageModelsList,
-          chatProvider.nanoGptImageModel,
-          'Select NanoGPT Image Model',
+          chatProvider.nvidiaModelsList,
+          chatProvider.nvidiaModel,
+          'Select NVIDIA Model',
         );
       case AiProvider.openAi:
         return _standardModelSelector(
