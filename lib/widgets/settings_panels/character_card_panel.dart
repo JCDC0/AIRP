@@ -13,12 +13,13 @@ import '../../services/character_card_service.dart';
 import '../../services/library_service.dart';
 import '../../services/file_io_helper.dart';
 import '../../services/lorebook_service.dart';
+import 'settings_color_picker.dart';
 
 /// A panel for managing the AI character card (SillyTavern V1/V2 compatible).
 ///
 /// Provides import/export of character card files (PNG with tEXt/iTXt chunks
-/// or JSON), inline field editing with debounced auto-save, and clipboard
-/// helpers for each card field.
+/// or JSON), display-first fields with dialog-based editing, and debounced
+/// auto-save for direct editable fields.
 ///
 /// V2 fields supported: name, description, personality, scenario, firstMessage,
 /// mesExample, systemPrompt, postHistoryInstructions, creatorNotes, creator,
@@ -536,6 +537,77 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     chatProvider.setCharacterCard(card.copyWith(depthPromptRole: role));
   }
 
+  void _applyCardUpdate(CharacterCard updatedCard) {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    chatProvider.setCharacterCard(updatedCard);
+    _updateCardControllers(updatedCard);
+  }
+
+  Future<void> _editCardField({
+    required String title,
+    required String initialValue,
+    required ValueChanged<String> onSave,
+    int minLines = 1,
+    int maxLines = 6,
+    TextInputType? keyboardType,
+  }) async {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    final ctrl = TextEditingController(text: initialValue);
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: themeProvider.dropdownColor,
+        title: Text(
+          title,
+          style: TextStyle(
+            color: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize,
+          ),
+        ),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          minLines: minLines,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          style: TextStyle(
+            color: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize * 0.85,
+          ),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: themeProvider.containerFillDarkColor,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              onSave(ctrl.text);
+              Navigator.pop(ctx);
+            },
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: Colors.blueAccent,
+                fontSize: scaleProvider.systemFontSize * 0.8,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
@@ -589,79 +661,183 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
               const SizedBox(height: 16),
 
               // --- Primary Card Fields ---
-              _buildCardField("Name", _cardNameController),
-              const SizedBox(height: 8),
               _buildCardField(
-                "Description / Persona",
-                _cardDescriptionController,
-                maxLines: 3,
-              ),
-              const SizedBox(height: 8),
-              _buildCardField(
-                "First Message",
-                _cardFirstMesController,
-                maxLines: 3,
+                "Name",
+                _cardNameController,
+                readOnly: false,
               ),
               const SizedBox(height: 8),
 
-              // --- More Fields (collapsible) ---
+              // --- Description (collapsible grouped fields) ---
               ExpansionTile(
                 title: Text(
-                  "More Fields (Scenario, Examples, etc.)",
+                  "Description",
                   style: TextStyle(
                     fontSize: scaleProvider.systemFontSize * 0.85,
                     color: themeProvider.subtitleColor,
                   ),
                 ),
+                subtitle: chatProvider.enableDeveloperMode
+                    ? Text(
+                        'Developer Mode: tap field body to open editor',
+                        style: TextStyle(
+                          color: Colors.amberAccent,
+                          fontSize: scaleProvider.systemFontSize * 0.68,
+                        ),
+                      )
+                    : null,
                 dense: true,
                 children: [
+                  _buildCardField(
+                    "Description / Persona",
+                    _cardDescriptionController,
+                    maxLines: 3,
+                    onEdit: () => _editCardField(
+                      title: 'Description / Persona',
+                      initialValue: card.description,
+                      minLines: 3,
+                      maxLines: 10,
+                      onSave: (val) => _applyCardUpdate(
+                        card.copyWith(description: val.trim()),
+                      ),
+                    ),
+                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCardField(
+                    "First Message",
+                    _cardFirstMesController,
+                    maxLines: 3,
+                    onEdit: () => _editCardField(
+                      title: 'First Message',
+                      initialValue: card.firstMessage,
+                      minLines: 3,
+                      maxLines: 10,
+                      onSave: (val) => _applyCardUpdate(
+                        card.copyWith(firstMessage: val.trim()),
+                      ),
+                    ),
+                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Text(
+                      'More Fields',
+                      style: TextStyle(
+                        color: themeProvider.subtitleColor,
+                        fontSize: scaleProvider.systemFontSize * 0.78,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   _buildCardField(
                     "Scenario",
                     _cardScenarioController,
                     maxLines: 2,
+                    onEdit: () => _editCardField(
+                      title: 'Scenario',
+                      initialValue: card.scenario,
+                      minLines: 2,
+                      maxLines: 8,
+                      onSave: (val) => _applyCardUpdate(
+                        card.copyWith(scenario: val.trim()),
+                      ),
+                    ),
+                    allowTapToEdit: chatProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   _buildCardField(
                     "Personality",
                     _cardPersonalityController,
                     maxLines: 2,
+                    onEdit: () => _editCardField(
+                      title: 'Personality',
+                      initialValue: card.personality,
+                      minLines: 2,
+                      maxLines: 8,
+                      onSave: (val) => _applyCardUpdate(
+                        card.copyWith(personality: val.trim()),
+                      ),
+                    ),
+                    allowTapToEdit: chatProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   _buildCardField(
                     "Example Dialogue (Mes Example)",
                     _cardMesExampleController,
                     maxLines: 4,
+                    onEdit: () => _editCardField(
+                      title: 'Example Dialogue (Mes Example)',
+                      initialValue: card.mesExample,
+                      minLines: 3,
+                      maxLines: 10,
+                      onSave: (val) => _applyCardUpdate(
+                        card.copyWith(mesExample: val.trim()),
+                      ),
+                    ),
+                    allowTapToEdit: chatProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   _buildCardField(
                     "Character System Prompt",
                     _cardSystemPromptController,
                     maxLines: 2,
+                    onEdit: () => _editCardField(
+                      title: 'Character System Prompt',
+                      initialValue: card.systemPrompt,
+                      minLines: 2,
+                      maxLines: 8,
+                      onSave: (val) => _applyCardUpdate(
+                        card.copyWith(systemPrompt: val.trim()),
+                      ),
+                    ),
+                    allowTapToEdit: chatProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   _buildCardField(
                     "Post-History Instructions",
                     _cardPostHistoryController,
                     maxLines: 2,
+                    onEdit: () => _editCardField(
+                      title: 'Post-History Instructions',
+                      initialValue: card.postHistoryInstructions,
+                      minLines: 2,
+                      maxLines: 8,
+                      onSave: (val) => _applyCardUpdate(
+                        card.copyWith(postHistoryInstructions: val.trim()),
+                      ),
+                    ),
+                    allowTapToEdit: chatProvider.enableDeveloperMode,
                   ),
-                ],
-              ),
-
-              // --- V2 Extended Fields (collapsible) ---
-              ExpansionTile(
-                title: Text(
-                  "V2 Extended Fields",
-                  style: TextStyle(
-                    fontSize: scaleProvider.systemFontSize * 0.85,
-                    color: themeProvider.subtitleColor,
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Text(
+                      'V2 Extended Fields',
+                      style: TextStyle(
+                        color: themeProvider.subtitleColor,
+                        fontSize: scaleProvider.systemFontSize * 0.78,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-                dense: true,
-                children: [
+                  const SizedBox(height: 6),
                   _buildCardField(
                     "Creator Notes",
                     _cardCreatorNotesController,
                     maxLines: 3,
+                    onEdit: () => _editCardField(
+                      title: 'Creator Notes',
+                      initialValue: card.creatorNotes,
+                      minLines: 3,
+                      maxLines: 10,
+                      onSave: (val) => _applyCardUpdate(
+                        card.copyWith(creatorNotes: val.trim()),
+                      ),
+                    ),
+                    allowTapToEdit: chatProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -670,6 +846,14 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         child: _buildCardField(
                           "Creator",
                           _cardCreatorController,
+                          onEdit: () => _editCardField(
+                            title: 'Creator',
+                            initialValue: card.creator,
+                            onSave: (val) => _applyCardUpdate(
+                              card.copyWith(creator: val.trim()),
+                            ),
+                          ),
+                          allowTapToEdit: chatProvider.enableDeveloperMode,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -677,6 +861,14 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         child: _buildCardField(
                           "Version",
                           _cardVersionController,
+                          onEdit: () => _editCardField(
+                            title: 'Version',
+                            initialValue: card.characterVersion,
+                            onSave: (val) => _applyCardUpdate(
+                              card.copyWith(characterVersion: val.trim()),
+                            ),
+                          ),
+                          allowTapToEdit: chatProvider.enableDeveloperMode,
                         ),
                       ),
                     ],
@@ -719,23 +911,23 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                     ),
                     const SizedBox(height: 8),
                   ],
-                ],
-              ),
-
-              // --- Alternate Greetings (collapsible) ---
-              ExpansionTile(
-                title: Text(
-                  "Alternate Greetings (${card.alternateGreetings.length})",
-                  style: TextStyle(
-                    fontSize: scaleProvider.systemFontSize * 0.85,
-                    color: themeProvider.subtitleColor,
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Text(
+                      'Alternate Greetings (${card.alternateGreetings.length})',
+                      style: TextStyle(
+                        color: themeProvider.subtitleColor,
+                        fontSize: scaleProvider.systemFontSize * 0.78,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-                dense: true,
-                children: [
+                  const SizedBox(height: 6),
                   ...card.alternateGreetings.asMap().entries.map((e) {
                     return ListTile(
                       dense: true,
+                      contentPadding: EdgeInsets.zero,
                       title: Text(
                         e.value.length > 80
                             ? '${e.value.substring(0, 80)}...'
@@ -754,15 +946,30 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                           fontSize: scaleProvider.systemFontSize * 0.65,
                         ),
                       ),
-                      trailing: IconButton(
-                        icon: Icon(
-                          Icons.close,
-                          color: themeProvider.faintestColor,
-                          size: 16,
-                        ),
-                        onPressed: () => _removeAlternateGreeting(e.key),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.edit_outlined,
+                              color: themeProvider.subtitleColor,
+                              size: 16,
+                            ),
+                            onPressed: () => _editAlternateGreeting(e.key),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.close,
+                              color: themeProvider.faintestColor,
+                              size: 16,
+                            ),
+                            onPressed: () => _removeAlternateGreeting(e.key),
+                          ),
+                        ],
                       ),
-                      onTap: () => _editAlternateGreeting(e.key),
+                      onTap: chatProvider.enableDeveloperMode
+                          ? () => _editAlternateGreeting(e.key)
+                          : null,
                     );
                   }),
                   Padding(
@@ -781,6 +988,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
                 ],
               ),
 
@@ -804,6 +1012,16 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                           "Depth Prompt Text",
                           _cardDepthPromptTextController,
                           maxLines: 3,
+                          onEdit: () => _editCardField(
+                            title: 'Depth Prompt Text',
+                            initialValue: card.depthPromptText,
+                            minLines: 2,
+                            maxLines: 8,
+                            onSave: (val) => _applyCardUpdate(
+                              card.copyWith(depthPromptText: val.trim()),
+                            ),
+                          ),
+                          allowTapToEdit: chatProvider.enableDeveloperMode,
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -813,6 +1031,20 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                                 "Depth (int)",
                                 _cardDepthPromptDepthController,
                                 keyboardType: TextInputType.number,
+                                onEdit: () => _editCardField(
+                                  title: 'Depth (int)',
+                                  initialValue: card.depthPromptDepth.toString(),
+                                  keyboardType: TextInputType.number,
+                                  onSave: (val) {
+                                    final parsed = int.tryParse(val.trim()) ??
+                                        card.depthPromptDepth;
+                                    _applyCardUpdate(
+                                      card.copyWith(depthPromptDepth: parsed),
+                                    );
+                                  },
+                                ),
+                                allowTapToEdit:
+                                    chatProvider.enableDeveloperMode,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -872,6 +1104,15 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 8),
+                        SettingsColorPicker(
+                          label: 'Recognizer Glow',
+                          color: chatProvider.loreRecognizerGlowColor,
+                          onSave: (color) {
+                            chatProvider.setLoreRecognizerGlowColor(color);
+                            chatProvider.saveSettings(showConfirmation: false);
+                          },
                         ),
                         const SizedBox(height: 8),
                       ],
@@ -1126,6 +1367,9 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     TextEditingController controller, {
     int maxLines = 1,
     TextInputType? keyboardType,
+    bool readOnly = true,
+    VoidCallback? onEdit,
+    bool allowTapToEdit = false,
   }) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
@@ -1136,15 +1380,32 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
           controller: controller,
           maxLines: maxLines,
           keyboardType: keyboardType,
-          onChanged: (_) => _syncCardFromControllers(),
+          readOnly: readOnly,
+          enableInteractiveSelection: true,
+          onTap: allowTapToEdit ? onEdit : null,
+          onChanged: readOnly ? null : (_) => _syncCardFromControllers(),
           decoration: InputDecoration(
             labelText: label,
             isDense: true,
             filled: true,
             fillColor: themeProvider.containerFillDarkColor,
             border: const OutlineInputBorder(),
+            suffixIcon: readOnly && onEdit != null
+                ? IconButton(
+                    tooltip: 'Edit $label',
+                    icon: Icon(
+                      Icons.edit_outlined,
+                      size: 16,
+                      color: themeProvider.subtitleColor,
+                    ),
+                    onPressed: onEdit,
+                  )
+                : null,
           ),
-          style: const TextStyle(fontSize: 13),
+          style: TextStyle(
+            fontSize: 13,
+            color: readOnly ? themeProvider.textColor : null,
+          ),
         ),
       ],
     );
