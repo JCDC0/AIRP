@@ -29,7 +29,7 @@
 * **Full Backup (Library)**: Export and import your entire AIRP configuration as `.airp` files with intelligent merging.
 * **Searchable History**: Query past conversations or star them to pin them at the top of the drawer.
 * **Message Management**: Edit, copy, delete, or regenerate specific messages, featuring full Markdown support and syntax highlighting. By default, reasoning blocks are read-only during edit; raw full-block editing is opt-in via Developer Mode.
-* **Deep Visual Customization**: Independent color pickers, bubble opacities, 16 thematic fonts, and atmospheric particle effects (Rain, Fireflies, Motes).
+* **Text Designer & Atmosphere Controls**: Independent text styling, bubble opacities, 16 thematic fonts, markdown color controls, and atmospheric particle effects (Rain, Fireflies, Motes).
 * **Advanced Prompting Engine**: Layered reasoning directives, custom rules, and Persona "Tweaks" toggled on the fly.
 * **Multimodal & File Support**: Attach images, PDFs, and text-based files for AI analysis.
 * **Token Counting & Safety**: Real-time context boundary indicators and toggles to disable API-side safety filters.
