@@ -36,6 +36,7 @@ class PromptPipelineService {
     required bool enableCharacterCard,
     required CharacterCard characterCard,
     LorebookEvalResult? lorebookResult,
+    List<LorebookEntry> recognizedLoreEntries = const [],
   }) {
     String result = '';
     if (enableSystemPrompt) result += systemInstruction;
@@ -124,6 +125,20 @@ class PromptPipelineService {
         if (result.isNotEmpty) result += '\n\n';
         result += anEntries.map((e) => e.content).join('\n');
       }
+    }
+
+    // --- Input-recognized lore entries ---
+    if (recognizedLoreEntries.isNotEmpty) {
+      if (result.isNotEmpty) result += '\n\n';
+      result += '--- Recognized World Lore ---\n';
+      result += recognizedLoreEntries.map((e) {
+        final label = e.comment.trim().isNotEmpty ? e.comment.trim() : 'Entry ${e.id}';
+        final tags = e.keys.where((k) => k.trim().isNotEmpty).join(', ');
+        if (tags.isNotEmpty) {
+          return '$label [tags: $tags]: ${e.content}';
+        }
+        return '$label: ${e.content}';
+      }).join('\n');
     }
 
     return result;

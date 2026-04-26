@@ -11,6 +11,7 @@ import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../models/chat_models.dart';
+import '../models/lorebook_models.dart';
 import '../services/file_io_helper.dart';
 
 /// A widget that provides the input interface for the chat.
@@ -40,6 +41,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
   List<_OrbitLine> _orbitLines = [];
   List<_OrbitLine> _iconOrbitLines = [];
   bool _isSending = false;
+  LorebookEntry? _recognizedLorePreview;
 
   @override
   void initState() {
@@ -50,13 +52,28 @@ class _ChatInputAreaState extends State<ChatInputArea>
     );
     _orbitLines = _generateOrbitLines(Random(), lineCount: 3);
     _iconOrbitLines = _generateOrbitLines(Random(), lineCount: 2, maxSpeed: 2);
+    _textController.addListener(_updateLoreRecognitionPreview);
   }
 
   @override
   void dispose() {
+    _textController.removeListener(_updateLoreRecognitionPreview);
     _orbitController.dispose();
     _textController.dispose();
     super.dispose();
+  }
+
+  void _updateLoreRecognitionPreview() {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final next = chatProvider.previewRecognizedLoreEntry(_textController.text);
+    final currentId = _recognizedLorePreview?.id;
+    final nextId = next?.id;
+    if (currentId != nextId) {
+      if (!mounted) return;
+      setState(() {
+        _recognizedLorePreview = next;
+      });
+    }
   }
 
   /// Opens the gallery to pick an image.
@@ -231,6 +248,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
       _pendingImages.clear();
       _pendingImageBytes.clear();
       _textController.clear();
+      _recognizedLorePreview = null;
     });
 
     _scrollToBottom();
@@ -1118,6 +1136,51 @@ class _ChatInputAreaState extends State<ChatInputArea>
                     ),
                   ],
                 ),
+                if (_recognizedLorePreview != null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: chatProvider.loreRecognizerGlowColor.withValues(
+                          alpha: 0.16,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: chatProvider.loreRecognizerGlowColor
+                              .withValues(alpha: 0.75),
+                        ),
+                        boxShadow: themeProvider.enableBloom
+                            ? [
+                                BoxShadow(
+                                  color: chatProvider.loreRecognizerGlowColor
+                                      .withValues(alpha: 0.6),
+                                  blurRadius: 10,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : [],
+                      ),
+                      child: Text(
+                        _recognizedLorePreview!.comment.trim().isEmpty
+                            ? 'Recognized lore entry #${_recognizedLorePreview!.id}'
+                            : _recognizedLorePreview!.comment,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: chatProvider.loreRecognizerGlowColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: scaleProvider.systemFontSize * 0.78,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

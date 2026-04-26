@@ -400,6 +400,8 @@ class ChatProvider extends ChangeNotifier {
     byPosition: {},
     estimatedTokens: 0,
   );
+  List<LorebookEntry> _lastRecognizedLoreEntries = const [];
+  Color _loreRecognizerGlowColor = Colors.orangeAccent;
   bool _enableLorebook = true;
   bool _enableRegex = true;
   bool _enableFormatting = false;
@@ -466,6 +468,9 @@ class ChatProvider extends ChangeNotifier {
   List<RegexScript> get globalRegexScripts => _globalRegexScripts;
   FormattingTemplate? get formattingTemplate => _formattingTemplate;
   LorebookEvalResult get lastLorebookEvalResult => _lastLorebookEvalResult;
+  List<LorebookEntry> get lastRecognizedLoreEntries =>
+      _lastRecognizedLoreEntries;
+  Color get loreRecognizerGlowColor => _loreRecognizerGlowColor;
   bool get enableLorebook => _enableLorebook;
   bool get enableRegex => _enableRegex;
   bool get enableFormatting => _enableFormatting;
@@ -806,6 +811,10 @@ class ChatProvider extends ChangeNotifier {
         prefs.getBool('airp_enable_raw_reasoning_edit') ?? false;
     _rawReasoningEditWarningAcknowledged =
         prefs.getBool(_rawEditWarningAckKey) ?? false;
+    _loreRecognizerGlowColor = Color(
+      prefs.getInt('airp_lore_recognizer_glow_color') ??
+          Colors.orangeAccent.toARGB32(),
+    );
     if (!_enableDeveloperMode) {
       _enableRawReasoningEdit = false;
     }
@@ -1313,6 +1322,11 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setLoreRecognizerGlowColor(Color color) {
+    _loreRecognizerGlowColor = color;
+    notifyListeners();
+  }
+
   Future<void> saveSettings({bool showConfirmation = true}) async {
     final prefs = await SharedPreferences.getInstance();
     await _persistApiKey(
@@ -1445,6 +1459,10 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setBool(
       _rawEditWarningAckKey,
       _rawReasoningEditWarningAcknowledged,
+    );
+    await prefs.setInt(
+      'airp_lore_recognizer_glow_color',
+      _loreRecognizerGlowColor.toARGB32(),
     );
     await _globalSettings.saveModelBookmarks(_bookmarkedModels, prefs: prefs);
     await _globalSettings.saveStarredProviders(_starredProviders, prefs: prefs);
@@ -1779,31 +1797,38 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Evaluates all active lorebooks against [recentMessages] and returns
-  /// a merged [LorebookEvalResult].
+  /// Returns lore entries whose keywords match [input] directly.
   ///
-  /// [recentMessages] should be ordered newest-first.
-  LorebookEvalResult _evaluateLorebooks(List<String> recentMessages) {
-    if (!_enableLorebook) {
-      _lastLorebookEvalResult = const LorebookEvalResult(
-        byPosition: {},
-        estimatedTokens: 0,
-      );
-      return _lastLorebookEvalResult;
-    }
+  /// This powers the input recognizer flow and intentionally ignores
+  /// history-based matching.
+  List<LorebookEntry> recognizeLoreEntriesFromInput(String input) {
+    final trimmed = input.trim();
+    if (!_enableLorebook || trimmed.isEmpty) return const [];
 
     final lorebooks = <Lorebook>[
       if (_globalLorebook.entries.isNotEmpty) _globalLorebook,
       if (_enableCharacterCard && _characterCard.characterBook != null)
         _characterCard.characterBook!,
     ];
+    if (lorebooks.isEmpty) return const [];
 
-    _lastLorebookEvalResult = PromptPipelineService.evaluateLorebooks(
-      lorebooks: lorebooks,
-      recentMessages: recentMessages,
-      characterName: _characterCard.name,
-    );
-    return _lastLorebookEvalResult;
+    final matched = <LorebookEntry>[];
+    for (final lorebook in lorebooks) {
+      final result = LorebookService.evaluateEntries(
+        lorebook: lorebook,
+        recentMessages: [trimmed],
+        characterName: _characterCard.name,
+      );
+      matched.addAll(result.all);
+    }
+
+    matched.sort((a, b) => a.order.compareTo(b.order));
+    return matched;
+  }
+
+  LorebookEntry? previewRecognizedLoreEntry(String input) {
+    final matched = recognizeLoreEntriesFromInput(input);
+    return matched.isEmpty ? null : matched.first;
   }
 
   /// Collects depth-positioned entries from lorebook results and the character
@@ -1825,7 +1850,10 @@ class ChatProvider extends ChangeNotifier {
   /// their declared positions (beforeCharDefs, afterCharDefs, etc.).
   /// `atDepth` entries are NOT included here — use [_collectDepthEntries]
   /// for those.
-  String _buildSystemInstruction({LorebookEvalResult? lorebookResult}) {
+  String _buildSystemInstruction({
+    LorebookEvalResult? lorebookResult,
+    List<LorebookEntry> recognizedLoreEntries = const [],
+  }) {
     return PromptPipelineService.buildSystemInstruction(
       systemInstruction: _systemInstruction,
       advancedSystemInstruction: _advancedSystemInstruction,
@@ -1834,6 +1862,7 @@ class ChatProvider extends ChangeNotifier {
       enableCharacterCard: _enableCharacterCard,
       characterCard: _characterCard,
       lorebookResult: lorebookResult,
+      recognizedLoreEntries: recognizedLoreEntries,
     );
   }
 
@@ -1995,11 +2024,11 @@ class ChatProvider extends ChangeNotifier {
       );
     }
 
-    // --- Evaluate lorebooks ---
-    final recentMsgs = _messages.reversed
-        .map((m) => _sanitizeForContext(m.text))
-        .toList();
-    final lorebookResult = _evaluateLorebooks(recentMsgs);
+    // --- Input-based lore recognition (replaces history-based lore injection) ---
+    final recognizedLoreEntries = recognizeLoreEntriesFromInput(sentUserText);
+    _lastRecognizedLoreEntries = recognizedLoreEntries;
+    const lorebookResult = LorebookEvalResult(byPosition: {}, estimatedTokens: 0);
+    _lastLorebookEvalResult = lorebookResult;
     final depthEntries = _collectDepthEntries(lorebookResult);
 
     if (_enableGrounding &&
@@ -2025,6 +2054,7 @@ class ChatProvider extends ChangeNotifier {
 
         String finalSystemInstruction = _buildSystemInstruction(
           lorebookResult: lorebookResult,
+          recognizedLoreEntries: recognizedLoreEntries,
         );
 
         // Append depth entries to system instruction for Gemini grounding
@@ -2271,6 +2301,7 @@ class ChatProvider extends ChangeNotifier {
         // so the chat session reflects the full prompt context.
         String geminiSysInstruction = _buildSystemInstruction(
           lorebookResult: lorebookResult,
+          recognizedLoreEntries: recognizedLoreEntries,
         );
         if (depthEntries.isNotEmpty) {
           for (final de in depthEntries) {
@@ -2339,6 +2370,7 @@ class ChatProvider extends ChangeNotifier {
 
         String finalSystemInstruction = _buildSystemInstruction(
           lorebookResult: lorebookResult,
+          recognizedLoreEntries: recognizedLoreEntries,
         );
 
         // Prepend BYOK search context to user message (not system prompt)
