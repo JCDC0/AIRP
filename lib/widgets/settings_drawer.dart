@@ -9,8 +9,7 @@ import 'settings_panels/api_settings_panel.dart';
 import 'settings_panels/model_settings_panel.dart';
 import 'settings_panels/system_prompt_panel.dart';
 import 'settings_panels/character_card_panel.dart';
-import 'settings_panels/regex_panel.dart';
-import 'settings_panels/formatting_panel.dart';
+import 'settings_panels/text_designer_panel.dart';
 import 'settings_panels/generation_settings_panel.dart';
 import 'settings_panels/web_search_settings_panel.dart';
 import 'settings_panels/visual_settings_panel.dart';
@@ -493,12 +492,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     children: [const CharacterCardPanel()],
                   ),
 
-                  // --- Regex Scripts ---
+                  // --- Text Designer ---
                   ExpansionTile(
-                    key: Key('regex_${widget.resetVersion}'),
+                    key: Key('text_designer_${widget.resetVersion}'),
                     initiallyExpanded: false,
                     title: Text(
-                      "Text Transforms",
+                      "Text Designer",
                       style: TextStyle(
                         color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
@@ -513,48 +512,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                             : [],
                       ),
                     ),
-                    trailing: Switch(
-                      value: chatProvider.enableRegex,
-                      activeThumbColor: themeProvider.textColor,
-                      onChanged: (val) {
-                        chatProvider.setEnableRegex(val);
-                      },
-                    ),
+                    trailing: const SizedBox.shrink(),
                     collapsedIconColor: themeProvider.textColor,
                     iconColor: themeProvider.textColor,
-                    children: [const RegexPanel()],
-                  ),
-
-                  // --- Advanced Formatting ---
-                  ExpansionTile(
-                    key: Key('formatting_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Style Rules",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                        shadows: themeProvider.enableBloom
-                            ? [
-                                Shadow(
-                                  color: themeProvider.bloomGlowColor,
-                                  blurRadius: 10,
-                                ),
-                              ]
-                            : [],
-                      ),
-                    ),
-                    trailing: Switch(
-                      value: chatProvider.enableFormatting,
-                      activeThumbColor: themeProvider.textColor,
-                      onChanged: (val) {
-                        chatProvider.setEnableFormatting(val);
-                      },
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [const FormattingPanel()],
+                    children: [const TextDesignerPanel()],
                   ),
 
                   ExpansionTile(

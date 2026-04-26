@@ -555,7 +555,7 @@ class MessageBubble extends StatelessWidget {
                     color: Colors.transparent,
                   ),
                   p: TextStyle(
-                    color: textColor,
+                    color: themeProvider.markdownParagraphColor,
                     fontSize: scaleProvider.chatFontSize,
                     shadows: useBloom
                         ? [
@@ -567,7 +567,7 @@ class MessageBubble extends StatelessWidget {
                         : [],
                   ),
                   a: TextStyle(
-                    color: Colors.blueAccent,
+                    color: themeProvider.markdownLinkColor,
                     fontSize: scaleProvider.chatFontSize,
                     decoration: TextDecoration.underline,
                     shadows: useBloom
@@ -581,7 +581,7 @@ class MessageBubble extends StatelessWidget {
                   ),
                   code: codeStyle,
                   h1: TextStyle(
-                    color: textColor,
+                    color: themeProvider.markdownH1Color,
                     fontSize: scaleProvider.chatFontSize + 8,
                     fontWeight: FontWeight.bold,
                     shadows: useBloom
@@ -589,7 +589,7 @@ class MessageBubble extends StatelessWidget {
                         : [],
                   ),
                   h2: TextStyle(
-                    color: textColor,
+                    color: themeProvider.markdownH2Color,
                     fontSize: scaleProvider.chatFontSize + 6,
                     fontWeight: FontWeight.bold,
                     shadows: useBloom
@@ -597,12 +597,27 @@ class MessageBubble extends StatelessWidget {
                         : [],
                   ),
                   h3: TextStyle(
-                    color: textColor,
+                    color: themeProvider.markdownH3Color,
                     fontSize: scaleProvider.chatFontSize + 4,
                     fontWeight: FontWeight.bold,
                     shadows: useBloom
                         ? [Shadow(color: textColor, blurRadius: 10)]
                         : [],
+                  ),
+                  em: TextStyle(
+                    color: themeProvider.markdownItalicColor,
+                    fontSize: scaleProvider.chatFontSize,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  strong: TextStyle(
+                    color: themeProvider.markdownBoldColor,
+                    fontSize: scaleProvider.chatFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  del: TextStyle(
+                    color: themeProvider.markdownStrikeColor,
+                    fontSize: scaleProvider.chatFontSize,
+                    decoration: TextDecoration.lineThrough,
                   ),
                 ),
               );

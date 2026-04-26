@@ -29,6 +29,19 @@ class ThemeProvider extends ChangeNotifier {
   Color _aiBubbleColor = AppColors.defaultAiBubble;
   Color _aiTextColor = AppColors.defaultAiText;
   Color _appThemeColor = AppColors.defaultAppTheme;
+  Color? _markdownParagraphColor;
+  Color? _markdownItalicColor;
+  Color? _markdownBoldColor;
+  Color? _markdownBoldItalicColor;
+  Color? _markdownH1Color;
+  Color? _markdownH2Color;
+  Color? _markdownH3Color;
+  Color? _markdownLinkColor;
+  Color? _markdownInlineCodeColor;
+  Color? _markdownCodeBlockColor;
+  Color? _markdownBlockquoteColor;
+  Color? _markdownListColor;
+  Color? _markdownStrikeColor;
 
   List<String> _customImagePaths = [];
 
@@ -51,6 +64,22 @@ class ThemeProvider extends ChangeNotifier {
   Color get aiBubbleColor => _aiBubbleColor;
   Color get aiTextColor => _aiTextColor;
   Color get appThemeColor => _appThemeColor;
+    Color get markdownParagraphColor => _markdownParagraphColor ?? textColor;
+    Color get markdownItalicColor => _markdownItalicColor ?? textColor;
+    Color get markdownBoldColor => _markdownBoldColor ?? textColor;
+    Color get markdownBoldItalicColor =>
+      _markdownBoldItalicColor ?? _markdownBoldColor ?? textColor;
+    Color get markdownH1Color => _markdownH1Color ?? textColor;
+    Color get markdownH2Color => _markdownH2Color ?? textColor;
+    Color get markdownH3Color => _markdownH3Color ?? textColor;
+    Color get markdownLinkColor => _markdownLinkColor ?? Colors.blueAccent;
+    Color get markdownInlineCodeColor =>
+      _markdownInlineCodeColor ?? textColor;
+    Color get markdownCodeBlockColor => _markdownCodeBlockColor ?? textColor;
+    Color get markdownBlockquoteColor =>
+      _markdownBlockquoteColor ?? subtitleColor;
+    Color get markdownListColor => _markdownListColor ?? textColor;
+    Color get markdownStrikeColor => _markdownStrikeColor ?? textColor;
   bool get isLightMode => _isLightMode;
 
   // ── Semantic colors (adapt to light / dark mode) ──────────────────────
@@ -299,6 +328,53 @@ class ThemeProvider extends ChangeNotifier {
     _saveColors();
   }
 
+  /// Updates a markdown styling color and persists the change.
+  Future<void> updateMarkdownColor(String type, Color? color) async {
+    switch (type) {
+      case 'paragraph':
+        _markdownParagraphColor = color;
+        break;
+      case 'italic':
+        _markdownItalicColor = color;
+        break;
+      case 'bold':
+        _markdownBoldColor = color;
+        break;
+      case 'boldItalic':
+        _markdownBoldItalicColor = color;
+        break;
+      case 'h1':
+        _markdownH1Color = color;
+        break;
+      case 'h2':
+        _markdownH2Color = color;
+        break;
+      case 'h3':
+        _markdownH3Color = color;
+        break;
+      case 'link':
+        _markdownLinkColor = color;
+        break;
+      case 'inlineCode':
+        _markdownInlineCodeColor = color;
+        break;
+      case 'codeBlock':
+        _markdownCodeBlockColor = color;
+        break;
+      case 'blockquote':
+        _markdownBlockquoteColor = color;
+        break;
+      case 'list':
+        _markdownListColor = color;
+        break;
+      case 'strike':
+        _markdownStrikeColor = color;
+        break;
+    }
+    notifyListeners();
+    _saveColors();
+  }
+
   /// Resets all visual settings to their default values.
   Future<void> resetToDefaults() async {
     _userBubbleColor = AppColors.defaultUserBubble;
@@ -306,6 +382,19 @@ class ThemeProvider extends ChangeNotifier {
     _aiBubbleColor = AppColors.defaultAiBubble;
     _aiTextColor = AppColors.defaultAiText;
     _appThemeColor = AppColors.defaultAppTheme;
+    _markdownParagraphColor = null;
+    _markdownItalicColor = null;
+    _markdownBoldColor = null;
+    _markdownBoldItalicColor = null;
+    _markdownH1Color = null;
+    _markdownH2Color = null;
+    _markdownH3Color = null;
+    _markdownLinkColor = null;
+    _markdownInlineCodeColor = null;
+    _markdownCodeBlockColor = null;
+    _markdownBlockquoteColor = null;
+    _markdownListColor = null;
+    _markdownStrikeColor = null;
     _enableBloom = false;
     _enableLoadingAnimation = true;
     _enableMotes = false;
@@ -344,6 +433,47 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setInt('color_user_text', _colorToStorageInt(_userTextColor));
     await prefs.setInt('color_ai_bubble', _colorToStorageInt(_aiBubbleColor));
     await prefs.setInt('color_ai_text', _colorToStorageInt(_aiTextColor));
+    await _saveMarkdownColor(prefs, 'color_md_paragraph', _markdownParagraphColor);
+    await _saveMarkdownColor(prefs, 'color_md_italic', _markdownItalicColor);
+    await _saveMarkdownColor(prefs, 'color_md_bold', _markdownBoldColor);
+    await _saveMarkdownColor(
+      prefs,
+      'color_md_bold_italic',
+      _markdownBoldItalicColor,
+    );
+    await _saveMarkdownColor(prefs, 'color_md_h1', _markdownH1Color);
+    await _saveMarkdownColor(prefs, 'color_md_h2', _markdownH2Color);
+    await _saveMarkdownColor(prefs, 'color_md_h3', _markdownH3Color);
+    await _saveMarkdownColor(prefs, 'color_md_link', _markdownLinkColor);
+    await _saveMarkdownColor(
+      prefs,
+      'color_md_inline_code',
+      _markdownInlineCodeColor,
+    );
+    await _saveMarkdownColor(
+      prefs,
+      'color_md_code_block',
+      _markdownCodeBlockColor,
+    );
+    await _saveMarkdownColor(
+      prefs,
+      'color_md_blockquote',
+      _markdownBlockquoteColor,
+    );
+    await _saveMarkdownColor(prefs, 'color_md_list', _markdownListColor);
+    await _saveMarkdownColor(prefs, 'color_md_strike', _markdownStrikeColor);
+  }
+
+  Future<void> _saveMarkdownColor(
+    SharedPreferences prefs,
+    String key,
+    Color? color,
+  ) async {
+    if (color == null) {
+      await prefs.remove(key);
+      return;
+    }
+    await prefs.setInt(key, _colorToStorageInt(color));
   }
 
   int _colorToStorageInt(Color color) {
@@ -423,7 +553,30 @@ class ThemeProvider extends ChangeNotifier {
         ? Color(aiTextInt)
         : AppColors.defaultAiText;
 
+    _markdownParagraphColor = _loadMarkdownColor(prefs, 'color_md_paragraph');
+    _markdownItalicColor = _loadMarkdownColor(prefs, 'color_md_italic');
+    _markdownBoldColor = _loadMarkdownColor(prefs, 'color_md_bold');
+    _markdownBoldItalicColor =
+      _loadMarkdownColor(prefs, 'color_md_bold_italic');
+    _markdownH1Color = _loadMarkdownColor(prefs, 'color_md_h1');
+    _markdownH2Color = _loadMarkdownColor(prefs, 'color_md_h2');
+    _markdownH3Color = _loadMarkdownColor(prefs, 'color_md_h3');
+    _markdownLinkColor = _loadMarkdownColor(prefs, 'color_md_link');
+    _markdownInlineCodeColor =
+        _loadMarkdownColor(prefs, 'color_md_inline_code');
+    _markdownCodeBlockColor =
+        _loadMarkdownColor(prefs, 'color_md_code_block');
+    _markdownBlockquoteColor =
+        _loadMarkdownColor(prefs, 'color_md_blockquote');
+    _markdownListColor = _loadMarkdownColor(prefs, 'color_md_list');
+    _markdownStrikeColor = _loadMarkdownColor(prefs, 'color_md_strike');
+
     notifyListeners();
+  }
+
+  Color? _loadMarkdownColor(SharedPreferences prefs, String key) {
+    final value = prefs.getInt(key);
+    return value == null ? null : Color(value);
   }
 
   Future<void> setFont(String fontName) async {
@@ -454,6 +607,19 @@ class ThemeProvider extends ChangeNotifier {
         'userText': _colorToStorageInt(_userTextColor),
         'aiBubble': _colorToStorageInt(_aiBubbleColor),
         'aiText': _colorToStorageInt(_aiTextColor),
+        'markdownParagraph': _markdownParagraphColor?.toARGB32(),
+        'markdownItalic': _markdownItalicColor?.toARGB32(),
+        'markdownBold': _markdownBoldColor?.toARGB32(),
+        'markdownBoldItalic': _markdownBoldItalicColor?.toARGB32(),
+        'markdownH1': _markdownH1Color?.toARGB32(),
+        'markdownH2': _markdownH2Color?.toARGB32(),
+        'markdownH3': _markdownH3Color?.toARGB32(),
+        'markdownLink': _markdownLinkColor?.toARGB32(),
+        'markdownInlineCode': _markdownInlineCodeColor?.toARGB32(),
+        'markdownCodeBlock': _markdownCodeBlockColor?.toARGB32(),
+        'markdownBlockquote': _markdownBlockquoteColor?.toARGB32(),
+        'markdownList': _markdownListColor?.toARGB32(),
+        'markdownStrike': _markdownStrikeColor?.toARGB32(),
       },
     };
   }
@@ -492,6 +658,23 @@ class ThemeProvider extends ChangeNotifier {
     if (colors['aiText'] != null) {
       _aiTextColor = Color(colors['aiText'] as int);
     }
+    _markdownParagraphColor = _colorFromExportedMap(colors['markdownParagraph']);
+    _markdownItalicColor = _colorFromExportedMap(colors['markdownItalic']);
+    _markdownBoldColor = _colorFromExportedMap(colors['markdownBold']);
+    _markdownBoldItalicColor =
+      _colorFromExportedMap(colors['markdownBoldItalic']);
+    _markdownH1Color = _colorFromExportedMap(colors['markdownH1']);
+    _markdownH2Color = _colorFromExportedMap(colors['markdownH2']);
+    _markdownH3Color = _colorFromExportedMap(colors['markdownH3']);
+    _markdownLinkColor = _colorFromExportedMap(colors['markdownLink']);
+    _markdownInlineCodeColor =
+      _colorFromExportedMap(colors['markdownInlineCode']);
+    _markdownCodeBlockColor =
+      _colorFromExportedMap(colors['markdownCodeBlock']);
+    _markdownBlockquoteColor =
+      _colorFromExportedMap(colors['markdownBlockquote']);
+    _markdownListColor = _colorFromExportedMap(colors['markdownList']);
+    _markdownStrikeColor = _colorFromExportedMap(colors['markdownStrike']);
 
     notifyListeners();
 
@@ -517,5 +700,10 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setInt('vfx_rain_intensity', _rainIntensity);
     await prefs.setInt('vfx_fireflies_count', _firefliesCount);
     await _saveColors();
+  }
+
+  Color? _colorFromExportedMap(dynamic raw) {
+    if (raw is int) return Color(raw);
+    return null;
   }
 }
