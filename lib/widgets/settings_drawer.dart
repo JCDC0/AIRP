@@ -460,6 +460,38 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     ],
                   ),
 
+                  ExpansionTile(
+                    key: Key('generation_settings_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    title: Text(
+                      "Generation Parameters",
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const GenerationSettingsPanel()],
+                  ),
+
+                  ExpansionTile(
+                    key: Key('web_search_settings_${widget.resetVersion}'),
+                    initiallyExpanded: false,
+                    title: Text(
+                      "Web Search",
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const WebSearchSettingsPanel()],
+                  ),
+
                   // --- Character Card ---
                   ExpansionTile(
                     key: Key('character_card_${widget.resetVersion}'),
@@ -512,42 +544,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                             : [],
                       ),
                     ),
-                    trailing: const SizedBox.shrink(),
                     collapsedIconColor: themeProvider.textColor,
                     iconColor: themeProvider.textColor,
                     children: [const TextDesignerPanel()],
-                  ),
-
-                  ExpansionTile(
-                    key: Key('generation_settings_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Generation Parameters",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [const GenerationSettingsPanel()],
-                  ),
-
-                  ExpansionTile(
-                    key: Key('web_search_settings_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Web Search",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [const WebSearchSettingsPanel()],
                   ),
 
                   ExpansionTile(

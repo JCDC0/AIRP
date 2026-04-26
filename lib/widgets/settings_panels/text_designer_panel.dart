@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/theme_provider.dart';
@@ -9,27 +10,132 @@ import 'settings_color_picker.dart';
 class TextDesignerPanel extends StatelessWidget {
   const TextDesignerPanel({super.key});
 
-  Widget _buildMarkdownPickerRow(
+  Widget _buildMarkdownPickerList(
     BuildContext context,
     ScaleProvider scaleProvider,
     ThemeProvider themeProvider,
     List<_MarkdownColorEntry> entries,
   ) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+    return Column(
       children: entries
           .map(
-            (entry) => SettingsColorPicker(
-              label: entry.label,
-              color: entry.color(themeProvider),
-              onSave: (color) => themeProvider.updateMarkdownColor(
-                entry.type,
-                color,
-              ),
+            (entry) => _buildMarkdownPickerListItem(
+              context,
+              scaleProvider,
+              themeProvider,
+              entry,
             ),
           )
           .toList(),
+    );
+  }
+
+  Widget _buildMarkdownPickerListItem(
+    BuildContext context,
+    ScaleProvider scaleProvider,
+    ThemeProvider themeProvider,
+    _MarkdownColorEntry entry,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _showMarkdownColorPickerDialog(
+          context,
+          scaleProvider,
+          themeProvider,
+          entry,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: entry.color(themeProvider),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: themeProvider.textColor, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: entry.color(themeProvider).withValues(alpha: 0.5),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  entry.label,
+                  style: TextStyle(
+                    fontSize: scaleProvider.systemFontSize,
+                    color: themeProvider.textColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMarkdownColorPickerDialog(
+    BuildContext context,
+    ScaleProvider scaleProvider,
+    ThemeProvider themeProvider,
+    _MarkdownColorEntry entry,
+  ) {
+    Color tempColor = entry.color(themeProvider);
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: themeProvider.dropdownColor,
+            title: Text(
+              'Pick ${entry.label} Color',
+              style: TextStyle(
+                color: themeProvider.textColor,
+                fontSize: scaleProvider.systemFontSize,
+              ),
+            ),
+            content: SingleChildScrollView(
+              child: ColorPicker(
+                pickerColor: tempColor,
+                onColorChanged: (color) {
+                  setDialogState(() => tempColor = color);
+                },
+                pickerAreaHeightPercent: 0.7,
+                enableAlpha: false,
+                displayThumbColor: true,
+                paletteType: PaletteType.hsvWithHue,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  themeProvider.updateMarkdownColor(entry.type, tempColor);
+                  Navigator.pop(context);
+                },
+                child: Text(
+                  'Done',
+                  style: TextStyle(
+                    color: Colors.cyanAccent,
+                    fontSize: scaleProvider.systemFontSize * 0.8,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -283,7 +389,7 @@ class TextDesignerPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        _buildMarkdownPickerRow(
+        _buildMarkdownPickerList(
           context,
           scaleProvider,
           themeProvider,

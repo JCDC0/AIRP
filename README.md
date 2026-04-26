@@ -171,6 +171,8 @@ Slide from the **right** edge or tap the **Settings** icon.
 
 **AIRP** features a layered prompting system designed for complex roleplay and character consistency.
 
+In the Settings Drawer, **Generation Parameters** and **Web Search** are placed directly under **Main System Prompt** for consistency.
+
 1. **Main System Prompt**:
    * **Toggle**: Enable or disable the entire System Prompt section with a single switch.
    * This is your "World Rulebook" or "Main Persona".
@@ -210,6 +212,16 @@ AIRP includes a provider-agnostic web search system that works across all AI bac
 * **DuckDuckGo (Scraping)**: Free fallback using DuckDuckGo HTML scraping. No API key required but may be unreliable.
 
 Search results are formatted as a `[WEB_CONTEXT]` block and prepended to your message before sending to the AI. This ensures per-message freshness and works uniformly across all backends. A **Max Results** slider (1-10) controls how many results are injected per query.
+
+---
+
+## Text Designer
+
+The **Text Designer** panel in Settings centralizes text presentation controls with its own expandable section:
+
+* **Global Interface Font**: Select among 16 preset interface fonts.
+* **Chat Customization**: Tune User/AI bubble and text colors plus opacity.
+* **Markdown Colors**: Each markdown element is now shown as an easy-to-scan row (`color circle - label`) for mobile readability, including Paragraph, Italic, Bold, Bold Italic, H1/H2/H3, Link, Inline Code, Code Block, Blockquote, List, and Strike.
 
 ---
 
