@@ -8,12 +8,12 @@ import '../../providers/scale_provider.dart';
 ///
 /// Character cards, custom rules/presets, regex scripts, and formatting are
 /// now in their own dedicated panels (see character_card_panel.dart,
-/// preset_panel.dart, regex_panel.dart, formatting_panel.dart).
+/// settings_library_panel.dart, regex_panel.dart, formatting_panel.dart).
 class SystemPromptPanel extends StatefulWidget {
   /// Controller for the main system instruction text.
   final TextEditingController mainPromptController;
 
-  /// Controller for advanced behavioral instructions (managed by PresetPanel).
+  /// Controller for advanced behavioral instructions.
   final TextEditingController advancedPromptController;
 
   /// Controller for the title of the current prompt preset.

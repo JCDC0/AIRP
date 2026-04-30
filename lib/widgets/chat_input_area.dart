@@ -38,8 +38,8 @@ class _ChatInputAreaState extends State<ChatInputArea>
   final Map<String, Uint8List> _pendingImageBytes = {};
   final ImagePicker _picker = ImagePicker();
   late AnimationController _orbitController;
-  List<_OrbitLine> _orbitLines = [];
-  List<_OrbitLine> _iconOrbitLines = [];
+  List<OrbitLine> _orbitLines = [];
+  List<OrbitLine> _iconOrbitLines = [];
   bool _isSending = false;
   LorebookEntry? _recognizedLorePreview;
 
@@ -983,9 +983,10 @@ class _ChatInputAreaState extends State<ChatInputArea>
                   children: [
                     Expanded(
                       child: Focus(
-                        onKey: (node, event) {
+                        onKeyEvent: (node, event) {
                           // Handle Ctrl+Enter or Cmd+Enter to send message
-                          if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
+                          if (event is KeyDownEvent &&
+                              event.logicalKey == LogicalKeyboardKey.enter) {
                             final isCtrlOrCmd =
                                 HardwareKeyboard.instance.isLogicalKeyPressed(
                                   LogicalKeyboardKey.controlLeft,
@@ -1197,12 +1198,12 @@ class _ChatInputAreaState extends State<ChatInputArea>
 // ---------------------------------------------------------------------------
 
 /// Immutable config for a single orbiting arc/line.
-class _OrbitLine {
+class OrbitLine {
   final int speed; // Whole-number speed multiplier (1, 2 or 3)
   final double offset; // Starting phase offset [0, 1)
   final double length; // Arc fraction of total path [0.1, 0.35)
 
-  const _OrbitLine({
+  const OrbitLine({
     required this.speed,
     required this.offset,
     required this.length,
@@ -1212,7 +1213,7 @@ class _OrbitLine {
 /// Generates [lineCount] randomised orbit lines with whole-number speeds so
 /// that every arc completes full cycles within one controller period,
 /// eliminating stutter at the repeat boundary.
-List<_OrbitLine> _generateOrbitLines(
+List<OrbitLine> _generateOrbitLines(
   Random rng, {
   int lineCount = 3,
   int maxSpeed = 3,
@@ -1226,7 +1227,7 @@ List<_OrbitLine> _generateOrbitLines(
   return List.generate(count, (i) {
     final double offset = (i / count) + rng.nextDouble() * 0.1;
     final double length = 0.10 + rng.nextDouble() * 0.20; // 10 %–30 %
-    return _OrbitLine(speed: speeds[i], offset: offset % 1.0, length: length);
+    return OrbitLine(speed: speeds[i], offset: offset % 1.0, length: length);
   });
 }
 
@@ -1239,7 +1240,7 @@ List<_OrbitLine> _generateOrbitLines(
 /// being generated.
 class LineOrbitPainter extends CustomPainter {
   final double progress;
-  final List<_OrbitLine> lines;
+  final List<OrbitLine> lines;
   final Color color;
   final Color bloomColor;
   final bool enableBloom;
@@ -1315,7 +1316,7 @@ class LineOrbitPainter extends CustomPainter {
 /// Draws randomised animated arcs around a circular icon button.
 class _IconArcPainter extends CustomPainter {
   final double progress;
-  final List<_OrbitLine> lines;
+  final List<OrbitLine> lines;
   final Color color;
   final double strokeWidth;
   final bool enableBloom;

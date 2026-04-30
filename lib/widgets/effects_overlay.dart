@@ -233,7 +233,7 @@ class RainEffect extends StatefulWidget {
 }
 
 class _RainEffectState extends State<RainEffect> {
-  late List<_RainDrop> _drops;
+  late List<RainDrop> _drops;
   final Random random = Random();
 
   @override
@@ -252,7 +252,7 @@ class _RainEffectState extends State<RainEffect> {
 
   void _generateDrops() {
     _drops = List.generate(widget.numberOfDrops, (index) {
-      return _RainDrop(
+      return RainDrop(
         x: random.nextDouble(),
         yStart: random.nextDouble(),
         speed: 1 + random.nextDouble() * 1.5,
@@ -282,7 +282,7 @@ class _RainEffectState extends State<RainEffect> {
   }
 }
 
-class _RainDrop {
+class RainDrop {
   final double x;
   final double yStart;
   final double speed;
@@ -290,7 +290,7 @@ class _RainDrop {
   final double opacity;
   final double strokeWidth;
 
-  _RainDrop({
+  RainDrop({
     required this.x,
     required this.yStart,
     required this.speed,
@@ -301,7 +301,7 @@ class _RainDrop {
 }
 
 class RainPainter extends CustomPainter {
-  final List<_RainDrop> drops;
+  final List<RainDrop> drops;
   final double animationValue;
   final Color color;
 
