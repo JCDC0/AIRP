@@ -407,29 +407,6 @@ class ChatProvider extends ChangeNotifier {
   bool get enableUsage => _enableUsage;
 
   /// True when the currently selected model/provider is an image-generation route.
-  ///
-  /// Used by the UI and sendMessage() to skip the normal chat pipeline and
-  /// call the appropriate images API instead.
-  bool get isImageGenModel {
-    return ModelInfo.detectImageGen(_selectedModel, null);
-  }
-
-  // --- Image generation resolution state ---
-  int _imageGenWidth = 1024;
-  int _imageGenHeight = 1024;
-  int get imageGenWidth => _imageGenWidth;
-  int get imageGenHeight => _imageGenHeight;
-
-  void setImageGenWidth(int value) {
-    _imageGenWidth = value.clamp(256, 4096);
-    notifyListeners();
-  }
-
-  void setImageGenHeight(int value) {
-    _imageGenHeight = value.clamp(256, 4096);
-    notifyListeners();
-  }
-
   bool get disableSafety => _disableSafety;
   String get reasoningEffort => _reasoningEffort;
 
@@ -728,8 +705,6 @@ class ChatProvider extends ChangeNotifier {
     _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
     _enableGrounding = prefs.getBool(ApiConstants.prefEnableGrounding) ?? false;
     _disableSafety = prefs.getBool(ApiConstants.prefDisableSafety) ?? true;
-    _imageGenWidth = prefs.getInt('airp_image_gen_width') ?? 1024;
-    _imageGenHeight = prefs.getInt('airp_image_gen_height') ?? 1024;
     // prefEnableImageGen is no longer read — image gen is driven by the selected model.
 
     // Web Search (BYOK)
@@ -1300,8 +1275,6 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setInt('airp_max_output', _maxOutputTokens);
     await prefs.setInt('airp_history_limit', _historyLimit);
     await prefs.setDouble('airp_temperature', _temperature);
-    await prefs.setInt('airp_image_gen_width', _imageGenWidth);
-    await prefs.setInt('airp_image_gen_height', _imageGenHeight);
     await prefs.setBool('airp_enable_usage', _enableUsage);
     await prefs.setString('airp_reasoning_effort', _reasoningEffort);
     await prefs.setBool(ApiConstants.prefEnableGrounding, _enableGrounding);
@@ -1987,136 +1960,6 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    if (isImageGenModel) {
-      try {
-        _nonStreamingLoading = true;
-        notifyListeners();
-
-        final imageModelName = _selectedModel;
-
-        // Add placeholder message immediately to show generation is in progress
-        final placeholderMessage = ChatMessage(
-          text: "Generating image...",
-          isUser: false,
-          modelName: imageModelName,
-        );
-
-        if (_currentSessionId == streamSessionId) {
-          _messages.add(placeholderMessage);
-        } else {
-          _addMessageToSavedSession(streamSessionId, placeholderMessage);
-        }
-        notifyListeners();
-
-        String? base64Result;
-
-        if (_currentProvider == AiProvider.gemini &&
-            ModelInfo.detectImageGen(_selectedModel, null)) {
-          // Gemini Imagen — returns base64 directly
-          base64Result = await ChatApiService.generateImageGemini(
-            apiKey: _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey,
-            prompt: messageText,
-            model: _selectedModel.replaceAll('models/', ''),
-          );
-        } else {
-          String activeKey;
-          String provider;
-
-          switch (_currentProvider) {
-            case AiProvider.openRouter:
-              activeKey = _openRouterKey;
-              provider = 'openrouter';
-            case AiProvider.openAi:
-              activeKey = _openAiKey;
-              provider = 'openai';
-            case AiProvider.nanoGpt:
-              activeKey = _nanoGptKey;
-              provider = 'nanogpt';
-            case AiProvider.nvidia:
-              activeKey = _nvidiaKey;
-              provider = 'openai';
-            default:
-              activeKey = _getProviderKey(_currentProvider);
-              provider = 'openai';
-          }
-
-          base64Result = await ChatApiService.generateImage(
-            apiKey: activeKey,
-            prompt: messageText,
-            model: _selectedModel,
-            provider: provider,
-            size: '${_imageGenWidth}x$_imageGenHeight',
-          );
-        }
-
-        if (_cancelledSessions.contains(streamSessionId)) {
-          _nonStreamingLoading = false;
-          notifyListeners();
-          return;
-        }
-
-        if (base64Result != null && !base64Result.startsWith('Error')) {
-          final successMessage = ChatMessage(
-            text: '',
-            isUser: false,
-            modelName: imageModelName,
-            aiImage: base64Result,
-          );
-
-          if (_currentSessionId == streamSessionId) {
-            final idx = _messages.indexOf(placeholderMessage);
-            if (idx != -1) {
-              _messages[idx] = successMessage;
-            } else {
-              _messages.add(successMessage);
-            }
-          } else {
-            _replaceMessageInSavedSession(
-              streamSessionId,
-              placeholderMessage,
-              successMessage,
-            );
-          }
-        } else {
-          final errorMessage = ChatMessage(
-            text: base64Result ?? 'Image generation failed.',
-            isUser: false,
-            modelName: imageModelName,
-          );
-
-          if (_currentSessionId == streamSessionId) {
-            final idx = _messages.indexOf(placeholderMessage);
-            if (idx != -1) {
-              _messages[idx] = errorMessage;
-            } else {
-              _messages.add(errorMessage);
-            }
-          } else {
-            _replaceMessageInSavedSession(
-              streamSessionId,
-              placeholderMessage,
-              errorMessage,
-            );
-          }
-        }
-        _nonStreamingLoading = false;
-        notifyListeners();
-        _scheduleAutoSave();
-        return;
-      } catch (e) {
-        _messages.add(
-          ChatMessage(
-            text: 'Image generation error: $e',
-            isUser: false,
-            modelName: 'System',
-          ),
-        );
-        _nonStreamingLoading = false;
-        notifyListeners();
-        return;
-      }
-    }
-
     final contentNotifier = ValueNotifier<String>("");
 
     // ── BYOK Web Search ──────────────────────────────────────────────────────
@@ -2455,36 +2298,6 @@ class ChatProvider extends ChangeNotifier {
     final session = _savedSessions[idx];
     final messages = List<ChatMessage>.from(session.messages);
     messages.add(message);
-
-    _savedSessions[idx] = ChatSessionData(
-      id: session.id,
-      title: session.title,
-      messages: messages,
-      modelName: session.modelName,
-      tokenCount: session.tokenCount,
-      systemInstruction: session.systemInstruction,
-      backgroundImage: session.backgroundImage,
-      provider: session.provider,
-      isBookmarked: session.isBookmarked,
-    );
-  }
-
-  void _replaceMessageInSavedSession(
-    String sessionId,
-    ChatMessage oldMsg,
-    ChatMessage newMsg,
-  ) {
-    final idx = _savedSessions.indexWhere((s) => s.id == sessionId);
-    if (idx == -1) return;
-
-    final session = _savedSessions[idx];
-    final messages = List<ChatMessage>.from(session.messages);
-    final pIdx = messages.indexOf(oldMsg);
-    if (pIdx != -1) {
-      messages[pIdx] = newMsg;
-    } else {
-      messages.add(newMsg);
-    }
 
     _savedSessions[idx] = ChatSessionData(
       id: session.id,

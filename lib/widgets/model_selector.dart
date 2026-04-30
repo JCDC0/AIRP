@@ -436,35 +436,6 @@ class ModelSelector extends StatelessWidget {
                             ),
                           ),
                         ),
-                      if (model.isImageGen)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.purpleAccent.withValues(
-                                alpha: 0.18,
-                              ),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: Colors.purpleAccent.withValues(
-                                  alpha: 0.5,
-                                ),
-                              ),
-                            ),
-                            child: const Text(
-                              '🖼 Image Gen',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.purpleAccent,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),

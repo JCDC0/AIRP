@@ -1,7 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'dart:convert';
 import 'dart:math' show Random;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
@@ -390,8 +389,7 @@ class MessageBubble extends StatelessWidget {
     final isReasoningDone = splitContent.isDone;
     final bool hasReasoning = reasoningText.trim().isNotEmpty;
     final bool hasVisibleText = visibleText.trim().isNotEmpty;
-    final bool hasAttachments =
-        msg.imagePaths.isNotEmpty || msg.aiImage != null;
+    final bool hasAttachments = msg.imagePaths.isNotEmpty;
     final bool shouldShowTypingDots =
         showTypingIndicator &&
         !hasReasoning &&
@@ -479,24 +477,6 @@ class MessageBubble extends StatelessWidget {
 
         if (msg.imagePaths.isNotEmpty)
           _buildAttachmentGrid(context, msg.imagePaths),
-        if (msg.aiImage != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: GestureDetector(
-              onTap: () {
-                final bytes = base64Decode(msg.aiImage!);
-                _showImageZoom(context, MemoryImage(bytes), rawBytes: bytes);
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  base64Decode(msg.aiImage!),
-                  width: 250,
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
         if (hasVisibleText)
           MarkdownBody(
             data: visibleText,

@@ -105,9 +105,6 @@ class ChatMessage {
   /// List of file paths for images attached to the message.
   final List<String> imagePaths;
 
-  /// Base64 encoded string of an AI-generated image.
-  final String? aiImage;
-
   /// The name of the model that generated the response.
   final String? modelName;
 
@@ -135,7 +132,6 @@ class ChatMessage {
     required this.text,
     required this.isUser,
     this.imagePaths = const [],
-    this.aiImage,
     this.modelName,
     this.usage,
     this.thoughtSignature,
@@ -149,7 +145,6 @@ class ChatMessage {
     'text': text,
     'isUser': isUser,
     'imagePaths': imagePaths,
-    'aiImage': aiImage,
     'modelName': modelName,
     'usage': usage,
     'thoughtSignature': thoughtSignature,
@@ -162,7 +157,6 @@ class ChatMessage {
     text: json['text'] ?? "",
     isUser: json['isUser'] ?? false,
     imagePaths: List<String>.from(json['imagePaths'] ?? []),
-    aiImage: json['aiImage'],
     modelName: json['modelName'],
     usage: json['usage'],
     thoughtSignature: json['thoughtSignature'],
@@ -175,7 +169,6 @@ class ChatMessage {
     String? text,
     bool? isUser,
     List<String>? imagePaths,
-    String? aiImage,
     String? modelName,
     Map<String, dynamic>? usage,
     String? thoughtSignature,
@@ -189,7 +182,6 @@ class ChatMessage {
       text: text ?? this.text,
       isUser: isUser ?? this.isUser,
       imagePaths: imagePaths ?? this.imagePaths,
-      aiImage: aiImage ?? this.aiImage,
       modelName: modelName ?? this.modelName,
       usage: usage ?? this.usage,
       thoughtSignature: thoughtSignature ?? this.thoughtSignature,
@@ -255,9 +247,6 @@ class ModelInfo {
   final int? created; // Unix timestamp
   final Map<String, dynamic>? rawData;
 
-  /// Whether this model is an image generation model.
-  final bool isImageGen;
-
   ModelInfo({
     required this.id,
     required this.name,
@@ -266,39 +255,7 @@ class ModelInfo {
     this.pricing = "",
     this.created,
     this.rawData,
-    this.isImageGen = false,
   });
-
-  /// Returns true if the given model ID or rawData indicates an image-gen model.
-  ///
-  /// Checks OpenRouter's `architecture.modality == "image"` first, then falls
-  /// back to substring matching against known image model name fragments.
-  static bool detectImageGen(String modelId, Map<String, dynamic>? rawData) {
-    // OpenRouter metadata check
-    try {
-      final modality = rawData?['architecture']?['modality'];
-      if (modality != null && modality.toString().contains('image')) {
-        return true;
-      }
-    } catch (_) {}
-
-    // Substring fallback for providers without metadata
-    final lower = modelId.toLowerCase();
-    const fragments = [
-      'imagen',
-      'dall-e',
-      'flux',
-      'stable-diffusion',
-      'sdxl',
-      'recraft',
-      'ideogram',
-      'midjourney',
-      'nano-banana',
-      'nano-flux',
-      'nano-imagen',
-    ];
-    return fragments.any((f) => lower.contains(f));
-  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -308,7 +265,6 @@ class ModelInfo {
     'pricing': pricing,
     'created': created,
     'rawData': rawData,
-    'isImageGen': isImageGen,
   };
 
   factory ModelInfo.fromJson(Map<String, dynamic> json) {
@@ -322,8 +278,6 @@ class ModelInfo {
       pricing: json['pricing'] as String? ?? '',
       created: json['created'] as int?,
       rawData: rawData,
-      isImageGen:
-          json['isImageGen'] as bool? ?? ModelInfo.detectImageGen(id, rawData),
     );
   }
 }

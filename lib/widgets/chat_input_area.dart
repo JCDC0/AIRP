@@ -665,35 +665,27 @@ class _ChatInputAreaState extends State<ChatInputArea>
                           scaleProvider: scaleProvider,
                         ),
                       Tooltip(
-                        message: chatProvider.isImageGenModel
-                            ? 'Web search unavailable for image models'
-                            : '',
-                        child: IgnorePointer(
-                          ignoring: chatProvider.isImageGenModel,
-                          child: Opacity(
-                            opacity: chatProvider.isImageGenModel ? 0.4 : 1.0,
-                            child: _buildFeatureSwitch(
-                              icon: Icons.public,
-                              isActive: chatProvider.enableGrounding,
-                              activeColor: Colors.blueAccent,
-                              isLoading: isLoading,
-                              onToggle: () async {
-                                chatProvider.setEnableGrounding(
-                                  !chatProvider.enableGrounding,
-                                );
-                                await chatProvider.saveSettings(
-                                  showConfirmation: false,
-                                );
-                                _showStatusPopup(
-                                  chatProvider.enableGrounding
-                                      ? 'Web Search ON'
-                                      : 'Web Search OFF',
-                                );
-                              },
-                              themeProvider: themeProvider,
-                              scaleProvider: scaleProvider,
-                            ),
-                          ),
+                        message: 'Web search',
+                        child: _buildFeatureSwitch(
+                          icon: Icons.public,
+                          isActive: chatProvider.enableGrounding,
+                          activeColor: Colors.blueAccent,
+                          isLoading: isLoading,
+                          onToggle: () async {
+                            chatProvider.setEnableGrounding(
+                              !chatProvider.enableGrounding,
+                            );
+                            await chatProvider.saveSettings(
+                              showConfirmation: false,
+                            );
+                            _showStatusPopup(
+                              chatProvider.enableGrounding
+                                  ? 'Web Search ON'
+                                  : 'Web Search OFF',
+                            );
+                          },
+                          themeProvider: themeProvider,
+                          scaleProvider: scaleProvider,
                         ),
                       ),
                       Builder(
@@ -839,125 +831,6 @@ class _ChatInputAreaState extends State<ChatInputArea>
                       Container(width: 1, height: 24, color: Colors.grey[800]),
                       const SizedBox(width: 12),
 
-                      // Image resolution controls — visible when an image gen model is active.
-                      if (chatProvider.isImageGenModel) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: themeProvider.inputFillColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: themeProvider.borderColor,
-                              width: 0.5,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.aspect_ratio,
-                                size: 14 * scaleProvider.iconScale,
-                                color: themeProvider.subtitleColor,
-                              ),
-                              const SizedBox(width: 4),
-                              SizedBox(
-                                width: 42 * scaleProvider.iconScale,
-                                height: 28 * scaleProvider.iconScale,
-                                child: TextField(
-                                  controller: TextEditingController(
-                                    text: chatProvider.imageGenWidth.toString(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: themeProvider.textColor,
-                                    fontSize: scaleProvider.systemFontSize - 2,
-                                  ),
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                      horizontal: 2,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    filled: true,
-                                    fillColor: themeProvider.containerFillColor,
-                                  ),
-                                  onSubmitted: (val) {
-                                    final w = int.tryParse(val) ?? 1024;
-                                    chatProvider.setImageGenWidth(w);
-                                    chatProvider.saveSettings(
-                                      showConfirmation: false,
-                                    );
-                                  },
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 2,
-                                ),
-                                child: Text(
-                                  '×',
-                                  style: TextStyle(
-                                    color: themeProvider.subtitleColor,
-                                    fontSize: scaleProvider.systemFontSize - 1,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 42 * scaleProvider.iconScale,
-                                height: 28 * scaleProvider.iconScale,
-                                child: TextField(
-                                  controller: TextEditingController(
-                                    text: chatProvider.imageGenHeight
-                                        .toString(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: themeProvider.textColor,
-                                    fontSize: scaleProvider.systemFontSize - 2,
-                                  ),
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                      horizontal: 2,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    filled: true,
-                                    fillColor: themeProvider.containerFillColor,
-                                  ),
-                                  onSubmitted: (val) {
-                                    final h = int.tryParse(val) ?? 1024;
-                                    chatProvider.setImageGenHeight(h);
-                                    chatProvider.saveSettings(
-                                      showConfirmation: false,
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 1,
-                          height: 24,
-                          color: Colors.grey[800],
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-
                       _buildCircularButton(
                         icon: Icons.vertical_align_top,
                         tooltip: "Scroll to Top",
@@ -1045,9 +918,7 @@ class _ChatInputAreaState extends State<ChatInputArea>
                                   ? 'Add a caption...'
                                   : (chatProvider.enableGrounding
                                         ? 'Search web...'
-                                        : (chatProvider.isImageGenModel
-                                              ? 'Describe image...'
-                                              : 'Message...')),
+                                        : 'Message...'),
                               hintStyle: TextStyle(
                                 color: Colors.grey[500],
                                 fontSize: scaleProvider.chatFontSize,
