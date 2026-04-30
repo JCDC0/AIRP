@@ -1,6 +1,6 @@
 # AIRP - Roleplay Chatbot
 
-**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models, the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), and 17 additional providers. It features a full SillyTavern-compatible roleplay engine with lorebooks, regex post-processing, formatting templates, and a macro system — all built on importable character cards with V2 spec parity. Includes a BYOK web search system with 6 backends, full light/dark mode theming, deep visual customization, and persistent local history with search capabilities.
+**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models, the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), and 17 additional providers. It features a full SillyTavern-compatible roleplay engine with world lore — all built on importable character cards with V2 spec parity. Includes a BYOK web search system with 6 backends, full light/dark mode theming, deep visual customization, and persistent local history with search capabilities.
 
 ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
@@ -16,16 +16,11 @@
 * **BYOK Web Search**: Provider-agnostic web search with 6 backends natively injected as context blocks across all AI providers.
 * **Light & Dark Mode**: Full toggle with 20+ semantic color getters that adapt the entire UI.
 * **Response Versioning & Forking**: Regenerated responses are preserved as versions. Fork a conversation from any message to create a new branch.
-* **Image Generation**: Toggle inline image generation (DALL-E/Flux) for compatible providers.
 * **Usage Stats**: Per-message token usage display (prompt + completion = total).
-* **Character Cards (V2 & V3)**: Import character cards from PNG or JSON files with full V2 and V3 schema support, in-app editing, and embedded lorebook/regex loading.
+* **Character Cards (V2 & V3)**: Import character cards from PNG or JSON files with full V2 and V3 schema support, in-app editing, and embedded lorebook loading.
 * **Lorebook System & UI Diagnostics**: Full SillyTavern Character Book V2 parity with real-time UI Evaluation Tracing for insight into entry activation.
-* **Regex Engine**: Post-processing pipeline with 3 modes (permanent, display-only, prompt-only) targeting user input, AI output, world info, and reasoning.
 * **Reasoning Efficiency Controls**: Optional global sanitization strips `<think>` blocks from stored sessions and outbound context to reduce memory/token overhead while preserving visible final answers.
 * **Developer Safety Controls**: Developer mode unlocks raw assistant-block editing and one-click rollback to the latest session backup after policy migrations.
-* **Formatting Templates**: Template-based output styling (`{{match}}`) with ordered rules for dialogue, thought, narration, and character names.
-* **Macro Engine**: Shared foundation with 25+ dynamic placeholders (`{{char}}`, `{{time}}`, `{{roll::2d6}}`, `{{setvar}}`, etc.).
-* **Config Packs (Presets)**: Bundle system prompts, custom rules, and generation settings into shareable local packs.
 * **Full Backup (Library)**: Export and import your entire AIRP configuration as `.airp` files with intelligent merging.
 * **Searchable History**: Query past conversations or star them to pin them at the top of the drawer.
 * **Message Management**: Edit, copy, delete, or regenerate specific messages, featuring full Markdown support and syntax highlighting. By default, reasoning blocks are read-only during edit; raw full-block editing is opt-in via Developer Mode.
@@ -149,7 +144,7 @@ Interact with the message stream using gestures.
 * **Model Identification**: The specific model used to generate a response is displayed in a tag above the AI's message bubble.
 * **Zoom & Pan**: **Pinch-to-zoom** anywhere on the chat history to get a closer look at text or images. On desktop, a floating zoom button toggles zoom mode; on mobile, the reset button appears when zoomed.
 * **Scroll Navigation**: Scroll-to-top and scroll-to-bottom buttons for quick jumps in long conversations.
-* **Quick Toggles**: The input bar provides one-tap access to Web Search, Image Generation, Usage Stats, and Reasoning Mode without opening the settings drawer. The input placeholder dynamically updates ("Search web...", "Describe image...", "Add a caption...", "Message...").
+* **Quick Toggles**: The input bar provides one-tap access to Web Search, Usage Stats, and Reasoning Mode without opening the settings drawer. The input placeholder dynamically updates ("Search web...", "Add a caption...", "Message...").
 * **Typing Feedback**: During generation waits (with border/loading animations disabled), the AI bubble shows an inline animated three-dots typing state and removes it once output starts.
 * **Keyboard Send Shortcut**: Use **Ctrl+Enter / Cmd+Enter** to send messages from supported hardware keyboards.
 
@@ -178,7 +173,6 @@ In the Settings Drawer, **Generation Parameters** and **Web Search** are placed 
    * This is your "World Rulebook" or "Main Persona".
    * Type directly into the large text box in the settings drawer.
    * **Save/Load**: Use the dropdown menu to save your prompt to a local library for later use.
-   * **Export/Import Config Packs**: Export structured packs as JSON files containing system prompt, custom rules, generation settings, and optionally lorebook entries, regex scripts, and formatting templates. Import merges rules intelligently (dedup by label).
 
 2. **Advanced Tweaks (Character Cards)**:
    * Below the main prompt, expand the **"Advanced System Prompt"** section.
@@ -189,7 +183,7 @@ In the Settings Drawer, **Generation Parameters** and **Web Search** are placed 
    * **Stacking**: Active rules are automatically prepended to the Main System Prompt when sending the request to the AI.
 
 3. **Character Cards (V3 Base & V2 Compatibility)**:
-   * **Import**: Load character cards from **PNG files** (V1/V2 tEXt/iTXt compressed chunk parsing) or **JSON files**. The system intelligently decompiles the newer V3 standard wrapper schemas back into flat V2 properties preventing breakages, and retains full SillyTavern V2 parsing. Embedded `character_book` lorebooks and scoped regex scripts are auto-loaded.
+   * **Import**: Load character cards from **PNG files** (V1/V2 tEXt/iTXt compressed chunk parsing) or **JSON files**. The system intelligently decompiles the newer V3 standard wrapper schemas back into flat V2 properties preventing breakages, and retains full SillyTavern V2 parsing. Embedded `character_book` lorebooks are auto-loaded.
    * **In-App Editor**: Edit 11+ character fields — Name, Description, Personality, Scenario, First Message, Example Dialogue, System Prompt, Post-History Instructions, Creator Notes, Creator, and Character Version.
    * **Alternate Greetings**: Manage multiple first messages that can be cycled.
    * **Depth Prompt**: Configure text injected at a specific depth in the message history with role assignment (system/user/assistant).
@@ -237,10 +231,8 @@ Export and import your entire AIRP configuration using `.airp` files. Located in
   * Layout & Scaling
   * Visuals & Atmosphere
   * Character Card
-  * Lorebook / Regex / Formatting
-* **Smart Import**: Import preview with the same category toggles. Conversations are merged by ID, system prompts by title — no duplicates. Character card, lorebook, regex scripts, and formatting templates are restored from the imported file.
-
-> **Note:** Full Backup captures your complete app state as a single `.airp` file. For sharing individual configurations (prompts + settings), use **Config Packs** instead.
+  * World Lore
+* **Smart Import**: Import preview with the same category toggles. Conversations are merged by ID, system prompts by title — no duplicates. Character card and world lore are restored from the imported file.
 
 ---
 
@@ -286,133 +278,6 @@ Each entry has these configurable fields:
 
 * **From Character Cards**: When importing a SillyTavern PNG/JSON character card with an embedded `character_book`, the lorebook entries are automatically loaded as character-scoped entries.
 * **Standalone JSON**: Import/export lorebook JSON files directly from the lorebook section.
-
----
-
-## Regex Engine
-
-The Regex Engine is a post-processing pipeline that applies pattern-based text transformations. It supports three processing modes and can target different parts of the conversation independently. Located in the Settings Drawer under **Regex Scripts**.
-
-### Processing Modes
-
-* **Permanent**: Modifies the stored text. The original message is changed in your conversation history.
-* **Display-Only**: Transforms text at render time only. The stored message remains unchanged — useful for styling without altering history.
-* **Prompt-Only**: Modifies text only when sent to the AI. The displayed text remains unchanged — useful for behind-the-scenes prompt manipulation.
-
-### Targets
-
-Each regex script can independently target any combination of:
-* **User Input**: Applied to your messages.
-* **AI Output**: Applied to AI responses.
-* **World Info**: Applied to lorebook content.
-* **Reasoning**: Applied to AI thinking/reasoning blocks.
-
-### Managing Regex Scripts
-
-1. Open the **Settings Drawer** and expand **Regex Scripts**.
-2. Use the master **Enable Regex** toggle to turn the entire system on/off.
-3. Tap **+** to create a new script, or **Import** a JSON set.
-4. Each script has:
-   * **Find Pattern**: A regular expression pattern (supports case-insensitive, dot-all, multiline, unicode flags).
-   * **Replace With**: The replacement string (supports capture groups like `$1`, `$2`).
-   * **Trim Strings**: Optional strings to strip from matches.
-   * **Macro Mode**: None, Raw (macros in pattern), or Escaped (macros resolved before regex compilation).
-5. **Drag handles** let you reorder scripts — they execute in order from top to bottom.
-6. Use the **Test Panel** to preview regex matches and replacements on sample text before enabling.
-
-### Import/Export
-
-* Import SillyTavern regex scripts from JSON — AIRP automatically converts ST's numeric `placement[]` arrays and inverted `disabled` flag.
-* Export your regex scripts as JSON for sharing or backup.
-
----
-
-## Formatting Templates
-
-Formatting Templates apply styled wrapping to different types of text in AI responses — dialogue, thoughts, narration, and character names. Located in the Settings Drawer under **Formatting**.
-
-### How It Works
-
-1. Each formatting rule defines a regex **pattern** that matches specific text (e.g., text in quotes for dialogue, text in asterisks for actions).
-2. When a match is found, the matched text is wrapped using the rule's **template** string.
-3. The `{{match}}` placeholder in the template is replaced with the captured text.
-4. Macro tokens (`{{char}}`, `{{user}}`, etc.) are resolved in templates.
-5. Rules execute in order — output of one rule feeds into the next.
-
-### Setting Up Formatting
-
-1. Open the **Settings Drawer** and expand **Formatting**.
-2. Use the master **Enable Formatting** toggle.
-3. Tap **Load Defaults** to start with built-in rules for dialogue, thought, narration, and character name styling.
-4. Each rule shows:
-   * **Type icon**: Quote (dialogue), Brain (thought), Book (narration), Person (character name), Tune (custom).
-   * **Label**: Human-readable name.
-   * **Pattern**: The regex used to match text.
-   * **Template**: The replacement with `{{match}}` placeholder.
-5. Tap any rule to edit its pattern and template.
-6. **Import/Export** templates as JSON to share formatting setups.
-
-### Rule Types
-
-* **Dialogue**: Matches quoted text (e.g., `"Hello"`) and applies styling.
-* **Thought**: Matches italicized or asterisked text for internal monologue.
-* **Narration**: Matches plain narrative text outside dialogue/action.
-* **Character Name**: Matches character name occurrences for highlighting.
-* **Custom**: User-defined rules with arbitrary patterns and templates.
-
----
-
-## Macro System
-
-The Macro Engine is the shared foundation powering lorebooks, regex scripts, and formatting templates. Any text field that supports macros will resolve `{{token}}` placeholders at runtime.
-
-### Available Macros
-
-| Category | Macros | Description |
-|----------|--------|-------------|
-| **Identity** | `{{char}}`, `{{user}}` | Character and user names from the active card |
-| **Character** | `{{description}}`, `{{personality}}`, `{{scenario}}`, `{{persona}}`, `{{mesExamples}}` | Character card fields |
-| **Model** | `{{model}}` | Currently active model name |
-| **Time** | `{{time}}`, `{{date}}`, `{{weekday}}`, `{{isotime}}`, `{{isodate}}` | Current date/time values |
-| **Time Format** | `{{datetimeformat::FORMAT}}` | Custom date format (e.g., `{{datetimeformat::yyyy-MM-dd}}`) |
-| **Random** | `{{random::a::b}}` | Random integer between a and b |
-| **Dice** | `{{roll::NdM}}` | Roll N dice with M sides (e.g., `{{roll::2d6}}`) |
-| **Pick** | `{{pick::a::b::c}}` | Random selection from a list |
-| **Variables** | `{{getvar::name}}`, `{{setvar::name::value}}` | Get/set persistent variables |
-| **Math** | `{{incvar::name}}`, `{{decvar::name}}` | Increment/decrement numeric variables |
-| **Utility** | `{{newline}}`, `{{trim}}` | Insert newline or trim whitespace |
-| **Legacy** | `<USER>`, `<BOT>` | Aliases for `{{user}}` and `{{char}}` |
-
-Variables set with `{{setvar}}` persist across sessions via local storage.
-
----
-
-## Config Packs (Presets)
-
-Config Packs are shareable, targeted configuration bundles. Located in the Settings Drawer under **Presets**.
-
-### What's in a Config Pack
-
-A config pack can include any combination of:
-* **System Prompt**: Main persona/instructions.
-* **Custom Rules**: Toggle-able text directives that stack on the advanced prompt.
-* **Generation Settings**: Temperature, Top P, Top K, Max Tokens.
-* **Post-History Instructions**: Text injected after the conversation history.
-* **Lorebook Entries**: World-building entries bundled with the pack.
-* **Regex Scripts**: Text processing rules bundled with the pack.
-* **Formatting Template**: Output formatting rules bundled with the pack.
-
-### Using Config Packs
-
-1. Open the **Settings Drawer** and expand **Presets**.
-2. **Import**: Tap the import button to load a `.json` config pack.
-   * AIRP-native packs import with full fidelity.
-   * SillyTavern OpenAI presets are partially supported — temperature, top_p, top_k, max_tokens, main prompt, and post-history content are extracted. Incompatible ST-specific fields are discarded with a warning.
-3. **Apply**: Tap a pack to apply it. The system prompt, generation parameters, and any bundled lorebook/regex/formatting are loaded.
-4. **Export**: Save your current configuration as a pack for sharing or backup.
-5. **Delete**: Remove packs you no longer need.
-
-> **Note:** Config Packs target *specific settings* for sharing. For backing up your entire app state (conversations, visuals, model history, etc.), use **Full Backup** instead.
 
 ---
 
