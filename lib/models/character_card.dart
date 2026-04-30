@@ -1,5 +1,4 @@
 import 'lorebook_models.dart';
-import 'regex_models.dart';
 
 const String kCharacterCardV2Spec = 'chara_card_v2';
 const String kCharacterCardV3Schema = 'airp_character_card_v3';
@@ -36,9 +35,6 @@ class CharacterCard {
   int depthPromptDepth;
   LorebookRole depthPromptRole;
 
-  /// Regex scripts extracted from `extensions.regex_scripts`.
-  List<RegexScript> regexScripts;
-
   // Metadata for V2
   String spec;
   String specVersion;
@@ -66,15 +62,13 @@ class CharacterCard {
     this.depthPromptText = '',
     this.depthPromptDepth = 4,
     this.depthPromptRole = LorebookRole.system,
-    List<RegexScript>? regexScripts,
     this.spec = 'chara_card_v2',
     this.specVersion = '2.0',
     this.hasIncompatibleFields = false,
     this.compatibilityWarnings = const [],
   }) : alternateGreetings = alternateGreetings ?? [],
        extensions = extensions ?? {},
-       tags = tags ?? [],
-       regexScripts = regexScripts ?? [];
+       tags = tags ?? [];
 
   /// Creates a CharacterCard from a JSON map (SillyTavern V1/V2 compatible).
   factory CharacterCard.fromJson(Map<String, dynamic> json) {
@@ -175,14 +169,6 @@ class CharacterCard {
       );
     }
 
-    // --- Regex scripts from extensions ---
-    List<RegexScript> regexScripts = [];
-    if (ext['regex_scripts'] is List) {
-      regexScripts = (ext['regex_scripts'] as List)
-          .map((e) => RegexScript.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
-    }
-
     // Spec metadata
     final spec = content['spec'] as String? ?? kCharacterCardV2Spec;
     final specVersion = content['spec_version'] as String? ?? '2.0';
@@ -206,7 +192,6 @@ class CharacterCard {
       depthPromptText: depthPromptText,
       depthPromptDepth: depthPromptDepth,
       depthPromptRole: depthPromptRole,
-      regexScripts: regexScripts,
       spec: spec,
       specVersion: specVersion,
       hasIncompatibleFields: incompatible,
@@ -216,7 +201,7 @@ class CharacterCard {
 
   /// Converts the card to a JSON map.
   Map<String, dynamic> toJson() {
-    // Build extensions with depth_prompt and regex_scripts included.
+    // Build extensions with depth_prompt included.
     final ext = Map<String, dynamic>.from(extensions);
     if (depthPromptText.isNotEmpty) {
       ext['depth_prompt'] = {
@@ -224,9 +209,6 @@ class CharacterCard {
         'depth': depthPromptDepth,
         'role': depthPromptRole.name,
       };
-    }
-    if (regexScripts.isNotEmpty) {
-      ext['regex_scripts'] = regexScripts.map((r) => r.toJson()).toList();
     }
 
     final data = <String, dynamic>{
@@ -292,7 +274,6 @@ class CharacterCard {
     String? depthPromptText,
     int? depthPromptDepth,
     LorebookRole? depthPromptRole,
-    List<RegexScript>? regexScripts,
   }) {
     return CharacterCard(
       name: name ?? this.name,
@@ -315,8 +296,6 @@ class CharacterCard {
       depthPromptText: depthPromptText ?? this.depthPromptText,
       depthPromptDepth: depthPromptDepth ?? this.depthPromptDepth,
       depthPromptRole: depthPromptRole ?? this.depthPromptRole,
-      regexScripts:
-          regexScripts ?? this.regexScripts.map((r) => r.copyWith()).toList(),
       spec: spec,
       specVersion: specVersion,
       hasIncompatibleFields: hasIncompatibleFields,

@@ -1,6 +1,5 @@
 import '../models/character_card.dart';
 import '../models/lorebook_models.dart';
-import '../models/regex_models.dart';
 import '../services/lorebook_service.dart';
 
 /// Static helper that encapsulates prompt pipeline operations used by
@@ -229,21 +228,5 @@ class PromptPipelineService {
     }
 
     return entries;
-  }
-
-  // -------------------------------------------------------------------------
-  // Active script combination
-  // -------------------------------------------------------------------------
-
-  /// Returns all currently active regex scripts by combining global and
-  /// character-scoped scripts.
-  static List<RegexScript> combineActiveScripts({
-    required bool enableRegex,
-    required bool enableCharacterCard,
-    required List<RegexScript> globalScripts,
-    required List<RegexScript> characterScripts,
-  }) {
-    if (!enableRegex) return [];
-    return [...globalScripts, if (enableCharacterCard) ...characterScripts];
   }
 }

@@ -7,14 +7,10 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_models.dart';
 import '../models/character_card.dart';
-import '../models/formatting_models.dart';
 import '../models/lorebook_models.dart';
-import '../models/regex_models.dart';
 import '../services/chat_api_service.dart';
 import '../services/lorebook_service.dart';
-import '../services/macro_service.dart';
 import '../services/prompt_pipeline_service.dart';
-import '../services/regex_service.dart';
 import '../services/reasoning_utils.dart';
 import '../services/global_settings_service.dart';
 import '../services/secure_storage_service.dart';
@@ -392,10 +388,8 @@ class ChatProvider extends ChangeNotifier {
   bool _enableRawReasoningEdit = false;
   bool _rawReasoningEditWarningAcknowledged = false;
 
-  // --- Lorebook / Regex / Formatting state ---
+  // --- World Lore state ---
   Lorebook _globalLorebook = Lorebook(name: 'Global');
-  List<RegexScript> _globalRegexScripts = [];
-  FormattingTemplate? _formattingTemplate;
   LorebookEvalResult _lastLorebookEvalResult = const LorebookEvalResult(
     byPosition: {},
     estimatedTokens: 0,
@@ -403,8 +397,6 @@ class ChatProvider extends ChangeNotifier {
   List<LorebookEntry> _lastRecognizedLoreEntries = const [];
   Color _loreRecognizerGlowColor = Colors.orangeAccent;
   bool _enableLorebook = true;
-  bool _enableRegex = true;
-  bool _enableFormatting = false;
 
   double get temperature => _temperature;
   double get topP => _topP;
@@ -463,33 +455,17 @@ class ChatProvider extends ChangeNotifier {
   bool get rawReasoningEditWarningAcknowledged =>
       _rawReasoningEditWarningAcknowledged;
 
-  // --- Lorebook / Regex / Formatting getters ---
+  // --- World Lore getters ---
   Lorebook get globalLorebook => _globalLorebook;
-  List<RegexScript> get globalRegexScripts => _globalRegexScripts;
-  FormattingTemplate? get formattingTemplate => _formattingTemplate;
   LorebookEvalResult get lastLorebookEvalResult => _lastLorebookEvalResult;
   List<LorebookEntry> get lastRecognizedLoreEntries =>
       _lastRecognizedLoreEntries;
   Color get loreRecognizerGlowColor => _loreRecognizerGlowColor;
   bool get enableLorebook => _enableLorebook;
-  bool get enableRegex => _enableRegex;
-  bool get enableFormatting => _enableFormatting;
 
   /// Returns the character-scoped lorebook (from the active character card),
   /// or `null` if no card is loaded or the card has no embedded lorebook.
   Lorebook? get characterLorebook => _characterCard.characterBook;
-
-  /// Returns the character-scoped regex scripts (from the active character card).
-  List<RegexScript> get characterRegexScripts => _characterCard.regexScripts;
-
-  /// All currently active regex scripts (global + character-scoped).
-  List<RegexScript> get activeRegexScripts {
-    if (!_enableRegex) return [];
-    return [
-      ..._globalRegexScripts,
-      if (_enableCharacterCard) ..._characterCard.regexScripts,
-    ];
-  }
 
   List<ChatMessage> _messages = [];
   List<ChatSessionData> _savedSessions = [];
@@ -876,32 +852,8 @@ class ChatProvider extends ChangeNotifier {
     _saveSillyTavernState();
   }
 
-  void setGlobalRegexScripts(List<RegexScript> scripts) {
-    _globalRegexScripts = scripts;
-    notifyListeners();
-    _saveSillyTavernState();
-  }
-
-  void setFormattingTemplate(FormattingTemplate? template) {
-    _formattingTemplate = template;
-    notifyListeners();
-    _saveSillyTavernState();
-  }
-
   void setEnableLorebook(bool enable) {
     _enableLorebook = enable;
-    notifyListeners();
-    _saveSillyTavernState();
-  }
-
-  void setEnableRegex(bool enable) {
-    _enableRegex = enable;
-    notifyListeners();
-    _saveSillyTavernState();
-  }
-
-  void setEnableFormatting(bool enable) {
-    _enableFormatting = enable;
     notifyListeners();
     _saveSillyTavernState();
   }
@@ -920,31 +872,17 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setBool('airp_enable_character_card', _enableCharacterCard);
   }
 
-  /// Persists lorebook, regex, formatting state to SharedPreferences.
+  /// Persists SillyTavern state (World Lore) to SharedPreferences.
   Future<void> _saveSillyTavernState() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'airp_global_lorebook',
       jsonEncode(_globalLorebook.toJson()),
     );
-    await prefs.setString(
-      'airp_global_regex_scripts',
-      jsonEncode(_globalRegexScripts.map((s) => s.toJson()).toList()),
-    );
-    if (_formattingTemplate != null) {
-      await prefs.setString(
-        'airp_formatting_template',
-        jsonEncode(_formattingTemplate!.toJson()),
-      );
-    } else {
-      await prefs.remove('airp_formatting_template');
-    }
     await prefs.setBool('airp_enable_lorebook', _enableLorebook);
-    await prefs.setBool('airp_enable_regex', _enableRegex);
-    await prefs.setBool('airp_enable_formatting', _enableFormatting);
   }
 
-  /// Loads lorebook, regex, formatting state from SharedPreferences.
+  /// Loads SillyTavern state (World Lore) from SharedPreferences.
   Future<void> _loadSillyTavernState() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -957,32 +895,7 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    final regexData = prefs.getString('airp_global_regex_scripts');
-    if (regexData != null) {
-      try {
-        final List<dynamic> jsonList = jsonDecode(regexData);
-        _globalRegexScripts = jsonList
-            .map((j) => RegexScript.fromJson(Map<String, dynamic>.from(j)))
-            .toList();
-      } catch (e) {
-        debugPrint('Error loading global regex scripts: $e');
-      }
-    }
-
-    final formattingData = prefs.getString('airp_formatting_template');
-    if (formattingData != null) {
-      try {
-        _formattingTemplate = FormattingTemplate.fromJson(
-          jsonDecode(formattingData),
-        );
-      } catch (e) {
-        debugPrint('Error loading formatting template: $e');
-      }
-    }
-
     _enableLorebook = prefs.getBool('airp_enable_lorebook') ?? true;
-    _enableRegex = prefs.getBool('airp_enable_regex') ?? true;
-    _enableFormatting = prefs.getBool('airp_enable_formatting') ?? false;
   }
 
   void setCharacterCard(CharacterCard card) {
@@ -1547,28 +1460,6 @@ class ChatProvider extends ChangeNotifier {
     return WebSearchService.formatResultsAsContextBlock(results, query: query);
   }
 
-  // -------------------------------------------------------------------------
-  // Lorebook / Regex / Formatting helpers
-  // -------------------------------------------------------------------------
-
-  /// Builds a [MacroContext] from the current provider state.
-  MacroContext _buildMacroContext() {
-    return MacroContext(
-      char: _characterCard.name,
-      user: 'User',
-      description: _characterCard.description,
-      personality: _characterCard.personality,
-      scenario: _characterCard.scenario,
-      mesExamples: _characterCard.mesExample,
-      model: _selectedModel,
-      lastMessageId: _messages.length,
-      lastMessage: _messages.isNotEmpty ? _messages.last.text : '',
-    );
-  }
-
-  /// Public accessor for the current macro context (used by display widgets).
-  MacroContext get macroContext => _buildMacroContext();
-
   String getEditableMessageText(ChatMessage message) {
     if (message.isUser) return message.text;
     if (_enableDeveloperMode && _enableRawReasoningEdit) return message.text;
@@ -1996,40 +1887,14 @@ class ChatProvider extends ChangeNotifier {
 
     _scheduleAutoSave();
 
-    // --- Pre-send: apply user input regex ---
-    final macroCtx = _buildMacroContext();
-    final scripts = activeRegexScripts;
-    if (scripts.isNotEmpty) {
-      final permanentText = await RegexService.applyPermanent(
-        text: messageText,
-        scripts: scripts,
-        target: RegexTarget.userInput,
-        macroContext: macroCtx,
-      );
-      if (permanentText != messageText) {
-        messageText = permanentText;
-        _messages.last = _messages.last.copyWith(text: permanentText);
-        notifyListeners();
-      }
-    }
-
-    // Build prompt-only version of user text (used when sending to AI).
-    String sentUserText = messageText;
-    if (scripts.isNotEmpty) {
-      sentUserText = await RegexService.applyPromptOnly(
-        text: messageText,
-        scripts: scripts,
-        target: RegexTarget.userInput,
-        macroContext: macroCtx,
-      );
-    }
-
     // --- Input-based lore recognition (replaces history-based lore injection) ---
-    final recognizedLoreEntries = recognizeLoreEntriesFromInput(sentUserText);
+    final recognizedLoreEntries = recognizeLoreEntriesFromInput(messageText);
     _lastRecognizedLoreEntries = recognizedLoreEntries;
     const lorebookResult = LorebookEvalResult(byPosition: {}, estimatedTokens: 0);
     _lastLorebookEvalResult = lorebookResult;
     final depthEntries = _collectDepthEntries(lorebookResult);
+
+    String sentUserText = messageText;
 
     if (_enableGrounding &&
         _currentProvider == AiProvider.gemini &&
@@ -2448,19 +2313,6 @@ class ChatProvider extends ChangeNotifier {
         },
         onDone: () async {
           if (!_cancelledSessions.contains(streamSessionId)) {
-            // --- Post-stream: apply permanent AI output regex ---
-            if (scripts.isNotEmpty && fullText.isNotEmpty) {
-              final regexedOutput = await RegexService.applyPermanent(
-                text: fullText,
-                scripts: scripts,
-                target: RegexTarget.aiOutput,
-                macroContext: macroCtx,
-              );
-              if (regexedOutput != fullText) {
-                fullText = regexedOutput;
-              }
-            }
-
             final split = ReasoningUtils.split(fullText);
             var recoveredFromReasoning = false;
             if (split.reasoning.isNotEmpty && split.content.trim().isEmpty) {
@@ -3560,13 +3412,7 @@ class ChatProvider extends ChangeNotifier {
       'enableCharacterCard': _enableCharacterCard,
       'sillyTavernState': {
         'globalLorebook': _globalLorebook.toJson(),
-        'globalRegexScripts': _globalRegexScripts
-            .map((s) => s.toJson())
-            .toList(),
-        'formattingTemplate': _formattingTemplate?.toJson(),
         'enableLorebook': _enableLorebook,
-        'enableRegex': _enableRegex,
-        'enableFormatting': _enableFormatting,
       },
     };
   }
@@ -3709,7 +3555,7 @@ class ChatProvider extends ChangeNotifier {
       _enableCharacterCard = data['enableCharacterCard'] as bool;
     }
 
-    // SillyTavern state (lorebook, regex, formatting)
+    // SillyTavern state (World Lore)
     if (data['sillyTavernState'] != null) {
       try {
         final st = Map<String, dynamic>.from(data['sillyTavernState']);
@@ -3718,21 +3564,7 @@ class ChatProvider extends ChangeNotifier {
             Map<String, dynamic>.from(st['globalLorebook']),
           );
         }
-        if (st['globalRegexScripts'] != null) {
-          _globalRegexScripts = (st['globalRegexScripts'] as List)
-              .map((j) => RegexScript.fromJson(Map<String, dynamic>.from(j)))
-              .toList();
-        }
-        if (st['formattingTemplate'] != null) {
-          _formattingTemplate = FormattingTemplate.fromJson(
-            Map<String, dynamic>.from(st['formattingTemplate']),
-          );
-        } else {
-          _formattingTemplate = null;
-        }
         _enableLorebook = st['enableLorebook'] as bool? ?? true;
-        _enableRegex = st['enableRegex'] as bool? ?? true;
-        _enableFormatting = st['enableFormatting'] as bool? ?? false;
         _saveSillyTavernState();
       } catch (e) {
         debugPrint('Error importing SillyTavern state: $e');

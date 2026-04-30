@@ -8,12 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:markdown/markdown.dart' as md;
 import '../models/chat_models.dart';
-import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../services/file_io_helper.dart';
-import '../services/formatting_service.dart';
-import '../services/regex_service.dart';
 import '../services/reasoning_utils.dart';
 import '../utils/constants.dart';
 
@@ -366,45 +363,6 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  /// Applies display-only regex scripts and formatting templates to [text]
-  /// for rendering purposes only. Returns [text] unchanged if no
-  /// transformations are active.
-  Future<String> _applyDisplayTransforms(
-    BuildContext context,
-    String text,
-    bool isUser,
-  ) async {
-    if (text.isEmpty) return text;
-
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final scripts = chatProvider.activeRegexScripts;
-    final macroCtx = chatProvider.macroContext;
-    String result = text;
-
-    // Display-only regex
-    if (scripts.isNotEmpty) {
-      result = await RegexService.applyDisplayOnly(
-        text: result,
-        scripts: scripts,
-        target: isUser ? RegexTarget.userInput : RegexTarget.aiOutput,
-        macroContext: macroCtx,
-      );
-    }
-
-    // Formatting template
-    if (chatProvider.enableFormatting &&
-        chatProvider.formattingTemplate != null &&
-        !isUser) {
-      result = await FormattingService.applyTemplate(
-        result,
-        template: chatProvider.formattingTemplate,
-        macroContext: macroCtx,
-      );
-    }
-
-    return result;
-  }
-
   Widget _buildBubble(
     BuildContext context,
     String text,
@@ -540,88 +498,91 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
         if (hasVisibleText)
-          FutureBuilder<String>(
-            future: _applyDisplayTransforms(context, visibleText, msg.isUser),
-            builder: (context, snapshot) {
-              final displayText = snapshot.data ?? visibleText;
-              return MarkdownBody(
-                data: displayText,
-                builders: {
-                  'code': CodeElementBuilder(context, codeStyle, themeProvider),
-                },
-                styleSheet: MarkdownStyleSheet(
-                  codeblockPadding: EdgeInsets.zero,
-                  codeblockDecoration: const BoxDecoration(
-                    color: Colors.transparent,
-                  ),
-                  p: TextStyle(
-                    color: themeProvider.markdownParagraphColor,
-                    fontSize: scaleProvider.chatFontSize,
-                    shadows: useBloom
-                        ? [
-                            Shadow(
-                              color: textColor.withValues(alpha: 0.9),
-                              blurRadius: 15,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  a: TextStyle(
-                    color: themeProvider.markdownLinkColor,
-                    fontSize: scaleProvider.chatFontSize,
-                    decoration: TextDecoration.underline,
-                    shadows: useBloom
-                        ? [
-                            const Shadow(
-                              color: Colors.blueAccent,
-                              blurRadius: 8,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  code: codeStyle,
-                  h1: TextStyle(
-                    color: themeProvider.markdownH1Color,
-                    fontSize: scaleProvider.chatFontSize + 8,
-                    fontWeight: FontWeight.bold,
-                    shadows: useBloom
-                        ? [Shadow(color: textColor, blurRadius: 10)]
-                        : [],
-                  ),
-                  h2: TextStyle(
-                    color: themeProvider.markdownH2Color,
-                    fontSize: scaleProvider.chatFontSize + 6,
-                    fontWeight: FontWeight.bold,
-                    shadows: useBloom
-                        ? [Shadow(color: textColor, blurRadius: 10)]
-                        : [],
-                  ),
-                  h3: TextStyle(
-                    color: themeProvider.markdownH3Color,
-                    fontSize: scaleProvider.chatFontSize + 4,
-                    fontWeight: FontWeight.bold,
-                    shadows: useBloom
-                        ? [Shadow(color: textColor, blurRadius: 10)]
-                        : [],
-                  ),
-                  em: TextStyle(
-                    color: themeProvider.markdownItalicColor,
-                    fontSize: scaleProvider.chatFontSize,
-                    fontStyle: FontStyle.italic,
-                  ),
-                  strong: TextStyle(
-                    color: themeProvider.markdownBoldColor,
-                    fontSize: scaleProvider.chatFontSize,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  del: TextStyle(
-                    color: themeProvider.markdownStrikeColor,
-                    fontSize: scaleProvider.chatFontSize,
-                    decoration: TextDecoration.lineThrough,
+          MarkdownBody(
+            data: visibleText,
+            builders: {
+              'code': CodeElementBuilder(context, codeStyle, themeProvider),
+            },
+            styleSheet: MarkdownStyleSheet(
+              codeblockPadding: EdgeInsets.zero,
+              codeblockDecoration: const BoxDecoration(
+                color: Colors.transparent,
+              ),
+              p: TextStyle(
+                color: themeProvider.markdownParagraphColor,
+                fontSize: scaleProvider.chatFontSize,
+                shadows: useBloom
+                    ? [
+                        Shadow(
+                          color: textColor.withValues(alpha: 0.9),
+                          blurRadius: 15,
+                        ),
+                      ]
+                    : [],
+              ),
+              a: TextStyle(
+                color: themeProvider.markdownLinkColor,
+                fontSize: scaleProvider.chatFontSize,
+                decoration: TextDecoration.underline,
+                shadows: useBloom
+                    ? [
+                        const Shadow(
+                          color: Colors.blueAccent,
+                          blurRadius: 8,
+                        ),
+                      ]
+                    : [],
+              ),
+              code: codeStyle,
+              h1: TextStyle(
+                color: themeProvider.markdownH1Color,
+                fontSize: scaleProvider.chatFontSize + 8,
+                fontWeight: FontWeight.bold,
+                shadows: useBloom
+                    ? [Shadow(color: textColor, blurRadius: 10)]
+                    : [],
+              ),
+              h2: TextStyle(
+                color: themeProvider.markdownH2Color,
+                fontSize: scaleProvider.chatFontSize + 6,
+                fontWeight: FontWeight.bold,
+                shadows: useBloom
+                    ? [Shadow(color: textColor, blurRadius: 10)]
+                    : [],
+              ),
+              h3: TextStyle(
+                color: themeProvider.markdownH3Color,
+                fontSize: scaleProvider.chatFontSize + 4,
+                fontWeight: FontWeight.bold,
+                shadows: useBloom
+                    ? [Shadow(color: textColor, blurRadius: 10)]
+                    : [],
+              ),
+              em: TextStyle(
+                color: themeProvider.markdownItalicColor,
+                fontStyle: FontStyle.italic,
+              ),
+              strong: TextStyle(
+                color: themeProvider.markdownBoldColor,
+                fontWeight: FontWeight.bold,
+              ),
+              del: TextStyle(color: themeProvider.markdownStrikeColor),
+              listBullet: TextStyle(color: themeProvider.markdownListColor),
+              blockquote: TextStyle(
+                color: themeProvider.markdownBlockquoteColor,
+                fontStyle: FontStyle.italic,
+              ),
+              blockquoteDecoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: themeProvider.markdownBlockquoteColor.withValues(
+                      alpha: 0.5,
+                    ),
+                    width: 4,
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
 
         if (msg.usage != null && !msg.isUser)

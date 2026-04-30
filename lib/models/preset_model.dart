@@ -1,10 +1,8 @@
 import 'package:airp/models/lorebook_models.dart';
-import 'package:airp/models/regex_models.dart';
-import 'package:airp/models/formatting_models.dart';
 
 /// Represents a system prompt preset, including main prompt,
 /// advanced prompt override, custom rules, and optional v0.5.12+
-/// subsystem bundles (lorebook entries, regex scripts, formatting template).
+/// subsystem bundles (lorebook entries).
 class SystemPreset {
   String name;
   String description;
@@ -20,12 +18,6 @@ class SystemPreset {
 
   /// Optional lorebook entries bundled with this preset.
   List<LorebookEntry> lorebookEntries;
-
-  /// Optional regex scripts bundled with this preset.
-  List<RegexScript> regexScripts;
-
-  /// Optional formatting template bundled with this preset.
-  FormattingTemplate? formattingTemplate;
 
   /// Post-history instructions (injected after the chat history).
   String postHistoryInstructions;
@@ -44,12 +36,9 @@ class SystemPreset {
     this.generationSettings = const {},
     this.version = '1.0',
     List<LorebookEntry>? lorebookEntries,
-    List<RegexScript>? regexScripts,
-    this.formattingTemplate,
     this.postHistoryInstructions = '',
     this.sourceFormat = 'airp',
-  }) : lorebookEntries = lorebookEntries ?? [],
-       regexScripts = regexScripts ?? [];
+  }) : lorebookEntries = lorebookEntries ?? [];
 
   factory SystemPreset.fromJson(Map<String, dynamic> json) {
     // --- Lorebook entries ---
@@ -58,22 +47,6 @@ class SystemPreset {
       parsedLorebook = (json['lorebook_entries'] as List)
           .map((e) => LorebookEntry.fromJson(Map<String, dynamic>.from(e)))
           .toList();
-    }
-
-    // --- Regex scripts ---
-    List<RegexScript> parsedRegex = [];
-    if (json['regex_scripts'] is List) {
-      parsedRegex = (json['regex_scripts'] as List)
-          .map((e) => RegexScript.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
-    }
-
-    // --- Formatting template ---
-    FormattingTemplate? parsedFormatting;
-    if (json['formatting_template'] is Map) {
-      parsedFormatting = FormattingTemplate.fromJson(
-        Map<String, dynamic>.from(json['formatting_template']),
-      );
     }
 
     return SystemPreset(
@@ -90,8 +63,6 @@ class SystemPreset {
           (json['generation_settings'] as Map<String, dynamic>?) ?? {},
       version: json['version'] as String? ?? '1.0',
       lorebookEntries: parsedLorebook,
-      regexScripts: parsedRegex,
-      formattingTemplate: parsedFormatting,
       postHistoryInstructions:
           json['post_history_instructions'] as String? ?? '',
       sourceFormat: json['source_format'] as String? ?? 'airp',
@@ -108,9 +79,6 @@ class SystemPreset {
       'generation_settings': generationSettings,
       'version': version,
       'lorebook_entries': lorebookEntries.map((e) => e.toJson()).toList(),
-      'regex_scripts': regexScripts.map((e) => e.toJson()).toList(),
-      if (formattingTemplate != null)
-        'formatting_template': formattingTemplate!.toJson(),
       'post_history_instructions': postHistoryInstructions,
       'source_format': sourceFormat,
     };
@@ -126,8 +94,6 @@ class SystemPreset {
     Map<String, dynamic>? generationSettings,
     String? version,
     List<LorebookEntry>? lorebookEntries,
-    List<RegexScript>? regexScripts,
-    FormattingTemplate? formattingTemplate,
     String? postHistoryInstructions,
     String? sourceFormat,
   }) {
@@ -146,10 +112,6 @@ class SystemPreset {
       lorebookEntries:
           lorebookEntries ??
           this.lorebookEntries.map((e) => e.copyWith()).toList(),
-      regexScripts:
-          regexScripts ?? this.regexScripts.map((e) => e.copyWith()).toList(),
-      formattingTemplate:
-          formattingTemplate ?? this.formattingTemplate?.copyWith(),
       postHistoryInstructions:
           postHistoryInstructions ?? this.postHistoryInstructions,
       sourceFormat: sourceFormat ?? this.sourceFormat,

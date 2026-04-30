@@ -2,8 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:airp/models/character_card.dart';
 import 'package:airp/models/lorebook_models.dart';
-import 'package:airp/models/regex_models.dart';
-import 'package:airp/models/formatting_models.dart';
 import 'package:airp/services/lorebook_service.dart';
 import 'package:airp/services/prompt_pipeline_service.dart';
 
@@ -585,58 +583,6 @@ void main() {
   });
 
   // ===========================================================================
-  // combineActiveScripts
-  // ===========================================================================
-  group('combineActiveScripts', () {
-    test('returns empty when regex disabled', () {
-      final result = PromptPipelineService.combineActiveScripts(
-        enableRegex: false,
-        enableCharacterCard: true,
-        globalScripts: [RegexScript(id: 1, scriptName: 'Global')],
-        characterScripts: [RegexScript(id: 2, scriptName: 'Character')],
-      );
-      expect(result, isEmpty);
-    });
-
-    test('returns only global scripts when card disabled', () {
-      final result = PromptPipelineService.combineActiveScripts(
-        enableRegex: true,
-        enableCharacterCard: false,
-        globalScripts: [RegexScript(id: 1, scriptName: 'Global')],
-        characterScripts: [RegexScript(id: 2, scriptName: 'Character')],
-      );
-      expect(result.length, 1);
-      expect(result[0].scriptName, 'Global');
-    });
-
-    test('combines global and character scripts', () {
-      final result = PromptPipelineService.combineActiveScripts(
-        enableRegex: true,
-        enableCharacterCard: true,
-        globalScripts: [
-          RegexScript(id: 1, scriptName: 'A'),
-          RegexScript(id: 2, scriptName: 'B'),
-        ],
-        characterScripts: [
-          RegexScript(id: 3, scriptName: 'C'),
-        ],
-      );
-      expect(result.length, 3);
-      expect(result.map((s) => s.scriptName).toList(), ['A', 'B', 'C']);
-    });
-
-    test('handles empty script lists', () {
-      final result = PromptPipelineService.combineActiveScripts(
-        enableRegex: true,
-        enableCharacterCard: true,
-        globalScripts: [],
-        characterScripts: [],
-      );
-      expect(result, isEmpty);
-    });
-  });
-
-  // ===========================================================================
   // Integration: buildSystemInstruction with evaluated lorebook
   // ===========================================================================
   group('Full pipeline integration', () {
@@ -781,55 +727,6 @@ void main() {
       expect(restored.entries.length, 1);
       expect(restored.entries[0].keys, ['key1', 'key2']);
     });
-
-    test('RegexScript list round-trips through JSON', () {
-      final scripts = [
-        RegexScript(
-          id: 1,
-          scriptName: 'Filter',
-          findRegex: r'\bfoo\b',
-          replaceString: 'bar',
-          affectsAiOutput: true,
-          displayOnly: true,
-        ),
-        RegexScript(
-          id: 2,
-          scriptName: 'Clean',
-          findRegex: r'\s+',
-          replaceString: ' ',
-        ),
-      ];
-      final jsonList = scripts.map((s) => s.toJson()).toList();
-      final restored = jsonList
-          .map((j) => RegexScript.fromJson(Map<String, dynamic>.from(j)))
-          .toList();
-      expect(restored.length, 2);
-      expect(restored[0].scriptName, 'Filter');
-      expect(restored[0].displayOnly, true);
-      expect(restored[1].scriptName, 'Clean');
-    });
-
-    test('FormattingTemplate round-trips through JSON', () {
-      final template = FormattingTemplate(
-        name: 'RP Format',
-        enabled: true,
-        rules: [
-          FormattingRule(
-            id: 1,
-            label: 'Dialogue',
-            type: FormattingRuleType.dialogue,
-            pattern: r'"([^"]*)"',
-            template: '"{{match}}"',
-          ),
-        ],
-      );
-      final json = template.toJson();
-      final restored = FormattingTemplate.fromJson(json);
-      expect(restored.name, 'RP Format');
-      expect(restored.enabled, true);
-      expect(restored.rules.length, 1);
-      expect(restored.rules[0].label, 'Dialogue');
-    });
   });
 
   // ===========================================================================
@@ -860,48 +757,7 @@ void main() {
       expect(card.characterBook!.entries.length, 1);
     });
 
-    test('character card with regex scripts is accessible', () {
-      final card = CharacterCard(
-        name: 'Scholar',
-        description: 'A wise scholar',
-        regexScripts: [
-          RegexScript(
-            id: 1,
-            scriptName: 'Censor',
-            findRegex: r'secret',
-            replaceString: '[REDACTED]',
-            affectsAiOutput: true,
-            displayOnly: true,
-          ),
-        ],
-      );
-
-      expect(card.regexScripts.length, 1);
-      expect(card.regexScripts[0].scriptName, 'Censor');
-    });
-
-    test('combine scripts includes character card scripts when enabled', () {
-      final scripts = PromptPipelineService.combineActiveScripts(
-        enableRegex: true,
-        enableCharacterCard: true,
-        globalScripts: [RegexScript(id: 1, scriptName: 'Global')],
-        characterScripts: [RegexScript(id: 2, scriptName: 'CharScript')],
-      );
-      expect(scripts.length, 2);
-    });
-
-    test('combine scripts excludes character scripts when card disabled', () {
-      final scripts = PromptPipelineService.combineActiveScripts(
-        enableRegex: true,
-        enableCharacterCard: false,
-        globalScripts: [RegexScript(id: 1, scriptName: 'Global')],
-        characterScripts: [RegexScript(id: 2, scriptName: 'CharScript')],
-      );
-      expect(scripts.length, 1);
-      expect(scripts[0].scriptName, 'Global');
-    });
-
-    test('character card from JSON preserves characterBook and regexScripts',
+    test('character card from JSON preserves characterBook',
         () {
       final json = {
         'data': {
@@ -920,16 +776,6 @@ void main() {
               },
             ],
           },
-          'extensions': {
-            'regex_scripts': [
-              {
-                'id': 1,
-                'scriptName': 'ElfFilter',
-                'findRegex': r'human',
-                'replaceString': 'mortal',
-              },
-            ],
-          },
         },
       };
 
@@ -937,8 +783,6 @@ void main() {
       expect(card.name, 'Elf');
       expect(card.characterBook, isNotNull);
       expect(card.characterBook!.entries.length, 1);
-      expect(card.regexScripts.length, 1);
-      expect(card.regexScripts[0].scriptName, 'ElfFilter');
     });
   });
 

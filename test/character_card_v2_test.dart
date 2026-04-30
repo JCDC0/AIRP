@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:airp/models/character_card.dart';
 import 'package:airp/models/lorebook_models.dart';
-import 'package:airp/models/regex_models.dart';
 
 void main() {
   group('CharacterCard V2 fields', () {
@@ -13,7 +12,6 @@ void main() {
       expect(card.depthPromptText, '');
       expect(card.depthPromptDepth, 4);
       expect(card.depthPromptRole, LorebookRole.system);
-      expect(card.regexScripts, isEmpty);
     });
 
     test('fromJson parses creator_notes and tags', () {
@@ -120,39 +118,6 @@ void main() {
       expect(card.depthPromptRole, LorebookRole.system);
     });
 
-    test('fromJson parses extensions.regex_scripts', () {
-      final json = {
-        'data': {
-          'name': 'Regex Char',
-          'description': '',
-          'personality': '',
-          'scenario': '',
-          'first_mes': '',
-          'mes_example': '',
-          'creator': '',
-          'character_version': '',
-          'system_prompt': '',
-          'post_history_instructions': '',
-          'extensions': {
-            'regex_scripts': [
-              {
-                'id': 1,
-                'scriptName': 'Remove Brackets',
-                'findRegex': r'\[.*?\]',
-                'replaceString': '',
-                'placement': [1],
-              }
-            ]
-          },
-        }
-      };
-
-      final card = CharacterCard.fromJson(json);
-      expect(card.regexScripts.length, 1);
-      expect(card.regexScripts[0].scriptName, 'Remove Brackets');
-      expect(card.regexScripts[0].affectsAiOutput, true);
-    });
-
     test('toJson includes new V2 fields', () {
       final card = CharacterCard(
         name: 'Export Test',
@@ -165,9 +130,6 @@ void main() {
         depthPromptText: 'Stay in character.',
         depthPromptDepth: 3,
         depthPromptRole: LorebookRole.user,
-        regexScripts: [
-          RegexScript(id: 1, scriptName: 'Test Regex'),
-        ],
       );
 
       final json = card.toJson();
@@ -185,16 +147,14 @@ void main() {
       expect(ext['depth_prompt']['prompt'], 'Stay in character.');
       expect(ext['depth_prompt']['depth'], 3);
       expect(ext['depth_prompt']['role'], 'user');
-      expect((ext['regex_scripts'] as List).length, 1);
     });
 
-    test('toJson omits empty depth_prompt and regex_scripts', () {
+    test('toJson omits empty depth_prompt', () {
       final card = CharacterCard(name: 'Minimal');
       final json = card.toJson();
       final ext = (json['data'] as Map<String, dynamic>)['extensions']
           as Map<String, dynamic>;
       expect(ext.containsKey('depth_prompt'), false);
-      expect(ext.containsKey('regex_scripts'), false);
     });
 
     test('full V2 round-trip preserves all fields', () {
@@ -228,14 +188,6 @@ void main() {
         depthPromptText: 'Always speak formally.',
         depthPromptDepth: 1,
         depthPromptRole: LorebookRole.system,
-        regexScripts: [
-          RegexScript(
-            id: 1,
-            scriptName: 'Formalize',
-            findRegex: r'gonna',
-            replaceString: 'going to',
-          ),
-        ],
         extensions: {'custom': 'value'},
       );
 
@@ -268,10 +220,6 @@ void main() {
       expect(restored.depthPromptDepth, 1);
       expect(restored.depthPromptRole, LorebookRole.system);
 
-      // Regex scripts
-      expect(restored.regexScripts.length, 1);
-      expect(restored.regexScripts[0].scriptName, 'Formalize');
-
       // Custom extension preserved
       expect(restored.extensions['custom'], 'value');
     });
@@ -283,7 +231,6 @@ void main() {
         tags: ['a'],
         characterBook: Lorebook(name: 'Book'),
         depthPromptText: 'dprompt',
-        regexScripts: [RegexScript(id: 1)],
       );
 
       final copy = card.copyWith(name: 'Copy');
@@ -292,7 +239,6 @@ void main() {
       expect(copy.tags, ['a']);
       expect(copy.characterBook, isNotNull);
       expect(copy.depthPromptText, 'dprompt');
-      expect(copy.regexScripts.length, 1);
 
       // Ensure deep copy independence
       copy.tags.add('b');
