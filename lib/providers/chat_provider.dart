@@ -15,6 +15,7 @@ import '../services/reasoning_utils.dart';
 import '../services/global_settings_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/web_search_service.dart';
+import '../services/session_service.dart';
 import '../utils/constants.dart';
 
 /// Central provider for managing chat state, API communication, and settings.
@@ -25,13 +26,10 @@ import '../utils/constants.dart';
 class ChatProvider extends ChangeNotifier {
   static const String _characterCardKeyV3 = 'airp_character_card_v3';
   static const String _characterCardKeyV2 = 'airp_character_card';
-  static const String _sessionsKey = 'airp_sessions';
-  static const String _sessionsBackupLatestKey = 'airp_sessions_backup_latest';
-  static const String _sessionsBackupTsKey = 'airp_sessions_backup_latest_ts';
-  static const String _reasoningPolicyMarkerKey =
-      'airp_reasoning_policy_marker';
   static const String _rawEditWarningAckKey =
       'airp_raw_reasoning_edit_warning_ack';
+
+  late final SessionService _sessionService;
 
   // --- Background stream infrastructure ---
   final Map<String, StreamSubscription> _activeStreams = {};
@@ -40,7 +38,6 @@ class ChatProvider extends ChangeNotifier {
   final Map<String, String> _activeStreamModels = {};
   final Set<String> _cancelledSessions = {};
   bool _nonStreamingLoading = false;
-  Timer? _autoSaveTimer;
 
   /// Stores regenerated versions to attach to the next generated message.
   List<String> _pendingRegenerationVersions = [];
@@ -445,7 +442,6 @@ class ChatProvider extends ChangeNotifier {
   Lorebook? get characterLorebook => _characterCard.characterBook;
 
   List<ChatMessage> _messages = [];
-  List<ChatSessionData> _savedSessions = [];
   String? _currentSessionId;
   int _tokenCount = 0;
   String _currentTitle = "";
@@ -454,7 +450,7 @@ class ChatProvider extends ChangeNotifier {
   CharacterCard _characterCard = CharacterCard();
 
   List<ChatMessage> get messages => _messages;
-  List<ChatSessionData> get savedSessions => _savedSessions;
+  List<ChatSessionData> get savedSessions => _sessionService.savedSessions;
   String? get currentSessionId => _currentSessionId;
   int get tokenCount => _tokenCount;
   String get currentTitle => _currentTitle;
@@ -473,6 +469,7 @@ class ChatProvider extends ChangeNotifier {
   static const _defaultApiKey = '';
 
   ChatProvider() {
+    _sessionService = SessionService(onStateChanged: notifyListeners);
     _loadSettings();
     _loadSessions();
     _loadSystemPrompts();
@@ -480,7 +477,7 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _autoSaveTimer?.cancel();
+    _sessionService.dispose();
     for (final sub in _activeStreams.values) {
       sub.cancel();
     }
@@ -513,22 +510,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> _loadSessions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? data = prefs.getString(_sessionsKey);
-    if (data != null) {
-      try {
-        final List<dynamic> jsonList = jsonDecode(data);
-        _savedSessions = jsonList
-            .map((j) => ChatSessionData.fromJson(j))
-            .toList();
-        if (_shouldStripReasoningFromStorage) {
-          await _applyReasoningStoragePolicyGlobally();
-        }
-        notifyListeners();
-      } catch (e) {
-        debugPrint("Error loading sessions: $e");
-      }
-    }
+    await _sessionService.loadSessions(_shouldStripReasoningFromStorage);
   }
 
   Future<void> _loadSystemPrompts() async {
@@ -1461,205 +1443,20 @@ class ChatProvider extends ChangeNotifier {
   bool get _shouldStripReasoningFromStorage =>
       _enableReasoningEfficiency || !_persistReasoningBlocks;
 
-  String _sanitizeForContext(String text) =>
-      ReasoningUtils.stripThinkBlocks(text);
-
-  ChatMessage _sanitizeMessageForStorage(ChatMessage message) {
-    final sanitizedText = _sanitizeForContext(message.text);
-    final sanitizedVersions = message.regenerationVersions
-        .map(_sanitizeForContext)
-        .toList();
-    return message.copyWith(
-      text: sanitizedText,
-      regenerationVersions: sanitizedVersions,
-      currentVersionIndex: sanitizedVersions.isNotEmpty
-          ? message.currentVersionIndex.clamp(0, sanitizedVersions.length - 1)
-          : 0,
-      reasoningRecovered: false,
-    );
-  }
-
-  Future<void> _backupSessionsBeforePolicyPatch(
-    SharedPreferences prefs,
-    String currentSessionsJson,
-  ) async {
-    final ts = DateTime.now().millisecondsSinceEpoch;
-    await prefs.setString(_sessionsBackupLatestKey, currentSessionsJson);
-    await prefs.setInt(_sessionsBackupTsKey, ts);
-  }
-
   Future<void> _applyReasoningStoragePolicyGlobally() async {
-    final prefs = await SharedPreferences.getInstance();
-    _normalizeReasoningStorageMode();
-    final targetMarker =
-        'v3|eff=$_enableReasoningEfficiency|persist=$_persistReasoningBlocks';
-
-    if (!_shouldStripReasoningFromStorage) {
-      await prefs.setString(_reasoningPolicyMarkerKey, targetMarker);
-      return;
-    }
-
-    final currentMarker = prefs.getString(_reasoningPolicyMarkerKey);
-    if (currentMarker == targetMarker) {
-      return;
-    }
-
-    final currentRaw = prefs.getString(_sessionsKey);
-    if (currentRaw != null && currentRaw.isNotEmpty) {
-      await _backupSessionsBeforePolicyPatch(prefs, currentRaw);
-    }
-
-    _savedSessions = _savedSessions
-        .map(
-          (session) => ChatSessionData(
-            id: session.id,
-            title: session.title,
-            messages: session.messages.map(_sanitizeMessageForStorage).toList(),
-            modelName: session.modelName,
-            tokenCount: session.tokenCount,
-            systemInstruction: session.systemInstruction,
-            backgroundImage: session.backgroundImage,
-            provider: session.provider,
-            isBookmarked: session.isBookmarked,
-          ),
-        )
-        .toList();
-
-    _messages = _messages.map(_sanitizeMessageForStorage).toList();
-
-    await _persistSessions();
-    await prefs.setString(_reasoningPolicyMarkerKey, targetMarker);
-    notifyListeners();
-  }
-
-  static bool _hasRegenerationHistory(ChatMessage message) {
-    return message.regenerationVersions.isNotEmpty ||
-        message.currentVersionIndex != 0;
-  }
-
-  static ChatMessage _stripRegenerationHistory(ChatMessage message) {
-    if (!_hasRegenerationHistory(message)) {
-      return message;
-    }
-    return message.copyWith(
-      regenerationVersions: const <String>[],
-      currentVersionIndex: 0,
-      clearContentNotifier: true,
+    await _sessionService.applyReasoningStoragePolicyGlobally(
+      _enableReasoningEfficiency,
+      _persistReasoningBlocks,
     );
   }
 
-  static ChatSessionData _compactSessionForStorage(ChatSessionData session) {
-    final compactMessages = session.messages
-        .map(_stripRegenerationHistory)
-        .toList();
-    return ChatSessionData(
-      id: session.id,
-      title: session.title,
-      messages: compactMessages,
-      modelName: session.modelName,
-      tokenCount: session.tokenCount,
-      systemInstruction: session.systemInstruction,
-      backgroundImage: session.backgroundImage,
-      provider: session.provider,
-      isBookmarked: session.isBookmarked,
-    );
-  }
+  Future<bool> hasSessionsBackup() => _sessionService.hasSessionsBackup();
 
-  @visibleForTesting
-  static List<ChatSessionData> compactSessionsForStorage(
-    List<ChatSessionData> sessions,
-  ) {
-    return sessions.map(_compactSessionForStorage).toList();
-  }
+  Future<int?> getLatestSessionsBackupTimestamp() =>
+      _sessionService.getLatestSessionsBackupTimestamp();
 
-  String _encodeSessionsPayload(List<ChatSessionData> sessions) {
-    return jsonEncode(sessions.map((s) => s.toJson()).toList());
-  }
-
-  Future<bool> _tryPersistSessionsSnapshot(
-    SharedPreferences prefs,
-    String payload,
-  ) async {
-    try {
-      return await prefs.setString(_sessionsKey, payload);
-    } catch (e) {
-      debugPrint('Session persistence failed: $e');
-      return false;
-    }
-  }
-
-  Future<void> _persistSessions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final originalPayload = _encodeSessionsPayload(_savedSessions);
-    if (await _tryPersistSessionsSnapshot(prefs, originalPayload)) {
-      return;
-    }
-
-    final strippedRegenerationCount = _savedSessions
-        .expand((session) => session.messages)
-        .where(_hasRegenerationHistory)
-        .length;
-    if (strippedRegenerationCount == 0) {
-      debugPrint(
-        'Unable to persist sessions. Browser/app storage quota may be exhausted.',
-      );
-      return;
-    }
-
-    // On web, SharedPreferences uses browser storage quotas.
-    // If the full payload does not fit, retry with regeneration history removed.
-    final compacted = compactSessionsForStorage(_savedSessions);
-    final compactedPayload = _encodeSessionsPayload(compacted);
-    final compactedWritten = await _tryPersistSessionsSnapshot(
-      prefs,
-      compactedPayload,
-    );
-    if (compactedWritten) {
-      debugPrint(
-        'Sessions persisted after compacting regeneration history due to storage limits '
-        '(size ${originalPayload.length} -> ${compactedPayload.length}, '
-        'sessions=${compacted.length}, strippedMessages=$strippedRegenerationCount).',
-      );
-      return;
-    }
-
-    debugPrint(
-      'Unable to persist sessions. Browser/app storage quota may be exhausted.',
-    );
-  }
-
-  Future<bool> hasSessionsBackup() async {
-    final prefs = await SharedPreferences.getInstance();
-    final backup = prefs.getString(_sessionsBackupLatestKey);
-    return backup != null && backup.isNotEmpty;
-  }
-
-  Future<int?> getLatestSessionsBackupTimestamp() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_sessionsBackupTsKey);
-  }
-
-  Future<bool> restoreLatestSessionsBackup() async {
-    final prefs = await SharedPreferences.getInstance();
-    final backup = prefs.getString(_sessionsBackupLatestKey);
-    if (backup == null || backup.isEmpty) {
-      return false;
-    }
-
-    try {
-      final decoded = jsonDecode(backup) as List<dynamic>;
-      _savedSessions = decoded
-          .map((j) => ChatSessionData.fromJson(Map<String, dynamic>.from(j)))
-          .toList();
-      await prefs.setString(_sessionsKey, backup);
-      await prefs.remove(_reasoningPolicyMarkerKey);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      debugPrint('Restore sessions backup failed: $e');
-      return false;
-    }
-  }
+  Future<bool> restoreLatestSessionsBackup() =>
+      _sessionService.restoreLatestSessionsBackup();
 
   /// Returns lore entries whose keywords match [input] directly.
   ///
@@ -1803,7 +1600,7 @@ class ChatProvider extends ChangeNotifier {
         final String role = msg.isUser ? 'user' : 'model';
         final String contextText = msg.isUser
             ? msg.text
-            : _sanitizeForContext(msg.text);
+            : ChatMessage.sanitizeForContext(msg.text);
         if (msg.isUser && msg.imagePaths.isNotEmpty) {
           List<Part> parts = [];
           if (contextText.isNotEmpty) parts.add(TextPart(contextText));
@@ -2164,7 +1961,7 @@ class ChatProvider extends ChangeNotifier {
             }
 
             if (_shouldStripReasoningFromStorage) {
-              fullText = _sanitizeForContext(fullText);
+              fullText = ChatMessage.sanitizeForContext(fullText);
             }
 
             if (_currentSessionId == streamSessionId) {
@@ -2237,87 +2034,30 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Updates a saved session's last AI message with the final text (background).
   void _finalizeBackgroundSession(
     String sessionId,
     String finalText, {
     bool reasoningRecovered = false,
   }) {
-    final idx = _savedSessions.indexWhere((s) => s.id == sessionId);
-    if (idx == -1) return;
-
-    final session = _savedSessions[idx];
-    if (session.messages.isEmpty) return;
-
-    final messages = List<ChatMessage>.from(session.messages);
-    if (messages.isNotEmpty && !messages.last.isUser) {
-      if (_shouldStripReasoningFromStorage) {
-        finalText = _sanitizeForContext(finalText);
-      }
-      final lastMessage = messages.last;
-      final updatedVersions = List<String>.from(
-        lastMessage.regenerationVersions,
-      );
-      if (updatedVersions.isNotEmpty &&
-          finalText.isNotEmpty &&
-          !updatedVersions.contains(finalText)) {
-        updatedVersions.add(finalText);
-      }
-      messages[messages.length - 1] = lastMessage.copyWith(
-        text: finalText,
-        reasoningRecovered: reasoningRecovered,
-        clearContentNotifier: true,
-        regenerationVersions: updatedVersions,
-        currentVersionIndex: updatedVersions.isNotEmpty
-            ? updatedVersions.length - 1
-            : lastMessage.currentVersionIndex,
-      );
-    }
-
-    _savedSessions[idx] = ChatSessionData(
-      id: session.id,
-      title: session.title,
-      messages: messages,
-      modelName: session.modelName,
-      tokenCount: session.tokenCount,
-      systemInstruction: session.systemInstruction,
-      backgroundImage: session.backgroundImage,
-      provider: session.provider,
-      isBookmarked: session.isBookmarked,
+    _sessionService.finalizeBackgroundSession(
+      sessionId,
+      finalText,
+      reasoningRecovered,
+      _shouldStripReasoningFromStorage,
     );
-
-    // Persist the update
-    _scheduleAutoSave();
   }
 
   /// Adds a message to a saved session (e.g. for grounding results arriving after switch).
   void _addMessageToSavedSession(String sessionId, ChatMessage message) {
-    final idx = _savedSessions.indexWhere((s) => s.id == sessionId);
-    if (idx == -1) return;
-
-    final session = _savedSessions[idx];
-    final messages = List<ChatMessage>.from(session.messages);
-    messages.add(message);
-
-    _savedSessions[idx] = ChatSessionData(
-      id: session.id,
-      title: session.title,
-      messages: messages,
-      modelName: session.modelName,
-      tokenCount: session.tokenCount,
-      systemInstruction: session.systemInstruction,
-      backgroundImage: session.backgroundImage,
-      provider: session.provider,
-      isBookmarked: session.isBookmarked,
-    );
+    _sessionService.addMessageToSavedSession(sessionId, message);
   }
 
   /// Shows a notification for a background stream that completed.
   void _showBackgroundNotification(String sessionId, String text) {
-    final idx = _savedSessions.indexWhere((s) => s.id == sessionId);
+    final idx = savedSessions.indexWhere((s) => s.id == sessionId);
     if (idx == -1) return;
 
-    final session = _savedSessions[idx];
+    final session = savedSessions[idx];
     final modelName = _activeStreamModels[sessionId] ?? session.modelName;
     final preview = text.length > 120 ? "${text.substring(0, 120)}..." : text;
 
@@ -2482,7 +2222,7 @@ class ChatProvider extends ChangeNotifier {
       isBookmarked: false,
     );
 
-    _savedSessions.insert(0, newSession);
+    _sessionService.prependSession(newSession);
     return newSessionId;
   }
 
@@ -2506,7 +2246,7 @@ class ChatProvider extends ChangeNotifier {
     if (title.isEmpty) title = "New Conversation";
 
     final messagesSnapshot = _shouldStripReasoningFromStorage
-        ? _messages.map(_sanitizeMessageForStorage).toList()
+        ? _messages.map(ChatMessage.sanitizeForStorage).toList()
         : List<ChatMessage>.from(_messages);
     final tokenCountSnapshot = _tokenCount;
     final modelNameSnapshot = _selectedModel;
@@ -2516,16 +2256,10 @@ class ChatProvider extends ChangeNotifier {
     String? currentBg = backgroundImagePath;
     bool isBookmarked = false;
     if (!clearBackground && currentBg == null) {
-      final existingIndex = _savedSessions.indexWhere((s) => s.id == sessionId);
-      if (existingIndex != -1) {
-        currentBg = _savedSessions[existingIndex].backgroundImage;
-        isBookmarked = _savedSessions[existingIndex].isBookmarked;
-      }
+      currentBg = _sessionService.getSessionBackgroundImage(sessionId);
+      isBookmarked = _sessionService.getSessionIsBookmarked(sessionId);
     } else {
-      final existingIndex = _savedSessions.indexWhere((s) => s.id == sessionId);
-      if (existingIndex != -1) {
-        isBookmarked = _savedSessions[existingIndex].isBookmarked;
-      }
+      isBookmarked = _sessionService.getSessionIsBookmarked(sessionId);
     }
 
     final sessionData = ChatSessionData(
@@ -2540,34 +2274,11 @@ class ChatProvider extends ChangeNotifier {
       isBookmarked: isBookmarked,
     );
 
-    _savedSessions.removeWhere((s) => s.id == sessionId);
-    _savedSessions.insert(0, sessionData);
-    notifyListeners();
-
-    await _persistSessions();
+    _sessionService.saveCurrentSessionData(sessionData);
   }
 
   Future<void> bookmarkSession(String sessionId, bool isBookmarked) async {
-    final index = _savedSessions.indexWhere((s) => s.id == sessionId);
-    if (index == -1) return;
-
-    final session = _savedSessions[index];
-    final updatedSession = ChatSessionData(
-      id: session.id,
-      title: session.title,
-      messages: session.messages,
-      modelName: session.modelName,
-      tokenCount: session.tokenCount,
-      systemInstruction: session.systemInstruction,
-      backgroundImage: session.backgroundImage,
-      provider: session.provider,
-      isBookmarked: isBookmarked,
-    );
-
-    _savedSessions[index] = updatedSession;
-    notifyListeners();
-
-    await _persistSessions();
+    await _sessionService.bookmarkSession(sessionId, isBookmarked);
   }
 
   void createNewSession({bool saveCurrentSession = true}) {
@@ -2657,14 +2368,12 @@ class ChatProvider extends ChangeNotifier {
       _activeStreamModels.remove(id);
     }
 
-    _savedSessions.removeWhere((s) => s.id == id);
+    await _sessionService.deleteSession(id);
     if (id == _currentSessionId) {
       createNewSession(saveCurrentSession: false);
     } else {
       notifyListeners();
     }
-
-    await _persistSessions();
   }
 
   void deleteMessage(int index) {
@@ -2691,7 +2400,7 @@ class ChatProvider extends ChangeNotifier {
     }
 
     if (_shouldStripReasoningFromStorage) {
-      updatedText = _sanitizeForContext(updatedText);
+      updatedText = ChatMessage.sanitizeForContext(updatedText);
     }
 
     _messages[index] = existing.copyWith(
@@ -3076,7 +2785,7 @@ class ChatProvider extends ChangeNotifier {
             .map(
               (m) => m.isUser
                   ? Content.text(m.text)
-                  : Content.model([TextPart(_sanitizeForContext(m.text))]),
+                  : Content.model([TextPart(ChatMessage.sanitizeForContext(m.text))]),
             )
             .toList();
         final response = await _model.countTokens(contents);
@@ -3091,7 +2800,7 @@ class ChatProvider extends ChangeNotifier {
       for (var msg in _messages) {
         final effectiveText = msg.isUser
             ? msg.text
-            : _sanitizeForContext(msg.text);
+            : ChatMessage.sanitizeForContext(msg.text);
         totalChars += effectiveText.length;
         imgCount += msg.imagePaths.length;
       }
@@ -3152,10 +2861,10 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void _scheduleAutoSave() {
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer(ChatDefaults.autoSaveDebounce, () {
-      autoSaveCurrentSession();
-    });
+    _sessionService.scheduleAutoSave(
+      ChatDefaults.autoSaveDebounce.inMilliseconds,
+      autoSaveCurrentSession,
+    );
   }
 
   void _safeDisposeMessageNotifiers(Iterable<ChatMessage> messages) {
@@ -3220,7 +2929,7 @@ class ChatProvider extends ChangeNotifier {
       'systemInstruction': _systemInstruction,
       'advancedSystemInstruction': _advancedSystemInstruction,
       'systemPrompts': _savedSystemPrompts.map((p) => p.toJson()).toList(),
-      'sessions': _savedSessions.map((s) => s.toJson()).toList(),
+      'sessions': savedSessions.map((s) => s.toJson()).toList(),
       'characterCard': _characterCard.toV3Json(),
       'enableCharacterCard': _enableCharacterCard,
       'sillyTavernState': {
@@ -3391,31 +3100,7 @@ class ChatProvider extends ChangeNotifier {
 
   /// Concatenates imported sessions with existing ones, skipping duplicates by ID.
   void mergeSessions(List<ChatSessionData> incoming) {
-    final existingIds = _savedSessions.map((s) => s.id).toSet();
-    for (final session in incoming) {
-      if (!existingIds.contains(session.id)) {
-        if (_shouldStripReasoningFromStorage) {
-          _savedSessions.add(
-            ChatSessionData(
-              id: session.id,
-              title: session.title,
-              messages: session.messages
-                  .map(_sanitizeMessageForStorage)
-                  .toList(),
-              modelName: session.modelName,
-              tokenCount: session.tokenCount,
-              systemInstruction: session.systemInstruction,
-              backgroundImage: session.backgroundImage,
-              provider: session.provider,
-              isBookmarked: session.isBookmarked,
-            ),
-          );
-        } else {
-          _savedSessions.add(session);
-        }
-        existingIds.add(session.id);
-      }
-    }
+    _sessionService.mergeSessions(incoming, _shouldStripReasoningFromStorage);
   }
 
   /// Concatenates imported prompts with existing ones, skipping duplicates by title.

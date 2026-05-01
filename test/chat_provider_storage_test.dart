@@ -1,5 +1,5 @@
 import 'package:airp/models/chat_models.dart';
-import 'package:airp/providers/chat_provider.dart';
+import 'package:airp/services/session_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -25,7 +25,7 @@ void main() {
       ),
     ];
 
-    final compacted = ChatProvider.compactSessionsForStorage(sessions);
+    final compacted = SessionService.compactSessionsForStorage(sessions);
 
     expect(compacted, hasLength(1));
     expect(compacted.first.messages.first.text, originalVisibleText);
@@ -49,7 +49,7 @@ void main() {
       ),
     ];
 
-    final compacted = ChatProvider.compactSessionsForStorage(sessions);
+    final compacted = SessionService.compactSessionsForStorage(sessions);
 
     expect(compacted.first.messages.first.text, 'hello');
     expect(compacted.first.messages.first.regenerationVersions, isEmpty);

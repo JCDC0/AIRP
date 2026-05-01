@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../services/reasoning_utils.dart';
 
 /// The available AI providers supported by the application.
 enum AiProvider {
@@ -191,6 +192,40 @@ class ChatMessage {
           : (contentNotifier ?? this.contentNotifier),
       regenerationVersions: regenerationVersions ?? this.regenerationVersions,
       currentVersionIndex: currentVersionIndex ?? this.currentVersionIndex,
+    );
+  }
+
+  static String sanitizeForContext(String text) =>
+      ReasoningUtils.stripThinkBlocks(text);
+
+  static ChatMessage sanitizeForStorage(ChatMessage message) {
+    final sanitizedText = sanitizeForContext(message.text);
+    final sanitizedVersions = message.regenerationVersions
+        .map(sanitizeForContext)
+        .toList();
+    return message.copyWith(
+      text: sanitizedText,
+      regenerationVersions: sanitizedVersions,
+      currentVersionIndex: sanitizedVersions.isNotEmpty
+          ? message.currentVersionIndex.clamp(0, sanitizedVersions.length - 1)
+          : 0,
+      reasoningRecovered: false,
+    );
+  }
+
+  static bool hasRegenerationHistory(ChatMessage message) {
+    return message.regenerationVersions.isNotEmpty ||
+        message.currentVersionIndex != 0;
+  }
+
+  static ChatMessage stripRegenerationHistory(ChatMessage message) {
+    if (!hasRegenerationHistory(message)) {
+      return message;
+    }
+    return message.copyWith(
+      regenerationVersions: const <String>[],
+      currentVersionIndex: 0,
+      clearContentNotifier: true,
     );
   }
 }
