@@ -13,10 +13,10 @@ import '../services/lorebook_service.dart';
 import '../services/prompt_pipeline_service.dart';
 import '../services/reasoning_utils.dart';
 import '../services/global_settings_service.dart';
-import '../services/secure_storage_service.dart';
 import '../services/web_search_service.dart';
 import '../services/session_service.dart';
 import '../services/model_registry_service.dart';
+import '../services/api_key_service.dart';
 import '../utils/constants.dart';
 
 /// Central provider for managing chat state, API communication, and settings.
@@ -32,6 +32,7 @@ class ChatProvider extends ChangeNotifier {
 
   late final SessionService _sessionService;
   late final ModelRegistryService _modelRegistry;
+  late final ApiKeyService _apiKeys;
 
   // --- Background stream infrastructure ---
   final Map<String, StreamSubscription> _activeStreams = {};
@@ -132,24 +133,28 @@ class ChatProvider extends ChangeNotifier {
   bool get isRefreshingModels => _modelRegistry.isAnyLoading;
 
   AiProvider _currentProvider = AiProvider.gemini;
-  String _geminiKey = '';
-  String _openRouterKey = '';
-  String _openAiKey = '';
-  String _arliAiKey = '';
-  String _nanoGptKey = '';
-  String _nvidiaKey = '';
-  String _huggingFaceKey = '';
-  String _groqKey = '';
-  final String _vertexAiKey = '';
-  final String _blackboxAiKey = '';
-  final String _minimaxKey = '';
-  final String _openAiCompatibleKey = '';
-  final String _deepseekKey = '';
-  final String _ollamaKey = '';
-  final String _qwenKey = '';
-  final String _xAiKey = '';
-  final String _zAiKey = '';
-  final String _mistralKey = '';
+
+  AiProvider get currentProvider => _currentProvider;
+  String get geminiKey => _apiKeys.getProviderKey(AiProvider.gemini);
+  String get openRouterKey => _apiKeys.getProviderKey(AiProvider.openRouter);
+  String get openAiKey => _apiKeys.getProviderKey(AiProvider.openAi);
+  String get arliAiKey => _apiKeys.getProviderKey(AiProvider.arliAi);
+  String get nanoGptKey => _apiKeys.getProviderKey(AiProvider.nanoGpt);
+  String get nvidiaKey => _apiKeys.getProviderKey(AiProvider.nvidia);
+  String get huggingFaceKey => _apiKeys.getProviderKey(AiProvider.huggingFace);
+  String get groqKey => _apiKeys.getProviderKey(AiProvider.groq);
+  String get vertexAiKey => _apiKeys.getProviderKey(AiProvider.vertexAi);
+  String get blackboxAiKey => _apiKeys.getProviderKey(AiProvider.blackboxAi);
+  String get minimaxKey => _apiKeys.getProviderKey(AiProvider.minimax);
+  String get openAiCompatibleKey =>
+      _apiKeys.getProviderKey(AiProvider.openAiCompatible);
+  String get deepseekKey => _apiKeys.getProviderKey(AiProvider.deepseek);
+  String get ollamaKey => _apiKeys.getProviderKey(AiProvider.ollama);
+  String get qwenKey => _apiKeys.getProviderKey(AiProvider.qwen);
+  String get xAiKey => _apiKeys.getProviderKey(AiProvider.xAi);
+  String get zAiKey => _apiKeys.getProviderKey(AiProvider.zAi);
+  String get mistralKey => _apiKeys.getProviderKey(AiProvider.mistral);
+
   String _localIp = ChatDefaults.localIp;
   String _localModelName = 'local-model';
   String _vertexAiEndpoint = '';
@@ -159,25 +164,6 @@ class ChatProvider extends ChangeNotifier {
   final GlobalSettingsService _globalSettings = GlobalSettingsService();
   String _modelPickerSortMode = GlobalSettingsService.defaultModelSortMode;
 
-  AiProvider get currentProvider => _currentProvider;
-  String get geminiKey => _geminiKey;
-  String get openRouterKey => _openRouterKey;
-  String get openAiKey => _openAiKey;
-  String get arliAiKey => _arliAiKey;
-  String get nanoGptKey => _nanoGptKey;
-  String get nvidiaKey => _nvidiaKey;
-  String get huggingFaceKey => _huggingFaceKey;
-  String get groqKey => _groqKey;
-  String get vertexAiKey => _vertexAiKey;
-  String get blackboxAiKey => _blackboxAiKey;
-  String get minimaxKey => _minimaxKey;
-  String get openAiCompatibleKey => _openAiCompatibleKey;
-  String get deepseekKey => _deepseekKey;
-  String get ollamaKey => _ollamaKey;
-  String get qwenKey => _qwenKey;
-  String get xAiKey => _xAiKey;
-  String get zAiKey => _zAiKey;
-  String get mistralKey => _mistralKey;
   String get localIp => _localIp;
   String get localModelName => _localModelName;
   String get vertexAiEndpoint => _vertexAiEndpoint;
@@ -282,9 +268,6 @@ class ChatProvider extends ChangeNotifier {
 
   // Web Search (BYOK)
   SearchProvider _searchProvider = SearchProvider.provider;
-  String _braveApiKey = '';
-  String _tavilyApiKey = '';
-  String _serperApiKey = '';
   String _searxngUrl = '';
   int _searchResultCount = 5;
 
@@ -325,9 +308,9 @@ class ChatProvider extends ChangeNotifier {
 
   // Web Search (BYOK)
   SearchProvider get searchProvider => _searchProvider;
-  String get braveApiKey => _braveApiKey;
-  String get tavilyApiKey => _tavilyApiKey;
-  String get serperApiKey => _serperApiKey;
+  String get braveApiKey => _apiKeys.getSearchKey(SearchProvider.brave);
+  String get tavilyApiKey => _apiKeys.getSearchKey(SearchProvider.tavily);
+  String get serperApiKey => _apiKeys.getSearchKey(SearchProvider.serper);
   String get searxngUrl => _searxngUrl;
   int get searchResultCount => _searchResultCount;
 
@@ -387,6 +370,7 @@ class ChatProvider extends ChangeNotifier {
   ChatProvider() {
     _sessionService = SessionService(onStateChanged: notifyListeners);
     _modelRegistry = ModelRegistryService(onStateChanged: notifyListeners);
+    _apiKeys = ApiKeyService(onStateChanged: notifyListeners);
     _loadSettings();
     _loadSessions();
     _loadSystemPrompts();
@@ -476,47 +460,8 @@ class ChatProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     await _loadGlobalSettings(prefs);
+    await _apiKeys.loadAllKeys();
 
-    _geminiKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyGemini,
-      prefsKey: ApiConstants.prefKeyGemini,
-    );
-    _openRouterKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyOpenRouter,
-      prefsKey: ApiConstants.prefKeyOpenRouter,
-    );
-    _openAiKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyOpenAi,
-      prefsKey: ApiConstants.prefKeyOpenAi,
-    );
-    _arliAiKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyArliAi,
-      prefsKey: ApiConstants.prefKeyArliAi,
-    );
-    _nanoGptKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyNanoGpt,
-      prefsKey: ApiConstants.prefKeyNanoGpt,
-    );
-    _nvidiaKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyNvidia,
-      prefsKey: ApiConstants.prefKeyNvidia,
-    );
-    _huggingFaceKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyHuggingFace,
-      prefsKey: ApiConstants.prefKeyHuggingFace,
-    );
-    _groqKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyGroq,
-      prefsKey: ApiConstants.prefKeyGroq,
-    );
     _localIp =
         prefs.getString(ApiConstants.prefLocalIp) ?? ChatDefaults.localIp;
     _localModelName =
@@ -583,27 +528,11 @@ class ChatProvider extends ChangeNotifier {
     _disableSafety = prefs.getBool(ApiConstants.prefDisableSafety) ?? true;
     // prefEnableImageGen is no longer read — image gen is driven by the selected model.
 
-    // Web Search (BYOK)
     final providerName =
         prefs.getString(ApiConstants.prefKeySearchProvider) ?? 'provider';
     _searchProvider = SearchProvider.values.firstWhere(
       (e) => e.name == providerName,
       orElse: () => SearchProvider.provider,
-    );
-    _braveApiKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyBraveApiKey,
-      prefsKey: ApiConstants.prefKeyBraveApiKey,
-    );
-    _tavilyApiKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyTavilyApiKey,
-      prefsKey: ApiConstants.prefKeyTavilyApiKey,
-    );
-    _serperApiKey = await _loadApiKeyFromStorage(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeySerperApiKey,
-      prefsKey: ApiConstants.prefKeySerperApiKey,
     );
     _searxngUrl = prefs.getString(ApiConstants.prefKeySearXNGUrl) ?? '';
     _searchResultCount = prefs.getInt(ApiConstants.prefSearchResultCount) ?? 5;
@@ -836,61 +765,12 @@ class ChatProvider extends ChangeNotifier {
   }
 
   String _getProviderKey(AiProvider provider) {
-    switch (provider) {
-      case AiProvider.gemini:
-        return _geminiKey;
-      case AiProvider.openRouter:
-        return _openRouterKey;
-      case AiProvider.openAi:
-        return _openAiKey;
-      case AiProvider.arliAi:
-        return _arliAiKey;
-      case AiProvider.nanoGpt:
-        return _nanoGptKey;
-      case AiProvider.nvidia:
-        return _nvidiaKey;
-      case AiProvider.huggingFace:
-        return _huggingFaceKey;
-      case AiProvider.groq:
-        return _groqKey;
-      case AiProvider.local:
-        return "local-key";
-      default:
-        return '';
-    }
+    if (provider == AiProvider.local) return "local-key";
+    return _apiKeys.getProviderKey(provider);
   }
 
   void _setProviderKey(AiProvider provider, String key) {
-    switch (provider) {
-      case AiProvider.gemini:
-        _geminiKey = key;
-        break;
-      case AiProvider.openRouter:
-        _openRouterKey = key;
-        break;
-      case AiProvider.openAi:
-        _openAiKey = key;
-        break;
-      case AiProvider.arliAi:
-        _arliAiKey = key;
-        break;
-      case AiProvider.nanoGpt:
-        _nanoGptKey = key;
-        break;
-      case AiProvider.nvidia:
-        _nvidiaKey = key;
-        break;
-      case AiProvider.huggingFace:
-        _huggingFaceKey = key;
-        break;
-      case AiProvider.groq:
-        _groqKey = key;
-        break;
-      case AiProvider.local:
-        break;
-      default:
-        break;
-    }
+    _apiKeys.setProviderKey(provider, key);
   }
 
   void setVertexAiEndpoint(String val) {
@@ -964,18 +844,15 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void setBraveApiKey(String val) {
-    _braveApiKey = val;
-    notifyListeners();
+    _apiKeys.setSearchKey(SearchProvider.brave, val);
   }
 
   void setTavilyApiKey(String val) {
-    _tavilyApiKey = val;
-    notifyListeners();
+    _apiKeys.setSearchKey(SearchProvider.tavily, val);
   }
 
   void setSerperApiKey(String val) {
-    _serperApiKey = val;
-    notifyListeners();
+    _apiKeys.setSearchKey(SearchProvider.serper, val);
   }
 
   void setSearxngUrl(String val) {
@@ -1082,53 +959,11 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> saveSettings({bool showConfirmation = true}) async {
     final prefs = await SharedPreferences.getInstance();
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyGemini,
-      prefsKey: ApiConstants.prefKeyGemini,
-      value: _geminiKey,
-    );
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyOpenRouter,
-      prefsKey: ApiConstants.prefKeyOpenRouter,
-      value: _openRouterKey,
-    );
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyOpenAi,
-      prefsKey: ApiConstants.prefKeyOpenAi,
-      value: _openAiKey,
-    );
     await prefs.setString(ApiConstants.prefLocalIp, _localIp);
     await prefs.setString(ApiConstants.prefLocalModelName, _localModelName);
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString(ApiConstants.prefModelGemini, _selectedGeminiModel);
     await prefs.setString(ApiConstants.prefModelOpenRouter, _openRouterModel);
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyArliAi,
-      prefsKey: ApiConstants.prefKeyArliAi,
-      value: _arliAiKey,
-    );
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyNanoGpt,
-      prefsKey: ApiConstants.prefKeyNanoGpt,
-      value: _nanoGptKey,
-    );
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyHuggingFace,
-      prefsKey: ApiConstants.prefKeyHuggingFace,
-      value: _huggingFaceKey,
-    );
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyGroq,
-      prefsKey: ApiConstants.prefKeyGroq,
-      value: _groqKey,
-    );
     await prefs.setString(ApiConstants.prefModelArliAi, _arliAiModel);
     await prefs.setString(ApiConstants.prefModelNanoGpt, _nanoGptModel);
     await prefs.setString(ApiConstants.prefModelNvidia, _nvidiaModel);
@@ -1149,24 +984,6 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString(
       ApiConstants.prefKeySearchProvider,
       _searchProvider.name,
-    );
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyBraveApiKey,
-      prefsKey: ApiConstants.prefKeyBraveApiKey,
-      value: _braveApiKey,
-    );
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeyTavilyApiKey,
-      prefsKey: ApiConstants.prefKeyTavilyApiKey,
-      value: _tavilyApiKey,
-    );
-    await _persistApiKey(
-      prefs: prefs,
-      secureKey: ApiConstants.secureKeySerperApiKey,
-      prefsKey: ApiConstants.prefKeySerperApiKey,
-      value: _serperApiKey,
     );
     await prefs.setString(ApiConstants.prefKeySearXNGUrl, _searxngUrl);
     await prefs.setInt(ApiConstants.prefSearchResultCount, _searchResultCount);
@@ -1244,13 +1061,13 @@ class ChatProvider extends ChangeNotifier {
 
     switch (_searchProvider) {
       case SearchProvider.brave:
-        if (_braveApiKey.isEmpty) {
+        if (braveApiKey.isEmpty) {
           debugPrint('[WebSearch] Brave key not set — skipping BYOK search.');
           return null;
         }
         results = await WebSearchService.searchBrave(
           query,
-          _braveApiKey,
+          braveApiKey,
           resultCount: _searchResultCount,
         );
       case SearchProvider.searxng:
@@ -1264,23 +1081,23 @@ class ChatProvider extends ChangeNotifier {
           resultCount: _searchResultCount,
         );
       case SearchProvider.tavily:
-        if (_tavilyApiKey.isEmpty) {
+        if (tavilyApiKey.isEmpty) {
           debugPrint('[WebSearch] Tavily key not set — skipping BYOK search.');
           return null;
         }
         results = await WebSearchService.searchTavily(
           query,
-          _tavilyApiKey,
+          tavilyApiKey,
           resultCount: _searchResultCount,
         );
       case SearchProvider.serper:
-        if (_serperApiKey.isEmpty) {
+        if (serperApiKey.isEmpty) {
           debugPrint('[WebSearch] Serper key not set — skipping BYOK search.');
           return null;
         }
         results = await WebSearchService.searchSerper(
           query,
-          _serperApiKey,
+          serperApiKey,
           resultCount: _searchResultCount,
         );
       case SearchProvider.duckduckgo:
@@ -1557,7 +1374,7 @@ class ChatProvider extends ChangeNotifier {
         _nonStreamingLoading = true;
         notifyListeners();
 
-        final activeKey = _geminiKey.isNotEmpty ? _geminiKey : _defaultApiKey;
+        final activeKey = geminiKey.isNotEmpty ? geminiKey : _defaultApiKey;
 
         // Get previous thought signature if available
         String? previousSignature;
@@ -1722,27 +1539,27 @@ class ChatProvider extends ChangeNotifier {
 
         if (_currentProvider == AiProvider.openRouter) {
           baseUrl = "https://openrouter.ai/api/v1/chat/completions";
-          apiKey = _openRouterKey;
+          apiKey = _getProviderKey(AiProvider.openRouter);
           headers = {
             "HTTP-Referer": "https://airp-chat.com",
             "X-Title": "AIRP Chat",
           };
         } else if (_currentProvider == AiProvider.arliAi) {
           baseUrl = "https://api.arliai.com/v1/chat/completions";
-          apiKey = _arliAiKey;
+          apiKey = _getProviderKey(AiProvider.arliAi);
         } else if (_currentProvider == AiProvider.nanoGpt) {
           baseUrl = "https://nano-gpt.com/api/v1/chat/completions";
-          apiKey = _nanoGptKey;
+          apiKey = _getProviderKey(AiProvider.nanoGpt);
         } else if (_currentProvider == AiProvider.openAi) {
           baseUrl = "https://api.openai.com/v1/chat/completions";
-          apiKey = _openAiKey;
+          apiKey = _getProviderKey(AiProvider.openAi);
         } else if (_currentProvider == AiProvider.huggingFace) {
           baseUrl =
               "https://api-inference.huggingface.co/models/$_selectedModel/v1/chat/completions";
-          apiKey = _huggingFaceKey;
+          apiKey = _getProviderKey(AiProvider.huggingFace);
         } else if (_currentProvider == AiProvider.groq) {
           baseUrl = "https://api.groq.com/openai/v1/chat/completions";
-          apiKey = _groqKey;
+          apiKey = _getProviderKey(AiProvider.groq);
         } else if (_currentProvider == AiProvider.local) {
           baseUrl = _localIp.trim();
           if (baseUrl.endsWith('/')) {
@@ -2362,57 +2179,6 @@ class ChatProvider extends ChangeNotifier {
       }
       _tokenCount = (totalChars / 3.5).ceil() + (imgCount * 200);
       notifyListeners();
-    }
-  }
-
-  Future<String> _loadApiKeyFromStorage({
-    required SharedPreferences prefs,
-    required String secureKey,
-    required String prefsKey,
-  }) async {
-    try {
-      final secureValue = await SecureStorageService.read(secureKey);
-      if (secureValue != null && secureValue.isNotEmpty) {
-        return secureValue;
-      }
-    } catch (e) {
-      debugPrint('Secure storage read failed: $e');
-    }
-
-    final legacyValue = prefs.getString(prefsKey) ?? '';
-    if (legacyValue.isNotEmpty) {
-      try {
-        await SecureStorageService.write(secureKey, legacyValue);
-        await prefs.remove(prefsKey);
-      } catch (e) {
-        debugPrint('Secure storage migrate failed: $e');
-      }
-    }
-    return legacyValue;
-  }
-
-  Future<void> _persistApiKey({
-    required SharedPreferences prefs,
-    required String secureKey,
-    required String prefsKey,
-    required String value,
-  }) async {
-    if (value.isEmpty) {
-      try {
-        await SecureStorageService.delete(secureKey);
-      } catch (e) {
-        debugPrint('Secure storage delete failed: $e');
-      }
-      await prefs.remove(prefsKey);
-      return;
-    }
-
-    try {
-      await SecureStorageService.write(secureKey, value);
-      await prefs.remove(prefsKey);
-    } catch (e) {
-      debugPrint('Secure storage write failed: $e');
-      await prefs.setString(prefsKey, value);
     }
   }
 

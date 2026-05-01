@@ -29,6 +29,16 @@
 * **Multimodal & File Support**: Attach images, PDFs, and text-based files for AI analysis.
 * **Token Counting & Safety**: Real-time context boundary indicators and toggles to disable API-side safety filters.
 * **Scalability & Multi-Device Support**: Optimized for Phones, Tablets, and Desktops with granular layout controls and gesture zooming.
+* **Modular Architecture**: Re-engineered core logic into specialized services (Session, Model Registry, API Key management) to ensure stability and rapid provider integration.
+
+## Modular Architecture
+
+To maintain high performance and reliability, AIRP's core engine has been decomposed into focused, testable units:
+
+* **Session Service**: Manages asynchronous conversation persistence, auto-saves, and intelligent message history merging.
+* **Model Registry**: Centrally handles discovery, metadata parsing, and loading states for 20+ AI providers.
+* **API Key Service**: Provides secure, encrypted storage for credentials with automated migration from legacy formats.
+* **Prompt Pipeline**: A dedicated orchestration layer that handles character card injection, lorebook keyword evaluation, and multi-layered system instructions.
 
 ## Scalability & Multi-Device Support
 
