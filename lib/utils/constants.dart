@@ -92,7 +92,7 @@ class ApiConstants {
 
   // New providers (v0.5.14)
   static const String blackboxAiBaseUrl = "https://api.blackbox.ai/api/models";
-  static const String minimaxBaseUrl = "https://api.minimax.chat/v1/models";
+  static const String minimaxBaseUrl = "https://api.minimax.io/v1/models";
   static const String deepseekBaseUrl = "https://api.deepseek.com/v1/models";
   static const String qwenBaseUrl =
       "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models";

@@ -199,7 +199,7 @@ class ModelSettingsPanel extends StatelessWidget {
             onSelected: chatProvider.setModel,
             placeholder: "models/gemini-3-flash-preview",
             isLoading: chatProvider.isLoadingGeminiModels,
-            onRefresh: chatProvider.fetchGeminiModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.gemini),
             refreshButtonColor: Colors.blueAccent,
           )
         else if (chatProvider.currentProvider == AiProvider.openRouter)
@@ -212,7 +212,7 @@ class ModelSettingsPanel extends StatelessWidget {
             },
             placeholder: "vendor/model-name",
             isLoading: chatProvider.isLoadingOpenRouterModels,
-            onRefresh: chatProvider.fetchOpenRouterModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.openRouter),
             refreshButtonColor: Colors.purpleAccent,
             controller: openRouterModelController,
           ),
@@ -243,7 +243,7 @@ class ModelSettingsPanel extends StatelessWidget {
             onSelected: chatProvider.setModel,
             placeholder: "Gemma-3-27B-Big-Tiger-v3",
             isLoading: chatProvider.isLoadingArliAiModels,
-            onRefresh: chatProvider.fetchArliAiModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.arliAi),
             refreshButtonColor: Colors.orangeAccent,
           ),
 
@@ -254,7 +254,7 @@ class ModelSettingsPanel extends StatelessWidget {
             onSelected: chatProvider.setModel,
             placeholder: 'aion-labs/aion-rp-llama-3.1-8b',
             isLoading: chatProvider.isLoadingNanoGptModels,
-            onRefresh: chatProvider.fetchNanoGptModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.nanoGpt),
             refreshButtonColor: Colors.yellowAccent,
           ),
 
@@ -265,7 +265,7 @@ class ModelSettingsPanel extends StatelessWidget {
             onSelected: chatProvider.setModel,
             placeholder: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
             isLoading: chatProvider.isLoadingNvidiaModels,
-            onRefresh: chatProvider.fetchNvidiaModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.nvidia),
             refreshButtonColor: Colors.lightGreenAccent,
           ),
 
@@ -276,7 +276,7 @@ class ModelSettingsPanel extends StatelessWidget {
             onSelected: chatProvider.setModel,
             placeholder: "gpt-4o",
             isLoading: chatProvider.isLoadingOpenAiModels,
-            onRefresh: chatProvider.fetchOpenAiModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.openAi),
             refreshButtonColor: Colors.greenAccent,
           ),
 
@@ -287,7 +287,7 @@ class ModelSettingsPanel extends StatelessWidget {
             onSelected: chatProvider.setModel,
             placeholder: "meta-llama/Meta-Llama-3-8B-Instruct",
             isLoading: chatProvider.isLoadingHuggingFaceModels,
-            onRefresh: chatProvider.fetchHuggingFaceModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.huggingFace),
             refreshButtonColor: Colors.amberAccent,
           ),
 
@@ -301,7 +301,7 @@ class ModelSettingsPanel extends StatelessWidget {
             },
             placeholder: "llama3-8b-8192",
             isLoading: chatProvider.isLoadingGroqModels,
-            onRefresh: chatProvider.fetchGroqModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.groq),
             refreshButtonColor: Colors.deepOrangeAccent,
             controller: groqModelController,
           ),

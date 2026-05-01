@@ -51,7 +51,7 @@ void main() {
         'https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100');
     expect(ApiConstants.groqBaseUrl, 'https://api.groq.com/openai/v1/models');
     expect(ApiConstants.blackboxAiBaseUrl, 'https://api.blackbox.ai/api/models');
-    expect(ApiConstants.minimaxBaseUrl, 'https://api.minimax.chat/v1/models');
+    expect(ApiConstants.minimaxBaseUrl, 'https://api.minimax.io/v1/models');
     expect(ApiConstants.deepseekBaseUrl, 'https://api.deepseek.com/v1/models');
     expect(ApiConstants.qwenBaseUrl,
         'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models');

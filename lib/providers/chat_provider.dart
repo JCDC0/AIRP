@@ -16,6 +16,7 @@ import '../services/global_settings_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/web_search_service.dart';
 import '../services/session_service.dart';
+import '../services/model_registry_service.dart';
 import '../utils/constants.dart';
 
 /// Central provider for managing chat state, API communication, and settings.
@@ -30,6 +31,7 @@ class ChatProvider extends ChangeNotifier {
       'airp_raw_reasoning_edit_warning_ack';
 
   late final SessionService _sessionService;
+  late final ModelRegistryService _modelRegistry;
 
   // --- Background stream infrastructure ---
   final Map<String, StreamSubscription> _activeStreams = {};
@@ -61,83 +63,73 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  List<ModelInfo> _geminiModelsList = [];
-  List<ModelInfo> _openRouterModelsList = [];
-  List<ModelInfo> _arliAiModelsList = [];
-  List<ModelInfo> _nanoGptModelsList = [];
-  List<ModelInfo> _nvidiaModelsList = [];
-  List<ModelInfo> _openAiModelsList = [];
-  List<ModelInfo> _huggingFaceModelsList = [];
-  List<ModelInfo> _groqModelsList = [];
+  List<ModelInfo> get geminiModelsList => _modelRegistry.getModels(AiProvider.gemini);
+  List<ModelInfo> get openRouterModelsList =>
+      _modelRegistry.getModels(AiProvider.openRouter);
+  List<ModelInfo> get arliAiModelsList =>
+      _modelRegistry.getModels(AiProvider.arliAi);
+  List<ModelInfo> get nanoGptModelsList =>
+      _modelRegistry.getModels(AiProvider.nanoGpt);
+  List<ModelInfo> get nvidiaModelsList =>
+      _modelRegistry.getModels(AiProvider.nvidia);
+  List<ModelInfo> get openAiModelsList =>
+      _modelRegistry.getModels(AiProvider.openAi);
+  List<ModelInfo> get huggingFaceModelsList =>
+      _modelRegistry.getModels(AiProvider.huggingFace);
+  List<ModelInfo> get groqModelsList =>
+      _modelRegistry.getModels(AiProvider.groq);
+  List<ModelInfo> get vertexAiModelsList =>
+      _modelRegistry.getModels(AiProvider.vertexAi);
+  List<ModelInfo> get blackboxAiModelsList =>
+      _modelRegistry.getModels(AiProvider.blackboxAi);
+  List<ModelInfo> get minimaxModelsList =>
+      _modelRegistry.getModels(AiProvider.minimax);
+  List<ModelInfo> get openAiCompatibleModelsList =>
+      _modelRegistry.getModels(AiProvider.openAiCompatible);
+  List<ModelInfo> get deepseekModelsList =>
+      _modelRegistry.getModels(AiProvider.deepseek);
+  List<ModelInfo> get ollamaModelsList =>
+      _modelRegistry.getModels(AiProvider.ollama);
+  List<ModelInfo> get qwenModelsList =>
+      _modelRegistry.getModels(AiProvider.qwen);
+  List<ModelInfo> get xAiModelsList => _modelRegistry.getModels(AiProvider.xAi);
+  List<ModelInfo> get zAiModelsList => _modelRegistry.getModels(AiProvider.zAi);
+  List<ModelInfo> get mistralModelsList =>
+      _modelRegistry.getModels(AiProvider.mistral);
 
-  // Additional provider model lists
-  final List<ModelInfo> _vertexAiModelsList = [];
-  final List<ModelInfo> _blackboxAiModelsList = [];
-  final List<ModelInfo> _minimaxModelsList = [];
-  final List<ModelInfo> _openAiCompatibleModelsList = [];
-  final List<ModelInfo> _deepseekModelsList = [];
-  final List<ModelInfo> _ollamaModelsList = [];
-  final List<ModelInfo> _qwenModelsList = [];
-  final List<ModelInfo> _xAiModelsList = [];
-  final List<ModelInfo> _zAiModelsList = [];
-  final List<ModelInfo> _mistralModelsList = [];
+  bool get isLoadingGeminiModels => _modelRegistry.isLoading(AiProvider.gemini);
+  bool get isLoadingOpenRouterModels =>
+      _modelRegistry.isLoading(AiProvider.openRouter);
+  bool get isLoadingArliAiModels =>
+      _modelRegistry.isLoading(AiProvider.arliAi);
+  bool get isLoadingNanoGptModels =>
+      _modelRegistry.isLoading(AiProvider.nanoGpt);
+  bool get isLoadingNvidiaModels =>
+      _modelRegistry.isLoading(AiProvider.nvidia);
+  bool get isLoadingOpenAiModels =>
+      _modelRegistry.isLoading(AiProvider.openAi);
+  bool get isLoadingHuggingFaceModels =>
+      _modelRegistry.isLoading(AiProvider.huggingFace);
+  bool get isLoadingGroqModels => _modelRegistry.isLoading(AiProvider.groq);
+  bool get isLoadingVertexAiModels =>
+      _modelRegistry.isLoading(AiProvider.vertexAi);
+  bool get isLoadingBlackboxAiModels =>
+      _modelRegistry.isLoading(AiProvider.blackboxAi);
+  bool get isLoadingMinimaxModels =>
+      _modelRegistry.isLoading(AiProvider.minimax);
+  bool get isLoadingOpenAiCompatibleModels =>
+      _modelRegistry.isLoading(AiProvider.openAiCompatible);
+  bool get isLoadingDeepseekModels =>
+      _modelRegistry.isLoading(AiProvider.deepseek);
+  bool get isLoadingOllamaModels =>
+      _modelRegistry.isLoading(AiProvider.ollama);
+  bool get isLoadingQwenModels => _modelRegistry.isLoading(AiProvider.qwen);
+  bool get isLoadingXAiModels => _modelRegistry.isLoading(AiProvider.xAi);
+  bool get isLoadingZAiModels => _modelRegistry.isLoading(AiProvider.zAi);
+  bool get isLoadingMistralModels =>
+      _modelRegistry.isLoading(AiProvider.mistral);
 
-  List<ModelInfo> get geminiModelsList => _geminiModelsList;
-  List<ModelInfo> get openRouterModelsList => _openRouterModelsList;
-  List<ModelInfo> get arliAiModelsList => _arliAiModelsList;
-  List<ModelInfo> get nanoGptModelsList => _nanoGptModelsList;
-  List<ModelInfo> get nvidiaModelsList => _nvidiaModelsList;
-  List<ModelInfo> get openAiModelsList => _openAiModelsList;
-  List<ModelInfo> get huggingFaceModelsList => _huggingFaceModelsList;
-  List<ModelInfo> get groqModelsList => _groqModelsList;
-  List<ModelInfo> get vertexAiModelsList => _vertexAiModelsList;
-  List<ModelInfo> get blackboxAiModelsList => _blackboxAiModelsList;
-  List<ModelInfo> get minimaxModelsList => _minimaxModelsList;
-  List<ModelInfo> get openAiCompatibleModelsList => _openAiCompatibleModelsList;
-  List<ModelInfo> get deepseekModelsList => _deepseekModelsList;
-  List<ModelInfo> get ollamaModelsList => _ollamaModelsList;
-  List<ModelInfo> get qwenModelsList => _qwenModelsList;
-  List<ModelInfo> get xAiModelsList => _xAiModelsList;
-  List<ModelInfo> get zAiModelsList => _zAiModelsList;
-  List<ModelInfo> get mistralModelsList => _mistralModelsList;
-
-  bool _isLoadingGeminiModels = false;
-  bool _isLoadingOpenRouterModels = false;
-  bool _isLoadingArliAiModels = false;
-  bool _isLoadingNanoGptModels = false;
-  bool _isLoadingNvidiaModels = false;
-  bool _isLoadingOpenAiModels = false;
-  bool _isLoadingHuggingFaceModels = false;
-  bool _isLoadingGroqModels = false;
-
-  bool get isLoadingGeminiModels => _isLoadingGeminiModels;
-  bool get isLoadingOpenRouterModels => _isLoadingOpenRouterModels;
-  bool get isLoadingArliAiModels => _isLoadingArliAiModels;
-  bool get isLoadingNanoGptModels => _isLoadingNanoGptModels;
-  bool get isLoadingNvidiaModels => _isLoadingNvidiaModels;
-  bool get isLoadingOpenAiModels => _isLoadingOpenAiModels;
-  bool get isLoadingHuggingFaceModels => _isLoadingHuggingFaceModels;
-  bool get isLoadingGroqModels => _isLoadingGroqModels;
-  bool get isLoadingVertexAiModels => false;
-  bool get isLoadingBlackboxAiModels => false;
-  bool get isLoadingMinimaxModels => false;
-  bool get isLoadingOpenAiCompatibleModels => false;
-  bool get isLoadingDeepseekModels => false;
-  bool get isLoadingOllamaModels => false;
-  bool get isLoadingQwenModels => false;
-  bool get isLoadingXAiModels => false;
-  bool get isLoadingZAiModels => false;
-  bool get isLoadingMistralModels => false;
-
-  bool get isRefreshingModels =>
-      _isLoadingGeminiModels ||
-      _isLoadingOpenRouterModels ||
-      _isLoadingArliAiModels ||
-      _isLoadingNanoGptModels ||
-      _isLoadingNvidiaModels ||
-      _isLoadingOpenAiModels ||
-      _isLoadingHuggingFaceModels ||
-      _isLoadingGroqModels;
+  bool get isRefreshingModels => _modelRegistry.isAnyLoading;
 
   AiProvider _currentProvider = AiProvider.gemini;
   String _geminiKey = '';
@@ -236,47 +228,10 @@ class ChatProvider extends ChangeNotifier {
 
   /// Returns the maximum context length for the currently selected model.
   int getMaxContext() {
-    List<ModelInfo> currentList = [];
-    String currentId = "";
+    if (_currentProvider == AiProvider.local) return 32768;
 
-    switch (_currentProvider) {
-      case AiProvider.gemini:
-        currentList = _geminiModelsList;
-        currentId = _selectedGeminiModel;
-        break;
-      case AiProvider.openRouter:
-        currentList = _openRouterModelsList;
-        currentId = _openRouterModel;
-        break;
-      case AiProvider.arliAi:
-        currentList = _arliAiModelsList;
-        currentId = _arliAiModel;
-        break;
-      case AiProvider.nanoGpt:
-        currentList = _nanoGptModelsList;
-        currentId = _nanoGptModel;
-        break;
-      case AiProvider.nvidia:
-        currentList = _nvidiaModelsList;
-        currentId = _nvidiaModel;
-        break;
-      case AiProvider.openAi:
-        currentList = _openAiModelsList;
-        currentId = _openAiModel;
-        break;
-      case AiProvider.huggingFace:
-        currentList = _huggingFaceModelsList;
-        currentId = _huggingFaceModel;
-        break;
-      case AiProvider.groq:
-        currentList = _groqModelsList;
-        currentId = _groqModel;
-        break;
-      case AiProvider.local:
-        return 32768; // Default for local
-      default:
-        return 1048576; // Default for other providers
-    }
+    final currentList = _modelRegistry.getModels(_currentProvider);
+    final currentId = _selectedModel;
 
     try {
       final model = currentList.firstWhere((m) => m.id == currentId);
@@ -288,47 +243,8 @@ class ChatProvider extends ChangeNotifier {
 
   /// Returns the ModelInfo object for the currently selected model.
   ModelInfo? getCurrentModelInfo() {
-    List<ModelInfo> currentList = [];
-    String currentId = "";
-
-    switch (_currentProvider) {
-      case AiProvider.gemini:
-        currentList = _geminiModelsList;
-        currentId = _selectedGeminiModel;
-        break;
-      case AiProvider.openRouter:
-        currentList = _openRouterModelsList;
-        currentId = _openRouterModel;
-        break;
-      case AiProvider.arliAi:
-        currentList = _arliAiModelsList;
-        currentId = _arliAiModel;
-        break;
-      case AiProvider.nanoGpt:
-        currentList = _nanoGptModelsList;
-        currentId = _nanoGptModel;
-        break;
-      case AiProvider.nvidia:
-        currentList = _nvidiaModelsList;
-        currentId = _nvidiaModel;
-        break;
-      case AiProvider.openAi:
-        currentList = _openAiModelsList;
-        currentId = _openAiModel;
-        break;
-      case AiProvider.huggingFace:
-        currentList = _huggingFaceModelsList;
-        currentId = _huggingFaceModel;
-        break;
-      case AiProvider.groq:
-        currentList = _groqModelsList;
-        currentId = _groqModel;
-        break;
-      case AiProvider.local:
-        return null; // Local models don't have ModelInfo
-      default:
-        return null;
-    }
+    final currentList = _modelRegistry.getModels(_currentProvider);
+    final currentId = _selectedModel;
 
     try {
       return currentList.firstWhere((m) => m.id == currentId);
@@ -470,6 +386,7 @@ class ChatProvider extends ChangeNotifier {
 
   ChatProvider() {
     _sessionService = SessionService(onStateChanged: notifyListeners);
+    _modelRegistry = ModelRegistryService(onStateChanged: notifyListeners);
     _loadSettings();
     _loadSessions();
     _loadSystemPrompts();
@@ -628,30 +545,7 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.gemini;
     }
 
-    _geminiModelsList = _deserializeModels(
-      prefs.getStringList(ApiConstants.prefListGemini),
-    );
-    _openRouterModelsList = _deserializeModels(
-      prefs.getStringList(ApiConstants.prefListOpenRouter),
-    );
-    _arliAiModelsList = _deserializeModels(
-      prefs.getStringList(ApiConstants.prefListArliAi),
-    );
-    _nanoGptModelsList = _deserializeModels(
-      prefs.getStringList(ApiConstants.prefListNanoGpt),
-    );
-    _nvidiaModelsList = _deserializeModels(
-      prefs.getStringList(ApiConstants.prefListNvidia),
-    );
-    _openAiModelsList = _deserializeModels(
-      prefs.getStringList(ApiConstants.prefListOpenAi),
-    );
-    _huggingFaceModelsList = _deserializeModels(
-      prefs.getStringList(ApiConstants.prefListHuggingFace),
-    );
-    _groqModelsList = _deserializeModels(
-      prefs.getStringList(ApiConstants.prefListGroq),
-    );
+    await _modelRegistry.loadCachedModels();
 
     _selectedGeminiModel =
         prefs.getString(ApiConstants.prefModelGemini) ??
@@ -1033,17 +927,6 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
     await _globalSettings.saveModelPickerSortMode(_modelPickerSortMode);
   }
-
-  Future<void> fetchVertexAiModels() async {}
-  Future<void> fetchBlackboxAiModels() async {}
-  Future<void> fetchMinimaxModels() async {}
-  Future<void> fetchOpenAiCompatibleModels() async {}
-  Future<void> fetchDeepseekModels() async {}
-  Future<void> fetchOllamaModels() async {}
-  Future<void> fetchQwenModels() async {}
-  Future<void> fetchXAiModels() async {}
-  Future<void> fetchZAiModels() async {}
-  Future<void> fetchMistralModels() async {}
 
   void setTemperature(double val) {
     _temperature = val;
@@ -2412,333 +2295,6 @@ class ChatProvider extends ChangeNotifier {
     initializeModel();
   }
 
-  Future<void> _fetchProviderModels({
-    required String apiKey,
-    required String url,
-    required String prefKey,
-    required List<ModelInfo> Function(dynamic) parser,
-    required void Function(List<ModelInfo>) updateList,
-    required void Function(bool) updateLoading,
-    Map<String, String>? headers,
-    String? currentModel,
-    void Function(String)? updateSelectedModel,
-  }) async {
-    if (apiKey.isEmpty && headers == null) return;
-
-    updateLoading(true);
-    notifyListeners();
-
-    try {
-      final models = await ChatApiService.fetchModels(
-        url: url,
-        headers:
-            headers ??
-            (apiKey.isNotEmpty ? {"Authorization": "Bearer $apiKey"} : null),
-        parser: parser,
-      );
-
-      updateList(models);
-
-      final prefs = await SharedPreferences.getInstance();
-      final List<String> serializedModels = models
-          .map((m) => jsonEncode(m.toJson()))
-          .toList();
-      await prefs.setStringList(prefKey, serializedModels);
-
-      if (currentModel != null && updateSelectedModel != null) {
-        if (!models.any((m) => m.id == currentModel) && models.isNotEmpty) {
-          updateSelectedModel(models.first.id);
-        }
-      }
-    } catch (e) {
-      debugPrint("Fetch Error: $e");
-    } finally {
-      updateLoading(false);
-      notifyListeners();
-    }
-  }
-
-  Future<void> fetchGeminiModels() async {
-    await _fetchProviderModels(
-      apiKey: _geminiKey,
-      url: "${ApiConstants.geminiBaseUrl}?key=$_geminiKey",
-      prefKey: ApiConstants.prefListGemini,
-      parser: (json) {
-        final List<dynamic> models = json['models'];
-        return models
-            .where((m) {
-              final methods = List<String>.from(
-                m['supportedGenerationMethods'] ?? [],
-              );
-              return methods.contains('generateContent');
-            })
-            .map<ModelInfo>((m) {
-              return ModelInfo(
-                id: m['name'].toString(),
-                name: m['displayName']?.toString() ?? m['name'].toString(),
-                description: m['description']?.toString() ?? "",
-                contextLength: m['inputTokenLimit']?.toString() ?? "",
-              );
-            })
-            .toList();
-      },
-      updateList: (list) => _geminiModelsList = list,
-      updateLoading: (val) => _isLoadingGeminiModels = val,
-      currentModel: _selectedGeminiModel,
-      updateSelectedModel: (val) => _selectedGeminiModel = val,
-      headers: {},
-    );
-  }
-
-  Future<void> fetchOpenRouterModels() async {
-    await _fetchProviderModels(
-      apiKey: "",
-      url: ApiConstants.openRouterBaseUrl,
-      prefKey: ApiConstants.prefListOpenRouter,
-      parser: (json) {
-        final List<dynamic> dataList = json['data'];
-        return dataList.map<ModelInfo>((e) {
-          final pricing = e['pricing'] ?? {};
-          final prompt = pricing['prompt'] ?? "0";
-          final completion = pricing['completion'] ?? "0";
-          return ModelInfo(
-            id: e['id'].toString(),
-            name: e['name']?.toString() ?? e['id'].toString(),
-            description: e['description']?.toString() ?? "",
-            contextLength: e['context_length']?.toString() ?? "",
-            pricing: "$prompt / $completion",
-            created: e['created'],
-            rawData: e,
-          );
-        }).toList();
-      },
-      updateList: (list) => _openRouterModelsList = list,
-      updateLoading: (val) => _isLoadingOpenRouterModels = val,
-      headers: {
-        "HTTP-Referer": "https://airp-chat.com",
-        "X-Title": "AIRP Chat",
-      },
-    );
-  }
-
-  Future<void> fetchArliAiModels() async {
-    await _fetchProviderModels(
-      apiKey: _arliAiKey,
-      url: ApiConstants.arliAiBaseUrl,
-      prefKey: ApiConstants.prefListArliAi,
-      parser: (json) {
-        final List<dynamic> dataList = json['data'];
-        return dataList.map<ModelInfo>((e) {
-          final rawId = e['id'].toString();
-          final pricing = e['pricing'] ?? {};
-          final prompt = pricing['prompt'] ?? "0";
-          final completion = pricing['completion'] ?? "0";
-
-          return ModelInfo(
-            id: rawId,
-            name: e['name']?.toString() ?? cleanModelName(rawId),
-            description:
-                e['description']?.toString() ??
-                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            contextLength:
-                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
-            pricing: (pricing.isNotEmpty) ? "$prompt / $completion" : "",
-            created: e['created'],
-            rawData: e,
-          );
-        }).toList();
-      },
-      updateList: (list) => _arliAiModelsList = list,
-      updateLoading: (val) => _isLoadingArliAiModels = val,
-    );
-  }
-
-  Future<void> fetchNanoGptModels() async {
-    await _fetchProviderModels(
-      apiKey: _nanoGptKey,
-      url: ApiConstants.nanoGptBaseUrl,
-      prefKey: ApiConstants.prefListNanoGpt,
-      parser: (json) {
-        final List<dynamic> dataList = json['data'] ?? [];
-        return dataList.map<ModelInfo>((e) {
-          final pricing = e['pricing'] ?? {};
-          double prompt =
-              double.tryParse(pricing['prompt']?.toString() ?? "0") ?? 0;
-          double completion =
-              double.tryParse(pricing['completion']?.toString() ?? "0") ?? 0;
-
-          // NanoGPT returns per 1M tokens, normalize to per token
-          // so that the UI formatter (which multiplies by 1M) works correctly.
-          if (prompt > 0) prompt /= 1000000;
-          if (completion > 0) completion /= 1000000;
-
-          final rawId = e['id'].toString();
-
-          return ModelInfo(
-            id: rawId,
-            name: e['name']?.toString() ?? cleanModelName(rawId),
-            description:
-                e['description']?.toString() ??
-                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            contextLength:
-                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
-            pricing: "$prompt / $completion",
-            created: e['created'],
-            rawData: e,
-          );
-        }).toList();
-      },
-      updateList: (list) => _nanoGptModelsList = list,
-      updateLoading: (val) => _isLoadingNanoGptModels = val,
-      currentModel: _nanoGptModel,
-      updateSelectedModel: (val) {
-        _nanoGptModel = val;
-        if (_currentProvider == AiProvider.nanoGpt) {
-          _selectedModel = _nanoGptModel;
-        }
-      },
-    );
-
-  }
-
-  Future<void> fetchOpenAiModels() async {
-    await _fetchProviderModels(
-      apiKey: _openAiKey,
-      url: ApiConstants.openAiBaseUrl,
-      prefKey: ApiConstants.prefListOpenAi,
-      parser: (json) {
-        final List<dynamic> dataList = json['data'] ?? [];
-        return dataList.map<ModelInfo>((e) {
-          final rawId = e['id'].toString();
-          final pricing = e['pricing'] ?? {};
-          final prompt = pricing['prompt'] ?? "0";
-          final completion = pricing['completion'] ?? "0";
-
-          return ModelInfo(
-            id: rawId,
-            name: e['name']?.toString() ?? cleanModelName(rawId),
-            description:
-                e['description']?.toString() ??
-                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            contextLength:
-                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
-            pricing: (pricing.isNotEmpty) ? "$prompt / $completion" : "",
-            created: e['created'],
-            rawData: e,
-          );
-        }).toList();
-      },
-      updateList: (list) => _openAiModelsList = list,
-      updateLoading: (val) => _isLoadingOpenAiModels = val,
-      currentModel: _openAiModel,
-      updateSelectedModel: (val) {
-        _openAiModel = val;
-        if (_currentProvider == AiProvider.openAi) {
-          _selectedModel = _openAiModel;
-        }
-      },
-    );
-  }
-
-  Future<void> fetchHuggingFaceModels() async {
-    await _fetchProviderModels(
-      apiKey: _huggingFaceKey,
-      url: ApiConstants.huggingFaceBaseUrl,
-      prefKey: ApiConstants.prefListHuggingFace,
-      parser: (json) {
-        final List<dynamic> dataList = json;
-        return dataList.map<ModelInfo>((e) {
-          final rawId = e['id'].toString();
-          return ModelInfo(
-            id: rawId,
-            name: e['name']?.toString() ?? cleanModelName(rawId),
-            description: e['description']?.toString() ?? "",
-          );
-        }).toList();
-      },
-      updateList: (list) => _huggingFaceModelsList = list,
-      updateLoading: (val) => _isLoadingHuggingFaceModels = val,
-      currentModel: _huggingFaceModel,
-      updateSelectedModel: (val) {
-        _huggingFaceModel = val;
-        if (_currentProvider == AiProvider.huggingFace) {
-          _selectedModel = _huggingFaceModel;
-        }
-      },
-    );
-  }
-
-  Future<void> fetchGroqModels() async {
-    await _fetchProviderModels(
-      apiKey: _groqKey,
-      url: ApiConstants.groqBaseUrl,
-      prefKey: ApiConstants.prefListGroq,
-      parser: (json) {
-        final List<dynamic> dataList = json['data'] ?? [];
-        return dataList.map<ModelInfo>((e) {
-          final rawId = e['id'].toString();
-          final pricing = e['pricing'] ?? {};
-          final prompt = pricing['prompt'] ?? "0";
-          final completion = pricing['completion'] ?? "0";
-
-          return ModelInfo(
-            id: rawId,
-            name: e['name']?.toString() ?? cleanModelName(rawId),
-            description:
-                e['description']?.toString() ??
-                "Owned by: ${e['owned_by'] ?? 'Unknown'}",
-            contextLength:
-                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
-            pricing: (pricing.isNotEmpty) ? "$prompt / $completion" : "",
-            created: e['created'],
-            rawData: e,
-          );
-        }).toList();
-      },
-      updateList: (list) => _groqModelsList = list,
-      updateLoading: (val) => _isLoadingGroqModels = val,
-      currentModel: _groqModel,
-      updateSelectedModel: (val) {
-        _groqModel = val;
-        if (_currentProvider == AiProvider.groq) _selectedModel = _groqModel;
-      },
-    );
-  }
-
-  Future<void> fetchNvidiaModels() async {
-    await _fetchProviderModels(
-      apiKey: _nvidiaKey,
-      url: ApiConstants.nvidiaBaseUrl,
-      prefKey: ApiConstants.prefListNvidia,
-      parser: (json) {
-        final List<dynamic> dataList = json['data'] ?? [];
-        return dataList.map<ModelInfo>((e) {
-          final rawId = e['id'].toString();
-          return ModelInfo(
-            id: rawId,
-            name: e['name']?.toString() ?? cleanModelName(rawId),
-            description:
-                e['description']?.toString() ??
-                "Owned by: ${e['owned_by'] ?? 'NVIDIA'}",
-            contextLength:
-                (e['context_length'] ?? e['context_window'])?.toString() ?? "",
-            created: e['created'],
-            rawData: e,
-          );
-        }).toList();
-      },
-      updateList: (list) => _nvidiaModelsList = list,
-      updateLoading: (val) => _isLoadingNvidiaModels = val,
-      currentModel: _nvidiaModel,
-      updateSelectedModel: (val) {
-        _nvidiaModel = val;
-        if (_currentProvider == AiProvider.nvidia) {
-          _selectedModel = _nvidiaModel;
-        }
-      },
-    );
-  }
-
   Future<void> savePromptToLibrary(String title, String content) async {
     if (title.isEmpty || content.isEmpty) return;
 
@@ -3114,49 +2670,17 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  List<ModelInfo> _deserializeModels(List<String>? serialized) {
-    if (serialized == null) return [];
-    return serialized.map<ModelInfo>((s) {
-      try {
-        final Map<String, dynamic> json = jsonDecode(s);
-        return ModelInfo.fromJson(json);
-      } catch (e) {
-        // Fallback for legacy plain string lists
-        return ModelInfo(id: s, name: s);
-      }
-    }).toList();
+  Future<void> refreshModels(AiProvider provider) async {
+    final key = _getProviderKey(provider);
+    Map<String, String>? headers;
+    if (provider == AiProvider.openRouter) {
+      headers = {
+        "HTTP-Referer": "https://airp-chat.com",
+        "X-Title": "AIRP Chat",
+      };
+    }
+    await _modelRegistry.fetchModels(provider, key, headers: headers);
   }
 
-  Future<void> refreshCurrentModels() async {
-    switch (_currentProvider) {
-      case AiProvider.gemini:
-        await fetchGeminiModels();
-        break;
-      case AiProvider.openRouter:
-        await fetchOpenRouterModels();
-        break;
-      case AiProvider.openAi:
-        await fetchOpenAiModels();
-        break;
-      case AiProvider.arliAi:
-        await fetchArliAiModels();
-        break;
-      case AiProvider.nanoGpt:
-        await fetchNanoGptModels();
-        break;
-      case AiProvider.nvidia:
-        await fetchNvidiaModels();
-        break;
-      case AiProvider.huggingFace:
-        await fetchHuggingFaceModels();
-        break;
-      case AiProvider.groq:
-        await fetchGroqModels();
-        break;
-      case AiProvider.local:
-        break;
-      default:
-        break;
-    }
-  }
+  Future<void> refreshCurrentModels() => refreshModels(_currentProvider);
 }
