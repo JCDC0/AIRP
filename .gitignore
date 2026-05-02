@@ -48,3 +48,4 @@ app.*.map.json
 main.dart.txt
 GEMINI.md
 suggested_features.md
+.kilo/old_plans/
