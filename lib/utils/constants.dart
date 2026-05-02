@@ -119,6 +119,7 @@ class ApiConstants {
   static const String prefListXAi = 'airp_list_xai';
   static const String prefListZAi = 'airp_list_zai';
   static const String prefListMistral = 'airp_list_mistral';
+  static const String prefListLocal = 'airp_list_local';
 
   static const String prefKeyGemini = 'airp_key_gemini';
   static const String prefKeyOpenRouter = 'airp_key_openrouter';

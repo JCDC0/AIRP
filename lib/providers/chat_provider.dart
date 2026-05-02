@@ -17,6 +17,7 @@ import '../services/web_search_service.dart';
 import '../services/session_service.dart';
 import '../services/model_registry_service.dart';
 import '../services/api_key_service.dart';
+import '../services/strategies/strategy_resolver.dart';
 import '../utils/constants.dart';
 
 /// Central provider for managing chat state, API communication, and settings.
@@ -1501,114 +1502,67 @@ class ChatProvider extends ChangeNotifier {
     Stream<String>? responseStream;
 
     try {
-      if (_currentProvider == AiProvider.gemini) {
-        // Re-initialise model with lorebook-enriched system instruction
-        // so the chat session reflects the full prompt context.
-        String geminiSysInstruction = _buildSystemInstruction(
-          lorebookResult: lorebookResult,
-          recognizedLoreEntries: recognizedLoreEntries,
-        );
-        if (depthEntries.isNotEmpty) {
-          for (final de in depthEntries) {
-            geminiSysInstruction += '\n\n${de['content']}';
-          }
-        }
-        await initializeModel(systemInstructionOverride: geminiSysInstruction);
+      final strategy = StrategyResolver.resolve(_currentProvider);
+      final activeKey = _getProviderKey(_currentProvider);
 
-        // Prepend any BYOK context to the user message.
-        final String geminiMessage = byokWebContext != null
-            ? '$byokWebContext\n\n---\n\n$sentUserText'
-            : sentUserText;
-        responseStream = ChatApiService.streamGeminiResponse(
-          chatSession: _chat,
-          message: geminiMessage,
-          imagePaths: imagesToSend,
-          modelName: _selectedModel,
-          attachmentBytes: attachmentBytes,
-        );
-      } else {
-        String baseUrl = "";
-        String apiKey = "";
-        Map<String, String>? headers;
-
-        final contextMessages = _messages.sublist(0, _messages.length - 2);
-        int effectiveHistoryLimit = _enableMsgHistory ? _historyLimit : 0;
-        int startIndex = contextMessages.length - effectiveHistoryLimit;
-        if (startIndex < 0) startIndex = 0;
-        final limitedHistory = contextMessages.sublist(startIndex);
-
-        if (_currentProvider == AiProvider.openRouter) {
-          baseUrl = "https://openrouter.ai/api/v1/chat/completions";
-          apiKey = _getProviderKey(AiProvider.openRouter);
-          headers = {
-            "HTTP-Referer": "https://airp-chat.com",
-            "X-Title": "AIRP Chat",
-          };
-        } else if (_currentProvider == AiProvider.arliAi) {
-          baseUrl = "https://api.arliai.com/v1/chat/completions";
-          apiKey = _getProviderKey(AiProvider.arliAi);
-        } else if (_currentProvider == AiProvider.nanoGpt) {
-          baseUrl = "https://nano-gpt.com/api/v1/chat/completions";
-          apiKey = _getProviderKey(AiProvider.nanoGpt);
-        } else if (_currentProvider == AiProvider.openAi) {
-          baseUrl = "https://api.openai.com/v1/chat/completions";
-          apiKey = _getProviderKey(AiProvider.openAi);
-        } else if (_currentProvider == AiProvider.huggingFace) {
-          baseUrl =
-              "https://api-inference.huggingface.co/models/$_selectedModel/v1/chat/completions";
-          apiKey = _getProviderKey(AiProvider.huggingFace);
-        } else if (_currentProvider == AiProvider.groq) {
-          baseUrl = "https://api.groq.com/openai/v1/chat/completions";
-          apiKey = _getProviderKey(AiProvider.groq);
-        } else if (_currentProvider == AiProvider.local) {
-          baseUrl = _localIp.trim();
-          if (baseUrl.endsWith('/')) {
-            baseUrl = baseUrl.substring(0, baseUrl.length - 1);
-          }
-          if (!baseUrl.endsWith('/chat/completions')) {
-            baseUrl += baseUrl.endsWith('/v1')
-                ? "/chat/completions"
-                : "/v1/chat/completions";
-          }
-          apiKey = "local-key";
-        }
-
-        String finalSystemInstruction = _buildSystemInstruction(
-          lorebookResult: lorebookResult,
-          recognizedLoreEntries: recognizedLoreEntries,
-        );
-
-        // Prepend BYOK search context to user message (not system prompt)
-        // so each query gets its own fresh context and avoids mutating
-        // the session-level system instruction.
-        final String openAiUserMessage = byokWebContext != null
-            ? '$byokWebContext\n\n---\n\n$sentUserText'
-            : sentUserText;
-
-        responseStream = ChatApiService.streamOpenAiCompatible(
-          apiKey: apiKey,
-          baseUrl: baseUrl,
-          model: _currentProvider == AiProvider.local
-              ? _localModelName
-              : _selectedModel,
-          history: limitedHistory,
-          systemInstruction: finalSystemInstruction,
-          userMessage: openAiUserMessage,
-          imagePaths: imagesToSend,
-          temperature: _enableGenerationSettings ? _temperature : null,
-          topP: _enableGenerationSettings ? _topP : null,
-          topK: _enableGenerationSettings ? _topK : null,
-          maxTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
-          // Only use native provider grounding when BYOK is not active
-          enableGrounding:
-              _enableGrounding && _searchProvider == SearchProvider.provider,
-          reasoningEffort: _enableReasoning ? _reasoningEffort : null,
-          extraHeaders: headers,
-          includeUsage: _enableUsage,
-          depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
-          attachmentBytes: attachmentBytes,
-        );
+      String? customUrl;
+      if (_currentProvider == AiProvider.local) {
+        customUrl = _localIp.trim();
+      } else if (_currentProvider == AiProvider.openAiCompatible) {
+        customUrl = _openAiCompatibleEndpoint.trim();
+      } else if (_currentProvider == AiProvider.vertexAi) {
+        customUrl = _vertexAiEndpoint.trim();
       }
+
+      String finalSystemInstruction = _buildSystemInstruction(
+        lorebookResult: lorebookResult,
+        recognizedLoreEntries: recognizedLoreEntries,
+      );
+      if (depthEntries.isNotEmpty) {
+        for (final de in depthEntries) {
+          finalSystemInstruction += '\n\n${de['content']}';
+        }
+      }
+
+      final String finalUserMessage =
+          byokWebContext != null
+              ? '$byokWebContext\n\n---\n\n$sentUserText'
+              : sentUserText;
+
+      if (_currentProvider == AiProvider.gemini) {
+        await initializeModel(systemInstructionOverride: finalSystemInstruction);
+      }
+
+      final contextMessages = _messages.sublist(0, _messages.length - 2);
+      int effectiveHistoryLimit = _enableMsgHistory ? _historyLimit : 0;
+      int startIndex = contextMessages.length - effectiveHistoryLimit;
+      if (startIndex < 0) startIndex = 0;
+      final limitedHistory = contextMessages.sublist(startIndex);
+
+      responseStream = strategy.streamResponse(
+        apiKey: activeKey,
+        baseUrl: strategy.getStreamUrl(customUrl: customUrl),
+        model:
+            _currentProvider == AiProvider.local
+                ? _localModelName
+                : _selectedModel,
+        history: limitedHistory,
+        systemInstruction: finalSystemInstruction,
+        userMessage: finalUserMessage,
+        imagePaths: imagesToSend,
+        temperature: _enableGenerationSettings ? _temperature : null,
+        topP: _enableGenerationSettings ? _topP : null,
+        topK: _enableGenerationSettings ? _topK : null,
+        maxTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
+        enableGrounding:
+            _enableGrounding && _searchProvider == SearchProvider.provider,
+        reasoningEffort: _enableReasoning ? _reasoningEffort : null,
+        extraHeaders: strategy.getHeaders(activeKey),
+        includeUsage: _enableUsage,
+        depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
+        attachmentBytes: attachmentBytes,
+        providerSession: _currentProvider == AiProvider.gemini ? _chat : null,
+      );
 
       String fullText = "";
       final subscription = responseStream.listen(
