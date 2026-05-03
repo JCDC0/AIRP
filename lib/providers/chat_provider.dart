@@ -20,6 +20,7 @@ import '../services/api_key_service.dart';
 import '../services/streaming_coordinator_service.dart';
 import '../services/strategies/strategy_resolver.dart';
 import '../utils/constants.dart';
+import 'settings_provider.dart';
 
 /// Central provider for managing chat state, API communication, and settings.
 ///
@@ -29,13 +30,17 @@ import '../utils/constants.dart';
 class ChatProvider extends ChangeNotifier {
   static const String _characterCardKeyV3 = 'airp_character_card_v3';
   static const String _characterCardKeyV2 = 'airp_character_card';
-  static const String _rawEditWarningAckKey =
-      'airp_raw_reasoning_edit_warning_ack';
 
   late final SessionService _sessionService;
   late final ModelRegistryService _modelRegistry;
   late final ApiKeyService _apiKeys;
   late final StreamingCoordinatorService _streamingCoordinator;
+  SettingsProvider? _settings;
+
+  void updateSettings(SettingsProvider settings) {
+    _settings = settings;
+    notifyListeners();
+  }
 
   // --- Background stream infrastructure ---
   bool _nonStreamingLoading = false;
@@ -252,34 +257,6 @@ class ChatProvider extends ChangeNotifier {
     return res;
   }
 
-  double _temperature = ChatDefaults.temperature;
-  double _topP = ChatDefaults.topP;
-  int _topK = ChatDefaults.topK;
-  int _maxOutputTokens = ChatDefaults.maxOutputTokens;
-  int _historyLimit = ChatDefaults.historyLimit;
-  bool _enableGrounding = false;
-  bool _enableUsage = false;
-  bool _disableSafety = true;
-  String _reasoningEffort = "none";
-
-  // Web Search (BYOK)
-  SearchProvider _searchProvider = SearchProvider.provider;
-  String _searxngUrl = '';
-  int _searchResultCount = 5;
-
-  bool _enableSystemPrompt = true;
-  bool _enableAdvancedSystemPrompt = true;
-  bool _enableCharacterCard = true;
-  bool _enableMsgHistory = true;
-  bool _enableReasoning = false;
-  bool _enableGenerationSettings = true;
-  bool _enableMaxOutputTokens = true;
-  bool _enableReasoningEfficiency = true;
-  bool _persistReasoningBlocks = true;
-  bool _enableDeveloperMode = false;
-  bool _enableRawReasoningEdit = false;
-  bool _rawReasoningEditWarningAcknowledged = false;
-
   // --- World Lore state ---
   Lorebook _globalLorebook = Lorebook(name: 'Global');
   LorebookEvalResult _lastLorebookEvalResult = const LorebookEvalResult(
@@ -288,41 +265,11 @@ class ChatProvider extends ChangeNotifier {
   );
   List<LorebookEntry> _lastRecognizedLoreEntries = const [];
   Color _loreRecognizerGlowColor = Colors.orangeAccent;
-  bool _enableLorebook = true;
 
-  double get temperature => _temperature;
-  double get topP => _topP;
-  int get topK => _topK;
-  int get maxOutputTokens => _maxOutputTokens;
-  int get historyLimit => _historyLimit;
-  bool get enableGrounding => _enableGrounding;
-  bool get enableUsage => _enableUsage;
-
-  /// True when the currently selected model/provider is an image-generation route.
-  bool get disableSafety => _disableSafety;
-  String get reasoningEffort => _reasoningEffort;
-
-  // Web Search (BYOK)
-  SearchProvider get searchProvider => _searchProvider;
+  // Web Search (BYOK) Getters passed to _apiKeys
   String get braveApiKey => _apiKeys.getSearchKey(SearchProvider.brave);
   String get tavilyApiKey => _apiKeys.getSearchKey(SearchProvider.tavily);
   String get serperApiKey => _apiKeys.getSearchKey(SearchProvider.serper);
-  String get searxngUrl => _searxngUrl;
-  int get searchResultCount => _searchResultCount;
-
-  bool get enableSystemPrompt => _enableSystemPrompt;
-  bool get enableAdvancedSystemPrompt => _enableAdvancedSystemPrompt;
-  bool get enableCharacterCard => _enableCharacterCard;
-  bool get enableMsgHistory => _enableMsgHistory;
-  bool get enableReasoning => _enableReasoning;
-  bool get enableGenerationSettings => _enableGenerationSettings;
-  bool get enableMaxOutputTokens => _enableMaxOutputTokens;
-  bool get enableReasoningEfficiency => _enableReasoningEfficiency;
-  bool get persistReasoningBlocks => _persistReasoningBlocks;
-  bool get enableDeveloperMode => _enableDeveloperMode;
-  bool get enableRawReasoningEdit => _enableRawReasoningEdit;
-  bool get rawReasoningEditWarningAcknowledged =>
-      _rawReasoningEditWarningAcknowledged;
 
   // --- World Lore getters ---
   Lorebook get globalLorebook => _globalLorebook;
@@ -330,7 +277,7 @@ class ChatProvider extends ChangeNotifier {
   List<LorebookEntry> get lastRecognizedLoreEntries =>
       _lastRecognizedLoreEntries;
   Color get loreRecognizerGlowColor => _loreRecognizerGlowColor;
-  bool get enableLorebook => _enableLorebook;
+  bool get enableLorebook => _settings!.enableLorebook;
 
   /// Returns the character-scoped lorebook (from the active character card),
   /// or `null` if no card is loaded or the card has no embedded lorebook.
@@ -506,66 +453,15 @@ class ChatProvider extends ChangeNotifier {
 
     _selectedModel = _getProviderModel(_currentProvider);
 
-    _topP = prefs.getDouble('airp_top_p') ?? ChatDefaults.topP;
-    _topK = prefs.getInt('airp_top_k') ?? ChatDefaults.topK;
-    _maxOutputTokens =
-        prefs.getInt('airp_max_output') ?? ChatDefaults.maxOutputTokens;
-    _historyLimit =
-        prefs.getInt('airp_history_limit') ?? ChatDefaults.historyLimit;
-    _temperature =
-        prefs.getDouble('airp_temperature') ?? ChatDefaults.temperature;
-    _enableUsage = prefs.getBool('airp_enable_usage') ?? false;
-    _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
-    _enableGrounding = prefs.getBool(ApiConstants.prefEnableGrounding) ?? false;
-    _disableSafety = prefs.getBool(ApiConstants.prefDisableSafety) ?? true;
-    // prefEnableImageGen is no longer read — image gen is driven by the selected model.
-
-    final providerName =
-        prefs.getString(ApiConstants.prefKeySearchProvider) ?? 'provider';
-    _searchProvider = SearchProvider.values.firstWhere(
-      (e) => e.name == providerName,
-      orElse: () => SearchProvider.provider,
-    );
-    _searxngUrl = prefs.getString(ApiConstants.prefKeySearXNGUrl) ?? '';
-    _searchResultCount = prefs.getInt(ApiConstants.prefSearchResultCount) ?? 5;
     _systemInstruction =
         prefs.getString('airp_default_system_instruction') ?? '';
     _advancedSystemInstruction =
         prefs.getString('airp_advanced_system_instruction') ?? '';
 
-    _enableSystemPrompt = prefs.getBool('airp_enable_system_prompt') ?? true;
-    _enableAdvancedSystemPrompt =
-        prefs.getBool('airp_enable_advanced_system_prompt') ?? true;
-    // Migration: rename legacy key to airp_ prefixed key
-    if (prefs.containsKey('enable_character_card')) {
-      final legacy = prefs.getBool('enable_character_card')!;
-      await prefs.setBool('airp_enable_character_card', legacy);
-      await prefs.remove('enable_character_card');
-    }
-    _enableCharacterCard = prefs.getBool('airp_enable_character_card') ?? true;
-    _enableMsgHistory = prefs.getBool('airp_enable_msg_history') ?? true;
-    _enableReasoning = prefs.getBool('airp_enable_reasoning') ?? false;
-    _enableGenerationSettings =
-        prefs.getBool('airp_enable_generation_settings') ?? true;
-    _enableMaxOutputTokens =
-        prefs.getBool('airp_enable_max_output_tokens') ?? true;
-    _enableReasoningEfficiency =
-        prefs.getBool('airp_enable_reasoning_efficiency') ?? true;
-    _persistReasoningBlocks =
-        prefs.getBool('airp_persist_reasoning_blocks') ?? true;
-    _normalizeReasoningStorageMode();
-    _enableDeveloperMode = prefs.getBool('airp_enable_developer_mode') ?? false;
-    _enableRawReasoningEdit =
-        prefs.getBool('airp_enable_raw_reasoning_edit') ?? false;
-    _rawReasoningEditWarningAcknowledged =
-        prefs.getBool(_rawEditWarningAckKey) ?? false;
     _loreRecognizerGlowColor = Color(
       prefs.getInt('airp_lore_recognizer_glow_color') ??
           Colors.orangeAccent.toARGB32(),
     );
-    if (!_enableDeveloperMode) {
-      _enableRawReasoningEdit = false;
-    }
 
     await _loadCharacterCard();
     await _loadSillyTavernState();
@@ -625,13 +521,13 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void setEnableLorebook(bool enable) {
-    _enableLorebook = enable;
+    _settings!.setEnableLorebook(enable);
     notifyListeners();
     _saveSillyTavernState();
   }
 
   void setEnableCharacterCard(bool enable) {
-    _enableCharacterCard = enable;
+    _settings!.setEnableCharacterCard(enable);
     notifyListeners();
     _saveEnableCharacterCard();
     if (_currentProvider == AiProvider.gemini) {
@@ -641,7 +537,7 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _saveEnableCharacterCard() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('airp_enable_character_card', _enableCharacterCard);
+    await prefs.setBool('airp_enable_character_card', _settings!.enableCharacterCard);
   }
 
   /// Persists SillyTavern state (World Lore) to SharedPreferences.
@@ -651,7 +547,7 @@ class ChatProvider extends ChangeNotifier {
       'airp_global_lorebook',
       jsonEncode(_globalLorebook.toJson()),
     );
-    await prefs.setBool('airp_enable_lorebook', _enableLorebook);
+    await prefs.setBool('airp_enable_lorebook', _settings!.enableLorebook);
   }
 
   /// Loads SillyTavern state (World Lore) from SharedPreferences.
@@ -666,8 +562,6 @@ class ChatProvider extends ChangeNotifier {
         debugPrint('Error loading global lorebook: $e');
       }
     }
-
-    _enableLorebook = prefs.getBool('airp_enable_lorebook') ?? true;
   }
 
   void setCharacterCard(CharacterCard card) {
@@ -677,7 +571,7 @@ class ChatProvider extends ChangeNotifier {
     // The characterBook and regexScripts are stored on the card itself and
     // accessed via getters (characterLorebook, characterRegexScripts), so
     // no additional state assignment is needed — they become active
-    // automatically when _enableCharacterCard and _enableLorebook/_enableRegex
+    // automatically when _settings!.enableCharacterCard and _settings!.enableLorebook/_enableRegex
     // are true.
 
     notifyListeners();
@@ -800,40 +694,6 @@ class ChatProvider extends ChangeNotifier {
     await _globalSettings.saveModelPickerSortMode(_modelPickerSortMode);
   }
 
-  void setTemperature(double val) {
-    _temperature = val;
-    notifyListeners();
-  }
-
-  void setTopP(double val) {
-    _topP = val;
-    notifyListeners();
-  }
-
-  void setTopK(int val) {
-    _topK = val;
-    notifyListeners();
-  }
-
-  void setMaxOutputTokens(int val) {
-    _maxOutputTokens = val;
-    notifyListeners();
-  }
-
-  void setHistoryLimit(int val) {
-    _historyLimit = val;
-    notifyListeners();
-  }
-
-  void setEnableGrounding(bool val) {
-    _enableGrounding = val;
-    notifyListeners();
-  }
-
-  void setSearchProvider(SearchProvider val) {
-    _searchProvider = val;
-    notifyListeners();
-  }
 
   void setBraveApiKey(String val) {
     _apiKeys.setSearchKey(SearchProvider.brave, val);
@@ -847,101 +707,16 @@ class ChatProvider extends ChangeNotifier {
     _apiKeys.setSearchKey(SearchProvider.serper, val);
   }
 
-  void setSearxngUrl(String val) {
-    _searxngUrl = val;
-    notifyListeners();
-  }
-
-  void setSearchResultCount(int val) {
-    _searchResultCount = val;
-    notifyListeners();
-  }
-
-  void setDisableSafety(bool val) {
-    _disableSafety = val;
-    notifyListeners();
-  }
-
-  void setEnableUsage(bool val) {
-    _enableUsage = val;
-    notifyListeners();
-  }
-
-  void setReasoningEffort(String val) {
-    _reasoningEffort = val;
-    notifyListeners();
-  }
-
-  void setEnableSystemPrompt(bool val) {
-    _enableSystemPrompt = val;
-    notifyListeners();
-  }
-
-  void setEnableAdvancedSystemPrompt(bool val) {
-    _enableAdvancedSystemPrompt = val;
-    notifyListeners();
-  }
-
-  void setEnableMsgHistory(bool val) {
-    _enableMsgHistory = val;
-    notifyListeners();
-  }
-
-  void setEnableReasoning(bool val) {
-    _enableReasoning = val;
-    notifyListeners();
-  }
-
-  void setEnableGenerationSettings(bool val) {
-    _enableGenerationSettings = val;
-    notifyListeners();
-  }
-
-  void setEnableMaxOutputTokens(bool val) {
-    _enableMaxOutputTokens = val;
-    notifyListeners();
-  }
-
-  Future<void> setEnableReasoningEfficiency(bool val) async {
-    if (_enableReasoningEfficiency == val &&
-        (!val || !_persistReasoningBlocks)) {
-      return;
-    }
-    _enableReasoningEfficiency = val;
-    _persistReasoningBlocks = !val;
-    _normalizeReasoningStorageMode();
-    notifyListeners();
-    await _applyReasoningStoragePolicyGlobally();
-  }
-
   Future<void> setPersistReasoningBlocks(bool val) async {
-    if (_persistReasoningBlocks == val &&
-        (val || !_enableReasoningEfficiency)) {
+    if (_settings!.persistReasoningBlocks == val &&
+        (val || !_settings!.enableReasoningEfficiency)) {
       return;
     }
-    _persistReasoningBlocks = val;
-    _enableReasoningEfficiency = !val;
+    _settings!.setPersistReasoningBlocks(val);
+    _settings!.setEnableReasoningEfficiency(!val);
     _normalizeReasoningStorageMode();
     notifyListeners();
     await _applyReasoningStoragePolicyGlobally();
-  }
-
-  void setEnableDeveloperMode(bool val) {
-    _enableDeveloperMode = val;
-    if (!val) {
-      _enableRawReasoningEdit = false;
-    }
-    notifyListeners();
-  }
-
-  void setEnableRawReasoningEdit(bool val) {
-    _enableRawReasoningEdit = _enableDeveloperMode ? val : false;
-    notifyListeners();
-  }
-
-  void setRawReasoningEditWarningAcknowledged(bool val) {
-    _rawReasoningEditWarningAcknowledged = val;
-    notifyListeners();
   }
 
   void setLoreRecognizerGlowColor(Color color) {
@@ -962,23 +737,7 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString(ApiConstants.prefModelOpenAi, _openAiModel);
     await prefs.setString(ApiConstants.prefModelHuggingFace, _huggingFaceModel);
     await prefs.setString(ApiConstants.prefModelGroq, _groqModel);
-    await prefs.setDouble('airp_top_p', _topP);
-    await prefs.setInt('airp_top_k', _topK);
-    await prefs.setInt('airp_max_output', _maxOutputTokens);
-    await prefs.setInt('airp_history_limit', _historyLimit);
-    await prefs.setDouble('airp_temperature', _temperature);
-    await prefs.setBool('airp_enable_usage', _enableUsage);
-    await prefs.setString('airp_reasoning_effort', _reasoningEffort);
-    await prefs.setBool(ApiConstants.prefEnableGrounding, _enableGrounding);
-    // prefEnableImageGen intentionally not written — image gen is now model-driven.
-    await prefs.setBool(ApiConstants.prefDisableSafety, _disableSafety);
-    // Web Search (BYOK)
-    await prefs.setString(
-      ApiConstants.prefKeySearchProvider,
-      _searchProvider.name,
-    );
-    await prefs.setString(ApiConstants.prefKeySearXNGUrl, _searxngUrl);
-    await prefs.setInt(ApiConstants.prefSearchResultCount, _searchResultCount);
+    
     await prefs.setString(
       'airp_default_system_instruction',
       _systemInstruction,
@@ -988,38 +747,6 @@ class ChatProvider extends ChangeNotifier {
       _advancedSystemInstruction,
     );
 
-    await prefs.setBool('airp_enable_system_prompt', _enableSystemPrompt);
-    await prefs.setBool(
-      'airp_enable_advanced_system_prompt',
-      _enableAdvancedSystemPrompt,
-    );
-    await prefs.setBool('airp_enable_msg_history', _enableMsgHistory);
-    await prefs.setBool('airp_enable_reasoning', _enableReasoning);
-    await prefs.setBool(
-      'airp_enable_generation_settings',
-      _enableGenerationSettings,
-    );
-    await prefs.setBool(
-      'airp_enable_max_output_tokens',
-      _enableMaxOutputTokens,
-    );
-    await prefs.setBool(
-      'airp_enable_reasoning_efficiency',
-      _enableReasoningEfficiency,
-    );
-    await prefs.setBool(
-      'airp_persist_reasoning_blocks',
-      _persistReasoningBlocks,
-    );
-    await prefs.setBool('airp_enable_developer_mode', _enableDeveloperMode);
-    await prefs.setBool(
-      'airp_enable_raw_reasoning_edit',
-      _enableRawReasoningEdit,
-    );
-    await prefs.setBool(
-      _rawEditWarningAckKey,
-      _rawReasoningEditWarningAcknowledged,
-    );
     await prefs.setInt(
       'airp_lore_recognizer_glow_color',
       _loreRecognizerGlowColor.toARGB32(),
@@ -1047,11 +774,11 @@ class ChatProvider extends ChangeNotifier {
   /// block, or `null` if the provider is set to [SearchProvider.provider]
   /// (i.e. delegate to the AI's native grounding) or if the search fails.
   Future<String?> performByokWebSearch(String query) async {
-    if (_searchProvider == SearchProvider.provider) return null;
+    if (_settings!.searchProvider == SearchProvider.provider) return null;
 
     List<WebSearchResult> results = [];
 
-    switch (_searchProvider) {
+    switch (_settings!.searchProvider) {
       case SearchProvider.brave:
         if (braveApiKey.isEmpty) {
           debugPrint('[WebSearch] Brave key not set — skipping BYOK search.');
@@ -1060,17 +787,17 @@ class ChatProvider extends ChangeNotifier {
         results = await WebSearchService.searchBrave(
           query,
           braveApiKey,
-          resultCount: _searchResultCount,
+          resultCount: _settings!.searchResultCount,
         );
       case SearchProvider.searxng:
-        if (_searxngUrl.isEmpty) {
+        if (_settings!.searxngUrl.isEmpty) {
           debugPrint('[WebSearch] SearXNG URL not set — skipping BYOK search.');
           return null;
         }
         results = await WebSearchService.searchSearXNG(
           query,
-          _searxngUrl,
-          resultCount: _searchResultCount,
+          _settings!.searxngUrl,
+          resultCount: _settings!.searchResultCount,
         );
       case SearchProvider.tavily:
         if (tavilyApiKey.isEmpty) {
@@ -1080,7 +807,7 @@ class ChatProvider extends ChangeNotifier {
         results = await WebSearchService.searchTavily(
           query,
           tavilyApiKey,
-          resultCount: _searchResultCount,
+          resultCount: _settings!.searchResultCount,
         );
       case SearchProvider.serper:
         if (serperApiKey.isEmpty) {
@@ -1090,55 +817,56 @@ class ChatProvider extends ChangeNotifier {
         results = await WebSearchService.searchSerper(
           query,
           serperApiKey,
-          resultCount: _searchResultCount,
+          resultCount: _settings!.searchResultCount,
         );
       case SearchProvider.duckduckgo:
         results = await WebSearchService.searchDDG(
           query,
-          resultCount: _searchResultCount,
+          resultCount: _settings!.searchResultCount,
         );
       case SearchProvider.provider:
         return null;
     }
 
     if (results.isEmpty) {
-      return "\n\n*** SYSTEM NOTICE ***\nA web search for \"$query\" was attempted via ${_searchProvider.name}, but it returned 0 results or was blocked by the provider.\n\nPlease inform the user that the search failed or found nothing, and try answering their question using your knowledge if possible.\n*** END SYSTEM NOTICE ***\n\n";
+      return "\n\n*** SYSTEM NOTICE ***\nA web search for \"$query\" was attempted via ${_settings!.searchProvider.name}, but it returned 0 results or was blocked by the provider.\n\nPlease inform the user that the search failed or found nothing, and try answering their question using your knowledge if possible.\n*** END SYSTEM NOTICE ***\n\n";
     }
     return WebSearchService.formatResultsAsContextBlock(results, query: query);
   }
 
   String getEditableMessageText(ChatMessage message) {
     if (message.isUser) return message.text;
-    if (_enableDeveloperMode && _enableRawReasoningEdit) return message.text;
+    if (_settings!.enableDeveloperMode && _settings!.enableRawReasoningEdit) return message.text;
     return ReasoningUtils.split(message.text).content;
   }
 
   String getReadOnlyReasoningForEdit(ChatMessage message) {
     if (message.isUser) return '';
-    if (_enableDeveloperMode && _enableRawReasoningEdit) return '';
+    if (_settings!.enableDeveloperMode && _settings!.enableRawReasoningEdit) return '';
     return ReasoningUtils.split(message.text).reasoning;
   }
 
   void _normalizeReasoningStorageMode() {
     // Keep modes mutually exclusive to avoid contradictory toggle states.
-    if (_enableReasoningEfficiency) {
-      _persistReasoningBlocks = false;
+    if (_settings!.enableReasoningEfficiency) {
+      _settings!.setPersistReasoningBlocks(false);
       return;
     }
-    if (_persistReasoningBlocks) {
-      _enableReasoningEfficiency = false;
+    if (_settings!.persistReasoningBlocks) {
+      _settings!.setEnableReasoningEfficiency(false);
       return;
     }
-    _persistReasoningBlocks = true;
+    _settings!.setPersistReasoningBlocks(true);
   }
 
   bool get _shouldStripReasoningFromStorage =>
-      _enableReasoningEfficiency || !_persistReasoningBlocks;
+      _settings?.enableReasoningEfficiency == true || 
+      (_settings?.persistReasoningBlocks == false);
 
   Future<void> _applyReasoningStoragePolicyGlobally() async {
     await _sessionService.applyReasoningStoragePolicyGlobally(
-      _enableReasoningEfficiency,
-      _persistReasoningBlocks,
+      _settings!.enableReasoningEfficiency,
+      _settings!.persistReasoningBlocks,
     );
   }
 
@@ -1156,11 +884,11 @@ class ChatProvider extends ChangeNotifier {
   /// history-based matching.
   List<LorebookEntry> recognizeLoreEntriesFromInput(String input) {
     final trimmed = input.trim();
-    if (!_enableLorebook || trimmed.isEmpty) return const [];
+    if (!_settings!.enableLorebook || trimmed.isEmpty) return const [];
 
     final lorebooks = <Lorebook>[
       if (_globalLorebook.entries.isNotEmpty) _globalLorebook,
-      if (_enableCharacterCard && _characterCard.characterBook != null)
+      if (_settings!.enableCharacterCard && _characterCard.characterBook != null)
         _characterCard.characterBook!,
     ];
     if (lorebooks.isEmpty) return const [];
@@ -1192,7 +920,7 @@ class ChatProvider extends ChangeNotifier {
     return PromptPipelineService.collectDepthEntries(
       lorebookResult: lorebookResult,
       characterCard: _characterCard,
-      enableCharacterCard: _enableCharacterCard,
+      enableCharacterCard: _settings!.enableCharacterCard,
     );
   }
 
@@ -1210,9 +938,9 @@ class ChatProvider extends ChangeNotifier {
     return PromptPipelineService.buildSystemInstruction(
       systemInstruction: _systemInstruction,
       advancedSystemInstruction: _advancedSystemInstruction,
-      enableSystemPrompt: _enableSystemPrompt,
-      enableAdvancedSystemPrompt: _enableAdvancedSystemPrompt,
-      enableCharacterCard: _enableCharacterCard,
+      enableSystemPrompt: _settings!.enableSystemPrompt,
+      enableAdvancedSystemPrompt: _settings!.enableAdvancedSystemPrompt,
+      enableCharacterCard: _settings!.enableCharacterCard,
       characterCard: _characterCard,
       lorebookResult: lorebookResult,
       recognizedLoreEntries: recognizedLoreEntries,
@@ -1237,7 +965,7 @@ class ChatProvider extends ChangeNotifier {
     }
 
     try {
-      final List<SafetySetting> safetySettings = _disableSafety
+      final List<SafetySetting> safetySettings = _settings!.disableSafety
           ? [
               SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
               SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
@@ -1257,12 +985,12 @@ class ChatProvider extends ChangeNotifier {
       String finalSystemInstruction = baseSystemInstruction;
 
       if (_currentProvider == AiProvider.gemini &&
-          _enableReasoning &&
-          (_reasoningEffort != "none" || _selectedModel.contains("thinking"))) {
+          _settings!.enableReasoning &&
+          (_settings!.reasoningEffort != "none" || _selectedModel.contains("thinking"))) {
         finalSystemInstruction +=
             "\n\n[SYSTEM: You are a reasoning model. You MUST enclose your internal thought process in <think> and </think> tags before your final response.";
-        if (_reasoningEffort != "none") {
-          finalSystemInstruction += " Reasoning Effort: $_reasoningEffort.";
+        if (_settings!.reasoningEffort != "none") {
+          finalSystemInstruction += " Reasoning Effort: $_settings!.reasoningEffort.";
         }
         finalSystemInstruction += "]";
       }
@@ -1274,16 +1002,16 @@ class ChatProvider extends ChangeNotifier {
             ? Content.system(finalSystemInstruction)
             : null,
         generationConfig: GenerationConfig(
-          temperature: _enableGenerationSettings ? _temperature : null,
-          topP: _enableGenerationSettings ? _topP : null,
-          topK: _enableGenerationSettings ? _topK : null,
-          maxOutputTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
+          temperature: _settings!.enableGenerationSettings ? _settings!.temperature : null,
+          topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
+          topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
+          maxOutputTokens: _settings!.enableMaxOutputTokens ? _settings!.maxOutputTokens : null,
         ),
         safetySettings: safetySettings,
       );
 
       List<Content> history = [];
-      int effectiveHistoryLimit = _enableMsgHistory ? _historyLimit : 0;
+      int effectiveHistoryLimit = _settings!.enableMsgHistory ? _settings!.historyLimit : 0;
       int startIndex = _messages.length - effectiveHistoryLimit;
       if (startIndex < 0) startIndex = 0;
       final limitedMessages = _messages.sublist(startIndex);
@@ -1357,10 +1085,10 @@ class ChatProvider extends ChangeNotifier {
 
     String sentUserText = messageText;
 
-    if (_enableGrounding &&
+    if (_settings!.enableGrounding &&
         _currentProvider == AiProvider.gemini &&
         imagesToSend.isEmpty &&
-        _searchProvider == SearchProvider.provider) {
+        _settings!.searchProvider == SearchProvider.provider) {
       try {
         _nonStreamingLoading = true;
         notifyListeners();
@@ -1396,7 +1124,7 @@ class ChatProvider extends ChangeNotifier {
           history: _messages.sublist(0, _messages.length - 1),
           userMessage: sentUserText,
           systemInstruction: finalSystemInstruction,
-          disableSafety: _disableSafety,
+          disableSafety: _settings!.disableSafety,
           thoughtSignature: previousSignature,
         );
 
@@ -1454,7 +1182,7 @@ class ChatProvider extends ChangeNotifier {
     // Fetch search context before streaming when the user has chosen a
     // non-provider search backend. This runs regardless of AI provider.
     String? byokWebContext;
-    if (_enableGrounding && _searchProvider != SearchProvider.provider) {
+    if (_settings!.enableGrounding && _settings!.searchProvider != SearchProvider.provider) {
       try {
         _nonStreamingLoading = true;
         notifyListeners();
@@ -1519,7 +1247,7 @@ class ChatProvider extends ChangeNotifier {
       }
 
       final contextMessages = _messages.sublist(0, _messages.length - 2);
-      int effectiveHistoryLimit = _enableMsgHistory ? _historyLimit : 0;
+      int effectiveHistoryLimit = _settings!.enableMsgHistory ? _settings!.historyLimit : 0;
       int startIndex = contextMessages.length - effectiveHistoryLimit;
       if (startIndex < 0) startIndex = 0;
       final limitedHistory = contextMessages.sublist(startIndex);
@@ -1535,15 +1263,15 @@ class ChatProvider extends ChangeNotifier {
         systemInstruction: finalSystemInstruction,
         userMessage: finalUserMessage,
         imagePaths: imagesToSend,
-        temperature: _enableGenerationSettings ? _temperature : null,
-        topP: _enableGenerationSettings ? _topP : null,
-        topK: _enableGenerationSettings ? _topK : null,
-        maxTokens: _enableMaxOutputTokens ? _maxOutputTokens : null,
+        temperature: _settings!.enableGenerationSettings ? _settings!.temperature : null,
+        topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
+        topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
+        maxTokens: _settings!.enableMaxOutputTokens ? _settings!.maxOutputTokens : null,
         enableGrounding:
-            _enableGrounding && _searchProvider == SearchProvider.provider,
-        reasoningEffort: _enableReasoning ? _reasoningEffort : null,
+            _settings!.enableGrounding && _settings!.searchProvider == SearchProvider.provider,
+        reasoningEffort: _settings!.enableReasoning ? _settings!.reasoningEffort : null,
         extraHeaders: strategy.getHeaders(activeKey),
-        includeUsage: _enableUsage,
+        includeUsage: _settings!.enableUsage,
         depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
         attachmentBytes: attachmentBytes,
         providerSession: _currentProvider == AiProvider.gemini ? _chat : null,
@@ -1614,7 +1342,7 @@ class ChatProvider extends ChangeNotifier {
               await initializeModel();
             }
 
-            if (!_enableGrounding) updateTokenCount();
+            if (!_settings!.enableGrounding) updateTokenCount();
           } else {
             // Background completion: update saved session and show notification
             _finalizeBackgroundSession(
@@ -1984,14 +1712,14 @@ class ChatProvider extends ChangeNotifier {
   void editMessage(int index, String newText, {bool rawEdit = false}) {
     final existing = _messages[index];
     final canRawEdit =
-        _enableDeveloperMode && _enableRawReasoningEdit && rawEdit;
+        _settings!.enableDeveloperMode && _settings!.enableRawReasoningEdit && rawEdit;
 
     var updatedText = newText;
     if (!existing.isUser && !canRawEdit) {
       final split = ReasoningUtils.split(existing.text);
       if (split.reasoning.isNotEmpty &&
           !_shouldStripReasoningFromStorage &&
-          _persistReasoningBlocks) {
+          _settings!.persistReasoningBlocks) {
         updatedText = '<think>\n${split.reasoning}\n</think>\n$newText';
       }
     }
@@ -2102,32 +1830,6 @@ class ChatProvider extends ChangeNotifier {
   /// Exports all non-secret ChatProvider settings as a serializable map.
   Map<String, dynamic> exportSettingsMap() {
     return {
-      'generation': {
-        'temperature': _temperature,
-        'topP': _topP,
-        'topK': _topK,
-        'maxOutputTokens': _maxOutputTokens,
-        'historyLimit': _historyLimit,
-        'reasoningEffort': _reasoningEffort,
-      },
-      'toggles': {
-        'enableSystemPrompt': _enableSystemPrompt,
-        'enableAdvancedSystemPrompt': _enableAdvancedSystemPrompt,
-        'enableMsgHistory': _enableMsgHistory,
-        'enableReasoning': _enableReasoning,
-        'enableGenerationSettings': _enableGenerationSettings,
-        'enableMaxOutputTokens': _enableMaxOutputTokens,
-        'enableReasoningEfficiency': _enableReasoningEfficiency,
-        'persistReasoningBlocks': _persistReasoningBlocks,
-        'enableDeveloperMode': _enableDeveloperMode,
-        'enableRawReasoningEdit': _enableRawReasoningEdit,
-        'rawReasoningEditWarningAcknowledged':
-            _rawReasoningEditWarningAcknowledged,
-        'enableGrounding': _enableGrounding,
-        // enableImageGen intentionally omitted — image gen is model-driven.
-        'enableUsage': _enableUsage,
-        'disableSafety': _disableSafety,
-      },
       'provider': _currentProvider.name,
       'models': {
         'gemini': _selectedGeminiModel,
@@ -2149,10 +1851,8 @@ class ChatProvider extends ChangeNotifier {
       'systemPrompts': _savedSystemPrompts.map((p) => p.toJson()).toList(),
       'sessions': savedSessions.map((s) => s.toJson()).toList(),
       'characterCard': _characterCard.toV3Json(),
-      'enableCharacterCard': _enableCharacterCard,
       'sillyTavernState': {
         'globalLorebook': _globalLorebook.toJson(),
-        'enableLorebook': _enableLorebook,
       },
     };
   }
@@ -2162,47 +1862,6 @@ class ChatProvider extends ChangeNotifier {
   /// Settings are overwritten. System prompts and sessions are merged
   /// via [mergeSystemPrompts] and [mergeSessions].
   Future<void> importSettingsMap(Map<String, dynamic> data) async {
-    final gen = data['generation'] as Map<String, dynamic>? ?? {};
-    _temperature = (gen['temperature'] as num?)?.toDouble() ?? _temperature;
-    _topP = (gen['topP'] as num?)?.toDouble() ?? _topP;
-    _topK = (gen['topK'] as num?)?.toInt() ?? _topK;
-    _maxOutputTokens =
-        (gen['maxOutputTokens'] as num?)?.toInt() ?? _maxOutputTokens;
-    _historyLimit = (gen['historyLimit'] as num?)?.toInt() ?? _historyLimit;
-    _reasoningEffort = gen['reasoningEffort'] as String? ?? _reasoningEffort;
-
-    final tog = data['toggles'] as Map<String, dynamic>? ?? {};
-    _enableSystemPrompt =
-        tog['enableSystemPrompt'] as bool? ?? _enableSystemPrompt;
-    _enableAdvancedSystemPrompt =
-        tog['enableAdvancedSystemPrompt'] as bool? ??
-        _enableAdvancedSystemPrompt;
-    _enableMsgHistory = tog['enableMsgHistory'] as bool? ?? _enableMsgHistory;
-    _enableReasoning = tog['enableReasoning'] as bool? ?? _enableReasoning;
-    _enableGenerationSettings =
-        tog['enableGenerationSettings'] as bool? ?? _enableGenerationSettings;
-    _enableMaxOutputTokens =
-        tog['enableMaxOutputTokens'] as bool? ?? _enableMaxOutputTokens;
-    _enableReasoningEfficiency =
-        tog['enableReasoningEfficiency'] as bool? ?? _enableReasoningEfficiency;
-    _persistReasoningBlocks =
-        tog['persistReasoningBlocks'] as bool? ?? _persistReasoningBlocks;
-    _normalizeReasoningStorageMode();
-    _enableDeveloperMode =
-        tog['enableDeveloperMode'] as bool? ?? _enableDeveloperMode;
-    _enableRawReasoningEdit =
-        tog['enableRawReasoningEdit'] as bool? ?? _enableRawReasoningEdit;
-    _rawReasoningEditWarningAcknowledged =
-        tog['rawReasoningEditWarningAcknowledged'] as bool? ??
-        _rawReasoningEditWarningAcknowledged;
-    if (!_enableDeveloperMode) {
-      _enableRawReasoningEdit = false;
-    }
-    _enableGrounding = tog['enableGrounding'] as bool? ?? _enableGrounding;
-    // enableImageGen is no longer stored — image gen is model-driven.
-    _enableUsage = tog['enableUsage'] as bool? ?? _enableUsage;
-    _disableSafety = tog['disableSafety'] as bool? ?? _disableSafety;
-
     final providerName = data['provider'] as String?;
     if (providerName != null) {
       try {
@@ -2291,9 +1950,6 @@ class ChatProvider extends ChangeNotifier {
         debugPrint('Error importing character card: $e');
       }
     }
-    if (data['enableCharacterCard'] != null) {
-      _enableCharacterCard = data['enableCharacterCard'] as bool;
-    }
 
     // SillyTavern state (World Lore)
     if (data['sillyTavernState'] != null) {
@@ -2304,7 +1960,6 @@ class ChatProvider extends ChangeNotifier {
             Map<String, dynamic>.from(st['globalLorebook']),
           );
         }
-        _enableLorebook = st['enableLorebook'] as bool? ?? true;
         _saveSillyTavernState();
       } catch (e) {
         debugPrint('Error importing SillyTavern state: $e');
@@ -2313,7 +1968,6 @@ class ChatProvider extends ChangeNotifier {
 
     notifyListeners();
     await saveSettings(showConfirmation: false);
-    await _applyReasoningStoragePolicyGlobally();
   }
 
   /// Concatenates imported sessions with existing ones, skipping duplicates by ID.

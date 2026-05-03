@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../services/web_search_service.dart';
 import '../../utils/constants.dart';
@@ -32,10 +33,11 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
       _braveKeyController.text = chatProvider.braveApiKey;
       _tavilyKeyController.text = chatProvider.tavilyApiKey;
       _serperKeyController.text = chatProvider.serperApiKey;
-      _searxngUrlController.text = chatProvider.searxngUrl;
+      _searxngUrlController.text = settingsProvider.searxngUrl;
     });
   }
 
@@ -48,7 +50,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
     super.dispose();
   }
 
-  Future<void> _validateSearXNG(ChatProvider chatProvider) async {
+  Future<void> _validateSearXNG(ChatProvider chatProvider, SettingsProvider settingsProvider) async {
     final url = _searxngUrlController.text.trim();
     if (url.isEmpty) return;
 
@@ -66,7 +68,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
     });
 
     if (ok) {
-      chatProvider.setSearxngUrl(url);
+      settingsProvider.setSearxngUrl(url);
       chatProvider.saveSettings(showConfirmation: false);
     }
   }
@@ -75,6 +77,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     final Color accent = themeProvider.textColor;
@@ -144,7 +147,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<SearchProvider>(
-              value: chatProvider.searchProvider,
+              value: settingsProvider.searchProvider,
               isExpanded: true,
               dropdownColor: themeProvider.dropdownColor,
               icon: Icon(Icons.travel_explore, color: accent),
@@ -194,7 +197,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
               ],
               onChanged: (val) {
                 if (val == null) return;
-                chatProvider.setSearchProvider(val);
+                settingsProvider.setSearchProvider(val);
                 chatProvider.saveSettings(showConfirmation: false);
               },
             ),
@@ -202,15 +205,15 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
         ),
         const SizedBox(height: 4),
         Text(
-          chatProvider.searchProvider == SearchProvider.provider
+          settingsProvider.searchProvider == SearchProvider.provider
               ? "Uses the AI provider's native search (e.g. Gemini Search, OpenRouter web plugin)."
-              : chatProvider.searchProvider == SearchProvider.brave
+              : settingsProvider.searchProvider == SearchProvider.brave
               ? "Results are fetched via the Brave Search API before each message."
-              : chatProvider.searchProvider == SearchProvider.tavily
+              : settingsProvider.searchProvider == SearchProvider.tavily
               ? "AI-optimised search with pre-summarised results. Fast and accurate."
-              : chatProvider.searchProvider == SearchProvider.serper
+              : settingsProvider.searchProvider == SearchProvider.serper
               ? "Google Search results via Serper.dev — high-quality organic results."
-              : chatProvider.searchProvider == SearchProvider.searxng
+              : settingsProvider.searchProvider == SearchProvider.searxng
               ? "Results are fetched from your self-hosted SearXNG instance."
               : "DuckDuckGo HTML scraping — no API key required.",
           style: TextStyle(
@@ -226,6 +229,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
           duration: const Duration(milliseconds: 200),
           child: _buildProviderConfig(
             chatProvider: chatProvider,
+            settingsProvider: settingsProvider,
             themeProvider: themeProvider,
             accent: accent,
             fs: fs,
@@ -235,21 +239,21 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
         ),
 
         // ── Result count slider ──────────────────────────────────────────
-        if (chatProvider.searchProvider != SearchProvider.provider) ...[
+        if (settingsProvider.searchProvider != SearchProvider.provider) ...[
           const Divider(height: 24),
           Text(
-            "Max Results  —  ${chatProvider.searchResultCount}",
+            "Max Results  —  ${settingsProvider.searchResultCount}",
             style: TextStyle(fontSize: fs - 1, color: Colors.grey),
           ),
           Slider(
-            value: chatProvider.searchResultCount.toDouble(),
+            value: settingsProvider.searchResultCount.toDouble(),
             min: 1,
             max: 10,
             divisions: 9,
             activeColor: accent,
-            label: chatProvider.searchResultCount.toString(),
+            label: settingsProvider.searchResultCount.toString(),
             onChanged: (v) {
-              chatProvider.setSearchResultCount(v.toInt());
+              settingsProvider.setSearchResultCount(v.toInt());
               chatProvider.saveSettings(showConfirmation: false);
             },
           ),
@@ -269,6 +273,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
 
   Widget _buildProviderConfig({
     required ChatProvider chatProvider,
+    required SettingsProvider settingsProvider,
     required ThemeProvider themeProvider,
     required Color accent,
     required double fs,
@@ -280,7 +285,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
     })
     fieldDecoration,
   }) {
-    switch (chatProvider.searchProvider) {
+    switch (settingsProvider.searchProvider) {
       case SearchProvider.brave:
         return _BraveConfig(
           key: const ValueKey('brave'),
@@ -341,9 +346,9 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
           fs: fs,
           bloomShadow: bloomShadow,
           fieldDecoration: fieldDecoration,
-          onValidate: () => _validateSearXNG(chatProvider),
+          onValidate: () => _validateSearXNG(chatProvider, settingsProvider),
           onSave: (val) {
-            chatProvider.setSearxngUrl(val);
+            settingsProvider.setSearxngUrl(val);
             chatProvider.saveSettings(showConfirmation: false);
           },
         );
@@ -354,6 +359,7 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
       case SearchProvider.provider:
         return const SizedBox.shrink(key: ValueKey('provider'));
     }
+    return const SizedBox.shrink();
   }
 }
 

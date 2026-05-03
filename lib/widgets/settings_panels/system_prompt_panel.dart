@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 
 /// A panel for editing the main system prompt and managing the prompt library.
@@ -41,6 +42,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
 
   void _handleSavePreset() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     chatProvider.setSystemInstruction(widget.mainPromptController.text);
     chatProvider.savePromptToLibrary(
       widget.promptTitleController.text,
@@ -122,12 +124,13 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Opacity(
-      opacity: chatProvider.enableSystemPrompt ? 1.0 : 0.5,
+      opacity: settingsProvider.enableSystemPrompt ? 1.0 : 0.5,
       child: AbsorbPointer(
-        absorbing: !chatProvider.enableSystemPrompt,
+        absorbing: !settingsProvider.enableSystemPrompt,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Column(

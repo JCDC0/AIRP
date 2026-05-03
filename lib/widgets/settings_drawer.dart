@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/scale_provider.dart';
 import 'settings_panels/settings_header.dart';
 import 'settings_panels/api_settings_panel.dart';
@@ -60,6 +61,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   void initState() {
     super.initState();
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
 
     _apiKeyController = TextEditingController(text: _getApiKey(chatProvider));
     _localIpController = TextEditingController(text: chatProvider.localIp);
@@ -155,6 +157,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
   void _handleSaveSettings() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
 
     chatProvider.setSystemInstruction(_mainPromptController.text.trim());
     chatProvider.setAdvancedSystemInstruction(
@@ -202,6 +205,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
 
   void _checkForChanges() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     bool hasChanges = false;
 
     if (_apiKeyController.text != _getApiKey(chatProvider)) hasChanges = true;
@@ -349,6 +353,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     _syncControllers(chatProvider);
@@ -441,10 +446,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       ),
                     ),
                     trailing: Switch(
-                      value: chatProvider.enableSystemPrompt,
+                      value: settingsProvider.enableSystemPrompt,
                       activeThumbColor: themeProvider.textColor,
                       onChanged: (val) {
-                        chatProvider.setEnableSystemPrompt(val);
+                        settingsProvider.setEnableSystemPrompt(val);
                         chatProvider.saveSettings();
                       },
                     ),
@@ -512,10 +517,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                     trailing: Switch(
-                      value: chatProvider.enableCharacterCard,
+                      value: settingsProvider.enableCharacterCard,
                       activeThumbColor: Colors.orangeAccent,
                       onChanged: (val) {
-                        chatProvider.setEnableCharacterCard(val);
+                        settingsProvider.setEnableCharacterCard(val);
                         chatProvider.saveSettings();
                       },
                     ),
@@ -623,10 +628,10 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       style: const TextStyle(color: Colors.grey, fontSize: 11),
                     ),
                     trailing: Switch(
-                      value: chatProvider.enableAdvancedSystemPrompt,
+                      value: settingsProvider.enableAdvancedSystemPrompt,
                       activeThumbColor: themeProvider.textColor,
                       onChanged: (val) {
-                        chatProvider.setEnableAdvancedSystemPrompt(val);
+                        settingsProvider.setEnableAdvancedSystemPrompt(val);
                         chatProvider.saveSettings();
                       },
                     ),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../models/lorebook_models.dart';
 import 'orbit_animations.dart';
 
@@ -34,6 +35,7 @@ class ChatInputField extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -103,7 +105,7 @@ class ChatInputField extends StatelessWidget {
                     decoration: InputDecoration(
                       hintText: hasPendingImages
                           ? 'Add a caption...'
-                          : (chatProvider.enableGrounding
+                          : (settingsProvider.enableGrounding
                                 ? 'Search web...'
                                 : 'Message...'),
                       hintStyle: TextStyle(
@@ -161,7 +163,7 @@ class ChatInputField extends StatelessWidget {
                 border: Border.all(
                   color: isLoading
                       ? themeProvider.textColor.withValues(alpha: 0.3)
-                      : (chatProvider.enableGrounding
+                      : (settingsProvider.enableGrounding
                             ? Colors.green
                             : themeProvider.textColor),
                   width: 0.5 * scaleProvider.iconScale,

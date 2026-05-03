@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/settings_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/scale_provider.dart';
 import 'providers/local_library_provider.dart';
@@ -15,7 +16,11 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProxyProvider<SettingsProvider, ChatProvider>(
+          create: (_) => ChatProvider(),
+          update: (_, settings, chat) => chat!..updateSettings(settings),
+        ),
         ChangeNotifierProvider(create: (_) => ScaleProvider()),
         ChangeNotifierProvider(create: (_) => LocalLibraryProvider()),
       ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
 import 'provider_model_selector.dart';
@@ -115,6 +116,7 @@ class ModelSettingsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
@@ -414,7 +416,7 @@ class ModelSettingsPanel extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          value: chatProvider.enableGrounding,
+          value: settingsProvider.enableGrounding,
           activeThumbColor: Colors.greenAccent,
           onChanged:
               (chatProvider.currentProvider == AiProvider.gemini ||
@@ -422,7 +424,7 @@ class ModelSettingsPanel extends StatelessWidget {
                   chatProvider.currentProvider == AiProvider.arliAi ||
                   chatProvider.currentProvider == AiProvider.nanoGpt)
               ? (val) {
-                  chatProvider.setEnableGrounding(val);
+                  settingsProvider.setEnableGrounding(val);
                   chatProvider.saveSettings();
                 }
               : null,
@@ -454,10 +456,10 @@ class ModelSettingsPanel extends StatelessWidget {
                 color: Colors.grey,
               ),
             ),
-            value: chatProvider.disableSafety,
+            value: settingsProvider.disableSafety,
             activeThumbColor: Colors.redAccent,
             onChanged: (val) {
-              chatProvider.setDisableSafety(val);
+              settingsProvider.setDisableSafety(val);
               chatProvider.saveSettings();
             },
           ),
@@ -488,10 +490,10 @@ class ModelSettingsPanel extends StatelessWidget {
                 color: Colors.grey,
               ),
             ),
-            value: chatProvider.enableUsage,
+            value: settingsProvider.enableUsage,
             activeThumbColor: Colors.tealAccent,
             onChanged: (val) {
-              chatProvider.setEnableUsage(val);
+              settingsProvider.setEnableUsage(val);
               chatProvider.saveSettings();
             },
           ),

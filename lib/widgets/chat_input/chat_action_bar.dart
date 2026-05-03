@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
@@ -182,6 +183,7 @@ class ChatActionBar extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -199,13 +201,13 @@ class ChatActionBar extends StatelessWidget {
           if (chatProvider.currentProvider == AiProvider.openRouter)
             _buildFeatureSwitch(
               icon: Icons.data_usage,
-              isActive: chatProvider.enableUsage,
+              isActive: settingsProvider.enableUsage,
               activeColor: Colors.tealAccent,
               onToggle: () async {
-                chatProvider.setEnableUsage(!chatProvider.enableUsage);
+                settingsProvider.setEnableUsage(!settingsProvider.enableUsage);
                 await chatProvider.saveSettings(showConfirmation: false);
                 onShowStatusPopup(
-                  chatProvider.enableUsage
+                  settingsProvider.enableUsage
                       ? "Usage Stats ON"
                       : "Usage Stats OFF",
                 );
@@ -217,13 +219,13 @@ class ChatActionBar extends StatelessWidget {
             message: 'Web search',
             child: _buildFeatureSwitch(
               icon: Icons.public,
-              isActive: chatProvider.enableGrounding,
+              isActive: settingsProvider.enableGrounding,
               activeColor: Colors.blueAccent,
               onToggle: () async {
-                chatProvider.setEnableGrounding(!chatProvider.enableGrounding);
+                settingsProvider.setEnableGrounding(!settingsProvider.enableGrounding);
                 await chatProvider.saveSettings(showConfirmation: false);
                 onShowStatusPopup(
-                  chatProvider.enableGrounding
+                  settingsProvider.enableGrounding
                       ? 'Web Search ON'
                       : 'Web Search OFF',
                 );
@@ -235,13 +237,13 @@ class ChatActionBar extends StatelessWidget {
           Builder(
             builder: (context) {
               Color? reasoningColor;
-              bool isActive = chatProvider.reasoningEffort != 'none';
+              bool isActive = settingsProvider.reasoningEffort != 'none';
 
-              if (chatProvider.reasoningEffort == 'low') {
+              if (settingsProvider.reasoningEffort == 'low') {
                 reasoningColor = Colors.grey[600];
-              } else if (chatProvider.reasoningEffort == 'medium') {
+              } else if (settingsProvider.reasoningEffort == 'medium') {
                 reasoningColor = Colors.grey[400];
-              } else if (chatProvider.reasoningEffort == 'high') {
+              } else if (settingsProvider.reasoningEffort == 'high') {
                 reasoningColor = themeProvider.textColor;
               }
 
@@ -278,13 +280,13 @@ class ChatActionBar extends StatelessWidget {
                 child: IconButton(
                   icon: const Icon(Icons.psychology),
                   color: iconColor,
-                  tooltip: "Reasoning Effort: ${chatProvider.reasoningEffort}",
+                  tooltip: "Reasoning Effort: ${settingsProvider.reasoningEffort}",
                   onPressed: isLoading
                       ? null
                       : () async {
                           String nextState;
                           String statusMsg;
-                          switch (chatProvider.reasoningEffort) {
+                          switch (settingsProvider.reasoningEffort) {
                             case 'none':
                               nextState = 'low';
                               statusMsg = "Reasoning: LOW";
@@ -305,7 +307,7 @@ class ChatActionBar extends StatelessWidget {
                               nextState = 'low';
                               statusMsg = "Reasoning: LOW";
                           }
-                          chatProvider.setReasoningEffort(nextState);
+                          settingsProvider.setReasoningEffort(nextState);
                           await chatProvider.saveSettings(
                             showConfirmation: false,
                           );

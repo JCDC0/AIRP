@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:async';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/character_card.dart';
 import '../../models/lorebook_models.dart';
@@ -70,6 +71,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
       _updateCardControllers(chatProvider.characterCard);
     });
   }
@@ -121,6 +123,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     _cardSaveTimer = Timer(const Duration(milliseconds: 1000), () {
       if (!mounted) return;
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
 
       final updatedCard = chatProvider.characterCard.copyWith(
         name: _cardNameController.text,
@@ -224,6 +227,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
   /// Exports the current character card to a .json file.
   Future<void> _handleExportCharacterCard() async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final card = chatProvider.characterCard;
 
     if (card.name.isEmpty) {
@@ -265,6 +269,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
   /// Resets the character card to an empty state.
   void _clearCharacterCard() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final emptyCard = CharacterCard();
     chatProvider.setCharacterCard(emptyCard);
     _updateCardControllers(emptyCard);
@@ -390,6 +395,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
 
   void _addAlternateGreeting() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
     final ctrl = TextEditingController();
@@ -456,6 +462,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
 
   void _editAlternateGreeting(int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
     final card = chatProvider.characterCard;
@@ -521,6 +528,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
 
   void _removeAlternateGreeting(int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final card = chatProvider.characterCard;
     final greetings = List<String>.from(card.alternateGreetings);
     greetings.removeAt(index);
@@ -533,12 +541,14 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
 
   void _setDepthPromptRole(LorebookRole role) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final card = chatProvider.characterCard;
     chatProvider.setCharacterCard(card.copyWith(depthPromptRole: role));
   }
 
   void _applyCardUpdate(CharacterCard updatedCard) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     chatProvider.setCharacterCard(updatedCard);
     _updateCardControllers(updatedCard);
   }
@@ -616,13 +626,14 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final card = chatProvider.characterCard;
 
     return Opacity(
-      opacity: chatProvider.enableCharacterCard ? 1.0 : 0.5,
+      opacity: settingsProvider.enableCharacterCard ? 1.0 : 0.5,
       child: AbsorbPointer(
-        absorbing: !chatProvider.enableCharacterCard,
+        absorbing: !settingsProvider.enableCharacterCard,
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Column(
@@ -677,7 +688,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                     color: themeProvider.subtitleColor,
                   ),
                 ),
-                subtitle: chatProvider.enableDeveloperMode
+                subtitle: settingsProvider.enableDeveloperMode
                     ? Text(
                         'Developer Mode: tap field body to open editor',
                         style: TextStyle(
@@ -701,7 +712,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         card.copyWith(description: val.trim()),
                       ),
                     ),
-                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                    allowTapToEdit: settingsProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   _buildCardField(
@@ -717,7 +728,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         card.copyWith(firstMessage: val.trim()),
                       ),
                     ),
-                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                    allowTapToEdit: settingsProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 12),
                   Padding(
@@ -745,7 +756,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         card.copyWith(scenario: val.trim()),
                       ),
                     ),
-                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                    allowTapToEdit: settingsProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   _buildCardField(
@@ -761,7 +772,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         card.copyWith(personality: val.trim()),
                       ),
                     ),
-                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                    allowTapToEdit: settingsProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   _buildCardField(
@@ -777,7 +788,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         card.copyWith(mesExample: val.trim()),
                       ),
                     ),
-                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                    allowTapToEdit: settingsProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   _buildCardField(
@@ -793,7 +804,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         card.copyWith(systemPrompt: val.trim()),
                       ),
                     ),
-                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                    allowTapToEdit: settingsProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   _buildCardField(
@@ -809,7 +820,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         card.copyWith(postHistoryInstructions: val.trim()),
                       ),
                     ),
-                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                    allowTapToEdit: settingsProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 12),
                   Padding(
@@ -837,7 +848,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                         card.copyWith(creatorNotes: val.trim()),
                       ),
                     ),
-                    allowTapToEdit: chatProvider.enableDeveloperMode,
+                    allowTapToEdit: settingsProvider.enableDeveloperMode,
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -853,7 +864,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                               card.copyWith(creator: val.trim()),
                             ),
                           ),
-                          allowTapToEdit: chatProvider.enableDeveloperMode,
+                          allowTapToEdit: settingsProvider.enableDeveloperMode,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -868,7 +879,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                               card.copyWith(characterVersion: val.trim()),
                             ),
                           ),
-                          allowTapToEdit: chatProvider.enableDeveloperMode,
+                          allowTapToEdit: settingsProvider.enableDeveloperMode,
                         ),
                       ),
                     ],
@@ -967,7 +978,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                           ),
                         ],
                       ),
-                      onTap: chatProvider.enableDeveloperMode
+                      onTap: settingsProvider.enableDeveloperMode
                           ? () => _editAlternateGreeting(e.key)
                           : null,
                     );
@@ -1021,7 +1032,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                               card.copyWith(depthPromptText: val.trim()),
                             ),
                           ),
-                          allowTapToEdit: chatProvider.enableDeveloperMode,
+                          allowTapToEdit: settingsProvider.enableDeveloperMode,
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -1044,7 +1055,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                                   },
                                 ),
                                 allowTapToEdit:
-                                    chatProvider.enableDeveloperMode,
+                                    settingsProvider.enableDeveloperMode,
                               ),
                             ),
                             const SizedBox(width: 12),

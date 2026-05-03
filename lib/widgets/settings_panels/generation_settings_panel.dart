@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 import 'settings_slider.dart';
 
@@ -61,6 +62,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
@@ -91,24 +93,24 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               color: Colors.grey,
             ),
           ),
-          value: chatProvider.enableMsgHistory,
+          value: settingsProvider.enableMsgHistory,
           activeThumbColor: Colors.greenAccent,
           onChanged: (val) {
-            chatProvider.setEnableMsgHistory(val);
+            settingsProvider.setEnableMsgHistory(val);
             chatProvider.saveSettings();
           },
         ),
 
         Opacity(
-          opacity: chatProvider.enableMsgHistory ? 1.0 : 0.5,
+          opacity: settingsProvider.enableMsgHistory ? 1.0 : 0.5,
           child: AbsorbPointer(
-            absorbing: !chatProvider.enableMsgHistory,
+            absorbing: !settingsProvider.enableMsgHistory,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SettingsSlider(
                   title: "(Msg History) Limit",
-                  value: chatProvider.historyLimit.toDouble(),
+                  value: settingsProvider.historyLimit.toDouble(),
                   min: 0,
                   max: 2000,
                   divisions: 499,
@@ -116,7 +118,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   isInt: true,
                   fontSize: scaleProvider.systemFontSize,
                   onChanged: (val) {
-                    chatProvider.setHistoryLimit(val.toInt());
+                    settingsProvider.setHistoryLimit(val.toInt());
                     chatProvider.saveSettings();
                   },
                 ),
@@ -159,21 +161,21 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               color: Colors.grey,
             ),
           ),
-          value: chatProvider.enableReasoning,
+          value: settingsProvider.enableReasoning,
           activeThumbColor: Colors.purpleAccent,
           onChanged: (val) {
-            chatProvider.setEnableReasoning(val);
-            if (val && chatProvider.reasoningEffort == "none") {
-              chatProvider.setReasoningEffort("medium");
+            settingsProvider.setEnableReasoning(val);
+            if (val && settingsProvider.reasoningEffort == "none") {
+              settingsProvider.setReasoningEffort("medium");
             }
             chatProvider.saveSettings();
           },
         ),
 
         Opacity(
-          opacity: chatProvider.enableReasoning ? 1.0 : 0.5,
+          opacity: settingsProvider.enableReasoning ? 1.0 : 0.5,
           child: AbsorbPointer(
-            absorbing: !chatProvider.enableReasoning,
+            absorbing: !settingsProvider.enableReasoning,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -217,7 +219,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
-                      value: chatProvider.reasoningEffort,
+                      value: settingsProvider.reasoningEffort,
                       dropdownColor: themeProvider.dropdownColor,
                       icon: Icon(
                         Icons.psychology,
@@ -263,7 +265,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                       ],
                       onChanged: (val) {
                         if (val != null) {
-                          chatProvider.setReasoningEffort(val);
+                          settingsProvider.setReasoningEffort(val);
                           chatProvider.saveSettings();
                         }
                       },
@@ -298,11 +300,11 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               color: Colors.grey,
             ),
           ),
-          value: chatProvider.enableReasoningEfficiency,
+          value: settingsProvider.enableReasoningEfficiency,
           activeThumbColor: Colors.tealAccent,
-          onChanged: (val) async {
-            await chatProvider.setEnableReasoningEfficiency(val);
-            await chatProvider.saveSettings();
+          onChanged: (val) {
+            settingsProvider.setEnableReasoningEfficiency(val);
+            chatProvider.saveSettings();
           },
         ),
 
@@ -319,11 +321,11 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               color: Colors.grey,
             ),
           ),
-          value: chatProvider.persistReasoningBlocks,
+          value: settingsProvider.persistReasoningBlocks,
           activeThumbColor: Colors.cyanAccent,
-          onChanged: (val) async {
-            await chatProvider.setPersistReasoningBlocks(val);
-            await chatProvider.saveSettings();
+          onChanged: (val) {
+            settingsProvider.setPersistReasoningBlocks(val);
+            chatProvider.saveSettings();
           },
         ),
 
@@ -340,18 +342,18 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               color: Colors.grey,
             ),
           ),
-          value: chatProvider.enableDeveloperMode,
+          value: settingsProvider.enableDeveloperMode,
           activeThumbColor: Colors.amberAccent,
           onChanged: (val) {
-            chatProvider.setEnableDeveloperMode(val);
+            settingsProvider.setEnableDeveloperMode(val);
             chatProvider.saveSettings();
           },
         ),
 
         Opacity(
-          opacity: chatProvider.enableDeveloperMode ? 1.0 : 0.5,
+          opacity: settingsProvider.enableDeveloperMode ? 1.0 : 0.5,
           child: AbsorbPointer(
-            absorbing: !chatProvider.enableDeveloperMode,
+            absorbing: !settingsProvider.enableDeveloperMode,
             child: Column(
               children: [
                 SwitchListTile(
@@ -367,17 +369,17 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                       color: Colors.grey,
                     ),
                   ),
-                  value: chatProvider.enableRawReasoningEdit,
+                  value: settingsProvider.enableRawReasoningEdit,
                   activeThumbColor: Colors.orangeAccent,
                   onChanged: (val) async {
                     if (!val) {
-                      chatProvider.setEnableRawReasoningEdit(false);
+                      settingsProvider.setEnableRawReasoningEdit(false);
                       await chatProvider.saveSettings();
                       return;
                     }
 
                     var allow = true;
-                    if (!chatProvider.rawReasoningEditWarningAcknowledged) {
+                    if (!settingsProvider.rawReasoningEditWarningAcknowledged) {
                       allow = await _confirmEnableRawEdit(
                         context,
                         themeProvider,
@@ -386,11 +388,11 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
 
                     if (!allow) return;
 
-                    if (!chatProvider.rawReasoningEditWarningAcknowledged) {
-                      chatProvider.setRawReasoningEditWarningAcknowledged(true);
+                    if (!settingsProvider.rawReasoningEditWarningAcknowledged) {
+                      settingsProvider.acknowledgeRawEditWarning();
                     }
 
-                    chatProvider.setEnableRawReasoningEdit(true);
+                    settingsProvider.setEnableRawReasoningEdit(true);
                     await chatProvider.saveSettings();
                   },
                 ),
@@ -482,51 +484,51 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               color: Colors.grey,
             ),
           ),
-          value: chatProvider.enableGenerationSettings,
+          value: settingsProvider.enableGenerationSettings,
           activeThumbColor: Colors.orangeAccent,
           onChanged: (val) {
-            chatProvider.setEnableGenerationSettings(val);
+            settingsProvider.setEnableGenerationSettings(val);
             chatProvider.saveSettings();
           },
         ),
 
         Opacity(
-          opacity: chatProvider.enableGenerationSettings ? 1.0 : 0.5,
+          opacity: settingsProvider.enableGenerationSettings ? 1.0 : 0.5,
           child: AbsorbPointer(
-            absorbing: !chatProvider.enableGenerationSettings,
+            absorbing: !settingsProvider.enableGenerationSettings,
             child: Column(
               children: [
                 SettingsSlider(
                   title: "Temperature (Creativity)",
-                  value: chatProvider.temperature,
+                  value: settingsProvider.temperature,
                   min: 0.0,
                   max: 2.0,
                   divisions: 40,
                   activeColor: Colors.redAccent,
                   fontSize: scaleProvider.systemFontSize,
                   onChanged: (val) {
-                    chatProvider.setTemperature(val);
+                    settingsProvider.setTemperature(val);
                     chatProvider.saveSettings();
                   },
                 ),
 
                 SettingsSlider(
                   title: "Top P (Nucleus Sampling)",
-                  value: chatProvider.topP,
+                  value: settingsProvider.topP,
                   min: 0.0,
                   max: 1.0,
                   divisions: 20,
                   activeColor: Colors.purpleAccent,
                   fontSize: scaleProvider.systemFontSize,
                   onChanged: (val) {
-                    chatProvider.setTopP(val);
+                    settingsProvider.setTopP(val);
                     chatProvider.saveSettings();
                   },
                 ),
 
                 SettingsSlider(
                   title: "Top K (Vocabulary Size)",
-                  value: chatProvider.topK.toDouble(),
+                  value: settingsProvider.topK.toDouble(),
                   min: 1,
                   max: 100,
                   divisions: 99,
@@ -534,7 +536,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   isInt: true,
                   fontSize: scaleProvider.systemFontSize,
                   onChanged: (val) {
-                    chatProvider.setTopK(val.toInt());
+                    settingsProvider.setTopK(val.toInt());
                     chatProvider.saveSettings();
                   },
                 ),
@@ -569,28 +571,28 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               color: Colors.grey,
             ),
           ),
-          value: chatProvider.enableMaxOutputTokens,
+          value: settingsProvider.enableMaxOutputTokens,
           activeThumbColor: Colors.blueAccent,
           onChanged: (val) {
-            chatProvider.setEnableMaxOutputTokens(val);
+            settingsProvider.setEnableMaxOutputTokens(val);
             chatProvider.saveSettings();
           },
         ),
 
         Opacity(
-          opacity: chatProvider.enableMaxOutputTokens ? 1.0 : 0.5,
+          opacity: settingsProvider.enableMaxOutputTokens ? 1.0 : 0.5,
           child: AbsorbPointer(
-            absorbing: !chatProvider.enableMaxOutputTokens,
+            absorbing: !settingsProvider.enableMaxOutputTokens,
             child: SettingsSlider(
               title: "Max Output Tokens",
-              value: chatProvider.maxOutputTokens.toDouble(),
+              value: settingsProvider.maxOutputTokens.toDouble(),
               min: 256,
               max: 8192,
               activeColor: Colors.blueAccent,
               isInt: true,
               fontSize: scaleProvider.systemFontSize,
               onChanged: (val) {
-                chatProvider.setMaxOutputTokens(val.toInt());
+                settingsProvider.setMaxOutputTokens(val.toInt());
                 chatProvider.saveSettings();
               },
             ),

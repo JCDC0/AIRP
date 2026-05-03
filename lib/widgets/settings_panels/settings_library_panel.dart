@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/preset_model.dart';
@@ -148,6 +149,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
 
   Future<void> _exportConfigPack() async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final preset = SystemPreset(
       name: widget.promptTitleController.text.isNotEmpty
           ? widget.promptTitleController.text
@@ -156,9 +158,9 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       advancedPrompt: widget.advancedPromptController.text,
       customRules: _customRules,
       generationSettings: {
-        'temperature': chatProvider.temperature,
-        'top_p': chatProvider.topP,
-        'top_k': chatProvider.topK,
+        'temperature': settingsProvider.temperature,
+        'top_p': settingsProvider.topP,
+        'top_k': settingsProvider.topK,
       },
     );
     try {
@@ -308,6 +310,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   Future<void> _handleSnapshotExport() async {
     // Capture providers and messenger BEFORE any async gap
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
     final messenger = ScaffoldMessenger.of(context);
@@ -370,6 +373,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
 
     // Capture context-dependents before the showDialog await
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
 
@@ -532,6 +536,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
     final tp = Provider.of<ThemeProvider>(context);
     final sp = Provider.of<ScaleProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final fs = sp.systemFontSize;
 
     return Column(
@@ -567,7 +572,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
             controller: _tabController,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _buildConfigPacksTab(tp, sp, chatProvider, fs),
+              _buildConfigPacksTab(tp, sp, chatProvider, settingsProvider, fs),
               _buildSnapshotsTab(tp, sp, fs),
             ],
           ),
@@ -579,11 +584,11 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   // ── Config Packs tab ────────────────────────────────────────────────────
 
   Widget _buildConfigPacksTab(
-      ThemeProvider tp, ScaleProvider sp, ChatProvider chatProvider, double fs) {
+      ThemeProvider tp, ScaleProvider sp, ChatProvider chatProvider, SettingsProvider settingsProvider, double fs) {
     return Opacity(
-      opacity: chatProvider.enableAdvancedSystemPrompt ? 1.0 : 0.5,
+      opacity: settingsProvider.enableAdvancedSystemPrompt ? 1.0 : 0.5,
       child: AbsorbPointer(
-        absorbing: !chatProvider.enableAdvancedSystemPrompt,
+        absorbing: !settingsProvider.enableAdvancedSystemPrompt,
         child: Container(
           decoration: BoxDecoration(
             color: tp.containerFillColor,
