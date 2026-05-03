@@ -5,7 +5,7 @@ import '../services/lorebook_service.dart';
 /// Static helper that encapsulates prompt pipeline operations used by
 /// [ChatProvider].
 ///
-/// Extracted for testability. All methods are pure functions that take
+/// A stateless, testable service for assembling prompts. All methods are pure functions that take
 /// their dependencies as parameters — no internal state or singletons.
 class PromptPipelineService {
   PromptPipelineService._();

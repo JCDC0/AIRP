@@ -51,7 +51,7 @@ class ReasoningUtils {
     );
   }
 
-  /// Returns text with all think blocks removed.
+  /// Returns text with all `<think>` blocks removed.
   static String stripThinkBlocks(String text) {
     return text.replaceAll(_thinkBlockRegex, '').trim();
   }

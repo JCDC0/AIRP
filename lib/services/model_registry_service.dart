@@ -6,7 +6,7 @@ import '../services/chat_api_service.dart';
 import 'strategies/strategy_resolver.dart';
 
 /// Manages AI model discovery, listing, and metadata caching.
-/// Extracted from ChatProvider to simplify provider model management.
+/// Centralized service for managing AI model discovery and caching.
 class ModelRegistryService {
   final Map<AiProvider, List<ModelInfo>> _modelLists = {};
   final Map<AiProvider, bool> _loadingStates = {};

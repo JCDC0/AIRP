@@ -383,7 +383,7 @@ class ModelSettingsPanel extends StatelessWidget {
           },
         ),
 
-        // --- Added Settings (Moved from System Prompt) ---
+        // --- Advanced Model Parameters ---
         const Divider(),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,

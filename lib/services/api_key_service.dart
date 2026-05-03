@@ -5,7 +5,7 @@ import '../utils/constants.dart';
 import 'secure_storage_service.dart';
 
 /// Manages the secure storage, retrieval, and migration of API keys.
-/// Extracted from ChatProvider to isolate credential management.
+/// Centralized service for secure API credential management.
 class ApiKeyService {
   final Map<AiProvider, String> _providerKeys = {};
   final Map<SearchProvider, String> _searchKeys = {};

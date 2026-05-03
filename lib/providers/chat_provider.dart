@@ -17,6 +17,7 @@ import '../services/web_search_service.dart';
 import '../services/session_service.dart';
 import '../services/model_registry_service.dart';
 import '../services/api_key_service.dart';
+import '../services/streaming_coordinator_service.dart';
 import '../services/strategies/strategy_resolver.dart';
 import '../utils/constants.dart';
 
@@ -34,35 +35,29 @@ class ChatProvider extends ChangeNotifier {
   late final SessionService _sessionService;
   late final ModelRegistryService _modelRegistry;
   late final ApiKeyService _apiKeys;
+  late final StreamingCoordinatorService _streamingCoordinator;
 
   // --- Background stream infrastructure ---
-  final Map<String, StreamSubscription> _activeStreams = {};
-  final Map<String, ValueNotifier<String>> _activeNotifiers = {};
-  final Map<String, String> _activeStreamTexts = {};
-  final Map<String, String> _activeStreamModels = {};
-  final Set<String> _cancelledSessions = {};
   bool _nonStreamingLoading = false;
 
   /// Stores regenerated versions to attach to the next generated message.
   List<String> _pendingRegenerationVersions = [];
 
   bool get isLoading =>
-      _activeStreams.containsKey(_currentSessionId) || _nonStreamingLoading;
-  bool get isCancelled => _cancelledSessions.contains(_currentSessionId);
+      _streamingCoordinator.isStreaming(_currentSessionId) ||
+      _nonStreamingLoading;
+  bool get isCancelled => _streamingCoordinator.isCancelled(_currentSessionId);
 
   /// Set of session IDs that currently have an active background stream.
-  Set<String> get streamingSessionIds => _activeStreams.keys.toSet();
+  Set<String> get streamingSessionIds =>
+      _streamingCoordinator.streamingSessionIds;
 
   /// Pending background notifications for completed responses.
-  final List<BackgroundNotification> _pendingNotifications = [];
   List<BackgroundNotification> get pendingNotifications =>
-      _pendingNotifications;
+      _streamingCoordinator.pendingNotifications;
 
   void removeNotification(int index) {
-    if (index >= 0 && index < _pendingNotifications.length) {
-      _pendingNotifications.removeAt(index);
-      notifyListeners();
-    }
+    _streamingCoordinator.removeNotification(index);
   }
 
   List<ModelInfo> get geminiModelsList => _modelRegistry.getModels(AiProvider.gemini);
@@ -372,6 +367,8 @@ class ChatProvider extends ChangeNotifier {
     _sessionService = SessionService(onStateChanged: notifyListeners);
     _modelRegistry = ModelRegistryService(onStateChanged: notifyListeners);
     _apiKeys = ApiKeyService(onStateChanged: notifyListeners);
+    _streamingCoordinator =
+        StreamingCoordinatorService(onStateChanged: notifyListeners);
     _loadSettings();
     _loadSessions();
     _loadSystemPrompts();
@@ -380,13 +377,7 @@ class ChatProvider extends ChangeNotifier {
   @override
   void dispose() {
     _sessionService.dispose();
-    for (final sub in _activeStreams.values) {
-      sub.cancel();
-    }
-    _activeStreams.clear();
-    _activeNotifiers.clear();
-    _activeStreamTexts.clear();
-    _activeStreamModels.clear();
+    _streamingCoordinator.dispose();
     _safeDisposeMessageNotifiers(_messages);
     super.dispose();
   }
@@ -1353,12 +1344,11 @@ class ChatProvider extends ChangeNotifier {
     _messages.add(
       ChatMessage(text: messageText, isUser: true, imagePaths: imagesToSend),
     );
-    _cancelledSessions.remove(streamSessionId);
     notifyListeners();
 
     _scheduleAutoSave();
 
-    // --- Input-based lore recognition (replaces history-based lore injection) ---
+    // --- Input-based lore recognition ---
     final recognizedLoreEntries = recognizeLoreEntriesFromInput(messageText);
     _lastRecognizedLoreEntries = recognizedLoreEntries;
     const lorebookResult = LorebookEvalResult(byPosition: {}, estimatedTokens: 0);
@@ -1410,7 +1400,7 @@ class ChatProvider extends ChangeNotifier {
           thoughtSignature: previousSignature,
         );
 
-        if (_cancelledSessions.contains(streamSessionId)) {
+        if (_streamingCoordinator.isCancelled(streamSessionId)) {
           _nonStreamingLoading = false;
           notifyListeners();
           return;
@@ -1494,11 +1484,6 @@ class ChatProvider extends ChangeNotifier {
 
     notifyListeners();
 
-    // Register active stream tracking
-    _activeNotifiers[streamSessionId] = contentNotifier;
-    _activeStreamTexts[streamSessionId] = "";
-    _activeStreamModels[streamSessionId] = _selectedModel;
-
     Stream<String>? responseStream;
 
     try {
@@ -1564,104 +1549,85 @@ class ChatProvider extends ChangeNotifier {
         providerSession: _currentProvider == AiProvider.gemini ? _chat : null,
       );
 
-      String fullText = "";
-      final subscription = responseStream.listen(
-        (chunk) {
-          if (_cancelledSessions.contains(streamSessionId)) return;
-          if (chunk.startsWith('[[USAGE:')) {
-            final usageStr = chunk.substring(8, chunk.length - 2);
-            final usage = jsonDecode(usageStr) as Map<String, dynamic>;
-            if (_currentSessionId == streamSessionId) {
-              _messages.last = _messages.last.copyWith(usage: usage);
-              notifyListeners();
-            }
-          } else if (chunk.startsWith('[[THOUGHT_SIG:')) {
-            final sig = chunk.substring(14, chunk.length - 2);
-            if (_currentSessionId == streamSessionId) {
-              _messages.last = _messages.last.copyWith(thoughtSignature: sig);
-              notifyListeners();
-            }
+      _streamingCoordinator.registerStream(
+        sessionId: streamSessionId,
+        modelName:
+            _currentProvider == AiProvider.local
+                ? _localModelName
+                : _selectedModel,
+        contentNotifier: contentNotifier,
+        stream: responseStream,
+        onUpdate: (sessionId, text, usage) {
+          if (usage != null && _currentSessionId == sessionId) {
+            _messages.last = _messages.last.copyWith(usage: usage);
+            notifyListeners();
+          } else if (text.isNotEmpty && _currentSessionId == sessionId) {
+            _messages.last = _messages.last.copyWith(text: text);
+          }
+        },
+        onThoughtSignature: (sessionId, sig) {
+          if (_currentSessionId == sessionId) {
+            _messages.last = _messages.last.copyWith(thoughtSignature: sig);
+            notifyListeners();
+          }
+        },
+        onError: (sessionId, errorText) {
+          if (_currentSessionId == sessionId) {
+            _messages.last = _messages.last.copyWith(
+              text: errorText,
+              clearContentNotifier: true,
+            );
+            notifyListeners();
           } else {
-            fullText += chunk;
-            contentNotifier.value = fullText;
-            _activeStreamTexts[streamSessionId] = fullText;
-            if (_currentSessionId == streamSessionId) {
-              _messages.last = _messages.last.copyWith(text: fullText);
-            }
+            _finalizeBackgroundSession(sessionId, errorText);
           }
         },
-        onError: (e) {
-          if (!_cancelledSessions.contains(streamSessionId)) {
-            final errorText = "$fullText\n\n**Error:** $e";
-            if (_currentSessionId == streamSessionId) {
-              _messages.last = _messages.last.copyWith(
-                text: errorText,
-                clearContentNotifier: true,
-              );
-              notifyListeners();
-            } else {
-              _finalizeBackgroundSession(streamSessionId, errorText);
-            }
+        onDone: (sessionId, finalText, reasoningRecovered) async {
+          if (_shouldStripReasoningFromStorage) {
+            finalText = ChatMessage.sanitizeForContext(finalText);
           }
-          _cleanupStream(streamSessionId);
-        },
-        onDone: () async {
-          if (!_cancelledSessions.contains(streamSessionId)) {
-            final split = ReasoningUtils.split(fullText);
-            var recoveredFromReasoning = false;
-            if (split.reasoning.isNotEmpty && split.content.trim().isEmpty) {
-              fullText = split.reasoning;
-              recoveredFromReasoning = true;
+
+          if (_currentSessionId == sessionId) {
+            final lastMessage = _messages.last;
+            final updatedVersions = List<String>.from(
+              lastMessage.regenerationVersions,
+            );
+            if (updatedVersions.isNotEmpty &&
+                finalText.isNotEmpty &&
+                !updatedVersions.contains(finalText)) {
+              updatedVersions.add(finalText);
             }
 
-            if (_shouldStripReasoningFromStorage) {
-              fullText = ChatMessage.sanitizeForContext(fullText);
+            _messages.last = lastMessage.copyWith(
+              text: finalText,
+              reasoningRecovered: reasoningRecovered,
+              clearContentNotifier: true,
+              regenerationVersions: updatedVersions,
+              currentVersionIndex: updatedVersions.isNotEmpty
+                  ? updatedVersions.length - 1
+                  : lastMessage.currentVersionIndex,
+            );
+            notifyListeners();
+            _scheduleAutoSave();
+
+            if (_currentProvider == AiProvider.gemini) {
+              await initializeModel();
             }
 
-            if (_currentSessionId == streamSessionId) {
-              final lastMessage = _messages.last;
-              final updatedVersions = List<String>.from(
-                lastMessage.regenerationVersions,
-              );
-              if (updatedVersions.isNotEmpty &&
-                  fullText.isNotEmpty &&
-                  !updatedVersions.contains(fullText)) {
-                updatedVersions.add(fullText);
-              }
-
-              _messages.last = lastMessage.copyWith(
-                text: fullText,
-                reasoningRecovered: recoveredFromReasoning,
-                clearContentNotifier: true,
-                regenerationVersions: updatedVersions,
-                currentVersionIndex: updatedVersions.isNotEmpty
-                    ? updatedVersions.length - 1
-                    : lastMessage.currentVersionIndex,
-              );
-              notifyListeners();
-              _scheduleAutoSave();
-
-              if (_currentProvider == AiProvider.gemini) {
-                await initializeModel();
-              }
-
-              if (!_enableGrounding) updateTokenCount();
-            } else {
-              // Background completion: update saved session and show notification
-              _finalizeBackgroundSession(
-                streamSessionId,
-                fullText,
-                reasoningRecovered: recoveredFromReasoning,
-              );
-              _showBackgroundNotification(streamSessionId, fullText);
-            }
+            if (!_enableGrounding) updateTokenCount();
+          } else {
+            // Background completion: update saved session and show notification
+            _finalizeBackgroundSession(
+              sessionId,
+              finalText,
+              reasoningRecovered: reasoningRecovered,
+            );
+            _showBackgroundNotification(sessionId, finalText);
           }
-          _cleanupStream(streamSessionId);
         },
       );
-      _activeStreams[streamSessionId] = subscription;
     } catch (e) {
-      if (!_cancelledSessions.contains(streamSessionId)) {
+      if (!_streamingCoordinator.isCancelled(streamSessionId)) {
         if (_currentSessionId == streamSessionId) {
           _messages.last = _messages.last.copyWith(clearContentNotifier: true);
           _messages.add(
@@ -1675,17 +1641,8 @@ class ChatProvider extends ChangeNotifier {
           _scheduleAutoSave();
         }
       }
-      _cleanupStream(streamSessionId);
+      _streamingCoordinator.cancelStream(streamSessionId);
     }
-  }
-
-  /// Cleans up tracking state for a completed/cancelled stream.
-  void _cleanupStream(String sessionId) {
-    _activeStreams.remove(sessionId);
-    _activeNotifiers.remove(sessionId);
-    _activeStreamTexts.remove(sessionId);
-    _activeStreamModels.remove(sessionId);
-    notifyListeners();
   }
 
   void _finalizeBackgroundSession(
@@ -1712,40 +1669,32 @@ class ChatProvider extends ChangeNotifier {
     if (idx == -1) return;
 
     final session = savedSessions[idx];
-    final modelName = _activeStreamModels[sessionId] ?? session.modelName;
+    final modelName =
+        _streamingCoordinator.getActiveStreamModel(sessionId) ??
+        session.modelName;
     final preview = text.length > 120 ? "${text.substring(0, 120)}..." : text;
 
-    _pendingNotifications.add(
+    _streamingCoordinator.addNotification(
       BackgroundNotification(
         sessionTitle: session.title,
         messagePreview: preview,
         modelName: modelName,
       ),
     );
-    notifyListeners();
   }
 
   void cancelGeneration() async {
     final sessionId = _currentSessionId;
     if (sessionId == null) return;
 
-    _cancelledSessions.add(sessionId);
     _nonStreamingLoading = false;
-
-    final sub = _activeStreams.remove(sessionId);
-    if (sub != null) {
-      await sub.cancel();
-    }
 
     // Finalize the current message safely (remove contentNotifier)
     if (_messages.isNotEmpty && !_messages.last.isUser) {
       _messages.last = _messages.last.copyWith(clearContentNotifier: true);
     }
 
-    _activeNotifiers.remove(sessionId);
-    _activeStreamTexts.remove(sessionId);
-    _activeStreamModels.remove(sessionId);
-
+    await _streamingCoordinator.cancelStream(sessionId);
     notifyListeners();
   }
 
@@ -1997,9 +1946,9 @@ class ChatProvider extends ChangeNotifier {
     }
 
     // If this session has an active background stream, reconnect the notifier
-    if (_activeStreams.containsKey(session.id)) {
-      final notifier = _activeNotifiers[session.id];
-      final currentText = _activeStreamTexts[session.id] ?? '';
+    if (_streamingCoordinator.isStreaming(session.id)) {
+      final notifier = _streamingCoordinator.getActiveNotifier(session.id);
+      final currentText = _streamingCoordinator.getActiveStreamText(session.id) ?? '';
       if (notifier != null && _messages.isNotEmpty && !_messages.last.isUser) {
         _messages[_messages.length - 1] = _messages.last.copyWith(
           text: currentText,
@@ -2014,13 +1963,7 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> deleteSession(String id) async {
     // Cancel any active stream for this session
-    final sub = _activeStreams.remove(id);
-    if (sub != null) {
-      await sub.cancel();
-      _activeNotifiers.remove(id);
-      _activeStreamTexts.remove(id);
-      _activeStreamModels.remove(id);
-    }
+    await _streamingCoordinator.cancelStream(id);
 
     await _sessionService.deleteSession(id);
     if (id == _currentSessionId) {
@@ -2144,10 +2087,9 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void _safeDisposeMessageNotifiers(Iterable<ChatMessage> messages) {
-    final activeNotifierSet = _activeNotifiers.values.toSet();
     for (final message in messages) {
       if (message.contentNotifier != null &&
-          !activeNotifierSet.contains(message.contentNotifier)) {
+          !_streamingCoordinator.isActiveNotifier(message.contentNotifier)) {
         try {
           message.contentNotifier!.dispose();
         } catch (_) {
