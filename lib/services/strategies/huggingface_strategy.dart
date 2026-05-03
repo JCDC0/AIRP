@@ -51,7 +51,7 @@ class HuggingFaceStrategy extends AiProviderStrategy {
   }) {
     return ChatApiService.streamOpenAiCompatible(
       apiKey: apiKey,
-      baseUrl: baseUrl,
+      baseUrl: "https://router.huggingface.co/v1/chat/completions",
       model: model,
       history: history,
       systemInstruction: systemInstruction,

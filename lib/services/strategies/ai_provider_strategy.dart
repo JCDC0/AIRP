@@ -70,14 +70,20 @@ class OpenAiCompatibleStrategy extends AiProviderStrategy {
   String getStreamUrl({String? customUrl}) {
     String url = customUrl ?? baseUrl;
     if (url.isEmpty) return "";
+    
+    // Clean trailing slash
     if (url.endsWith('/')) {
       url = url.substring(0, url.length - 1);
     }
-    // Most OpenAI-compatible endpoints append /chat/completions to the base URL
-    // but some (like NanoGPT, ArliAI) have it baked into the constant.
-    if (!url.contains('/chat/completions') && !url.contains('models')) {
+    
+    // If the URL explicitly ends with /models, replace it with /chat/completions
+    if (url.endsWith('/models')) {
+      url = "${url.substring(0, url.length - 7)}/chat/completions";
+    } else if (!url.contains('/chat/completions')) {
+      // For custom endpoints that might just be the root (e.g. localhost)
       url = "$url/chat/completions";
     }
+    
     return url;
   }
 

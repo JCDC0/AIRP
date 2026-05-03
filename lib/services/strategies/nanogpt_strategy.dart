@@ -15,6 +15,10 @@ class NanoGptStrategy extends AiProviderStrategy {
   String get prefKey => ApiConstants.prefListNanoGpt;
 
   @override
+  String getStreamUrl({String? customUrl}) =>
+      'https://nano-gpt.com/api/v1/chat/completions';
+
+  @override
   List<ModelInfo> parseModels(dynamic json) {
     final List<dynamic> dataList = json['data'] ?? [];
     return dataList.map<ModelInfo>((e) {
