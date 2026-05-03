@@ -8,6 +8,11 @@ import 'nanogpt_strategy.dart';
 import 'arliai_strategy.dart';
 import 'groq_strategy.dart';
 
+/// Resolves the appropriate [AiProviderStrategy] for a given [AiProvider].
+///
+/// This registry centrally manages the mapping between providers and their
+/// specific API logic, ensuring the rest of the application remains agnostic
+/// to provider-specific implementation details.
 class StrategyResolver {
   static final Map<AiProvider, AiProviderStrategy> _strategies = {
     AiProvider.gemini: GeminiStrategy(),
