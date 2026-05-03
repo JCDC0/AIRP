@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
+import '../providers/vfx_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
 import 'message_bubble.dart';
@@ -33,10 +34,11 @@ class ChatMessagesList extends StatelessWidget {
   void _showMessageOptions(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final vfxProvider = Provider.of<VfxProvider>(context, listen: false);
     final msg = chatProvider.messages[index];
     final bool isLastMessage = index == chatProvider.messages.length - 1;
     final bool isActionLocked = chatProvider.isLoading;
-    final bool useBloom = themeProvider.enableBloom;
+    final bool useBloom = vfxProvider.enableBloom;
 
     showModalBottomSheet(
       context: context,
@@ -404,11 +406,12 @@ class ChatMessagesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final messages = chatProvider.messages;
-    final bool showTypingIndicator = _showTypingIndicator(
+    final showTypingIndicator = _showTypingIndicator(
       chatProvider,
-      themeProvider,
+      vfxProvider,
     );
     final bool showVirtualAiTypingBubble =
         showTypingIndicator && (messages.isEmpty || messages.last.isUser);
@@ -423,27 +426,27 @@ class ChatMessagesList extends StatelessWidget {
         children: [
           Positioned.fill(
             child: Image(
-              image: themeProvider.currentImageProvider,
+              image: vfxProvider.currentImageProvider,
               fit: BoxFit.cover,
             ),
           ),
           Positioned.fill(
             child: Container(
               color: Colors.black.withAlpha(
-                (themeProvider.backgroundOpacity * 255).round(),
+                (vfxProvider.backgroundOpacity * 255).round(),
               ),
             ),
           ),
 
           Positioned.fill(
             child: EffectsOverlay(
-              showMotes: themeProvider.enableMotes,
-              showRain: themeProvider.enableRain,
-              showFireflies: themeProvider.enableFireflies,
+              showMotes: vfxProvider.enableMotes,
+              showRain: vfxProvider.enableRain,
+              showFireflies: vfxProvider.enableFireflies,
               effectColor: themeProvider.bloomGlowColor,
-              motesDensity: themeProvider.motesDensity.toDouble(),
-              rainIntensity: themeProvider.rainIntensity.toDouble(),
-              firefliesCount: themeProvider.firefliesCount.toDouble(),
+              motesDensity: vfxProvider.motesDensity.toDouble(),
+              rainIntensity: vfxProvider.rainIntensity.toDouble(),
+              firefliesCount: vfxProvider.firefliesCount.toDouble(),
             ),
           ),
 
@@ -465,7 +468,6 @@ class ChatMessagesList extends StatelessWidget {
                             isUser: false,
                             modelName: chatProvider.selectedModel,
                           ),
-                          themeProvider: themeProvider,
                           showTypingIndicator: true,
                         );
                       }
@@ -474,7 +476,6 @@ class ChatMessagesList extends StatelessWidget {
                       final bool isLastMessage = index == messages.length - 1;
                       return MessageBubble(
                         msg: message,
-                        themeProvider: themeProvider,
                         showTypingIndicator:
                             showTypingIndicator &&
                             isLastMessage &&
@@ -532,9 +533,9 @@ class ChatMessagesList extends StatelessWidget {
   /// Loading is active, animations are disabled, and no AI response text yet.
   bool _showTypingIndicator(
     ChatProvider chatProvider,
-    ThemeProvider themeProvider,
+    VfxProvider vfxProvider,
   ) {
-    if (!chatProvider.isLoading || themeProvider.enableLoadingAnimation) {
+    if (!chatProvider.isLoading || vfxProvider.enableLoadingAnimation) {
       return false;
     }
 

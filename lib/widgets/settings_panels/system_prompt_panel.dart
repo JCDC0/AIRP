@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
@@ -51,6 +52,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
@@ -67,7 +69,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
@@ -105,7 +107,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
                     fontWeight: FontWeight.bold,
                     color: themeProvider.textColor,
                     fontSize: scaleProvider.systemFontSize,
-                    shadows: themeProvider.enableBloom
+                    shadows: vfxProvider.enableBloom
                         ? [
                             Shadow(
                               color: themeProvider.bloomGlowColor,

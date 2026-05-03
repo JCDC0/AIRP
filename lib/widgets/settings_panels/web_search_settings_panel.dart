@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
@@ -76,13 +77,14 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     final Color accent = themeProvider.textColor;
     final double fs = scaleProvider.systemFontSize;
-    final List<Shadow> bloomShadow = themeProvider.enableBloom
+    final List<Shadow> bloomShadow = vfxProvider.enableBloom
         ? [
             Shadow(
               color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
@@ -100,11 +102,11 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
       labelText: label,
       labelStyle: TextStyle(color: accent, fontSize: fs - 1),
       border: OutlineInputBorder(
-        borderSide: themeProvider.enableBloom
+        borderSide: vfxProvider.enableBloom
             ? BorderSide(color: accent)
             : const BorderSide(),
       ),
-      enabledBorder: themeProvider.enableBloom
+      enabledBorder: vfxProvider.enableBloom
           ? OutlineInputBorder(
               borderSide: BorderSide(color: accent.withValues(alpha: 0.5)),
             )
@@ -132,11 +134,11 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: themeProvider.enableBloom
+              color: vfxProvider.enableBloom
                   ? accent.withValues(alpha: 0.5)
                   : themeProvider.borderColor,
             ),
-            boxShadow: themeProvider.enableBloom
+            boxShadow: vfxProvider.enableBloom
                 ? [
                     BoxShadow(
                       color: accent.withValues(alpha: 0.1),

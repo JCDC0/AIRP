@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:airp/providers/chat_provider.dart';
 import 'package:airp/providers/theme_provider.dart';
+import 'package:airp/providers/vfx_provider.dart';
 import 'package:airp/providers/scale_provider.dart';
 import 'package:airp/models/chat_models.dart';
 import 'package:airp/widgets/chat_app_bar.dart';
@@ -13,12 +14,14 @@ import 'package:airp/widgets/chat_app_bar.dart';
 Widget _buildTestApp({
   required ChatProvider chatProvider,
   required ThemeProvider themeProvider,
+  required VfxProvider vfxProvider,
   required ScaleProvider scaleProvider,
 }) {
   return MultiProvider(
     providers: [
       ChangeNotifierProvider<ChatProvider>.value(value: chatProvider),
       ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
+      ChangeNotifierProvider<VfxProvider>.value(value: vfxProvider),
       ChangeNotifierProvider<ScaleProvider>.value(value: scaleProvider),
     ],
     child: MaterialApp(
@@ -41,12 +44,14 @@ void main() {
     (WidgetTester tester) async {
       final chatProvider = ChatProvider();
       final themeProvider = ThemeProvider();
+      final vfxProvider = VfxProvider();
       final scaleProvider = ScaleProvider();
 
       await tester.pumpWidget(
         _buildTestApp(
           chatProvider: chatProvider,
           themeProvider: themeProvider,
+          vfxProvider: vfxProvider,
           scaleProvider: scaleProvider,
         ),
       );
@@ -118,6 +123,7 @@ void main() {
     (WidgetTester tester) async {
       final chatProvider = ChatProvider();
       final themeProvider = ThemeProvider();
+      final vfxProvider = VfxProvider();
       final scaleProvider = ScaleProvider();
 
       // Pre-star the Groq provider before the dialog is opened.
@@ -127,6 +133,7 @@ void main() {
         _buildTestApp(
           chatProvider: chatProvider,
           themeProvider: themeProvider,
+          vfxProvider: vfxProvider,
           scaleProvider: scaleProvider,
         ),
       );
@@ -164,12 +171,14 @@ void main() {
     (WidgetTester tester) async {
       final chatProvider = ChatProvider();
       final themeProvider = ThemeProvider();
+      final vfxProvider = VfxProvider();
       final scaleProvider = ScaleProvider();
 
       await tester.pumpWidget(
         _buildTestApp(
           chatProvider: chatProvider,
           themeProvider: themeProvider,
+          vfxProvider: vfxProvider,
           scaleProvider: scaleProvider,
         ),
       );

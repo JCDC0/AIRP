@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../providers/scale_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../services/file_io_helper.dart';
 import '../../utils/constants.dart';
@@ -20,6 +21,7 @@ class VisualSettingsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
@@ -31,7 +33,7 @@ class VisualSettingsPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize + 10,
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
@@ -49,7 +51,7 @@ class VisualSettingsPanel extends StatelessWidget {
                   fontSize: scaleProvider.systemFontSize,
                   fontWeight: FontWeight.bold,
                   color: themeProvider.textColor,
-                  shadows: themeProvider.enableBloom
+                  shadows: vfxProvider.enableBloom
                       ? [
                           Shadow(
                             color: themeProvider.bloomGlowColor,
@@ -76,7 +78,7 @@ class VisualSettingsPanel extends StatelessWidget {
             "Enable Bloom (Glow)",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(
@@ -95,9 +97,9 @@ class VisualSettingsPanel extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          value: themeProvider.enableBloom,
+          value: vfxProvider.enableBloom,
           activeThumbColor: themeProvider.textColor,
-          onChanged: (val) => themeProvider.toggleBloom(val),
+          onChanged: (val) => vfxProvider.toggleBloom(val),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -105,7 +107,7 @@ class VisualSettingsPanel extends StatelessWidget {
             "Loading Animation",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(
@@ -124,9 +126,9 @@ class VisualSettingsPanel extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          value: themeProvider.enableLoadingAnimation,
+          value: vfxProvider.enableLoadingAnimation,
           activeThumbColor: themeProvider.textColor,
-          onChanged: (val) => themeProvider.toggleLoadingAnimation(val),
+          onChanged: (val) => vfxProvider.toggleLoadingAnimation(val),
         ),
         const Divider(),
 
@@ -136,7 +138,7 @@ class VisualSettingsPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize,
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [
                     Shadow(
                       color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
@@ -152,7 +154,7 @@ class VisualSettingsPanel extends StatelessWidget {
             'Floating Dust Motes',
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
@@ -169,9 +171,9 @@ class VisualSettingsPanel extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          value: themeProvider.enableMotes,
+          value: vfxProvider.enableMotes,
           activeThumbColor: themeProvider.textColor,
-          onChanged: (value) => themeProvider.toggleMotes(value),
+          onChanged: (value) => vfxProvider.toggleMotes(value),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -179,7 +181,7 @@ class VisualSettingsPanel extends StatelessWidget {
             'Gentle Rain',
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
@@ -196,9 +198,9 @@ class VisualSettingsPanel extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          value: themeProvider.enableRain,
+          value: vfxProvider.enableRain,
           activeThumbColor: themeProvider.textColor,
-          onChanged: (value) => themeProvider.toggleRain(value),
+          onChanged: (value) => vfxProvider.toggleRain(value),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -206,7 +208,7 @@ class VisualSettingsPanel extends StatelessWidget {
             'Glowing Fireflies',
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
@@ -223,43 +225,43 @@ class VisualSettingsPanel extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          value: themeProvider.enableFireflies,
+          value: vfxProvider.enableFireflies,
           activeThumbColor: themeProvider.textColor,
-          onChanged: (value) => themeProvider.toggleFireflies(value),
+          onChanged: (value) => vfxProvider.toggleFireflies(value),
         ),
         const Divider(),
-        if (themeProvider.enableMotes)
+        if (vfxProvider.enableMotes)
           SettingsSlider(
             title: 'Motes Density',
-            value: themeProvider.motesDensity.toDouble(),
+            value: vfxProvider.motesDensity.toDouble(),
             min: 1,
             max: 150,
             isInt: true,
             activeColor: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize * 0.8,
-            onChanged: (value) => themeProvider.setMotesDensity(value.toInt()),
+            onChanged: (value) => vfxProvider.setMotesDensity(value.toInt()),
           ),
-        if (themeProvider.enableRain)
+        if (vfxProvider.enableRain)
           SettingsSlider(
             title: 'Rainfall Intensity',
-            value: themeProvider.rainIntensity.toDouble(),
+            value: vfxProvider.rainIntensity.toDouble(),
             min: 1,
             max: 200,
             isInt: true,
             activeColor: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize * 0.8,
-            onChanged: (value) => themeProvider.setRainIntensity(value.toInt()),
+            onChanged: (value) => vfxProvider.setRainIntensity(value.toInt()),
           ),
-        if (themeProvider.enableFireflies)
+        if (vfxProvider.enableFireflies)
           SettingsSlider(
             title: 'Fireflies Count',
-            value: themeProvider.firefliesCount.toDouble(),
+            value: vfxProvider.firefliesCount.toDouble(),
             min: 1,
             max: 100,
             isInt: true,
             activeColor: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize * 0.8,
-            onChanged: (value) => themeProvider.setFirefliesCount(value.toInt()),
+            onChanged: (value) => vfxProvider.setFirefliesCount(value.toInt()),
           ),
 
         const Divider(),
@@ -270,20 +272,20 @@ class VisualSettingsPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize,
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
         ),
         const SizedBox(height: 10),
-        if (themeProvider.backgroundImagePath != null &&
-            themeProvider.backgroundImagePath != kDefaultBackground) ...[
+        if (vfxProvider.backgroundImagePath != null &&
+            vfxProvider.backgroundImagePath != kDefaultBackground) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               InkWell(
                 onTap: () {
-                  themeProvider.setBackgroundImage(null);
+                  vfxProvider.setBackgroundImage(null);
                   Provider.of<ChatProvider>(
                     context,
                     listen: false,
@@ -318,7 +320,7 @@ class VisualSettingsPanel extends StatelessWidget {
             ),
             itemCount:
                 1 +
-                themeProvider.customImagePaths.length +
+                vfxProvider.customImagePaths.length +
                 kAssetBackgrounds.length,
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -327,7 +329,7 @@ class VisualSettingsPanel extends StatelessWidget {
                     final ImagePicker picker = ImagePicker();
                     final XFile? image =
                         await picker.pickImage(source: ImageSource.gallery);
-                    if (image != null) themeProvider.addCustomImage(image.path);
+                    if (image != null) vfxProvider.addCustomImage(image.path);
                   },
                   child: Container(
                     decoration: BoxDecoration(
@@ -358,23 +360,23 @@ class VisualSettingsPanel extends StatelessWidget {
               }
 
               final int adjustedIndex = index - 1;
-              final int customCount = themeProvider.customImagePaths.length;
+              final int customCount = vfxProvider.customImagePaths.length;
               String path;
               bool isCustom;
 
               if (adjustedIndex < customCount) {
-                path = themeProvider.customImagePaths[adjustedIndex];
+                path = vfxProvider.customImagePaths[adjustedIndex];
                 isCustom = true;
               } else {
                 path = kAssetBackgrounds[adjustedIndex - customCount];
                 isCustom = false;
               }
 
-              final bool isSelected = themeProvider.backgroundImagePath == path;
+              final bool isSelected = vfxProvider.backgroundImagePath == path;
 
               return InkWell(
                 onTap: () {
-                  themeProvider.setBackgroundImage(path);
+                  vfxProvider.setBackgroundImage(path);
                   Provider.of<ChatProvider>(
                     context,
                     listen: false,
@@ -384,7 +386,7 @@ class VisualSettingsPanel extends StatelessWidget {
                     isCustom
                         ? () {
                           HapticFeedback.mediumImpact();
-                          themeProvider.removeCustomImage(path);
+                          vfxProvider.removeCustomImage(path);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text("Image Deleted"),
@@ -439,7 +441,7 @@ class VisualSettingsPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize,
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
@@ -457,7 +459,7 @@ class VisualSettingsPanel extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${(themeProvider.backgroundOpacity * 100).toInt()}%',
+                '${(vfxProvider.backgroundOpacity * 100).toInt()}%',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: themeProvider.textColor,
@@ -468,12 +470,12 @@ class VisualSettingsPanel extends StatelessWidget {
           ),
         ),
         Slider(
-          value: themeProvider.backgroundOpacity,
+          value: vfxProvider.backgroundOpacity,
           min: 0.0,
           max: 1.0,
           activeColor: themeProvider.textColor,
           inactiveColor: Colors.grey[800],
-          onChanged: (value) => themeProvider.setBackgroundOpacity(value),
+          onChanged: (value) => vfxProvider.setBackgroundOpacity(value),
         ),
 
         const SizedBox(height: 20),
@@ -511,6 +513,7 @@ class VisualSettingsPanel extends StatelessWidget {
                           ),
                           onPressed: () {
                             themeProvider.resetToDefaults();
+                            vfxProvider.resetToDefaults();
                             Navigator.pop(ctx);
                           },
                         ),

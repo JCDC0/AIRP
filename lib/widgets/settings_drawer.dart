@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/vfx_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/scale_provider.dart';
@@ -30,13 +31,14 @@ class SettingsDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Material(
-      elevation: themeProvider.enableBloom ? 30 : 16,
-      shadowColor: themeProvider.enableBloom
+      elevation: vfxProvider.enableBloom ? 30 : 16,
+      shadowColor: vfxProvider.enableBloom
           ? themeProvider.bloomGlowColor.withValues(alpha: 0.9)
           : null,
       color: themeProvider.scaffoldBackgroundColor,
@@ -92,7 +94,7 @@ class SettingsDrawer extends StatelessWidget {
                     color: themeProvider.textColor,
                     fontWeight: FontWeight.bold,
                     fontSize: scaleProvider.systemFontSize,
-                    shadows: themeProvider.enableBloom
+                    shadows: vfxProvider.enableBloom
                         ? [
                             Shadow(
                               color: themeProvider.bloomGlowColor,
@@ -186,7 +188,7 @@ class SettingsDrawer extends StatelessWidget {
                     color: themeProvider.textColor,
                     fontWeight: FontWeight.bold,
                     fontSize: scaleProvider.systemFontSize,
-                    shadows: themeProvider.enableBloom
+                    shadows: vfxProvider.enableBloom
                         ? [
                             Shadow(
                               color: themeProvider.bloomGlowColor,

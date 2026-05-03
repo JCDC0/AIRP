@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../utils/version.dart';
 
@@ -12,6 +13,7 @@ class SettingsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
@@ -24,7 +26,7 @@ class SettingsHeader extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize + 10,
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [
                     Shadow(
                       color: themeProvider.bloomGlowColor.withValues(

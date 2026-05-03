@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
@@ -57,6 +58,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
@@ -72,7 +74,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
@@ -83,11 +85,11 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
             color: themeProvider.containerFillColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: themeProvider.enableBloom
+              color: vfxProvider.enableBloom
                   ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                   : themeProvider.borderColor,
             ),
-            boxShadow: themeProvider.enableBloom
+            boxShadow: vfxProvider.enableBloom
                 ? [
                     BoxShadow(
                       color: themeProvider.bloomGlowColor.withValues(alpha: 0.1),
@@ -133,7 +135,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: scaleProvider.systemFontSize,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
@@ -340,7 +342,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
             "Grounding / Web Search",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(
@@ -384,7 +386,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
               "Disable Safety Filters",
               style: TextStyle(
                 fontSize: scaleProvider.systemFontSize,
-                shadows: themeProvider.enableBloom
+                shadows: vfxProvider.enableBloom
                     ? [
                         Shadow(
                           color: themeProvider.bloomGlowColor.withValues(
@@ -418,7 +420,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
               "Request Usage Stats",
               style: TextStyle(
                 fontSize: scaleProvider.systemFontSize,
-                shadows: themeProvider.enableBloom
+                shadows: vfxProvider.enableBloom
                     ? [
                         Shadow(
                           color: themeProvider.bloomGlowColor.withValues(

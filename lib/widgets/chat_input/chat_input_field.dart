@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -33,6 +34,7 @@ class ChatInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
@@ -75,13 +77,13 @@ class ChatInputField extends StatelessWidget {
                   builder: (context, child) {
                     return CustomPaint(
                       foregroundPainter:
-                          isLoading && themeProvider.enableLoadingAnimation
+                          isLoading && vfxProvider.enableLoadingAnimation
                               ? LineOrbitPainter(
                                   progress: orbitController.value,
                                   lines: orbitLines,
                                   color: themeProvider.textColor,
                                   bloomColor: themeProvider.bloomGlowColor,
-                                  enableBloom: themeProvider.enableBloom,
+                                  enableBloom: vfxProvider.enableBloom,
                                   borderRadius: 24.0,
                                 )
                               : null,
@@ -213,7 +215,7 @@ class ChatInputField extends StatelessWidget {
                   color: chatProvider.loreRecognizerGlowColor
                       .withValues(alpha: 0.75),
                 ),
-                boxShadow: themeProvider.enableBloom
+                boxShadow: vfxProvider.enableBloom
                     ? [
                         BoxShadow(
                           color: chatProvider.loreRecognizerGlowColor

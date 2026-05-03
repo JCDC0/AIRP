@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/vfx_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../utils/constants.dart';
@@ -190,11 +191,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final bool isDesktop = scaleProvider.deviceType == DeviceType.desktop;
 
-    if (!themeProvider.enableLoadingAnimation &&
+    if (!vfxProvider.enableLoadingAnimation &&
         _zoomBorderController.isAnimating) {
       _zoomBorderController.stop();
     }
@@ -260,11 +262,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                           foregroundPainter:
                               _isZoomMode &&
                                   isDesktop &&
-                                  themeProvider.enableLoadingAnimation
+                                  vfxProvider.enableLoadingAnimation
                               ? _ZoomArcPainter(
                                   progress: _zoomBorderController.value,
                                   color: themeProvider.textColor,
-                                  enableBloom: themeProvider.enableBloom,
+                                  enableBloom: vfxProvider.enableBloom,
                                   bloomColor: themeProvider.bloomGlowColor,
                                 )
                               : null,
@@ -279,7 +281,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                             color: themeProvider.textColor,
                             width: 0.5,
                           ),
-                          boxShadow: themeProvider.enableBloom
+                          boxShadow: vfxProvider.enableBloom
                               ? [
                                   BoxShadow(
                                     color: themeProvider.bloomGlowColor
@@ -295,7 +297,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                           child: InkWell(
                             onTap: isDesktop
                                 ? () => _toggleZoomMode(
-                                    themeProvider.enableLoadingAnimation,
+                                    vfxProvider.enableLoadingAnimation,
                                   )
                                 : _resetZoom,
                             customBorder: const CircleBorder(),
@@ -308,7 +310,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                                     : Icons.zoom_out_map,
                                 size: fabIconSize,
                                 color: themeProvider.textColor,
-                                shadows: themeProvider.enableBloom
+                                shadows: vfxProvider.enableBloom
                                     ? [
                                         Shadow(
                                           color: themeProvider.textColor

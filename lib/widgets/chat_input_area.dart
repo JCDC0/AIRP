@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../providers/chat_provider.dart';
+import '../providers/vfx_provider.dart';
 import '../providers/theme_provider.dart';
 import '../models/lorebook_models.dart';
 import 'chat_input/orbit_animations.dart';
@@ -151,7 +152,8 @@ class _ChatInputAreaState extends State<ChatInputArea>
   /// Displays a menu for selecting attachment types.
   void _showAttachmentMenu() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final bool useBloom = themeProvider.enableBloom;
+    final vfxProvider = Provider.of<VfxProvider>(context, listen: false);
+    final bool useBloom = vfxProvider.enableBloom;
     final Color themeColor = themeProvider.textColor;
 
     showModalBottomSheet(

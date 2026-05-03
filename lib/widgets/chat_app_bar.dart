@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/vfx_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../models/chat_models.dart';
@@ -88,6 +89,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
@@ -115,7 +117,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     return AppBar(
       toolbarHeight: scaledToolbarHeight,
-      backgroundColor: themeProvider.backgroundImagePath != null
+      backgroundColor: vfxProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha(0)
           : themeProvider.scaffoldBackgroundColor,
       leading: IconButton(
@@ -129,6 +131,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           context,
           chatProvider,
           themeProvider,
+          vfxProvider,
           scaleProvider,
         ),
         child: SizedBox(
@@ -150,7 +153,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     color: tokenColor.withValues(alpha: 0.8),
                     fontSize: scaleProvider.systemFontSize - 2,
                     fontWeight: FontWeight.w600,
-                    shadows: themeProvider.enableBloom
+                    shadows: vfxProvider.enableBloom
                         ? [Shadow(color: tokenColor, blurRadius: 6)]
                         : [],
                   ),
@@ -168,7 +171,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                         color: themeProvider.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scaleProvider.systemFontSize + 4,
-                        shadows: themeProvider.enableBloom
+                        shadows: vfxProvider.enableBloom
                             ? [
                                 Shadow(
                                   color: themeProvider.bloomGlowColor,
@@ -211,6 +214,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   context,
                   chatProvider,
                   themeProvider,
+                  vfxProvider,
                   scaleProvider,
                 ),
               ),
@@ -261,6 +265,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     BuildContext context,
     ChatProvider chatProvider,
     ThemeProvider themeProvider,
+    VfxProvider vfxProvider,
     ScaleProvider scaleProvider,
   ) {
     final messenger = ScaffoldMessenger.maybeOf(context);
@@ -284,8 +289,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           return Dialog(
             key: providerPickerDialogKey,
             backgroundColor: themeProvider.dropdownColor,
-            elevation: themeProvider.enableBloom ? 12 : 8,
-            shadowColor: themeProvider.enableBloom
+            elevation: vfxProvider.enableBloom ? 12 : 8,
+            shadowColor: vfxProvider.enableBloom
                 ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                 : null,
             shape: RoundedRectangleBorder(
@@ -376,6 +381,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     BuildContext context,
     ChatProvider chatProvider,
     ThemeProvider themeProvider,
+    VfxProvider vfxProvider,
     ScaleProvider scaleProvider,
   ) {
     switch (chatProvider.currentProvider) {
@@ -512,11 +518,11 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             color: themeProvider.containerFillColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: themeProvider.enableBloom
+              color: vfxProvider.enableBloom
                   ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                   : themeProvider.borderColor,
             ),
-            boxShadow: themeProvider.enableBloom
+            boxShadow: vfxProvider.enableBloom
                 ? [
                     BoxShadow(
                       color: themeProvider.bloomGlowColor.withValues(

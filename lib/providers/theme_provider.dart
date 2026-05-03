@@ -1,28 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/file_io_helper.dart';
 import '../utils/constants.dart';
 
-/// Provider for managing the application's visual theme and special effects.
+/// Provider for managing the application's visual theme (colors and typography).
 ///
-/// This class handles font styles, background images, colors, and
-/// visual effects like bloom, motes, and rain.
+/// This class handles font styles, light/dark mode, and semantic color definitions.
 class ThemeProvider extends ChangeNotifier {
   String _fontStyle = 'Default';
-  String? _backgroundImagePath;
-  double _backgroundOpacity = 0.7;
-
-  bool _enableBloom = false;
-  bool _enableLoadingAnimation = true;
-  bool _enableMotes = false;
-  bool _enableRain = false;
-  bool _enableFireflies = false;
   bool _isLightMode = false;
-
-  int _motesDensity = 75;
-  int _rainIntensity = 100;
-  int _firefliesCount = 50;
 
   Color _userBubbleColor = AppColors.defaultUserBubble;
   Color _userTextColor = AppColors.defaultUserText;
@@ -43,44 +29,29 @@ class ThemeProvider extends ChangeNotifier {
   Color? _markdownListColor;
   Color? _markdownStrikeColor;
 
-  List<String> _customImagePaths = [];
-
   String get fontStyle => _fontStyle;
-  String? get backgroundImagePath => _backgroundImagePath;
-  double get backgroundOpacity => _backgroundOpacity;
-  bool get enableBloom => _enableBloom;
-  bool get enableLoadingAnimation => _enableLoadingAnimation;
-  bool get enableMotes => _enableMotes;
-  bool get enableRain => _enableRain;
-  bool get enableFireflies => _enableFireflies;
-  List<String> get customImagePaths => _customImagePaths;
-
-  int get motesDensity => _motesDensity;
-  int get rainIntensity => _rainIntensity;
-  int get firefliesCount => _firefliesCount;
+  bool get isLightMode => _isLightMode;
 
   Color get userBubbleColor => _userBubbleColor;
   Color get userTextColor => _userTextColor;
   Color get aiBubbleColor => _aiBubbleColor;
   Color get aiTextColor => _aiTextColor;
   Color get appThemeColor => _appThemeColor;
-    Color get markdownParagraphColor => _markdownParagraphColor ?? textColor;
-    Color get markdownItalicColor => _markdownItalicColor ?? textColor;
-    Color get markdownBoldColor => _markdownBoldColor ?? textColor;
-    Color get markdownBoldItalicColor =>
+  Color get markdownParagraphColor => _markdownParagraphColor ?? textColor;
+  Color get markdownItalicColor => _markdownItalicColor ?? textColor;
+  Color get markdownBoldColor => _markdownBoldColor ?? textColor;
+  Color get markdownBoldItalicColor =>
       _markdownBoldItalicColor ?? _markdownBoldColor ?? textColor;
-    Color get markdownH1Color => _markdownH1Color ?? textColor;
-    Color get markdownH2Color => _markdownH2Color ?? textColor;
-    Color get markdownH3Color => _markdownH3Color ?? textColor;
-    Color get markdownLinkColor => _markdownLinkColor ?? Colors.blueAccent;
-    Color get markdownInlineCodeColor =>
-      _markdownInlineCodeColor ?? textColor;
-    Color get markdownCodeBlockColor => _markdownCodeBlockColor ?? textColor;
-    Color get markdownBlockquoteColor =>
+  Color get markdownH1Color => _markdownH1Color ?? textColor;
+  Color get markdownH2Color => _markdownH2Color ?? textColor;
+  Color get markdownH3Color => _markdownH3Color ?? textColor;
+  Color get markdownLinkColor => _markdownLinkColor ?? Colors.blueAccent;
+  Color get markdownInlineCodeColor => _markdownInlineCodeColor ?? textColor;
+  Color get markdownCodeBlockColor => _markdownCodeBlockColor ?? textColor;
+  Color get markdownBlockquoteColor =>
       _markdownBlockquoteColor ?? subtitleColor;
-    Color get markdownListColor => _markdownListColor ?? textColor;
-    Color get markdownStrikeColor => _markdownStrikeColor ?? textColor;
-  bool get isLightMode => _isLightMode;
+  Color get markdownListColor => _markdownListColor ?? textColor;
+  Color get markdownStrikeColor => _markdownStrikeColor ?? textColor;
 
   // ── Semantic colors (adapt to light / dark mode) ──────────────────────
 
@@ -89,9 +60,10 @@ class ThemeProvider extends ChangeNotifier {
       _isLightMode ? Brightness.light : Brightness.dark;
 
   /// Scaffold / page background.
-  Color get scaffoldBackgroundColor => _isLightMode
-      ? const Color(0xFFFAFAFA)
-      : const Color.fromARGB(255, 0, 0, 0);
+  Color get scaffoldBackgroundColor =>
+      _isLightMode
+          ? const Color(0xFFFAFAFA)
+          : const Color.fromARGB(255, 0, 0, 0);
 
   /// Primary surface (drawers, input areas, bottom sheets).
   Color get surfaceColor =>
@@ -158,19 +130,6 @@ class ThemeProvider extends ChangeNotifier {
     _loadPreferences();
   }
 
-  /// Returns the [ImageProvider] for the current background image.
-  ImageProvider get currentImageProvider {
-    if (_backgroundImagePath == null) {
-      return const AssetImage(kDefaultBackground);
-    }
-    if (_backgroundImagePath!.startsWith('assets/')) {
-      return AssetImage(_backgroundImagePath!);
-    } else {
-      return FileIOHelper.imageProviderFromPath(_backgroundImagePath!) ??
-          const AssetImage(kDefaultBackground);
-    }
-  }
-
   /// Generates the [TextTheme] based on the selected font style.
   TextTheme get currentTextTheme {
     final baseColor = textColor;
@@ -219,90 +178,6 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('app_light_mode', value);
-  }
-
-  /// Sets the background image path and persists the change.
-  Future<void> setBackgroundImage(String? path) async {
-    _backgroundImagePath = path;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    if (path != null) {
-      await prefs.setString('app_bg_path', path);
-    } else {
-      await prefs.remove('app_bg_path');
-    }
-  }
-
-  /// Sets the opacity of the background image overlay.
-  Future<void> setBackgroundOpacity(double value) async {
-    _backgroundOpacity = value;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('app_bg_opacity', value);
-  }
-
-  /// Toggles the bloom (glow) effect.
-  Future<void> toggleBloom(bool value) async {
-    _enableBloom = value;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('app_enable_bloom', value);
-  }
-
-  /// Toggles the loading animation (spinning indicators) effect.
-  Future<void> toggleLoadingAnimation(bool value) async {
-    _enableLoadingAnimation = value;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('app_enable_loading_animation', value);
-  }
-
-  /// Toggles the floating dust motes effect.
-  Future<void> toggleMotes(bool value) async {
-    _enableMotes = value;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('app_enable_motes', value);
-  }
-
-  /// Toggles the falling rain effect.
-  Future<void> toggleRain(bool value) async {
-    _enableRain = value;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('app_enable_rain', value);
-  }
-
-  /// Toggles the pulsing fireflies effect.
-  Future<void> toggleFireflies(bool value) async {
-    _enableFireflies = value;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('app_enable_fireflies', value);
-  }
-
-  /// Sets the density of floating motes.
-  Future<void> setMotesDensity(int value) async {
-    _motesDensity = value;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('vfx_motes_density', value);
-  }
-
-  /// Sets the intensity of the rain effect.
-  Future<void> setRainIntensity(int value) async {
-    _rainIntensity = value;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('vfx_rain_intensity', value);
-  }
-
-  /// Sets the number of fireflies displayed.
-  Future<void> setFirefliesCount(int value) async {
-    _firefliesCount = value;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('vfx_fireflies_count', value);
   }
 
   /// Updates a specific theme color and persists the change.
@@ -375,7 +250,7 @@ class ThemeProvider extends ChangeNotifier {
     _saveColors();
   }
 
-  /// Resets all visual settings to their default values.
+  /// Resets theme colors and typography to default values.
   Future<void> resetToDefaults() async {
     _userBubbleColor = AppColors.defaultUserBubble;
     _userTextColor = AppColors.defaultUserText;
@@ -395,31 +270,15 @@ class ThemeProvider extends ChangeNotifier {
     _markdownBlockquoteColor = null;
     _markdownListColor = null;
     _markdownStrikeColor = null;
-    _enableBloom = false;
-    _enableLoadingAnimation = true;
-    _enableMotes = false;
-    _enableRain = false;
-    _enableFireflies = false;
     _isLightMode = false;
-    _backgroundOpacity = AppDefaults.backgroundOpacity;
-    _motesDensity = AppDefaults.motesDensity;
-    _rainIntensity = AppDefaults.rainIntensity;
-    _firefliesCount = AppDefaults.firefliesCount;
+    _fontStyle = 'Default';
 
     notifyListeners();
     _saveColors();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('app_enable_bloom', false);
-    await prefs.setBool('app_enable_loading_animation', true);
-    await prefs.setBool('app_enable_motes', false);
-    await prefs.setBool('app_enable_rain', false);
-    await prefs.setBool('app_enable_fireflies', false);
     await prefs.setBool('app_light_mode', false);
-    await prefs.setDouble('app_bg_opacity', AppDefaults.backgroundOpacity);
-    await prefs.setInt('vfx_motes_density', AppDefaults.motesDensity);
-    await prefs.setInt('vfx_rain_intensity', AppDefaults.rainIntensity);
-    await prefs.setInt('vfx_fireflies_count', AppDefaults.firefliesCount);
+    await prefs.setString('app_font_style', 'Default');
   }
 
   Future<void> _saveColors() async {
@@ -433,7 +292,11 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setInt('color_user_text', _colorToStorageInt(_userTextColor));
     await prefs.setInt('color_ai_bubble', _colorToStorageInt(_aiBubbleColor));
     await prefs.setInt('color_ai_text', _colorToStorageInt(_aiTextColor));
-    await _saveMarkdownColor(prefs, 'color_md_paragraph', _markdownParagraphColor);
+    await _saveMarkdownColor(
+      prefs,
+      'color_md_paragraph',
+      _markdownParagraphColor,
+    );
     await _saveMarkdownColor(prefs, 'color_md_italic', _markdownItalicColor);
     await _saveMarkdownColor(prefs, 'color_md_bold', _markdownBoldColor);
     await _saveMarkdownColor(
@@ -483,91 +346,53 @@ class ThemeProvider extends ChangeNotifier {
         ((color.b * 255.0).round() & 0xff);
   }
 
-  Future<void> addCustomImage(String path) async {
-    if (!_customImagePaths.contains(path)) {
-      _customImagePaths.add(path);
-      notifyListeners();
-      _saveCustomPaths();
-    }
-    setBackgroundImage(path);
-  }
-
-  Future<void> removeCustomImage(String path) async {
-    if (_customImagePaths.contains(path)) {
-      _customImagePaths.remove(path);
-      if (_backgroundImagePath == path) _backgroundImagePath = null;
-      notifyListeners();
-      _saveCustomPaths();
-    }
-  }
-
-  Future<void> _saveCustomPaths() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('app_custom_bg_list', _customImagePaths);
-  }
-
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _fontStyle = prefs.getString('app_font_style') ?? 'Default';
-    _backgroundImagePath = prefs.getString('app_bg_path');
-    _backgroundOpacity =
-        prefs.getDouble('app_bg_opacity') ?? AppDefaults.backgroundOpacity;
-    _enableBloom = prefs.getBool('app_enable_bloom') ?? false;
-    _enableLoadingAnimation =
-        prefs.getBool('app_enable_loading_animation') ?? true;
-    _enableMotes = prefs.getBool('app_enable_motes') ?? false;
-    _enableRain = prefs.getBool('app_enable_rain') ?? false;
-    _enableFireflies = prefs.getBool('app_enable_fireflies') ?? false;
     _isLightMode = prefs.getBool('app_light_mode') ?? false;
-    _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
-
-    _motesDensity =
-        prefs.getInt('vfx_motes_density') ?? AppDefaults.motesDensity;
-    _rainIntensity =
-        prefs.getInt('vfx_rain_intensity') ?? AppDefaults.rainIntensity;
-    _firefliesCount =
-        prefs.getInt('vfx_fireflies_count') ?? AppDefaults.firefliesCount;
 
     final int? themeInt = prefs.getInt('color_app_theme');
-    _appThemeColor = themeInt != null
-        ? Color(themeInt)
-        : AppColors.defaultAppTheme;
+    _appThemeColor =
+        themeInt != null ? Color(themeInt) : AppColors.defaultAppTheme;
 
     final int? userBubbleInt = prefs.getInt('color_user_bubble');
-    _userBubbleColor = userBubbleInt != null
-        ? Color(userBubbleInt)
-        : AppColors.defaultUserBubble;
+    _userBubbleColor =
+        userBubbleInt != null
+            ? Color(userBubbleInt)
+            : AppColors.defaultUserBubble;
 
     final int? userTextInt = prefs.getInt('color_user_text');
-    _userTextColor = userTextInt != null
-        ? Color(userTextInt)
-        : AppColors.defaultUserText;
+    _userTextColor =
+        userTextInt != null ? Color(userTextInt) : AppColors.defaultUserText;
 
     final int? aiBubbleInt = prefs.getInt('color_ai_bubble');
-    _aiBubbleColor = aiBubbleInt != null
-        ? Color(aiBubbleInt)
-        : AppColors.defaultAiBubble;
+    _aiBubbleColor =
+        aiBubbleInt != null ? Color(aiBubbleInt) : AppColors.defaultAiBubble;
 
     final int? aiTextInt = prefs.getInt('color_ai_text');
-    _aiTextColor = aiTextInt != null
-        ? Color(aiTextInt)
-        : AppColors.defaultAiText;
+    _aiTextColor =
+        aiTextInt != null ? Color(aiTextInt) : AppColors.defaultAiText;
 
     _markdownParagraphColor = _loadMarkdownColor(prefs, 'color_md_paragraph');
     _markdownItalicColor = _loadMarkdownColor(prefs, 'color_md_italic');
     _markdownBoldColor = _loadMarkdownColor(prefs, 'color_md_bold');
-    _markdownBoldItalicColor =
-      _loadMarkdownColor(prefs, 'color_md_bold_italic');
+    _markdownBoldItalicColor = _loadMarkdownColor(
+      prefs,
+      'color_md_bold_italic',
+    );
     _markdownH1Color = _loadMarkdownColor(prefs, 'color_md_h1');
     _markdownH2Color = _loadMarkdownColor(prefs, 'color_md_h2');
     _markdownH3Color = _loadMarkdownColor(prefs, 'color_md_h3');
     _markdownLinkColor = _loadMarkdownColor(prefs, 'color_md_link');
-    _markdownInlineCodeColor =
-        _loadMarkdownColor(prefs, 'color_md_inline_code');
-    _markdownCodeBlockColor =
-        _loadMarkdownColor(prefs, 'color_md_code_block');
-    _markdownBlockquoteColor =
-        _loadMarkdownColor(prefs, 'color_md_blockquote');
+    _markdownInlineCodeColor = _loadMarkdownColor(
+      prefs,
+      'color_md_inline_code',
+    );
+    _markdownCodeBlockColor = _loadMarkdownColor(prefs, 'color_md_code_block');
+    _markdownBlockquoteColor = _loadMarkdownColor(
+      prefs,
+      'color_md_blockquote',
+    );
     _markdownListColor = _loadMarkdownColor(prefs, 'color_md_list');
     _markdownStrikeColor = _loadMarkdownColor(prefs, 'color_md_strike');
 
@@ -586,21 +411,11 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setString('app_font_style', fontName);
   }
 
-  /// Exports all theme settings as a serializable map.
+  /// Exports theme colors and typography as a serializable map.
   Map<String, dynamic> exportSettingsMap() {
     return {
       'fontStyle': _fontStyle,
-      'backgroundPath': _backgroundImagePath,
-      'backgroundOpacity': _backgroundOpacity,
-      'bloom': _enableBloom,
-      'loadingAnimation': _enableLoadingAnimation,
-      'motes': _enableMotes,
-      'rain': _enableRain,
-      'fireflies': _enableFireflies,
       'lightMode': _isLightMode,
-      'motesDensity': _motesDensity,
-      'rainIntensity': _rainIntensity,
-      'firefliesCount': _firefliesCount,
       'colors': {
         'appTheme': _colorToStorageInt(_appThemeColor),
         'userBubble': _colorToStorageInt(_userBubbleColor),
@@ -627,20 +442,7 @@ class ThemeProvider extends ChangeNotifier {
   /// Applies theme settings from a previously exported map and persists them.
   Future<void> importSettingsMap(Map<String, dynamic> data) async {
     _fontStyle = data['fontStyle'] as String? ?? _fontStyle;
-    _backgroundImagePath = data['backgroundPath'] as String?;
-    _backgroundOpacity =
-        (data['backgroundOpacity'] as num?)?.toDouble() ?? _backgroundOpacity;
-    _enableBloom = data['bloom'] as bool? ?? _enableBloom;
-    _enableLoadingAnimation =
-        data['loadingAnimation'] as bool? ?? _enableLoadingAnimation;
-    _enableMotes = data['motes'] as bool? ?? _enableMotes;
-    _enableRain = data['rain'] as bool? ?? _enableRain;
-    _enableFireflies = data['fireflies'] as bool? ?? _enableFireflies;
     _isLightMode = data['lightMode'] as bool? ?? _isLightMode;
-    _motesDensity = (data['motesDensity'] as num?)?.toInt() ?? _motesDensity;
-    _rainIntensity = (data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity;
-    _firefliesCount =
-        (data['firefliesCount'] as num?)?.toInt() ?? _firefliesCount;
 
     final colors = data['colors'] as Map<String, dynamic>? ?? {};
     if (colors['appTheme'] != null) {
@@ -661,18 +463,20 @@ class ThemeProvider extends ChangeNotifier {
     _markdownParagraphColor = _colorFromExportedMap(colors['markdownParagraph']);
     _markdownItalicColor = _colorFromExportedMap(colors['markdownItalic']);
     _markdownBoldColor = _colorFromExportedMap(colors['markdownBold']);
-    _markdownBoldItalicColor =
-      _colorFromExportedMap(colors['markdownBoldItalic']);
+    _markdownBoldItalicColor = _colorFromExportedMap(
+      colors['markdownBoldItalic'],
+    );
     _markdownH1Color = _colorFromExportedMap(colors['markdownH1']);
     _markdownH2Color = _colorFromExportedMap(colors['markdownH2']);
     _markdownH3Color = _colorFromExportedMap(colors['markdownH3']);
     _markdownLinkColor = _colorFromExportedMap(colors['markdownLink']);
-    _markdownInlineCodeColor =
-      _colorFromExportedMap(colors['markdownInlineCode']);
-    _markdownCodeBlockColor =
-      _colorFromExportedMap(colors['markdownCodeBlock']);
-    _markdownBlockquoteColor =
-      _colorFromExportedMap(colors['markdownBlockquote']);
+    _markdownInlineCodeColor = _colorFromExportedMap(
+      colors['markdownInlineCode'],
+    );
+    _markdownCodeBlockColor = _colorFromExportedMap(colors['markdownCodeBlock']);
+    _markdownBlockquoteColor = _colorFromExportedMap(
+      colors['markdownBlockquote'],
+    );
     _markdownListColor = _colorFromExportedMap(colors['markdownList']);
     _markdownStrikeColor = _colorFromExportedMap(colors['markdownStrike']);
 
@@ -681,24 +485,7 @@ class ThemeProvider extends ChangeNotifier {
     // Persist all imported values
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_font_style', _fontStyle);
-    if (_backgroundImagePath != null) {
-      await prefs.setString('app_bg_path', _backgroundImagePath!);
-    } else {
-      await prefs.remove('app_bg_path');
-    }
-    await prefs.setDouble('app_bg_opacity', _backgroundOpacity);
-    await prefs.setBool('app_enable_bloom', _enableBloom);
-    await prefs.setBool(
-      'app_enable_loading_animation',
-      _enableLoadingAnimation,
-    );
-    await prefs.setBool('app_enable_motes', _enableMotes);
-    await prefs.setBool('app_enable_rain', _enableRain);
-    await prefs.setBool('app_enable_fireflies', _enableFireflies);
     await prefs.setBool('app_light_mode', _isLightMode);
-    await prefs.setInt('vfx_motes_density', _motesDensity);
-    await prefs.setInt('vfx_rain_intensity', _rainIntensity);
-    await prefs.setInt('vfx_fireflies_count', _firefliesCount);
     await _saveColors();
   }
 

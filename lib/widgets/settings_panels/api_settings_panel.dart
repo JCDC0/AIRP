@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
@@ -102,6 +103,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
@@ -130,7 +132,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
               fontWeight: FontWeight.bold,
               color: themeProvider.textColor,
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                   : [],
             ),
@@ -143,11 +145,11 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
             decoration: InputDecoration(
               hintText: "Paste API Key or Bearer Token...",
               border: OutlineInputBorder(
-                borderSide: themeProvider.enableBloom
+                borderSide: vfxProvider.enableBloom
                     ? BorderSide(color: themeProvider.bloomGlowColor)
                     : const BorderSide(),
               ),
-              enabledBorder: themeProvider.enableBloom
+              enabledBorder: vfxProvider.enableBloom
                   ? OutlineInputBorder(
                       borderSide: BorderSide(
                         color: themeProvider.bloomGlowColor.withValues(alpha: 0.5),
@@ -169,7 +171,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
               fontWeight: FontWeight.bold,
               color: themeProvider.textColor,
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                   : [],
             ),

@@ -3,6 +3,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/scale_provider.dart';
 import 'settings_color_picker.dart';
 
@@ -142,6 +143,7 @@ class TextDesignerPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     return Column(
@@ -153,7 +155,7 @@ class TextDesignerPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize + 10,
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
@@ -165,7 +167,7 @@ class TextDesignerPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize,
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
@@ -176,11 +178,11 @@ class TextDesignerPanel extends StatelessWidget {
             color: themeProvider.containerFillColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: themeProvider.enableBloom
+              color: vfxProvider.enableBloom
                   ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                   : themeProvider.borderColor,
             ),
-            boxShadow: themeProvider.enableBloom
+            boxShadow: vfxProvider.enableBloom
                 ? [
                     BoxShadow(
                       color: themeProvider.bloomGlowColor.withValues(alpha: 0.1),
@@ -226,7 +228,7 @@ class TextDesignerPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize,
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),
@@ -383,7 +385,7 @@ class TextDesignerPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize,
             fontWeight: FontWeight.bold,
             color: themeProvider.textColor,
-            shadows: themeProvider.enableBloom
+            shadows: vfxProvider.enableBloom
                 ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
                 : [],
           ),

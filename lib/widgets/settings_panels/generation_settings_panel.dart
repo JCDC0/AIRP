@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
@@ -61,6 +62,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
@@ -74,7 +76,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
             "Message History",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(
@@ -142,7 +144,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
             "Reasoning Mode",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(
@@ -184,7 +186,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: scaleProvider.systemFontSize,
-                    shadows: themeProvider.enableBloom
+                    shadows: vfxProvider.enableBloom
                         ? [
                             Shadow(
                               color: themeProvider.bloomGlowColor,
@@ -201,11 +203,11 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                     color: themeProvider.containerFillColor,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: themeProvider.enableBloom
+                      color: vfxProvider.enableBloom
                           ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                           : themeProvider.borderColor,
                     ),
-                    boxShadow: themeProvider.enableBloom
+                    boxShadow: vfxProvider.enableBloom
                         ? [
                             BoxShadow(
                               color: themeProvider.bloomGlowColor.withValues(
@@ -465,7 +467,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
             "Generation Settings",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(
@@ -552,7 +554,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
             "Max Output Tokens",
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize,
-              shadows: themeProvider.enableBloom
+              shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
                         color: themeProvider.bloomGlowColor.withValues(

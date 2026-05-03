@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/vfx_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../models/chat_models.dart';
@@ -39,6 +40,7 @@ class ModelSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
 
     final selectedModelInfo = modelsList.firstWhere(
       (m) => m.id == selectedModel,
@@ -61,11 +63,11 @@ class ModelSelector extends StatelessWidget {
           color: themeProvider.containerFillColor,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: themeProvider.enableBloom
+            color: vfxProvider.enableBloom
                 ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
                 : themeProvider.borderColor,
           ),
-          boxShadow: themeProvider.enableBloom
+          boxShadow: vfxProvider.enableBloom
               ? [
                   BoxShadow(
                     color: themeProvider.bloomGlowColor.withValues(alpha: 0.1),

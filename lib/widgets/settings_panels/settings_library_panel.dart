@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/preset_model.dart';
 import '../../services/library_service.dart';
@@ -306,6 +307,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   Future<void> _handleSnapshotExport() async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final vfxProvider = Provider.of<VfxProvider>(context, listen: false);
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -322,6 +324,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       final jsonString = await LibraryService.exportLibraryAsync(
         chatProvider: chatProvider,
         themeProvider: themeProvider,
+        vfxProvider: vfxProvider,
         scaleProvider: scaleProvider,
         options: options,
       );
@@ -366,6 +369,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
 
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final vfxProvider = Provider.of<VfxProvider>(context, listen: false);
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
 
     final confirmed = await showDialog<bool>(
@@ -378,6 +382,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       fileContent: fileContent,
       chatProvider: chatProvider,
       themeProvider: themeProvider,
+      vfxProvider: vfxProvider,
       scaleProvider: scaleProvider,
     );
     messenger.showSnackBar(

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/vfx_provider.dart';
 import '../providers/scale_provider.dart';
 import '../utils/version.dart';
 import '../models/character_card.dart';
@@ -43,6 +44,7 @@ class LibraryService {
   static Future<String> exportLibraryAsync({
     required ChatProvider chatProvider,
     required ThemeProvider themeProvider,
+    required VfxProvider vfxProvider,
     required ScaleProvider scaleProvider,
     ExportOptions options = const ExportOptions(),
   }) async {
@@ -104,6 +106,7 @@ class LibraryService {
     // --- Theme ---
     if (options.visualsAtmosphere) {
       library['theme'] = themeProvider.exportSettingsMap();
+      library['vfx'] = vfxProvider.exportSettingsMap();
     }
 
     // --- Scale ---
@@ -120,6 +123,7 @@ class LibraryService {
     required String fileContent,
     required ChatProvider chatProvider,
     required ThemeProvider themeProvider,
+    required VfxProvider vfxProvider,
     required ScaleProvider scaleProvider,
   }) async {
     try {
@@ -197,6 +201,13 @@ class LibraryService {
       if (data['theme'] != null) {
         await themeProvider.importSettingsMap(
           data['theme'] as Map<String, dynamic>,
+        );
+      }
+
+      // Apply vfx (overwrite)
+      if (data['vfx'] != null) {
+        await vfxProvider.importSettingsMap(
+          data['vfx'] as Map<String, dynamic>,
         );
       }
 

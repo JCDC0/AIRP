@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/vfx_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
@@ -36,9 +37,10 @@ class ChatActionBar extends StatelessWidget {
     String? tooltip,
     bool isActive = false,
     required ThemeProvider themeProvider,
+    required VfxProvider vfxProvider,
     required ScaleProvider scaleProvider,
   }) {
-    final bool useBloom = themeProvider.enableBloom;
+    final bool useBloom = vfxProvider.enableBloom;
     final double iconScale = scaleProvider.iconScale;
     final double containerSize = 40 * iconScale;
 
@@ -100,9 +102,10 @@ class ChatActionBar extends StatelessWidget {
     required Color activeColor,
     required VoidCallback onToggle,
     required ThemeProvider themeProvider,
+    required VfxProvider vfxProvider,
     required ScaleProvider scaleProvider,
   }) {
-    final bool useBloom = themeProvider.enableBloom;
+    final bool useBloom = vfxProvider.enableBloom;
     final double iconScale = scaleProvider.iconScale;
     final double containerSize = 40 * iconScale;
     final Color iconColor = isActive
@@ -148,7 +151,7 @@ class ChatActionBar extends StatelessWidget {
     );
 
     // Wrap with arc animation if active AND loading AND loading animation enabled
-    if (isActive && isLoading && themeProvider.enableLoadingAnimation) {
+    if (isActive && isLoading && vfxProvider.enableLoadingAnimation) {
       buttonContent = AnimatedBuilder(
         animation: orbitController,
         builder: (context, child) {
@@ -181,6 +184,7 @@ class ChatActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
@@ -196,6 +200,7 @@ class ChatActionBar extends StatelessWidget {
             tooltip: "Add Attachment",
             onPressed: isLoading ? null : onShowAttachmentMenu,
             themeProvider: themeProvider,
+            vfxProvider: vfxProvider,
             scaleProvider: scaleProvider,
           ),
           if (chatProvider.currentProvider == AiProvider.openRouter)
@@ -205,7 +210,7 @@ class ChatActionBar extends StatelessWidget {
               activeColor: Colors.tealAccent,
               onToggle: () async {
                 settingsProvider.setEnableUsage(!settingsProvider.enableUsage);
-                await chatProvider.saveSettings(showConfirmation: false);
+                await settingsProvider.saveSettings(showConfirmation: false);
                 onShowStatusPopup(
                   settingsProvider.enableUsage
                       ? "Usage Stats ON"
@@ -213,6 +218,7 @@ class ChatActionBar extends StatelessWidget {
                 );
               },
               themeProvider: themeProvider,
+              vfxProvider: vfxProvider,
               scaleProvider: scaleProvider,
             ),
           Tooltip(
@@ -223,7 +229,7 @@ class ChatActionBar extends StatelessWidget {
               activeColor: Colors.blueAccent,
               onToggle: () async {
                 settingsProvider.setEnableGrounding(!settingsProvider.enableGrounding);
-                await chatProvider.saveSettings(showConfirmation: false);
+                await settingsProvider.saveSettings(showConfirmation: false);
                 onShowStatusPopup(
                   settingsProvider.enableGrounding
                       ? 'Web Search ON'
@@ -231,6 +237,7 @@ class ChatActionBar extends StatelessWidget {
                 );
               },
               themeProvider: themeProvider,
+              vfxProvider: vfxProvider,
               scaleProvider: scaleProvider,
             ),
           ),
@@ -260,7 +267,7 @@ class ChatActionBar extends StatelessWidget {
                   color: themeProvider.inputFillColor,
                   shape: BoxShape.circle,
                   boxShadow: isActive &&
-                          themeProvider.enableBloom &&
+                          vfxProvider.enableBloom &&
                           reasoningColor != null
                       ? [
                           BoxShadow(
@@ -308,7 +315,7 @@ class ChatActionBar extends StatelessWidget {
                               statusMsg = "Reasoning: LOW";
                           }
                           settingsProvider.setReasoningEffort(nextState);
-                          await chatProvider.saveSettings(
+                          await settingsProvider.saveSettings(
                             showConfirmation: false,
                           );
                           onShowStatusPopup(statusMsg);
@@ -328,7 +335,7 @@ class ChatActionBar extends StatelessWidget {
                 ),
               );
 
-              if (isActive && isLoading && themeProvider.enableLoadingAnimation) {
+              if (isActive && isLoading && vfxProvider.enableLoadingAnimation) {
                 buttonContent = AnimatedBuilder(
                   animation: orbitController,
                   builder: (context, child) {
@@ -338,7 +345,7 @@ class ChatActionBar extends StatelessWidget {
                         lines: iconOrbitLines,
                         color: reasoningColor ?? themeProvider.textColor,
                         strokeWidth: 2.5 * iconScale,
-                        enableBloom: themeProvider.enableBloom,
+                        enableBloom: vfxProvider.enableBloom,
                         bloomColor: themeProvider.bloomGlowColor,
                       ),
                       child: child,
@@ -366,6 +373,7 @@ class ChatActionBar extends StatelessWidget {
             tooltip: "Scroll to Top",
             onPressed: onScrollToTop,
             themeProvider: themeProvider,
+            vfxProvider: vfxProvider,
             scaleProvider: scaleProvider,
           ),
           _buildCircularButton(
@@ -373,6 +381,7 @@ class ChatActionBar extends StatelessWidget {
             tooltip: "Scroll to Bottom",
             onPressed: onScrollToBottom,
             themeProvider: themeProvider,
+            vfxProvider: vfxProvider,
             scaleProvider: scaleProvider,
           ),
         ],

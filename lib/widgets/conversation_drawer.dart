@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
+import '../providers/vfx_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/scale_provider.dart';
 import '../utils/constants.dart';
@@ -29,6 +30,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
@@ -46,8 +48,8 @@ class _ConversationDrawerState extends State<ConversationDrawer>
         .toList();
 
     return Material(
-      elevation: themeProvider.enableBloom ? 20 : 16,
-      shadowColor: themeProvider.enableBloom
+      elevation: vfxProvider.enableBloom ? 20 : 16,
+      shadowColor: vfxProvider.enableBloom
           ? themeProvider.bloomGlowColor.withValues(alpha: 0.3)
           : null,
       color: themeProvider.scaffoldBackgroundColor,
@@ -71,7 +73,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                           fontSize: scaleProvider.systemFontSize + 8,
                           fontWeight: FontWeight.bold,
                           color: themeProvider.textColor,
-                          shadows: themeProvider.enableBloom
+                          shadows: vfxProvider.enableBloom
                               ? [
                                   Shadow(
                                     color: themeProvider.bloomGlowColor,
@@ -93,7 +95,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                   leading: Icon(
                     Icons.add_circle_outline,
                     color: Colors.greenAccent,
-                    shadows: themeProvider.enableBloom
+                    shadows: vfxProvider.enableBloom
                         ? [
                             const Shadow(
                               color: Colors.greenAccent,
@@ -107,7 +109,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                     style: TextStyle(
                       color: Colors.green,
                       fontSize: scaleProvider.systemFontSize,
-                      shadows: themeProvider.enableBloom
+                      shadows: vfxProvider.enableBloom
                           ? [const Shadow(color: Colors.green, blurRadius: 8)]
                           : [],
                     ),
@@ -134,14 +136,14 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                     decoration: BoxDecoration(
                       color: themeProvider.textColor.withAlpha(20),
                       borderRadius: BorderRadius.circular(20),
-                      border: themeProvider.enableBloom
+                      border: vfxProvider.enableBloom
                           ? Border.all(
                               color: themeProvider.bloomGlowColor.withValues(
                                 alpha: 0.3,
                               ),
                             )
                           : null,
-                      boxShadow: themeProvider.enableBloom
+                      boxShadow: vfxProvider.enableBloom
                           ? [
                               BoxShadow(
                                 color: themeProvider.bloomGlowColor.withValues(
@@ -167,7 +169,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                           Icons.search,
                           color: themeProvider.textColor,
                           size: 18,
-                          shadows: themeProvider.enableBloom
+                          shadows: vfxProvider.enableBloom
                               ? [
                                   Shadow(
                                     color: themeProvider.bloomGlowColor,
@@ -224,7 +226,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                                     fontWeight: FontWeight.bold,
                                     fontSize: scaleProvider.systemFontSize,
                                     letterSpacing: 1.2,
-                                    shadows: themeProvider.enableBloom
+                                    shadows: vfxProvider.enableBloom
                                         ? [
                                             Shadow(
                                               color:
@@ -245,6 +247,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                                   context,
                                   session,
                                   themeProvider,
+                                  vfxProvider,
                                   chatProvider,
                                   scaleProvider,
                                 ),
@@ -265,7 +268,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                                     fontWeight: FontWeight.bold,
                                     fontSize: scaleProvider.systemFontSize,
                                     letterSpacing: 1.2,
-                                    shadows: themeProvider.enableBloom
+                                    shadows: vfxProvider.enableBloom
                                         ? [
                                             Shadow(
                                               color:
@@ -287,6 +290,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                                   context,
                                   session,
                                   themeProvider,
+                                  vfxProvider,
                                   chatProvider,
                                   scaleProvider,
                                 ),
@@ -311,6 +315,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                     (i) => _BackgroundNotificationCard(
                       notification: chatProvider.pendingNotifications[i],
                       themeProvider: themeProvider,
+                      vfxProvider: vfxProvider,
                       scaleProvider: scaleProvider,
                       onDismiss: () {
                         chatProvider.removeNotification(i);
@@ -329,6 +334,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
     BuildContext context,
     ChatSessionData session,
     ThemeProvider themeProvider,
+    VfxProvider vfxProvider,
     ChatProvider chatProvider,
     ScaleProvider scaleProvider,
   ) {
@@ -347,7 +353,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
             ? Border.all(color: themeProvider.textColor, width: 1.5)
             : null,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: (isActive && themeProvider.enableBloom)
+        boxShadow: (isActive && vfxProvider.enableBloom)
             ? [
                 BoxShadow(
                   color: themeProvider.bloomGlowColor.withValues(alpha: 0.2),
@@ -374,7 +380,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
             color: session.isBookmarked
                 ? Colors.orangeAccent
                 : Colors.grey[700],
-            shadows: (session.isBookmarked && themeProvider.enableBloom)
+            shadows: (session.isBookmarked && vfxProvider.enableBloom)
                 ? [const Shadow(color: Colors.orangeAccent, blurRadius: 8)]
                 : [],
           ),
@@ -393,7 +399,7 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                       : themeProvider.subtitleColor,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                   fontSize: scaleProvider.systemFontSize + 1,
-                  shadows: (isActive && themeProvider.enableBloom)
+                  shadows: (isActive && vfxProvider.enableBloom)
                       ? [
                           Shadow(
                             color: themeProvider.bloomGlowColor,
@@ -429,14 +435,14 @@ class _ConversationDrawerState extends State<ConversationDrawer>
         onTap: () {
           // Save outgoing session's background before switching
           chatProvider.autoSaveCurrentSession(
-            backgroundImagePath: themeProvider.backgroundImagePath,
+            backgroundImagePath: vfxProvider.backgroundImagePath,
           );
           chatProvider.loadSession(session);
 
           if (session.backgroundImage != null) {
-            themeProvider.setBackgroundImage(session.backgroundImage!);
+            vfxProvider.setBackgroundImage(session.backgroundImage!);
           } else {
-            themeProvider.setBackgroundImage(null);
+            vfxProvider.setBackgroundImage(null);
           }
 
           widget.onClose?.call();
@@ -495,12 +501,14 @@ class _ConversationDrawerState extends State<ConversationDrawer>
 class _BackgroundNotificationCard extends StatefulWidget {
   final BackgroundNotification notification;
   final ThemeProvider themeProvider;
+  final VfxProvider vfxProvider;
   final ScaleProvider scaleProvider;
   final VoidCallback onDismiss;
 
   const _BackgroundNotificationCard({
     required this.notification,
     required this.themeProvider,
+    required this.vfxProvider,
     required this.scaleProvider,
     required this.onDismiss,
   });
@@ -554,6 +562,7 @@ class _BackgroundNotificationCardState
   @override
   Widget build(BuildContext context) {
     final theme = widget.themeProvider;
+    final vfxProvider = widget.vfxProvider;
     final scale = widget.scaleProvider;
     final notif = widget.notification;
 
@@ -571,7 +580,7 @@ class _BackgroundNotificationCardState
               color: theme.bloomGlowColor.withValues(alpha: 0.4),
               width: 1,
             ),
-            boxShadow: theme.enableBloom
+            boxShadow: vfxProvider.enableBloom
                 ? [
                     BoxShadow(
                       color: theme.bloomGlowColor.withValues(alpha: 0.2),
@@ -591,7 +600,7 @@ class _BackgroundNotificationCardState
                     Icons.check_circle_outline,
                     color: Colors.greenAccent,
                     size: 16,
-                    shadows: theme.enableBloom
+                    shadows: vfxProvider.enableBloom
                         ? [
                             const Shadow(
                               color: Colors.greenAccent,
@@ -610,7 +619,7 @@ class _BackgroundNotificationCardState
                         color: theme.textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: scale.systemFontSize,
-                        shadows: theme.enableBloom
+                        shadows: vfxProvider.enableBloom
                             ? [
                                 Shadow(
                                   color: theme.bloomGlowColor,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
+import '../providers/vfx_provider.dart';
 import '../providers/scale_provider.dart';
 import '../services/reasoning_utils.dart';
 
@@ -19,9 +20,6 @@ import 'message_bubble/message_bubble_reasoning.dart';
 class MessageBubble extends StatelessWidget {
   /// The chat message to display.
   final ChatMessage msg;
-
-  /// The theme provider for styling.
-  final ThemeProvider themeProvider;
 
   /// Callback when the bubble is long-pressed.
   final VoidCallback? onLongPress;
@@ -53,7 +51,6 @@ class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
     required this.msg,
-    required this.themeProvider,
     this.onLongPress,
     this.onCopy,
     this.onEdit,
@@ -67,6 +64,8 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final vfxProvider = Provider.of<VfxProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
     final bubbleColor = msg.isUser
         ? themeProvider.userBubbleColor
@@ -77,7 +76,7 @@ class MessageBubble extends StatelessWidget {
     final borderColor = msg.isUser
         ? themeProvider.userBubbleColor.withAlpha(128)
         : themeProvider.dividerColor;
-    final useBloom = themeProvider.enableBloom;
+    final useBloom = vfxProvider.enableBloom;
 
     Widget bubble;
     if (msg.contentNotifier != null) {
@@ -92,7 +91,8 @@ class MessageBubble extends StatelessWidget {
             textColor,
             useBloom,
             scaleProvider,
-            themeProvider.enableLoadingAnimation,
+            themeProvider,
+            vfxProvider,
             showTypingIndicator,
           );
         },
@@ -106,7 +106,8 @@ class MessageBubble extends StatelessWidget {
         textColor,
         useBloom,
         scaleProvider,
-        themeProvider.enableLoadingAnimation,
+        themeProvider,
+        vfxProvider,
         showTypingIndicator,
       );
     }
@@ -114,9 +115,7 @@ class MessageBubble extends StatelessWidget {
     return Align(
       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(
-        crossAxisAlignment: msg.isUser
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start,
+        crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           GestureDetector(onLongPress: onLongPress, child: bubble),
           MessageBubbleActions(
@@ -144,7 +143,8 @@ class MessageBubble extends StatelessWidget {
     Color textColor,
     bool useBloom,
     ScaleProvider scaleProvider,
-    bool enableLoadingAnimation,
+    ThemeProvider themeProvider,
+    VfxProvider vfxProvider,
     bool showTypingIndicator,
   ) {
     final splitContent = ReasoningUtils.split(text);
@@ -155,10 +155,7 @@ class MessageBubble extends StatelessWidget {
     final bool hasVisibleText = visibleText.trim().isNotEmpty;
     final bool hasAttachments = msg.imagePaths.isNotEmpty;
     final bool shouldShowTypingDots =
-        showTypingIndicator &&
-        !hasReasoning &&
-        !hasVisibleText &&
-        !hasAttachments;
+        showTypingIndicator && !hasReasoning && !hasVisibleText && !hasAttachments;
 
     final contentColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +174,7 @@ class MessageBubble extends StatelessWidget {
             textColor: textColor,
             useBloom: useBloom,
             isDone: isReasoningDone,
-            enableLoadingAnimation: enableLoadingAnimation,
+            enableLoadingAnimation: vfxProvider.enableLoadingAnimation,
           ),
         if (shouldShowTypingDots)
           Padding(
@@ -210,8 +207,7 @@ class MessageBubble extends StatelessWidget {
               painter: BorderGlowPainter(
                 backgroundColor: bubbleColor,
                 borderColor: borderColor,
-                glowColor: (msg.isUser ? bubbleColor : themeProvider.textColor)
-                    .withValues(alpha: 0.15),
+                glowColor: (msg.isUser ? bubbleColor : themeProvider.textColor).withValues(alpha: 0.15),
                 radius: 12.0,
                 strokeWidth: 2.0,
                 glowStrokeWidth: 10.0,
