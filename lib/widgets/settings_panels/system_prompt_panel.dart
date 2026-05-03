@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/vfx_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
 
@@ -82,7 +83,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     chatProvider.setSystemInstruction(p.content);
     _titleController.text = p.title;
     _promptController.text = p.content;
-    chatProvider.saveSettings(showConfirmation: false);
+    Provider.of<SettingsProvider>(context, listen: false).markDirty();
     setState(() {});
   }
 
@@ -186,7 +187,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           minLines: 5,
           onChanged: (val) {
             chatProvider.setSystemInstruction(val.trim());
-            chatProvider.saveSettings(showConfirmation: false);
+            Provider.of<SettingsProvider>(context, listen: false).markDirty();
           },
           decoration: InputDecoration(
             hintText: 'Enter system instructions, persona, or rules…',

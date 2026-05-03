@@ -46,12 +46,14 @@ class SettingsDrawer extends StatelessWidget {
         width:
             scaleProvider.drawerWidth + (scaleProvider.systemFontSize - 12) * 10,
         height: double.infinity,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SettingsHeader(),
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SettingsHeader(),
 
               ExpansionTile(
                 key: Key('api_settings_$resetVersion'),
@@ -281,8 +283,48 @@ class SettingsDrawer extends StatelessWidget {
               ),
 
               const SizedBox(height: 80),
-            ],
-          ),
+                ],
+              ),
+            ),
+
+            // ── Falling Save Button ──────────────────────────────────────
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 800),
+              curve: settingsProvider.hasPendingChanges
+                  ? Curves.bounceOut
+                  : Curves.easeInBack,
+              bottom: settingsProvider.hasPendingChanges
+                  ? MediaQuery.of(context).viewInsets.bottom + 30
+                  : -(56 * scaleProvider.iconScale + 40),
+              right: 20,
+              child: SizedBox(
+                width: 56 * scaleProvider.iconScale,
+                height: 56 * scaleProvider.iconScale,
+                child: FloatingActionButton(
+                  backgroundColor: Colors.orangeAccent,
+                  foregroundColor: themeProvider.scaffoldBackgroundColor,
+                  onPressed: () {
+                    settingsProvider.saveSettings();
+                    chatProvider.saveSettings();
+                    settingsProvider.clearDirty();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Settings Saved'),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: Colors.lightBlue,
+                        duration: Duration(milliseconds: 1500),
+                      ),
+                    );
+                  },
+                  elevation: 10,
+                  child: Icon(
+                    Icons.save,
+                    size: 24 * scaleProvider.iconScale,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

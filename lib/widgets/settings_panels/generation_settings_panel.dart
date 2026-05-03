@@ -99,7 +99,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           activeThumbColor: Colors.greenAccent,
           onChanged: (val) {
             settingsProvider.setEnableMsgHistory(val);
-            chatProvider.saveSettings();
+            settingsProvider.markDirty();
           },
         ),
 
@@ -121,7 +121,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   fontSize: scaleProvider.systemFontSize,
                   onChanged: (val) {
                     settingsProvider.setHistoryLimit(val.toInt());
-                    chatProvider.saveSettings();
+                    settingsProvider.markDirty();
                   },
                 ),
                 Text(
@@ -170,7 +170,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
             if (val && settingsProvider.reasoningEffort == "none") {
               settingsProvider.setReasoningEffort("medium");
             }
-            chatProvider.saveSettings();
+            settingsProvider.markDirty();
           },
         ),
 
@@ -268,7 +268,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                       onChanged: (val) {
                         if (val != null) {
                           settingsProvider.setReasoningEffort(val);
-                          chatProvider.saveSettings();
+                          settingsProvider.markDirty();
                         }
                       },
                     ),
@@ -306,7 +306,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           activeThumbColor: Colors.tealAccent,
           onChanged: (val) {
             settingsProvider.setEnableReasoningEfficiency(val);
-            chatProvider.saveSettings();
+            settingsProvider.markDirty();
           },
         ),
 
@@ -327,7 +327,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           activeThumbColor: Colors.cyanAccent,
           onChanged: (val) {
             settingsProvider.setPersistReasoningBlocks(val);
-            chatProvider.saveSettings();
+            settingsProvider.markDirty();
           },
         ),
 
@@ -348,7 +348,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           activeThumbColor: Colors.amberAccent,
           onChanged: (val) {
             settingsProvider.setEnableDeveloperMode(val);
-            chatProvider.saveSettings();
+            settingsProvider.markDirty();
           },
         ),
 
@@ -376,7 +376,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   onChanged: (val) async {
                     if (!val) {
                       settingsProvider.setEnableRawReasoningEdit(false);
-                      await chatProvider.saveSettings();
+                      settingsProvider.markDirty();
                       return;
                     }
 
@@ -395,7 +395,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                     }
 
                     settingsProvider.setEnableRawReasoningEdit(true);
-                    await chatProvider.saveSettings();
+                    settingsProvider.markDirty();
                   },
                 ),
                 Align(
@@ -490,7 +490,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           activeThumbColor: Colors.orangeAccent,
           onChanged: (val) {
             settingsProvider.setEnableGenerationSettings(val);
-            chatProvider.saveSettings();
+            settingsProvider.markDirty();
           },
         ),
 
@@ -510,7 +510,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   fontSize: scaleProvider.systemFontSize,
                   onChanged: (val) {
                     settingsProvider.setTemperature(val);
-                    chatProvider.saveSettings();
+                    settingsProvider.markDirty();
                   },
                 ),
 
@@ -524,7 +524,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   fontSize: scaleProvider.systemFontSize,
                   onChanged: (val) {
                     settingsProvider.setTopP(val);
-                    chatProvider.saveSettings();
+                    settingsProvider.markDirty();
                   },
                 ),
 
@@ -539,7 +539,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   fontSize: scaleProvider.systemFontSize,
                   onChanged: (val) {
                     settingsProvider.setTopK(val.toInt());
-                    chatProvider.saveSettings();
+                    settingsProvider.markDirty();
                   },
                 ),
               ],
@@ -577,7 +577,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
           activeThumbColor: Colors.blueAccent,
           onChanged: (val) {
             settingsProvider.setEnableMaxOutputTokens(val);
-            chatProvider.saveSettings();
+            settingsProvider.markDirty();
           },
         ),
 
@@ -595,7 +595,7 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
               fontSize: scaleProvider.systemFontSize,
               onChanged: (val) {
                 settingsProvider.setMaxOutputTokens(val.toInt());
-                chatProvider.saveSettings();
+                settingsProvider.markDirty();
               },
             ),
           ),

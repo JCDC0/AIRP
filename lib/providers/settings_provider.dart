@@ -36,8 +36,31 @@ class SettingsProvider extends ChangeNotifier {
   bool _rawReasoningEditWarningAcknowledged = false;
   bool _enableLorebook = true;
 
+  // Dirty tracking — indicates unsaved changes exist in the settings drawer.
+  // Panels call markDirty() to flag changes; the save button calls clearDirty().
+  bool _hasPendingChanges = false;
+
   static const String _rawEditWarningAckKey =
       'airp_raw_reasoning_edit_warning_ack';
+
+  // --- Dirty tracking ---
+  bool get hasPendingChanges => _hasPendingChanges;
+
+  /// Mark that settings have been modified but not yet persisted.
+  void markDirty() {
+    if (!_hasPendingChanges) {
+      _hasPendingChanges = true;
+      notifyListeners();
+    }
+  }
+
+  /// Clear the dirty flag after a successful save.
+  void clearDirty() {
+    if (_hasPendingChanges) {
+      _hasPendingChanges = false;
+      notifyListeners();
+    }
+  }
 
   // --- Getters ---
   double get temperature => _temperature;
