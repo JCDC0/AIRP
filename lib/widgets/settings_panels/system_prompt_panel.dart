@@ -8,8 +8,11 @@ import '../../models/chat_models.dart';
 
 /// A unified panel for managing the main system prompt.
 ///
-/// Provides a title field, the prompt content, a library for hotswapping presets,
-/// and quick-save capabilities.
+/// Layout (top to bottom):
+///   1. Preset Title field
+///   2. Prompt textarea — bordered, no overlaid controls
+///   3. Save button row — placed below the textarea
+///   4. Library Management — chips with load + delete per entry
 class SystemPromptPanel extends StatefulWidget {
   const SystemPromptPanel({super.key});
 
@@ -27,8 +30,8 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     _titleController = TextEditingController();
     _promptController = TextEditingController(text: chatProvider.systemInstruction);
-    
-    // Try to match current prompt with a title from the library
+
+    // Try to pre-fill the title by matching against saved prompts.
     _matchTitleFromLibrary(chatProvider);
   }
 
@@ -60,6 +63,75 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     }
   }
 
+  void _saveToLibrary(ChatProvider chatProvider) {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a title before saving.')),
+      );
+      return;
+    }
+    chatProvider.saveCurrentSystemPrompt(title);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("'$title' saved to library.")),
+    );
+    setState(() {}); // refresh chips
+  }
+
+  void _loadPrompt(ChatProvider chatProvider, SystemPromptData p) {
+    chatProvider.setSystemInstruction(p.content);
+    _titleController.text = p.title;
+    _promptController.text = p.content;
+    chatProvider.saveSettings(showConfirmation: false);
+    setState(() {});
+  }
+
+  void _deletePrompt(ChatProvider chatProvider, SystemPromptData p) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final tp = Provider.of<ThemeProvider>(ctx, listen: false);
+        final sp = Provider.of<ScaleProvider>(ctx, listen: false);
+        final fs = sp.systemFontSize;
+        return AlertDialog(
+          backgroundColor: tp.dropdownColor,
+          title: Text(
+            'Delete prompt?',
+            style: TextStyle(color: Colors.redAccent, fontSize: fs),
+          ),
+          content: Text(
+            "'${p.title}' will be removed from the library.",
+            style: TextStyle(color: tp.subtitleColor, fontSize: fs * 0.85),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(fontSize: fs * 0.85)),
+            ),
+            TextButton(
+              onPressed: () {
+                chatProvider.deletePromptFromLibrary(p.title);
+                Navigator.pop(ctx);
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("'${p.title}' deleted.")),
+                );
+              },
+              child: Text(
+                'DELETE',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: fs * 0.85,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -70,144 +142,183 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     _syncControllers(chatProvider);
 
     final fs = scaleProvider.systemFontSize;
-    final accent = themeProvider.textColor;
     final useBloom = vfxProvider.enableBloom;
+    final glowColor = themeProvider.bloomGlowColor;
+    final borderColor = useBloom
+        ? glowColor.withValues(alpha: 0.55)
+        : themeProvider.borderColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- Header with Library Dropdown ---
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                "Prompt Library",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: fs * 0.9,
-                  color: themeProvider.subtitleColor,
-                ),
-              ),
-            ),
-            if (chatProvider.savedSystemPrompts.isNotEmpty)
-              DropdownButton<SystemPromptData>(
-                underline: const SizedBox(),
-                icon: Icon(Icons.library_books, color: accent, size: 20),
-                dropdownColor: themeProvider.dropdownColor,
-                items: chatProvider.savedSystemPrompts.map((p) {
-                  return DropdownMenuItem(
-                    value: p,
-                    child: Text(
-                      p.title,
-                      style: TextStyle(color: themeProvider.textColor, fontSize: fs * 0.85),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (p) {
-                  if (p != null) {
-                    chatProvider.setSystemInstruction(p.content);
-                    _titleController.text = p.title;
-                    _promptController.text = p.content;
-                    chatProvider.saveSettings(showConfirmation: false);
-                  }
-                },
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-
-        // --- Title Field ---
+        // ── 1. Preset Title ────────────────────────────────────────────────
         TextField(
           controller: _titleController,
           decoration: InputDecoration(
-            labelText: "Preset Title",
-            hintText: "Enter a title for this prompt...",
+            labelText: 'Preset Title',
+            hintText: 'Name this prompt…',
             labelStyle: TextStyle(fontSize: fs * 0.8),
-            hintStyle: TextStyle(fontSize: fs * 0.8),
-            border: const OutlineInputBorder(),
+            hintStyle: TextStyle(fontSize: fs * 0.8, color: themeProvider.hintColor),
+            border: OutlineInputBorder(
+              borderSide: BorderSide(color: borderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(
+                color: useBloom ? glowColor : themeProvider.textColor,
+                width: 1.5,
+              ),
+            ),
             filled: true,
             fillColor: themeProvider.containerFillDarkColor,
             isDense: true,
           ),
           style: TextStyle(fontSize: fs * 0.9, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
-        // --- Main Prompt Field ---
-        Stack(
-          alignment: Alignment.bottomRight,
-          children: [
-            TextField(
-              controller: _promptController,
-              maxLines: 12,
-              minLines: 5,
-              onChanged: (val) {
-                chatProvider.setSystemInstruction(val.trim());
-                chatProvider.saveSettings(showConfirmation: false);
-              },
-              decoration: InputDecoration(
-                hintText: "Enter system instructions, persona, or rules...",
-                hintStyle: TextStyle(fontSize: fs * 0.8),
-                border: OutlineInputBorder(
-                  borderSide: useBloom ? BorderSide(color: themeProvider.bloomGlowColor) : const BorderSide(),
-                ),
-                enabledBorder: useBloom
-                    ? OutlineInputBorder(
-                        borderSide: BorderSide(color: themeProvider.bloomGlowColor.withValues(alpha: 0.5)),
-                      )
-                    : const OutlineInputBorder(),
-                filled: true,
-                fillColor: themeProvider.containerFillColor,
-              ),
-              style: TextStyle(fontSize: fs * 0.9),
+        // ── 2. Prompt Textarea — clearly bordered ──────────────────────────
+        TextField(
+          controller: _promptController,
+          maxLines: 12,
+          minLines: 5,
+          onChanged: (val) {
+            chatProvider.setSystemInstruction(val.trim());
+            chatProvider.saveSettings(showConfirmation: false);
+          },
+          decoration: InputDecoration(
+            hintText: 'Enter system instructions, persona, or rules…',
+            hintStyle: TextStyle(fontSize: fs * 0.8, color: themeProvider.hintColor),
+            border: OutlineInputBorder(
+              borderSide: BorderSide(color: borderColor),
             ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: IconButton(
-                onPressed: () {
-                  final title = _titleController.text.trim();
-                  if (title.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please enter a title to save")),
-                    );
-                    return;
-                  }
-                  chatProvider.saveCurrentSystemPrompt(title);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Prompt '$title' saved!")),
-                  );
-                },
-                icon: Icon(Icons.save, color: Colors.blueAccent, size: 24 * scaleProvider.iconScale),
-                tooltip: "Save to Library",
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(
+                color: useBloom ? glowColor : themeProvider.textColor,
+                width: 1.5,
               ),
             ),
-          ],
-        ),
-        
-        if (chatProvider.savedSystemPrompts.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(
-            "Library Management",
-            style: TextStyle(fontSize: fs * 0.8, color: Colors.grey, fontStyle: FontStyle.italic),
+            filled: true,
+            fillColor: themeProvider.containerFillColor,
           ),
+          style: TextStyle(fontSize: fs * 0.9),
+        ),
+        const SizedBox(height: 8),
+
+        // ── 3. Save Button — below the textarea ────────────────────────────
+        Align(
+          alignment: Alignment.centerRight,
+          child: OutlinedButton.icon(
+            onPressed: () => _saveToLibrary(chatProvider),
+            icon: Icon(Icons.save_outlined, size: fs * 1.1),
+            label: Text('Save to Library', style: TextStyle(fontSize: fs * 0.85)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.blueAccent,
+              side: const BorderSide(color: Colors.blueAccent),
+              padding: EdgeInsets.symmetric(horizontal: fs, vertical: fs * 0.4),
+            ),
+          ),
+        ),
+
+        // ── 4. Library Management ──────────────────────────────────────────
+        if (chatProvider.savedSystemPrompts.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Divider(color: themeProvider.borderColor),
           const SizedBox(height: 4),
+          Text(
+            'Library Management',
+            style: TextStyle(
+              fontSize: fs * 0.8,
+              color: themeProvider.subtitleColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
           Wrap(
-            spacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: chatProvider.savedSystemPrompts.map((p) {
-              final isCurrent = _titleController.text == p.title;
-              return ActionChip(
-                label: Text(p.title, style: TextStyle(fontSize: fs * 0.7)),
-                onPressed: () {
-                  chatProvider.setSystemInstruction(p.content);
-                  _titleController.text = p.title;
-                  _promptController.text = p.content;
-                },
-                backgroundColor: isCurrent ? Colors.blueAccent.withValues(alpha: 0.2) : null,
-                avatar: isCurrent ? const Icon(Icons.check, size: 12) : null,
+              final isActive = _titleController.text == p.title &&
+                  _promptController.text.trim() == p.content.trim();
+              return Container(
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? Colors.blueAccent.withValues(alpha: 0.15)
+                      : themeProvider.containerFillDarkColor,
+                  border: Border.all(
+                    color: isActive
+                        ? Colors.blueAccent.withValues(alpha: 0.6)
+                        : themeProvider.borderColor,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Load tap area
+                    InkWell(
+                      onTap: () => _loadPrompt(chatProvider, p),
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(20),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(fs * 0.7, fs * 0.3, fs * 0.3, fs * 0.3),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isActive)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Icon(
+                                  Icons.check_circle,
+                                  size: fs * 0.85,
+                                  color: Colors.blueAccent,
+                                ),
+                              ),
+                            Text(
+                              p.title,
+                              style: TextStyle(
+                                fontSize: fs * 0.78,
+                                color: isActive
+                                    ? Colors.blueAccent
+                                    : themeProvider.textColor,
+                                fontWeight: isActive
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Delete button
+                    InkWell(
+                      onTap: () => _deletePrompt(chatProvider, p),
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(20),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(fs * 0.1, fs * 0.3, fs * 0.5, fs * 0.3),
+                        child: Icon(
+                          Icons.close,
+                          size: fs * 0.8,
+                          color: themeProvider.faintColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               );
             }).toList(),
           ),
         ],
+
+        const SizedBox(height: 8),
       ],
     );
   }
