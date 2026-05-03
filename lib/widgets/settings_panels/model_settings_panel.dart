@@ -9,107 +9,49 @@ import 'provider_model_selector.dart';
 
 /// A settings panel for configuring the conversation title and selecting AI models.
 ///
-/// This panel provides a text field for the title and a provider-specific
-/// model selector widget.
-class ModelSettingsPanel extends StatelessWidget {
-  /// Controller for the conversation title text field.
-  final TextEditingController titleController;
+/// This panel manages its own text controllers to provide a smooth typing
+/// experience while reactively updating the central providers.
+class ModelSettingsPanel extends StatefulWidget {
+  const ModelSettingsPanel({super.key});
 
-  /// Controller for the OpenRouter model selection text field.
-  final TextEditingController openRouterModelController;
+  @override
+  State<ModelSettingsPanel> createState() => _ModelSettingsPanelState();
+}
 
-  /// Controller for the Groq model selection text field.
-  final TextEditingController groqModelController;
+class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
+  late TextEditingController _titleController;
+  late TextEditingController _openRouterModelController;
+  late TextEditingController _groqModelController;
 
-  const ModelSettingsPanel({
-    super.key,
-    required this.titleController,
-    required this.openRouterModelController,
-    required this.groqModelController,
-  });
-
-  /// Returns the number of available models for the current provider.
-  int _getModelCount(ChatProvider provider) {
-    switch (provider.currentProvider) {
-      case AiProvider.gemini:
-        return provider.geminiModelsList.length;
-      case AiProvider.openRouter:
-        return provider.openRouterModelsList.length;
-      case AiProvider.arliAi:
-        return provider.arliAiModelsList.length;
-      case AiProvider.nanoGpt:
-        return provider.nanoGptModelsList.length;
-      case AiProvider.nvidia:
-        return provider.nvidiaModelsList.length;
-      case AiProvider.openAi:
-        return provider.openAiModelsList.length;
-      case AiProvider.huggingFace:
-        return provider.huggingFaceModelsList.length;
-      case AiProvider.groq:
-        return provider.groqModelsList.length;
-      case AiProvider.local:
-        return 1; // Local models are custom
-      default:
-        return 0;
-    }
-  }
-
-  /// Formats pricing string from per-token to per-million tokens format.
-  String _formatPricing(String p) {
-    try {
-      final parts = p.split(' / ');
-      if (parts.length != 2) return p;
-      double input = double.tryParse(parts[0]) ?? 0;
-      double output = double.tryParse(parts[1]) ?? 0;
-
-      // Handle special values like -1 (Auto Router / Variable)
-      if (input < 0 || output < 0) return "Variable / Dynamic";
-      if (input == 0 && output == 0) return "Free / Unknown";
-
-      // Convert per token to per 1M tokens
-      double inputM = input * 1000000;
-      double outputM = output * 1000000;
-
-      return "Input: \$${inputM.toStringAsFixed(2)}/M | Output: \$${outputM.toStringAsFixed(2)}/M";
-    } catch (e) {
-      return p;
-    }
-  }
-
-  Widget _buildDetailRow(
-    String label,
-    String value,
-    ThemeProvider themeProvider,
-    ScaleProvider scaleProvider,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 70,
-            child: Text(
-              "$label:",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: scaleProvider.systemFontSize * 0.8,
-                color: themeProvider.faintestColor,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: scaleProvider.systemFontSize * 0.8,
-                color: themeProvider.textColor,
-              ),
-            ),
-          ),
-        ],
-      ),
+  @override
+  void initState() {
+    super.initState();
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    _titleController = TextEditingController(text: chatProvider.currentTitle);
+    _openRouterModelController = TextEditingController(
+      text: chatProvider.openRouterModel,
     );
+    _groqModelController = TextEditingController(text: chatProvider.groqModel);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _openRouterModelController.dispose();
+    _groqModelController.dispose();
+    super.dispose();
+  }
+
+  void _syncControllers(ChatProvider chatProvider) {
+    if (_titleController.text != chatProvider.currentTitle) {
+      _titleController.text = chatProvider.currentTitle;
+    }
+    if (_openRouterModelController.text != chatProvider.openRouterModel) {
+      _openRouterModelController.text = chatProvider.openRouterModel;
+    }
+    if (_groqModelController.text != chatProvider.groqModel) {
+      _groqModelController.text = chatProvider.groqModel;
+    }
   }
 
   @override
@@ -118,6 +60,8 @@ class ModelSettingsPanel extends StatelessWidget {
     final chatProvider = Provider.of<ChatProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
+
+    _syncControllers(chatProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,16 +90,18 @@ class ModelSettingsPanel extends StatelessWidget {
             boxShadow: themeProvider.enableBloom
                 ? [
                     BoxShadow(
-                      color: themeProvider.bloomGlowColor.withValues(
-                        alpha: 0.1,
-                      ),
+                      color: themeProvider.bloomGlowColor.withValues(alpha: 0.1),
                       blurRadius: 8,
                     ),
                   ]
                 : [],
           ),
           child: TextField(
-            controller: titleController,
+            controller: _titleController,
+            onChanged: (val) {
+              chatProvider.setTitle(val.trim());
+              chatProvider.saveSettings(showConfirmation: false);
+            },
             style: TextStyle(
               color: themeProvider.textColor,
               fontWeight: FontWeight.bold,
@@ -210,22 +156,23 @@ class ModelSettingsPanel extends StatelessWidget {
             selectedModel: chatProvider.openRouterModel,
             onSelected: (val) {
               chatProvider.setModel(val);
-              openRouterModelController.text = val;
+              _openRouterModelController.text = val;
             },
             placeholder: "vendor/model-name",
             isLoading: chatProvider.isLoadingOpenRouterModels,
             onRefresh: () => chatProvider.refreshModels(AiProvider.openRouter),
             refreshButtonColor: Colors.purpleAccent,
-            controller: openRouterModelController,
+            controller: _openRouterModelController,
           ),
 
         if (chatProvider.currentProvider == AiProvider.local) ...[
           const SizedBox(height: 5),
           TextField(
-            onChanged: chatProvider.setLocalModelName,
-            controller: TextEditingController(
-              text: chatProvider.localModelName,
-            ),
+            onChanged: (val) {
+              chatProvider.setLocalModelName(val);
+              chatProvider.saveSettings(showConfirmation: false);
+            },
+            controller: TextEditingController(text: chatProvider.localModelName),
             decoration: InputDecoration(
               hintText: "local-model",
               hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
@@ -299,13 +246,13 @@ class ModelSettingsPanel extends StatelessWidget {
             selectedModel: chatProvider.groqModel,
             onSelected: (val) {
               chatProvider.setModel(val);
-              groqModelController.text = val;
+              _groqModelController.text = val;
             },
             placeholder: "llama3-8b-8192",
             isLoading: chatProvider.isLoadingGroqModels,
             onRefresh: () => chatProvider.refreshModels(AiProvider.groq),
             refreshButtonColor: Colors.deepOrangeAccent,
-            controller: groqModelController,
+            controller: _groqModelController,
           ),
         const SizedBox(height: 16),
 
@@ -425,7 +372,7 @@ class ModelSettingsPanel extends StatelessWidget {
                   chatProvider.currentProvider == AiProvider.nanoGpt)
               ? (val) {
                   settingsProvider.setEnableGrounding(val);
-                  chatProvider.saveSettings();
+                  chatProvider.saveSettings(showConfirmation: false);
                 }
               : null,
         ),
@@ -460,7 +407,7 @@ class ModelSettingsPanel extends StatelessWidget {
             activeThumbColor: Colors.redAccent,
             onChanged: (val) {
               settingsProvider.setDisableSafety(val);
-              chatProvider.saveSettings();
+              chatProvider.saveSettings(showConfirmation: false);
             },
           ),
 
@@ -494,10 +441,72 @@ class ModelSettingsPanel extends StatelessWidget {
             activeThumbColor: Colors.tealAccent,
             onChanged: (val) {
               settingsProvider.setEnableUsage(val);
-              chatProvider.saveSettings();
+              chatProvider.saveSettings(showConfirmation: false);
             },
           ),
       ],
+    );
+  }
+
+  /// Returns the number of available models for the current provider.
+  int _getModelCount(ChatProvider provider) {
+    switch (provider.currentProvider) {
+      case AiProvider.gemini: return provider.geminiModelsList.length;
+      case AiProvider.openRouter: return provider.openRouterModelsList.length;
+      case AiProvider.arliAi: return provider.arliAiModelsList.length;
+      case AiProvider.nanoGpt: return provider.nanoGptModelsList.length;
+      case AiProvider.nvidia: return provider.nvidiaModelsList.length;
+      case AiProvider.openAi: return provider.openAiModelsList.length;
+      case AiProvider.huggingFace: return provider.huggingFaceModelsList.length;
+      case AiProvider.groq: return provider.groqModelsList.length;
+      case AiProvider.local: return 1;
+      default: return 0;
+    }
+  }
+
+  /// Formats pricing string from per-token to per-million tokens format.
+  String _formatPricing(String p) {
+    try {
+      final parts = p.split(' / ');
+      if (parts.length != 2) return p;
+      double input = double.tryParse(parts[0]) ?? 0;
+      double output = double.tryParse(parts[1]) ?? 0;
+      if (input < 0 || output < 0) return "Variable / Dynamic";
+      if (input == 0 && output == 0) return "Free / Unknown";
+      double inputM = input * 1000000;
+      double outputM = output * 1000000;
+      return "Input: \$${inputM.toStringAsFixed(2)}/M | Output: \$${outputM.toStringAsFixed(2)}/M";
+    } catch (_) { return p; }
+  }
+
+  Widget _buildDetailRow(String label, String value, ThemeProvider tp, ScaleProvider sp) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 70,
+            child: Text(
+              "$label:",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: sp.systemFontSize * 0.8,
+                color: tp.faintestColor,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: sp.systemFontSize * 0.8,
+                color: tp.textColor,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

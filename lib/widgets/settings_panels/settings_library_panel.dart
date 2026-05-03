@@ -14,21 +14,10 @@ import '../../services/file_io_helper.dart';
 /// Unified Settings Library panel.
 ///
 /// Hosts two tabs:
-///  - **Config Packs** — custom rules manager + preset import / export (former PresetPanel).
-///  - **Snapshots**    — selective full-state `.airp` export / smart import (former LibraryPanel).
+///  - **Config Packs** — custom rules manager + preset import / export.
+///  - **Snapshots**    — selective full-state `.airp` export / smart import.
 class SettingsLibraryPanel extends StatefulWidget {
-  final TextEditingController mainPromptController;
-  final TextEditingController advancedPromptController;
-  final TextEditingController promptTitleController;
-  final VoidCallback onPromptChanged;
-
-  const SettingsLibraryPanel({
-    super.key,
-    required this.mainPromptController,
-    required this.advancedPromptController,
-    required this.promptTitleController,
-    required this.onPromptChanged,
-  });
+  const SettingsLibraryPanel({super.key});
 
   @override
   State<SettingsLibraryPanel> createState() => _SettingsLibraryPanelState();
@@ -103,22 +92,29 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   }
 
   void _rebuildAdvancedPrompt() {
-    widget.advancedPromptController.text = _customRules
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final nextAdvanced = _customRules
         .where((r) => r['active'] == true)
         .map((r) => (r['content'] as String).trim())
         .join('\n\n');
-    widget.onPromptChanged();
+    
+    if (nextAdvanced != chatProvider.advancedSystemInstruction) {
+      chatProvider.setAdvancedSystemInstruction(nextAdvanced);
+      chatProvider.saveSettings(showConfirmation: false);
+    }
   }
 
   // ── Config Pack import / export ─────────────────────────────────────────
 
   Future<void> _importConfigPack() async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     try {
       final content = await FileIOHelper.pickAndReadString(extensions: ['json']);
       if (content == null) return;
       final preset = SystemPreset.fromJson(jsonDecode(content));
-      widget.promptTitleController.text = preset.name;
-      widget.mainPromptController.text = preset.systemPrompt;
+      
+      chatProvider.setTitle(preset.name);
+      chatProvider.setSystemInstruction(preset.systemPrompt);
 
       final existing = [..._customRules];
       final labels = existing.map((r) => r['label']).toSet();
@@ -140,9 +136,9 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import failed: $e')),
+        );
       }
     }
   }
@@ -151,11 +147,11 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final preset = SystemPreset(
-      name: widget.promptTitleController.text.isNotEmpty
-          ? widget.promptTitleController.text
+      name: chatProvider.currentTitle.isNotEmpty
+          ? chatProvider.currentTitle
           : 'Untitled Config Pack',
-      systemPrompt: widget.mainPromptController.text,
-      advancedPrompt: widget.advancedPromptController.text,
+      systemPrompt: chatProvider.systemInstruction,
+      advancedPrompt: chatProvider.advancedSystemInstruction,
       customRules: _customRules,
       generationSettings: {
         'temperature': settingsProvider.temperature,
@@ -173,15 +169,15 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
         dialogTitle: 'Export Config Pack',
       );
       if (saved && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Config pack exported!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Config pack exported!')),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
       }
     }
   }
@@ -308,9 +304,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   // ── Snapshot export / import ─────────────────────────────────────────────
 
   Future<void> _handleSnapshotExport() async {
-    // Capture providers and messenger BEFORE any async gap
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
     final messenger = ScaffoldMessenger.of(context);
@@ -353,7 +347,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   }
 
   Future<void> _handleSnapshotImport() async {
-    // Capture messenger before any async gap
     final messenger = ScaffoldMessenger.of(context);
 
     final fileContent = await FileIOHelper.pickAndReadString(
@@ -371,9 +364,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       return;
     }
 
-    // Capture context-dependents before the showDialog await
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
 
@@ -566,7 +557,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
 
         // ── Tab views ──
         SizedBox(
-          // Avoid unbounded-height error inside a Column
           height: 2000,
           child: TabBarView(
             controller: _tabController,
@@ -580,8 +570,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       ],
     );
   }
-
-  // ── Config Packs tab ────────────────────────────────────────────────────
 
   Widget _buildConfigPacksTab(
       ThemeProvider tp, ScaleProvider sp, ChatProvider chatProvider, SettingsProvider settingsProvider, double fs) {
@@ -597,18 +585,15 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Import / Export row
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: _importConfigPack,
                         icon: const Icon(Icons.arrow_downward, size: 14),
-                        label: Text('Import',
-                            style: TextStyle(fontSize: fs * 0.8)),
+                        label: Text('Import', style: TextStyle(fontSize: fs * 0.8)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -616,8 +601,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
                       child: OutlinedButton.icon(
                         onPressed: _exportConfigPack,
                         icon: const Icon(Icons.arrow_upward, size: 14),
-                        label: Text('Export',
-                            style: TextStyle(fontSize: fs * 0.8)),
+                        label: Text('Export', style: TextStyle(fontSize: fs * 0.8)),
                       ),
                     ),
                   ],
@@ -625,7 +609,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
               ),
               Divider(color: tp.borderColor, height: 1),
 
-              // Rule list
               if (_customRules.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16),
@@ -640,8 +623,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
                 return ListTile(
                   dense: true,
                   title: Text(rule['label'],
-                      style: TextStyle(
-                          color: tp.subtitleColor, fontSize: fs * 0.8),
+                      style: TextStyle(color: tp.subtitleColor, fontSize: fs * 0.8),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   subtitle: Text(
@@ -651,16 +633,14 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
                     style: TextStyle(color: tp.faintColor, fontSize: 10),
                   ),
                   leading: IconButton(
-                    icon: const Icon(Icons.edit,
-                        color: Colors.blueAccent, size: 16),
+                    icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 16),
                     onPressed: () => _editRule(i),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.close,
-                            color: tp.faintestColor, size: 16),
+                        icon: Icon(Icons.close, color: tp.faintestColor, size: 16),
                         onPressed: () => _confirmDeleteRule(i),
                       ),
                       Switch(
@@ -678,7 +658,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
 
               Divider(color: tp.borderColor),
 
-              // Add new rule
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Column(
@@ -727,24 +706,23 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
                 ),
               ),
 
-              // Preview generated prompt
               ExpansionTile(
                 title: Text('View Generated Advanced Prompt',
                     style: TextStyle(fontSize: 12, color: Colors.grey)),
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(8),
-                    child: TextField(
-                      controller: widget.advancedPromptController,
-                      readOnly: true,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: tp.containerFillDarkColor,
-                        border: const OutlineInputBorder(),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: tp.containerFillDarkColor,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: tp.borderColor),
                       ),
-                      style: TextStyle(
-                          fontSize: 12, color: tp.subtitleColor),
+                      child: Text(
+                        chatProvider.advancedSystemInstruction,
+                        style: TextStyle(fontSize: 12, color: tp.subtitleColor),
+                      ),
                     ),
                   ),
                 ],
@@ -756,10 +734,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
     );
   }
 
-  // ── Snapshots tab ────────────────────────────────────────────────────────
-
-  Widget _buildSnapshotsTab(
-      ThemeProvider tp, ScaleProvider sp, double fs) {
+  Widget _buildSnapshotsTab(ThemeProvider tp, ScaleProvider sp, double fs) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -776,10 +751,8 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.greenAccent,
               side: const BorderSide(color: Colors.greenAccent),
-              padding:
-                  const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              textStyle: TextStyle(
-                  fontSize: fs, fontWeight: FontWeight.bold),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              textStyle: TextStyle(fontSize: fs, fontWeight: FontWeight.bold),
             ),
             icon: Icon(Icons.upload_file, size: fs * 1.4),
             label: const Text('Export Snapshot'),
@@ -792,34 +765,18 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
             (v) => setState(() => _exportConversations = v), tp, fs),
         _buildSnapshotSwitch('System Prompt', _exportSystemPrompt,
             (v) => setState(() => _exportSystemPrompt = v), tp, fs),
-        _buildSnapshotSwitch(
-            'Advanced System Prompt',
-            _exportAdvancedPrompt,
-            (v) => setState(() => _exportAdvancedPrompt = v),
-            tp,
-            fs),
-        _buildSnapshotSwitch(
-            'Generation Parameters',
-            _exportGenerationParams,
-            (v) => setState(() => _exportGenerationParams = v),
-            tp,
-            fs),
+        _buildSnapshotSwitch('Advanced System Prompt', _exportAdvancedPrompt,
+            (v) => setState(() => _exportAdvancedPrompt = v), tp, fs),
+        _buildSnapshotSwitch('Generation Parameters', _exportGenerationParams,
+            (v) => setState(() => _exportGenerationParams = v), tp, fs),
         _buildSnapshotSwitch('Layout Scaling', _exportLayoutScaling,
             (v) => setState(() => _exportLayoutScaling = v), tp, fs),
-        _buildSnapshotSwitch(
-            'Visuals & Atmosphere',
-            _exportVisualsAtmosphere,
-            (v) => setState(() => _exportVisualsAtmosphere = v),
-            tp,
-            fs),
+        _buildSnapshotSwitch('Visuals & Atmosphere', _exportVisualsAtmosphere,
+            (v) => setState(() => _exportVisualsAtmosphere = v), tp, fs),
         _buildSnapshotSwitch('Character Card', _exportCharacterCard,
             (v) => setState(() => _exportCharacterCard = v), tp, fs),
-        _buildSnapshotSwitch(
-            'World Lore / Text Transforms / Style Rules',
-            _exportSubsystemState,
-            (v) => setState(() => _exportSubsystemState = v),
-            tp,
-            fs),
+        _buildSnapshotSwitch('World Lore / Text Transforms / Style Rules', _exportSubsystemState,
+            (v) => setState(() => _exportSubsystemState = v), tp, fs),
 
         const Divider(height: 24),
 
@@ -829,10 +786,8 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
             style: OutlinedButton.styleFrom(
               foregroundColor: tp.textColor,
               side: BorderSide(color: tp.textColor),
-              padding:
-                  const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              textStyle: TextStyle(
-                  fontSize: fs, fontWeight: FontWeight.bold),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              textStyle: TextStyle(fontSize: fs, fontWeight: FontWeight.bold),
             ),
             icon: Icon(Icons.download, size: fs * 1.4),
             label: const Text('Import Snapshot'),
@@ -866,8 +821,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
     );
   }
 }
-
-// ── Snapshot preview data ────────────────────────────────────────────────
 
 class _SnapshotPreview {
   final String appVersion;

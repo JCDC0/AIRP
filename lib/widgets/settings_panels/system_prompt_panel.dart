@@ -5,120 +5,48 @@ import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 
-/// A panel for editing the main system prompt and managing the prompt library.
-///
-/// Character cards, custom rules/presets, regex scripts, and formatting are
-/// now in their own dedicated panels (see character_card_panel.dart,
-/// settings_library_panel.dart, regex_panel.dart, formatting_panel.dart).
+/// A panel for editing the system instruction and advanced prompts.
 class SystemPromptPanel extends StatefulWidget {
-  /// Controller for the main system instruction text.
-  final TextEditingController mainPromptController;
-
-  /// Controller for advanced behavioral instructions.
-  final TextEditingController advancedPromptController;
-
-  /// Controller for the title of the current prompt preset.
-  final TextEditingController promptTitleController;
-
-  /// Callback triggered when any prompt content changes.
-  final VoidCallback onPromptChanged;
-
-  const SystemPromptPanel({
-    super.key,
-    required this.mainPromptController,
-    required this.advancedPromptController,
-    required this.promptTitleController,
-    required this.onPromptChanged,
-  });
+  const SystemPromptPanel({super.key});
 
   @override
   State<SystemPromptPanel> createState() => _SystemPromptPanelState();
 }
 
 class _SystemPromptPanelState extends State<SystemPromptPanel> {
-  // ---------------------------------------------------------------------------
-  // Library management
-  // ---------------------------------------------------------------------------
+  late TextEditingController _mainPromptController;
+  late TextEditingController _advancedPromptController;
+  late TextEditingController _promptTitleController;
 
-  void _handleSavePreset() {
+  @override
+  void initState() {
+    super.initState();
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    chatProvider.setSystemInstruction(widget.mainPromptController.text);
-    chatProvider.savePromptToLibrary(
-      widget.promptTitleController.text,
-      widget.mainPromptController.text,
+    _mainPromptController = TextEditingController(
+      text: chatProvider.systemInstruction,
     );
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Saved '${widget.promptTitleController.text}' to Library!",
-            ),
-          ),
-        );
-      }
-    });
+    _advancedPromptController = TextEditingController(
+      text: chatProvider.advancedSystemInstruction,
+    );
+    _promptTitleController = TextEditingController();
   }
 
-  void _confirmDeletePromptFromLibrary(String title) {
-    if (title.isEmpty) return;
-
-    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: themeProvider.dropdownColor,
-        title: Text(
-          "Delete '$title'?",
-          style: TextStyle(
-            color: Colors.redAccent,
-            fontSize: scaleProvider.systemFontSize,
-          ),
-        ),
-        content: Text(
-          "Are you sure you want to remove this preset from your library?",
-          style: TextStyle(
-            color: themeProvider.subtitleColor,
-            fontSize: scaleProvider.systemFontSize * 0.8,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              final chatProvider = Provider.of<ChatProvider>(
-                context,
-                listen: false,
-              );
-              chatProvider.deletePromptFromLibrary(title);
-              widget.promptTitleController.clear();
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Deleted from Library")),
-              );
-            },
-            child: const Text(
-              "Delete",
-              style: TextStyle(
-                color: Colors.redAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    _mainPromptController.dispose();
+    _advancedPromptController.dispose();
+    _promptTitleController.dispose();
+    super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
+  void _syncControllers(ChatProvider chatProvider) {
+    if (_mainPromptController.text != chatProvider.systemInstruction) {
+      _mainPromptController.text = chatProvider.systemInstruction;
+    }
+    if (_advancedPromptController.text != chatProvider.advancedSystemInstruction) {
+      _advancedPromptController.text = chatProvider.advancedSystemInstruction;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,194 +55,138 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
-    return Opacity(
-      opacity: settingsProvider.enableSystemPrompt ? 1.0 : 0.5,
-      child: AbsorbPointer(
-        absorbing: !settingsProvider.enableSystemPrompt,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- Library / Preset Dropdown ---
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: themeProvider.containerFillColor,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: themeProvider.enableBloom
-                        ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
-                        : themeProvider.borderColor,
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    hint: Text(
-                      "Load Main Prompt...",
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: scaleProvider.systemFontSize * 0.8,
-                      ),
-                    ),
-                    dropdownColor: themeProvider.dropdownColor,
-                    icon: Icon(
-                      Icons.arrow_drop_down,
-                      color: themeProvider.textColor,
-                    ),
-                    value: null,
-                    items: [
-                      DropdownMenuItem<String>(
-                        value: "CREATE_NEW",
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.add,
-                              color: Colors.greenAccent,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              "Create New",
-                              style: TextStyle(
-                                color: Colors.greenAccent,
-                                fontWeight: FontWeight.bold,
-                                fontSize: scaleProvider.systemFontSize,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ...chatProvider.savedSystemPrompts.map((prompt) {
-                        return DropdownMenuItem<String>(
-                          value: prompt.title,
-                          child: Text(
-                            prompt.title,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: scaleProvider.systemFontSize,
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                    onChanged: (String? newValue) {
-                      if (newValue == "CREATE_NEW") {
-                        widget.promptTitleController.clear();
-                        widget.mainPromptController.clear();
-                        widget.onPromptChanged();
-                      } else if (newValue != null) {
-                        final prompt = chatProvider.savedSystemPrompts
-                            .firstWhere((p) => p.title == newValue);
-                        widget.mainPromptController.text = prompt.content;
-                        widget.promptTitleController.text = prompt.title;
-                        widget.onPromptChanged();
-                      }
-                    },
-                  ),
-                ),
-              ),
+    _syncControllers(chatProvider);
 
-              const SizedBox(height: 8),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Main System Instruction ──────────────────────────────────────────
+        Text(
+          "Base System Instruction",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize,
+            shadows: themeProvider.enableBloom
+                ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
+                : [],
+          ),
+        ),
+        const SizedBox(height: 5),
+        TextField(
+          controller: _mainPromptController,
+          maxLines: 8,
+          onChanged: (val) {
+            chatProvider.setSystemInstruction(val.trim());
+            chatProvider.saveSettings(showConfirmation: false);
+          },
+          decoration: InputDecoration(
+            hintText: "Enter the persona or base instructions for the AI...",
+            border: const OutlineInputBorder(),
+            filled: true,
+            isDense: true,
+            hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
+          ),
+          style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.9),
+        ),
+        const SizedBox(height: 20),
 
-              // Delete from Library
-              Center(
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  icon: const Icon(Icons.delete, size: 16),
-                  label: const Text(
-                    "Clear from Library",
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  onPressed: () => _confirmDeletePromptFromLibrary(
-                    widget.promptTitleController.text,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // Prompt Title
-              TextField(
-                controller: widget.promptTitleController,
-                decoration: InputDecoration(
-                  labelText: "Prompt Title",
-                  labelStyle: TextStyle(
+        // ── Advanced System Prompt ───────────────────────────────────────────
+        Opacity(
+          opacity: settingsProvider.enableAdvancedSystemPrompt ? 1.0 : 0.5,
+          child: AbsorbPointer(
+            absorbing: !settingsProvider.enableAdvancedSystemPrompt,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Advanced System Prompt (Post-Lore)",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
                     color: themeProvider.textColor,
-                    fontSize: scaleProvider.systemFontSize * 0.8,
+                    fontSize: scaleProvider.systemFontSize,
+                    shadows: themeProvider.enableBloom
+                        ? [
+                            Shadow(
+                              color: themeProvider.bloomGlowColor,
+                              blurRadius: 10,
+                            ),
+                          ]
+                        : [],
                   ),
-                  border: const OutlineInputBorder(),
-                  filled: true,
-                  fillColor: themeProvider.containerFillDarkColor,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
+                ),
+                const SizedBox(height: 5),
+                TextField(
+                  controller: _advancedPromptController,
+                  maxLines: 12,
+                  onChanged: (val) {
+                    chatProvider.setAdvancedSystemInstruction(val.trim());
+                    chatProvider.saveSettings(showConfirmation: false);
+                  },
+                  decoration: InputDecoration(
+                    hintText: "Formatting rules, depth prompts, etc...",
+                    border: const OutlineInputBorder(),
+                    filled: true,
+                    isDense: true,
+                    hintStyle: TextStyle(
+                      fontSize: scaleProvider.systemFontSize * 0.8,
+                    ),
                   ),
+                  style: TextStyle(
+                    fontSize: scaleProvider.systemFontSize * 0.9,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // ── Prompt Saving Section ────────────────────────────────────────────
+        Text(
+          "Save Current Prompts",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _promptTitleController,
+                decoration: const InputDecoration(
+                  hintText: "Preset Title...",
+                  border: OutlineInputBorder(),
                   isDense: true,
-                ),
-                style: TextStyle(
-                  fontSize: scaleProvider.systemFontSize,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 5),
-
-              // Main Prompt Input
-              TextField(
-                controller: widget.mainPromptController,
-                onChanged: (_) => widget.onPromptChanged(),
-                maxLines: 8,
-                minLines: 3,
-                decoration: InputDecoration(
-                  labelText: "Main System Prompt (Base Rules)",
-                  hintText: "Enter the core roleplay rules here...",
-                  hintStyle: TextStyle(
-                    fontSize: scaleProvider.systemFontSize * 0.8,
-                  ),
-                  border: const OutlineInputBorder(),
-                  filled: true,
-                  fillColor: themeProvider.containerFillColor,
                 ),
                 style: TextStyle(fontSize: scaleProvider.systemFontSize),
               ),
-
-              const SizedBox(height: 8),
-
-              // Copy / Paste / Save
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: themeProvider.textColor,
-                        side: BorderSide(color: themeProvider.textColor),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                      ),
-                      onPressed: _handleSavePreset,
-                      child: const Text("Save to Library"),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.save_as, color: Colors.blueAccent),
+              onPressed: () {
+                final title = _promptTitleController.text.trim();
+                if (title.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Enter a title first")),
+                  );
+                  return;
+                }
+                chatProvider.saveCurrentSystemPrompt(title);
+                _promptTitleController.clear();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Prompt saved to library")),
+                );
+              },
+            ),
+          ],
         ),
-      ),
+      ],
     );
   }
 }

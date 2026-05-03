@@ -1759,6 +1759,9 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString('airp_system_prompts', data);
   }
 
+  Future<void> saveCurrentSystemPrompt(String title) =>
+      savePromptToLibrary(title, _systemInstruction);
+
   Future<void> deletePromptFromLibrary(String title) async {
     _savedSystemPrompts.removeWhere((p) => p.title == title);
     notifyListeners();

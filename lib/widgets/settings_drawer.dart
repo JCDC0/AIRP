@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/chat_models.dart';
 import '../providers/theme_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/settings_provider.dart';
@@ -19,335 +18,14 @@ import 'settings_panels/settings_library_panel.dart';
 
 /// A drawer widget that contains all application settings.
 ///
-/// This drawer provides panels for API configuration, model selection,
-/// system prompts, generation parameters, scaling, and visual effects.
-class SettingsDrawer extends StatefulWidget {
+/// This drawer is a clean composer for modular settings panels.
+/// Most panels are now self-contained and reactive, eliminating the need
+/// for manual controller synchronization in this widget.
+class SettingsDrawer extends StatelessWidget {
   /// A version number used to force a reset of the drawer state.
   final int resetVersion;
 
   const SettingsDrawer({super.key, this.resetVersion = 0});
-
-  @override
-  State<SettingsDrawer> createState() => _SettingsDrawerState();
-}
-
-class _SettingsDrawerState extends State<SettingsDrawer> {
-  late TextEditingController _apiKeyController;
-  late TextEditingController _localIpController;
-  late TextEditingController _vertexAiEndpointController;
-  late TextEditingController _openAiCompatibleEndpointController;
-  late TextEditingController _ollamaEndpointController;
-  late TextEditingController _titleController;
-  late TextEditingController _promptTitleController;
-  late TextEditingController _mainPromptController;
-  late TextEditingController _openRouterModelController;
-  late TextEditingController _groqModelController;
-  late TextEditingController _advancedPromptController;
-
-  bool _hasUnsavedChanges = false;
-
-  String? _lastSyncedApiKey;
-  String? _lastSyncedLocalIp;
-  String? _lastSyncedVertexAiEndpoint;
-  String? _lastSyncedOpenAiCompatibleEndpoint;
-  String? _lastSyncedOllamaEndpoint;
-  String? _lastSyncedTitle;
-  String? _lastSyncedOpenRouterModel;
-  String? _lastSyncedGroqModel;
-  String? _lastSyncedMainPrompt;
-  String? _lastSyncedAdvancedPrompt;
-
-  @override
-  void initState() {
-    super.initState();
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-
-    _apiKeyController = TextEditingController(text: _getApiKey(chatProvider));
-    _localIpController = TextEditingController(text: chatProvider.localIp);
-    _vertexAiEndpointController = TextEditingController(
-      text: chatProvider.vertexAiEndpoint,
-    );
-    _openAiCompatibleEndpointController = TextEditingController(
-      text: chatProvider.openAiCompatibleEndpoint,
-    );
-    _ollamaEndpointController = TextEditingController(
-      text: chatProvider.ollamaEndpoint,
-    );
-    _titleController = TextEditingController(text: chatProvider.currentTitle);
-    _promptTitleController = TextEditingController();
-    _openRouterModelController = TextEditingController(
-      text: chatProvider.openRouterModel,
-    );
-    _groqModelController = TextEditingController(text: chatProvider.groqModel);
-
-    _advancedPromptController = TextEditingController(
-      text: chatProvider.advancedSystemInstruction,
-    );
-    _mainPromptController = TextEditingController(
-      text: chatProvider.systemInstruction,
-    );
-
-    _lastSyncedApiKey = _apiKeyController.text;
-    _lastSyncedLocalIp = _localIpController.text;
-    _lastSyncedVertexAiEndpoint = _vertexAiEndpointController.text;
-    _lastSyncedOpenAiCompatibleEndpoint =
-        _openAiCompatibleEndpointController.text;
-    _lastSyncedOllamaEndpoint = _ollamaEndpointController.text;
-    _lastSyncedTitle = _titleController.text;
-    _lastSyncedOpenRouterModel = _openRouterModelController.text;
-    _lastSyncedGroqModel = _groqModelController.text;
-    _lastSyncedMainPrompt = _mainPromptController.text;
-    _lastSyncedAdvancedPrompt = _advancedPromptController.text;
-
-    _apiKeyController.addListener(_checkForChanges);
-    _localIpController.addListener(_checkForChanges);
-    _vertexAiEndpointController.addListener(_checkForChanges);
-    _openAiCompatibleEndpointController.addListener(_checkForChanges);
-    _ollamaEndpointController.addListener(_checkForChanges);
-    _titleController.addListener(_checkForChanges);
-    _openRouterModelController.addListener(_checkForChanges);
-    _groqModelController.addListener(_checkForChanges);
-    _mainPromptController.addListener(_checkForChanges);
-    _advancedPromptController.addListener(_checkForChanges);
-  }
-
-  String _getApiKey(ChatProvider provider) {
-    switch (provider.currentProvider) {
-      case AiProvider.gemini:
-        return provider.geminiKey;
-      case AiProvider.openRouter:
-        return provider.openRouterKey;
-      case AiProvider.openAi:
-        return provider.openAiKey;
-      case AiProvider.arliAi:
-        return provider.arliAiKey;
-      case AiProvider.nanoGpt:
-        return provider.nanoGptKey;
-      case AiProvider.nvidia:
-        return provider.nvidiaKey;
-      case AiProvider.huggingFace:
-        return provider.huggingFaceKey;
-      case AiProvider.groq:
-        return provider.groqKey;
-      case AiProvider.vertexAi:
-        return provider.vertexAiKey;
-      case AiProvider.blackboxAi:
-        return provider.blackboxAiKey;
-      case AiProvider.minimax:
-        return provider.minimaxKey;
-      case AiProvider.openAiCompatible:
-        return provider.openAiCompatibleKey;
-      case AiProvider.deepseek:
-        return provider.deepseekKey;
-      case AiProvider.ollama:
-        return provider.ollamaKey;
-      case AiProvider.qwen:
-        return provider.qwenKey;
-      case AiProvider.xAi:
-        return provider.xAiKey;
-      case AiProvider.zAi:
-        return provider.zAiKey;
-      case AiProvider.mistral:
-        return provider.mistralKey;
-      case AiProvider.local:
-        return "";
-    }
-  }
-
-  void _handleSaveSettings() {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-
-    chatProvider.setSystemInstruction(_mainPromptController.text.trim());
-    chatProvider.setAdvancedSystemInstruction(
-      _advancedPromptController.text.trim(),
-    );
-
-    chatProvider.setApiKey(_apiKeyController.text.trim());
-    chatProvider.setLocalIp(_localIpController.text.trim());
-    chatProvider.setVertexAiEndpoint(_vertexAiEndpointController.text.trim());
-    chatProvider.setOpenAiCompatibleEndpoint(
-      _openAiCompatibleEndpointController.text.trim(),
-    );
-    chatProvider.setOllamaEndpoint(_ollamaEndpointController.text.trim());
-    chatProvider.setTitle(_titleController.text.trim());
-
-    if (chatProvider.currentProvider == AiProvider.openRouter) {
-      chatProvider.setModel(_openRouterModelController.text.trim());
-    } else if (chatProvider.currentProvider == AiProvider.groq) {
-      chatProvider.setModel(_groqModelController.text.trim());
-    }
-
-    chatProvider.saveSettings();
-
-    _lastSyncedApiKey = _apiKeyController.text;
-    _lastSyncedLocalIp = _localIpController.text;
-    _lastSyncedTitle = _titleController.text;
-    _lastSyncedOpenRouterModel = _openRouterModelController.text;
-    _lastSyncedGroqModel = _groqModelController.text;
-    _lastSyncedMainPrompt = _mainPromptController.text;
-    _lastSyncedAdvancedPrompt = _advancedPromptController.text;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Settings Saved & Model Updated"),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.lightBlue,
-        duration: Duration(milliseconds: 1500),
-      ),
-    );
-
-    setState(() {
-      _hasUnsavedChanges = false;
-    });
-  }
-
-  void _checkForChanges() {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    bool hasChanges = false;
-
-    if (_apiKeyController.text != _getApiKey(chatProvider)) hasChanges = true;
-
-    if (_localIpController.text != chatProvider.localIp) hasChanges = true;
-    if (_vertexAiEndpointController.text != chatProvider.vertexAiEndpoint) {
-      hasChanges = true;
-    }
-    if (_openAiCompatibleEndpointController.text !=
-        chatProvider.openAiCompatibleEndpoint) {
-      hasChanges = true;
-    }
-    if (_ollamaEndpointController.text != chatProvider.ollamaEndpoint) {
-      hasChanges = true;
-    }
-
-    if (_titleController.text != chatProvider.currentTitle) hasChanges = true;
-
-    if (chatProvider.currentProvider == AiProvider.openRouter) {
-      if (_openRouterModelController.text != chatProvider.openRouterModel) {
-        hasChanges = true;
-      }
-    }
-
-    if (chatProvider.currentProvider == AiProvider.groq) {
-      if (_groqModelController.text != chatProvider.groqModel) {
-        hasChanges = true;
-      }
-    }
-
-    if (_mainPromptController.text.trim() != chatProvider.systemInstruction) {
-      hasChanges = true;
-    }
-    if (_advancedPromptController.text.trim() !=
-        chatProvider.advancedSystemInstruction) {
-      hasChanges = true;
-    }
-
-    if (_hasUnsavedChanges != hasChanges) {
-      setState(() {
-        _hasUnsavedChanges = hasChanges;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _apiKeyController.dispose();
-    _localIpController.dispose();
-    _vertexAiEndpointController.dispose();
-    _openAiCompatibleEndpointController.dispose();
-    _ollamaEndpointController.dispose();
-    _titleController.dispose();
-    _promptTitleController.dispose();
-    _mainPromptController.dispose();
-    _openRouterModelController.dispose();
-    _groqModelController.dispose();
-    _advancedPromptController.dispose();
-    super.dispose();
-  }
-
-  void _syncControllers(ChatProvider chatProvider) {
-    final correctKey = _getApiKey(chatProvider);
-    if (correctKey != _lastSyncedApiKey) {
-      if (_apiKeyController.text != correctKey) {
-        _apiKeyController.text = correctKey;
-      }
-      _lastSyncedApiKey = correctKey;
-    }
-
-    if (chatProvider.localIp != _lastSyncedLocalIp) {
-      if (_localIpController.text != chatProvider.localIp) {
-        _localIpController.text = chatProvider.localIp;
-      }
-      _lastSyncedLocalIp = chatProvider.localIp;
-    }
-
-    if (chatProvider.vertexAiEndpoint != _lastSyncedVertexAiEndpoint) {
-      if (_vertexAiEndpointController.text != chatProvider.vertexAiEndpoint) {
-        _vertexAiEndpointController.text = chatProvider.vertexAiEndpoint;
-      }
-      _lastSyncedVertexAiEndpoint = chatProvider.vertexAiEndpoint;
-    }
-
-    if (chatProvider.openAiCompatibleEndpoint !=
-        _lastSyncedOpenAiCompatibleEndpoint) {
-      if (_openAiCompatibleEndpointController.text !=
-          chatProvider.openAiCompatibleEndpoint) {
-        _openAiCompatibleEndpointController.text =
-            chatProvider.openAiCompatibleEndpoint;
-      }
-      _lastSyncedOpenAiCompatibleEndpoint =
-          chatProvider.openAiCompatibleEndpoint;
-    }
-
-    if (chatProvider.ollamaEndpoint != _lastSyncedOllamaEndpoint) {
-      if (_ollamaEndpointController.text != chatProvider.ollamaEndpoint) {
-        _ollamaEndpointController.text = chatProvider.ollamaEndpoint;
-      }
-      _lastSyncedOllamaEndpoint = chatProvider.ollamaEndpoint;
-    }
-
-    if (chatProvider.currentTitle != _lastSyncedTitle) {
-      if (_titleController.text != chatProvider.currentTitle) {
-        _titleController.text = chatProvider.currentTitle;
-      }
-      _lastSyncedTitle = chatProvider.currentTitle;
-    }
-
-    if (chatProvider.currentProvider == AiProvider.openRouter) {
-      if (chatProvider.openRouterModel != _lastSyncedOpenRouterModel) {
-        if (_openRouterModelController.text != chatProvider.openRouterModel) {
-          _openRouterModelController.text = chatProvider.openRouterModel;
-        }
-        _lastSyncedOpenRouterModel = chatProvider.openRouterModel;
-      }
-    }
-
-    if (chatProvider.currentProvider == AiProvider.groq) {
-      if (chatProvider.groqModel != _lastSyncedGroqModel) {
-        if (_groqModelController.text != chatProvider.groqModel) {
-          _groqModelController.text = chatProvider.groqModel;
-        }
-        _lastSyncedGroqModel = chatProvider.groqModel;
-      }
-    }
-
-    if (chatProvider.systemInstruction != _lastSyncedMainPrompt) {
-      if (_mainPromptController.text != chatProvider.systemInstruction) {
-        _mainPromptController.text = chatProvider.systemInstruction;
-      }
-      _lastSyncedMainPrompt = chatProvider.systemInstruction;
-    }
-
-    if (chatProvider.advancedSystemInstruction != _lastSyncedAdvancedPrompt) {
-      if (_advancedPromptController.text !=
-          chatProvider.advancedSystemInstruction) {
-        _advancedPromptController.text = chatProvider.advancedSystemInstruction;
-      }
-      _lastSyncedAdvancedPrompt = chatProvider.advancedSystemInstruction;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -355,8 +33,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     final chatProvider = Provider.of<ChatProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
-
-    _syncControllers(chatProvider);
 
     return Material(
       elevation: themeProvider.enableBloom ? 30 : 16,
@@ -366,312 +42,253 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
       color: themeProvider.scaffoldBackgroundColor,
       child: SizedBox(
         width:
-            scaleProvider.drawerWidth +
-            (scaleProvider.systemFontSize - 12) * 10,
+            scaleProvider.drawerWidth + (scaleProvider.systemFontSize - 12) * 10,
         height: double.infinity,
-        child: Stack(
-          children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.all(10.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SettingsHeader(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SettingsHeader(),
 
-                  ExpansionTile(
-                    key: Key('api_settings_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "API & Connectivity",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [
-                      ApiSettingsPanel(
-                        apiKeyController: _apiKeyController,
-                        localIpController: _localIpController,
-                        vertexAiEndpointController: _vertexAiEndpointController,
-                        openAiCompatibleEndpointController:
-                            _openAiCompatibleEndpointController,
-                        ollamaEndpointController: _ollamaEndpointController,
-                      ),
-                    ],
+              ExpansionTile(
+                key: Key('api_settings_$resetVersion'),
+                initiallyExpanded: false,
+                title: Text(
+                  "API & Connectivity",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
                   ),
-
-                  ExpansionTile(
-                    key: Key('model_settings_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Model Configuration",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [
-                      ModelSettingsPanel(
-                        titleController: _titleController,
-                        openRouterModelController: _openRouterModelController,
-                        groqModelController: _groqModelController,
-                      ),
-                    ],
-                  ),
-
-                  // --- Main System Prompt ---
-                  ExpansionTile(
-                    key: Key('system_prompt_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Main System Prompt",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                        shadows: themeProvider.enableBloom
-                            ? [
-                                Shadow(
-                                  color: themeProvider.bloomGlowColor,
-                                  blurRadius: 10,
-                                ),
-                              ]
-                            : [],
-                      ),
-                    ),
-                    trailing: Switch(
-                      value: settingsProvider.enableSystemPrompt,
-                      activeThumbColor: themeProvider.textColor,
-                      onChanged: (val) {
-                        settingsProvider.setEnableSystemPrompt(val);
-                        chatProvider.saveSettings();
-                      },
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [
-                      SystemPromptPanel(
-                        mainPromptController: _mainPromptController,
-                        advancedPromptController: _advancedPromptController,
-                        promptTitleController: _promptTitleController,
-                        onPromptChanged: _checkForChanges,
-                      ),
-                    ],
-                  ),
-
-                  ExpansionTile(
-                    key: Key('generation_settings_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Generation Parameters",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [const GenerationSettingsPanel()],
-                  ),
-
-                  ExpansionTile(
-                    key: Key('web_search_settings_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Web Search",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [const WebSearchSettingsPanel()],
-                  ),
-
-                  // --- Character Card ---
-                  ExpansionTile(
-                    key: Key('character_card_${widget.resetVersion}'),
-                    initiallyExpanded:
-                        chatProvider.characterCard.name.isNotEmpty,
-                    title: Text(
-                      "Character Card",
-                      style: TextStyle(
-                        color: Colors.orangeAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                    subtitle: Text(
-                      chatProvider.characterCard.name.isNotEmpty
-                          ? "Active: ${chatProvider.characterCard.name}"
-                          : "Import V1/V2 PNG or JSON cards",
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                    trailing: Switch(
-                      value: settingsProvider.enableCharacterCard,
-                      activeThumbColor: Colors.orangeAccent,
-                      onChanged: (val) {
-                        settingsProvider.setEnableCharacterCard(val);
-                        chatProvider.saveSettings();
-                      },
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [const CharacterCardPanel()],
-                  ),
-
-                  // --- Text Designer ---
-                  ExpansionTile(
-                    key: Key('text_designer_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Text Designer",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                        shadows: themeProvider.enableBloom
-                            ? [
-                                Shadow(
-                                  color: themeProvider.bloomGlowColor,
-                                  blurRadius: 10,
-                                ),
-                              ]
-                            : [],
-                      ),
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [const TextDesignerPanel()],
-                  ),
-
-                  ExpansionTile(
-                    key: Key('scale_settings_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    onExpansionChanged: (expanded) {
-                      if (expanded) {
-                        scaleProvider.markSettingsAsSeen();
-                      }
-                    },
-                    title: Text(
-                      "Layout & Scaling",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                        shadows: scaleProvider.shouldGlow
-                            ? [
-                                Shadow(
-                                  color: themeProvider.bloomGlowColor,
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 0),
-                                ),
-                              ]
-                            : null,
-                      ),
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    leading: scaleProvider.shouldGlow
-                        ? Icon(
-                            Icons.new_releases,
-                            color: themeProvider.textColor,
-                            shadows: [
-                              Shadow(
-                                color: themeProvider.bloomGlowColor,
-                                blurRadius: 10,
-                              ),
-                            ],
-                          )
-                        : null,
-                    children: [const ScaleSettingsPanel()],
-                  ),
-
-                  ExpansionTile(
-                    key: Key('visual_settings_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Visuals & Atmosphere",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [const VisualSettingsPanel()],
-                  ),
-
-                  ExpansionTile(
-                    key: Key('library_settings_${widget.resetVersion}'),
-                    initiallyExpanded: false,
-                    title: Text(
-                      "Settings Library",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Config Packs · Snapshots',
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
-                    ),
-                    trailing: Switch(
-                      value: settingsProvider.enableAdvancedSystemPrompt,
-                      activeThumbColor: themeProvider.textColor,
-                      onChanged: (val) {
-                        settingsProvider.setEnableAdvancedSystemPrompt(val);
-                        chatProvider.saveSettings();
-                      },
-                    ),
-                    collapsedIconColor: themeProvider.textColor,
-                    iconColor: themeProvider.textColor,
-                    children: [
-                      SettingsLibraryPanel(
-                        mainPromptController: _mainPromptController,
-                        advancedPromptController: _advancedPromptController,
-                        promptTitleController: _promptTitleController,
-                        onPromptChanged: _checkForChanges,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 80),
-                ],
-              ),
-            ),
-
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 800),
-              curve: _hasUnsavedChanges ? Curves.bounceOut : Curves.easeInBack,
-              bottom: _hasUnsavedChanges
-                  ? 30
-                  : MediaQuery.of(context).size.height + 200,
-              right: 20,
-              child: SizedBox(
-                width: 56 * scaleProvider.iconScale,
-                height: 56 * scaleProvider.iconScale,
-                child: FloatingActionButton(
-                  backgroundColor: themeProvider.textColor,
-                  foregroundColor: themeProvider.onAccentColor,
-                  onPressed: _handleSaveSettings,
-                  elevation: 10,
-                  child: Icon(Icons.save, size: 24 * scaleProvider.iconScale),
                 ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [const ApiSettingsPanel()],
               ),
-            ),
-          ],
+
+              ExpansionTile(
+                key: Key('model_settings_$resetVersion'),
+                initiallyExpanded: false,
+                title: Text(
+                  "Model Configuration",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                  ),
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [const ModelSettingsPanel()],
+              ),
+
+              ExpansionTile(
+                key: Key('system_prompt_$resetVersion'),
+                initiallyExpanded: false,
+                title: Text(
+                  "Main System Prompt",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                    shadows: themeProvider.enableBloom
+                        ? [
+                            Shadow(
+                              color: themeProvider.bloomGlowColor,
+                              blurRadius: 10,
+                            ),
+                          ]
+                        : [],
+                  ),
+                ),
+                trailing: Switch(
+                  value: settingsProvider.enableSystemPrompt,
+                  activeThumbColor: themeProvider.textColor,
+                  onChanged: (val) {
+                    settingsProvider.setEnableSystemPrompt(val);
+                    chatProvider.saveSettings();
+                  },
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [const SystemPromptPanel()],
+              ),
+
+              ExpansionTile(
+                key: Key('generation_settings_$resetVersion'),
+                initiallyExpanded: false,
+                title: Text(
+                  "Generation Parameters",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                  ),
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [const GenerationSettingsPanel()],
+              ),
+
+              ExpansionTile(
+                key: Key('web_search_settings_$resetVersion'),
+                initiallyExpanded: false,
+                title: Text(
+                  "Web Search",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                  ),
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [const WebSearchSettingsPanel()],
+              ),
+
+              ExpansionTile(
+                key: Key('character_card_$resetVersion'),
+                initiallyExpanded: chatProvider.characterCard.name.isNotEmpty,
+                title: Text(
+                  "Character Card",
+                  style: TextStyle(
+                    color: Colors.orangeAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                  ),
+                ),
+                subtitle: Text(
+                  chatProvider.characterCard.name.isNotEmpty
+                      ? "Active: ${chatProvider.characterCard.name}"
+                      : "Import V1/V2 PNG or JSON cards",
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                trailing: Switch(
+                  value: settingsProvider.enableCharacterCard,
+                  activeThumbColor: Colors.orangeAccent,
+                  onChanged: (val) {
+                    settingsProvider.setEnableCharacterCard(val);
+                    chatProvider.saveSettings();
+                  },
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [const CharacterCardPanel()],
+              ),
+
+              ExpansionTile(
+                key: Key('text_designer_$resetVersion'),
+                initiallyExpanded: false,
+                title: Text(
+                  "Text Designer",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                    shadows: themeProvider.enableBloom
+                        ? [
+                            Shadow(
+                              color: themeProvider.bloomGlowColor,
+                              blurRadius: 10,
+                            ),
+                          ]
+                        : [],
+                  ),
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [const TextDesignerPanel()],
+              ),
+
+              ExpansionTile(
+                key: Key('scale_settings_$resetVersion'),
+                initiallyExpanded: false,
+                onExpansionChanged: (expanded) {
+                  if (expanded) {
+                    scaleProvider.markSettingsAsSeen();
+                  }
+                },
+                title: Text(
+                  "Layout & Scaling",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                    shadows: scaleProvider.shouldGlow
+                        ? [
+                            Shadow(
+                              color: themeProvider.bloomGlowColor,
+                              blurRadius: 15,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                leading: scaleProvider.shouldGlow
+                    ? Icon(
+                        Icons.new_releases,
+                        color: themeProvider.textColor,
+                        shadows: [
+                          Shadow(
+                            color: themeProvider.bloomGlowColor,
+                            blurRadius: 10,
+                          ),
+                        ],
+                      )
+                    : null,
+                children: [const ScaleSettingsPanel()],
+              ),
+
+              ExpansionTile(
+                key: Key('visual_settings_$resetVersion'),
+                initiallyExpanded: false,
+                title: Text(
+                  "Visuals & Atmosphere",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                  ),
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [const VisualSettingsPanel()],
+              ),
+
+              ExpansionTile(
+                key: Key('library_settings_$resetVersion'),
+                initiallyExpanded: false,
+                title: Text(
+                  "Settings Library",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Config Packs · Snapshots',
+                  style: TextStyle(color: Colors.grey, fontSize: 11),
+                ),
+                trailing: Switch(
+                  value: settingsProvider.enableAdvancedSystemPrompt,
+                  activeThumbColor: themeProvider.textColor,
+                  onChanged: (val) {
+                    settingsProvider.setEnableAdvancedSystemPrompt(val);
+                    chatProvider.saveSettings();
+                  },
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [const SettingsLibraryPanel()],
+              ),
+
+              const SizedBox(height: 80),
+            ],
+          ),
         ),
       ),
     );

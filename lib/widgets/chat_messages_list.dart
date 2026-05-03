@@ -32,7 +32,6 @@ class ChatMessagesList extends StatelessWidget {
   /// Displays a bottom sheet with options for a specific message.
   void _showMessageOptions(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final msg = chatProvider.messages[index];
     final bool isLastMessage = index == chatProvider.messages.length - 1;
@@ -279,7 +278,6 @@ class ChatMessagesList extends StatelessWidget {
 
   void _confirmDeleteMessage(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     if (chatProvider.isLoading) {
       return;
     }
@@ -324,7 +322,6 @@ class ChatMessagesList extends StatelessWidget {
 
   void _confirmRegenerate(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     if (chatProvider.isLoading) {
       return;
     }
@@ -365,7 +362,6 @@ class ChatMessagesList extends StatelessWidget {
 
   void _handleBranchConversation(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
 
     // Create a new branch from the selected message
     final newSessionId = chatProvider.createBranchFromMessage(index);
@@ -409,7 +405,6 @@ class ChatMessagesList extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
-    final settingsProvider = Provider.of<SettingsProvider>(context);
     final messages = chatProvider.messages;
     final bool showTypingIndicator = _showTypingIndicator(
       chatProvider,

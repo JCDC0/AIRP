@@ -359,7 +359,6 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
       case SearchProvider.provider:
         return const SizedBox.shrink(key: ValueKey('provider'));
     }
-    return const SizedBox.shrink();
   }
 }
 
