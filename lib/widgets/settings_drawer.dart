@@ -275,14 +275,6 @@ class SettingsDrawer extends StatelessWidget {
                   'Config Packs · Snapshots',
                   style: TextStyle(color: Colors.grey, fontSize: 11),
                 ),
-                trailing: Switch(
-                  value: settingsProvider.enableAdvancedSystemPrompt,
-                  activeThumbColor: themeProvider.textColor,
-                  onChanged: (val) {
-                    settingsProvider.setEnableAdvancedSystemPrompt(val);
-                    chatProvider.saveSettings();
-                  },
-                ),
                 collapsedIconColor: themeProvider.textColor,
                 iconColor: themeProvider.textColor,
                 children: [const SettingsLibraryPanel()],

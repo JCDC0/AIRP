@@ -29,9 +29,7 @@ class PromptPipelineService {
   /// [collectDepthEntries] for those.
   static String buildSystemInstruction({
     required String systemInstruction,
-    required String advancedSystemInstruction,
     required bool enableSystemPrompt,
-    required bool enableAdvancedSystemPrompt,
     required bool enableCharacterCard,
     required CharacterCard characterCard,
     LorebookEvalResult? lorebookResult,
@@ -39,10 +37,6 @@ class PromptPipelineService {
   }) {
     String result = '';
     if (enableSystemPrompt) result += systemInstruction;
-    if (enableAdvancedSystemPrompt && advancedSystemInstruction.isNotEmpty) {
-      if (result.isNotEmpty) result += '\n\n';
-      result += advancedSystemInstruction;
-    }
 
     // --- Lorebook: beforeCharDefs ---
     if (lorebookResult != null) {

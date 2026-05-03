@@ -39,7 +39,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   // ── Snapshots state ─────────────────────────────────────────────────────
   bool _exportConversations = true;
   bool _exportSystemPrompt = true;
-  bool _exportAdvancedPrompt = true;
   bool _exportGenerationParams = true;
   bool _exportLayoutScaling = true;
   bool _exportVisualsAtmosphere = true;
@@ -84,25 +83,12 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
         debugPrint('Error loading custom rules: $e');
       }
     }
-    if (mounted) setState(() => _rebuildAdvancedPrompt());
+    if (mounted) setState(() {});
   }
 
   Future<void> _saveCustomRules() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(kCustomRulesKey, jsonEncode(_customRules));
-  }
-
-  void _rebuildAdvancedPrompt() {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final nextAdvanced = _customRules
-        .where((r) => r['active'] == true)
-        .map((r) => (r['content'] as String).trim())
-        .join('\n\n');
-    
-    if (nextAdvanced != chatProvider.advancedSystemInstruction) {
-      chatProvider.setAdvancedSystemInstruction(nextAdvanced);
-      chatProvider.saveSettings(showConfirmation: false);
-    }
   }
 
   // ── Config Pack import / export ─────────────────────────────────────────
@@ -128,7 +114,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       setState(() {
         _customRules = existing;
         _saveCustomRules();
-        _rebuildAdvancedPrompt();
+        
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -152,7 +138,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
           ? chatProvider.currentTitle
           : 'Untitled Config Pack',
       systemPrompt: chatProvider.systemInstruction,
-      advancedPrompt: chatProvider.advancedSystemInstruction,
       customRules: _customRules,
       generationSettings: {
         'temperature': settingsProvider.temperature,
@@ -196,7 +181,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       _newRuleContentController.clear();
       _ruleLabelController.clear();
       _saveCustomRules();
-      _rebuildAdvancedPrompt();
+      
     });
   }
 
@@ -252,7 +237,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
                 _customRules[index]['label'] = label.text.trim();
                 _customRules[index]['content'] = content.text.trim();
                 _saveCustomRules();
-                if (_customRules[index]['active'] == true) _rebuildAdvancedPrompt();
               });
               Navigator.pop(context);
             },
@@ -288,11 +272,9 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
                     fontWeight: FontWeight.bold,
                     fontSize: sp.systemFontSize * 0.8)),
             onPressed: () {
-              final wasActive = _customRules[index]['active'] == true;
               setState(() {
                 _customRules.removeAt(index);
                 _saveCustomRules();
-                if (wasActive) _rebuildAdvancedPrompt();
               });
               Navigator.pop(context);
             },
@@ -314,7 +296,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       final options = ExportOptions(
         conversations: _exportConversations,
         systemPrompt: _exportSystemPrompt,
-        advancedSystemPrompt: _exportAdvancedPrompt,
         generationParams: _exportGenerationParams,
         layoutScaling: _exportLayoutScaling,
         visualsAtmosphere: _exportVisualsAtmosphere,
@@ -578,11 +559,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
 
   Widget _buildConfigPacksTab(
       ThemeProvider tp, ScaleProvider sp, ChatProvider chatProvider, SettingsProvider settingsProvider, double fs) {
-    return Opacity(
-      opacity: settingsProvider.enableAdvancedSystemPrompt ? 1.0 : 0.5,
-      child: AbsorbPointer(
-        absorbing: !settingsProvider.enableAdvancedSystemPrompt,
-        child: Container(
+    return Container(
           decoration: BoxDecoration(
             color: tp.containerFillColor,
             border: Border.all(color: tp.borderColor),
@@ -653,7 +630,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
                         activeThumbColor: Colors.blueAccent,
                         onChanged: (val) => setState(() {
                           rule['active'] = val;
-                          _rebuildAdvancedPrompt();
+                          
                         }),
                       ),
                     ],
@@ -711,32 +688,9 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
                 ),
               ),
 
-              ExpansionTile(
-                title: Text('View Generated Advanced Prompt',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: tp.containerFillDarkColor,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: tp.borderColor),
-                      ),
-                      child: Text(
-                        chatProvider.advancedSystemInstruction,
-                        style: TextStyle(fontSize: 12, color: tp.subtitleColor),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildSnapshotsTab(ThemeProvider tp, ScaleProvider sp, double fs) {
@@ -770,8 +724,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
             (v) => setState(() => _exportConversations = v), tp, fs),
         _buildSnapshotSwitch('System Prompt', _exportSystemPrompt,
             (v) => setState(() => _exportSystemPrompt = v), tp, fs),
-        _buildSnapshotSwitch('Advanced System Prompt', _exportAdvancedPrompt,
-            (v) => setState(() => _exportAdvancedPrompt = v), tp, fs),
         _buildSnapshotSwitch('Generation Parameters', _exportGenerationParams,
             (v) => setState(() => _exportGenerationParams = v), tp, fs),
         _buildSnapshotSwitch('Layout Scaling', _exportLayoutScaling,

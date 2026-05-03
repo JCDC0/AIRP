@@ -24,7 +24,6 @@ class SettingsProvider extends ChangeNotifier {
 
   // Toggles
   bool _enableSystemPrompt = true;
-  bool _enableAdvancedSystemPrompt = true;
   bool _enableCharacterCard = true;
   bool _enableMsgHistory = true;
   bool _enableReasoning = false;
@@ -56,7 +55,6 @@ class SettingsProvider extends ChangeNotifier {
   int get searchResultCount => _searchResultCount;
 
   bool get enableSystemPrompt => _enableSystemPrompt;
-  bool get enableAdvancedSystemPrompt => _enableAdvancedSystemPrompt;
   bool get enableCharacterCard => _enableCharacterCard;
   bool get enableMsgHistory => _enableMsgHistory;
   bool get enableReasoning => _enableReasoning;
@@ -87,8 +85,6 @@ class SettingsProvider extends ChangeNotifier {
         prefs.getInt('airp_history_limit') ?? ChatDefaults.historyLimit;
 
     _enableSystemPrompt = prefs.getBool('airp_enable_system_prompt') ?? true;
-    _enableAdvancedSystemPrompt =
-        prefs.getBool('airp_enable_advanced_system_prompt') ?? true;
     _enableCharacterCard = prefs.getBool('airp_enable_character_card') ?? true;
     _enableLorebook = prefs.getBool('airp_enable_lorebook') ?? true;
     _enableMsgHistory = prefs.getBool('airp_enable_msg_history') ?? true;
@@ -136,10 +132,6 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setInt('airp_history_limit', _historyLimit);
 
     await prefs.setBool('airp_enable_system_prompt', _enableSystemPrompt);
-    await prefs.setBool(
-      'airp_enable_advanced_system_prompt',
-      _enableAdvancedSystemPrompt,
-    );
     await prefs.setBool('airp_enable_character_card', _enableCharacterCard);
     await prefs.setBool('airp_enable_lorebook', _enableLorebook);
     await prefs.setBool('airp_enable_msg_history', _enableMsgHistory);
@@ -202,11 +194,6 @@ class SettingsProvider extends ChangeNotifier {
 
   void setEnableSystemPrompt(bool val) {
     _enableSystemPrompt = val;
-    notifyListeners();
-  }
-
-  void setEnableAdvancedSystemPrompt(bool val) {
-    _enableAdvancedSystemPrompt = val;
     notifyListeners();
   }
 
@@ -312,7 +299,6 @@ class SettingsProvider extends ChangeNotifier {
       },
       'toggles': {
         'enableSystemPrompt': _enableSystemPrompt,
-        'enableAdvancedSystemPrompt': _enableAdvancedSystemPrompt,
         'enableMsgHistory': _enableMsgHistory,
         'enableReasoning': _enableReasoning,
         'enableGenerationSettings': _enableGenerationSettings,
@@ -347,9 +333,6 @@ class SettingsProvider extends ChangeNotifier {
     final tog = data['toggles'] as Map<String, dynamic>? ?? {};
     _enableSystemPrompt =
         tog['enableSystemPrompt'] as bool? ?? _enableSystemPrompt;
-    _enableAdvancedSystemPrompt =
-        tog['enableAdvancedSystemPrompt'] as bool? ??
-        _enableAdvancedSystemPrompt;
     _enableMsgHistory = tog['enableMsgHistory'] as bool? ?? _enableMsgHistory;
     _enableReasoning = tog['enableReasoning'] as bool? ?? _enableReasoning;
     _enableGenerationSettings =

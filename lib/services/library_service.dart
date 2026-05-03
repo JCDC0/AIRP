@@ -13,7 +13,6 @@ import '../models/preset_model.dart';
 class ExportOptions {
   final bool conversations;
   final bool systemPrompt;
-  final bool advancedSystemPrompt;
   final bool generationParams;
   final bool layoutScaling;
   final bool visualsAtmosphere;
@@ -23,7 +22,6 @@ class ExportOptions {
   const ExportOptions({
     this.conversations = true,
     this.systemPrompt = true,
-    this.advancedSystemPrompt = true,
     this.generationParams = true,
     this.layoutScaling = true,
     this.visualsAtmosphere = true,
@@ -74,19 +72,6 @@ class LibraryService {
       library['systemPrompts'] = chatExport['systemPrompts'];
     }
 
-    if (options.advancedSystemPrompt) {
-      library['advancedSystemInstruction'] =
-          chatExport['advancedSystemInstruction'];
-
-      // Load custom rules from SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      final String? rulesJson = prefs.getString('custom_sys_prompt_rules');
-      if (rulesJson != null) {
-        try {
-          library['customRules'] = jsonDecode(rulesJson);
-        } catch (_) {}
-      }
-    }
 
     if (options.conversations) {
       library['sessions'] = chatExport['sessions'];
@@ -168,10 +153,6 @@ class LibraryService {
       }
       if (data.containsKey('systemInstruction')) {
         chatSettings['systemInstruction'] = data['systemInstruction'];
-      }
-      if (data.containsKey('advancedSystemInstruction')) {
-        chatSettings['advancedSystemInstruction'] =
-            data['advancedSystemInstruction'];
       }
       if (data.containsKey('systemPrompts')) {
         chatSettings['systemPrompts'] = data['systemPrompts'];

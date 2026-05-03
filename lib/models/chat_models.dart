@@ -260,7 +260,7 @@ class SystemPromptData {
   /// The content of the system instruction.
   final String content;
 
-  SystemPromptData({required this.title, required this.content});
+  const SystemPromptData({required this.title, required this.content});
 
   Map<String, dynamic> toJson() => {'title': title, 'content': content};
 

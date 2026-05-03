@@ -17,9 +17,7 @@ void main() {
     test('returns empty string when all prompts disabled', () {
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Main prompt',
-        advancedSystemInstruction: 'Advanced',
         enableSystemPrompt: false,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: false,
         characterCard: CharacterCard(),
       );
@@ -29,25 +27,21 @@ void main() {
     test('includes only system prompt when others disabled', () {
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'You are helpful.',
-        advancedSystemInstruction: 'Advanced',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: false,
         characterCard: CharacterCard(),
       );
       expect(result, 'You are helpful.');
     });
 
-    test('concatenates system + advanced prompts', () {
+    test('returns main prompt when enabled', () {
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Main',
-        advancedSystemInstruction: 'Advanced',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: true,
         enableCharacterCard: false,
         characterCard: CharacterCard(),
       );
-      expect(result, 'Main\n\nAdvanced');
+      expect(result, 'Main');
     });
 
     test('includes character card fields', () {
@@ -61,9 +55,7 @@ void main() {
       );
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: '',
-        advancedSystemInstruction: '',
         enableSystemPrompt: false,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: true,
         characterCard: card,
       );
@@ -79,9 +71,7 @@ void main() {
       final card = CharacterCard(name: 'Alice', description: 'A curious girl');
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Main',
-        advancedSystemInstruction: '',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: false,
         characterCard: card,
       );
@@ -101,9 +91,7 @@ void main() {
       );
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Main prompt',
-        advancedSystemInstruction: '',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: true,
         characterCard: card,
         lorebookResult: lorebookResult,
@@ -127,9 +115,7 @@ void main() {
       );
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: '',
-        advancedSystemInstruction: '',
         enableSystemPrompt: false,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: true,
         characterCard: card,
         lorebookResult: lorebookResult,
@@ -159,9 +145,7 @@ void main() {
       );
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: '',
-        advancedSystemInstruction: '',
         enableSystemPrompt: false,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: true,
         characterCard: card,
         lorebookResult: lorebookResult,
@@ -191,9 +175,7 @@ void main() {
       );
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Main',
-        advancedSystemInstruction: '',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: false,
         characterCard: CharacterCard(),
         lorebookResult: lorebookResult,
@@ -221,9 +203,7 @@ void main() {
       );
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Main',
-        advancedSystemInstruction: '',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: false,
         characterCard: CharacterCard(),
         lorebookResult: lorebookResult,
@@ -260,9 +240,7 @@ void main() {
       );
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: '[MAIN]',
-        advancedSystemInstruction: '[ADVANCED]',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: true,
         enableCharacterCard: true,
         characterCard: card,
         lorebookResult: lorebookResult,
@@ -270,7 +248,6 @@ void main() {
 
       final positions = <String, int>{
         '[MAIN]': result.indexOf('[MAIN]'),
-        '[ADVANCED]': result.indexOf('[ADVANCED]'),
         '[BEFORE_CARD]': result.indexOf('[BEFORE_CARD]'),
         'Character Information': result.indexOf('--- Character Information ---'),
         '[EM_TOP]': result.indexOf('[EM_TOP]'),
@@ -281,8 +258,6 @@ void main() {
       };
 
       // Verify ordering
-      expect(positions['[MAIN]']!, lessThan(positions['[ADVANCED]']!));
-      expect(positions['[ADVANCED]']!, lessThan(positions['[BEFORE_CARD]']!));
       expect(positions['[BEFORE_CARD]']!,
           lessThan(positions['Character Information']!));
       expect(positions['Character Information']!,
@@ -298,9 +273,7 @@ void main() {
     test('handles no lorebook result gracefully', () {
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Prompt',
-        advancedSystemInstruction: '',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: false,
         characterCard: CharacterCard(),
       );
@@ -310,9 +283,7 @@ void main() {
     test('handles empty lorebook result', () {
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Prompt',
-        advancedSystemInstruction: '',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: false,
         characterCard: CharacterCard(),
         lorebookResult:
@@ -621,9 +592,7 @@ void main() {
 
       final sysInstruction = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Be heroic.',
-        advancedSystemInstruction: '',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: true,
         characterCard: card,
         lorebookResult: evalResult,
@@ -675,9 +644,7 @@ void main() {
 
       final sysInstruction = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Main prompt.',
-        advancedSystemInstruction: '',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: true,
         characterCard: card,
         lorebookResult: evalResult,
@@ -793,9 +760,7 @@ void main() {
     test('empty character card produces no card section', () {
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: 'Main',
-        advancedSystemInstruction: '',
         enableSystemPrompt: true,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: true,
         characterCard: CharacterCard(), // all empty
       );
@@ -816,9 +781,7 @@ void main() {
       );
       final result = PromptPipelineService.buildSystemInstruction(
         systemInstruction: '',
-        advancedSystemInstruction: '',
         enableSystemPrompt: false,
-        enableAdvancedSystemPrompt: false,
         enableCharacterCard: false,
         characterCard: CharacterCard(),
         lorebookResult: lorebookResult,

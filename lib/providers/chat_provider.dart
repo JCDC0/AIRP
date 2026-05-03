@@ -288,7 +288,6 @@ class ChatProvider extends ChangeNotifier {
   int _tokenCount = 0;
   String _currentTitle = "";
   String _systemInstruction = "";
-  String _advancedSystemInstruction = "";
   CharacterCard _characterCard = CharacterCard();
 
   List<ChatMessage> get messages => _messages;
@@ -297,7 +296,6 @@ class ChatProvider extends ChangeNotifier {
   int get tokenCount => _tokenCount;
   String get currentTitle => _currentTitle;
   String get systemInstruction => _systemInstruction;
-  String get advancedSystemInstruction => _advancedSystemInstruction;
   CharacterCard get characterCard => _characterCard;
 
   List<SystemPromptData> _savedSystemPrompts = [];
@@ -455,8 +453,6 @@ class ChatProvider extends ChangeNotifier {
 
     _systemInstruction =
         prefs.getString('airp_default_system_instruction') ?? '';
-    _advancedSystemInstruction =
-        prefs.getString('airp_advanced_system_instruction') ?? '';
 
     _loreRecognizerGlowColor = Color(
       prefs.getInt('airp_lore_recognizer_glow_color') ??
@@ -504,11 +500,6 @@ class ChatProvider extends ChangeNotifier {
 
   void setSystemInstruction(String instruction) {
     _systemInstruction = instruction;
-    notifyListeners();
-  }
-
-  void setAdvancedSystemInstruction(String instruction) {
-    _advancedSystemInstruction = instruction;
     notifyListeners();
   }
 
@@ -742,10 +733,6 @@ class ChatProvider extends ChangeNotifier {
       'airp_default_system_instruction',
       _systemInstruction,
     );
-    await prefs.setString(
-      'airp_advanced_system_instruction',
-      _advancedSystemInstruction,
-    );
 
     await prefs.setInt(
       'airp_lore_recognizer_glow_color',
@@ -937,9 +924,7 @@ class ChatProvider extends ChangeNotifier {
   }) {
     return PromptPipelineService.buildSystemInstruction(
       systemInstruction: _systemInstruction,
-      advancedSystemInstruction: _advancedSystemInstruction,
       enableSystemPrompt: _settings!.enableSystemPrompt,
-      enableAdvancedSystemPrompt: _settings!.enableAdvancedSystemPrompt,
       enableCharacterCard: _settings!.enableCharacterCard,
       characterCard: _characterCard,
       lorebookResult: lorebookResult,
@@ -1850,7 +1835,6 @@ class ChatProvider extends ChangeNotifier {
       'localIp': _localIp,
       'localModelName': _localModelName,
       'systemInstruction': _systemInstruction,
-      'advancedSystemInstruction': _advancedSystemInstruction,
       'systemPrompts': _savedSystemPrompts.map((p) => p.toJson()).toList(),
       'sessions': savedSessions.map((s) => s.toJson()).toList(),
       'characterCard': _characterCard.toV3Json(),
@@ -1923,9 +1907,6 @@ class ChatProvider extends ChangeNotifier {
 
     _systemInstruction =
         data['systemInstruction'] as String? ?? _systemInstruction;
-    _advancedSystemInstruction =
-        data['advancedSystemInstruction'] as String? ??
-        _advancedSystemInstruction;
 
     // Merge (concatenate) system prompts and sessions
     if (data['systemPrompts'] != null) {

@@ -3,10 +3,13 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/vfx_provider.dart';
 import '../../providers/chat_provider.dart';
-import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
+import '../../models/chat_models.dart';
 
-/// A panel for editing the system instruction and advanced prompts.
+/// A unified panel for managing the main system prompt.
+///
+/// Provides a title field, the prompt content, a library for hotswapping presets,
+/// and quick-save capabilities.
 class SystemPromptPanel extends StatefulWidget {
   const SystemPromptPanel({super.key});
 
@@ -15,37 +18,45 @@ class SystemPromptPanel extends StatefulWidget {
 }
 
 class _SystemPromptPanelState extends State<SystemPromptPanel> {
-  late TextEditingController _mainPromptController;
-  late TextEditingController _advancedPromptController;
-  late TextEditingController _promptTitleController;
+  late TextEditingController _titleController;
+  late TextEditingController _promptController;
 
   @override
   void initState() {
     super.initState();
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    _mainPromptController = TextEditingController(
-      text: chatProvider.systemInstruction,
-    );
-    _advancedPromptController = TextEditingController(
-      text: chatProvider.advancedSystemInstruction,
-    );
-    _promptTitleController = TextEditingController();
+    _titleController = TextEditingController();
+    _promptController = TextEditingController(text: chatProvider.systemInstruction);
+    
+    // Try to match current prompt with a title from the library
+    _matchTitleFromLibrary(chatProvider);
   }
 
   @override
   void dispose() {
-    _mainPromptController.dispose();
-    _advancedPromptController.dispose();
-    _promptTitleController.dispose();
+    _titleController.dispose();
+    _promptController.dispose();
     super.dispose();
   }
 
-  void _syncControllers(ChatProvider chatProvider) {
-    if (_mainPromptController.text != chatProvider.systemInstruction) {
-      _mainPromptController.text = chatProvider.systemInstruction;
+  void _matchTitleFromLibrary(ChatProvider provider) {
+    final currentText = provider.systemInstruction.trim();
+    if (currentText.isEmpty) return;
+
+    final match = provider.savedSystemPrompts.firstWhere(
+      (p) => p.content.trim() == currentText,
+      orElse: () => const SystemPromptData(title: '', content: ''),
+    );
+
+    if (match.title.isNotEmpty) {
+      _titleController.text = match.title;
     }
-    if (_advancedPromptController.text != chatProvider.advancedSystemInstruction) {
-      _advancedPromptController.text = chatProvider.advancedSystemInstruction;
+  }
+
+  void _syncControllers(ChatProvider chatProvider) {
+    if (_promptController.text != chatProvider.systemInstruction) {
+      _promptController.text = chatProvider.systemInstruction;
+      _matchTitleFromLibrary(chatProvider);
     }
   }
 
@@ -54,140 +65,149 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
-    final settingsProvider = Provider.of<SettingsProvider>(context);
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
     _syncControllers(chatProvider);
 
+    final fs = scaleProvider.systemFontSize;
+    final accent = themeProvider.textColor;
+    final useBloom = vfxProvider.enableBloom;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Main System Instruction ──────────────────────────────────────────
-        Text(
-          "Base System Instruction",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: themeProvider.textColor,
-            fontSize: scaleProvider.systemFontSize,
-            shadows: vfxProvider.enableBloom
-                ? [Shadow(color: themeProvider.bloomGlowColor, blurRadius: 10)]
-                : [],
-          ),
-        ),
-        const SizedBox(height: 5),
-        TextField(
-          controller: _mainPromptController,
-          maxLines: 8,
-          onChanged: (val) {
-            chatProvider.setSystemInstruction(val.trim());
-            chatProvider.saveSettings(showConfirmation: false);
-          },
-          decoration: InputDecoration(
-            hintText: "Enter the persona or base instructions for the AI...",
-            border: const OutlineInputBorder(),
-            filled: true,
-            isDense: true,
-            hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize * 0.8),
-          ),
-          style: TextStyle(fontSize: scaleProvider.systemFontSize * 0.9),
-        ),
-        const SizedBox(height: 20),
-
-        // ── Advanced System Prompt ───────────────────────────────────────────
-        Opacity(
-          opacity: settingsProvider.enableAdvancedSystemPrompt ? 1.0 : 0.5,
-          child: AbsorbPointer(
-            absorbing: !settingsProvider.enableAdvancedSystemPrompt,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Advanced System Prompt (Post-Lore)",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: themeProvider.textColor,
-                    fontSize: scaleProvider.systemFontSize,
-                    shadows: vfxProvider.enableBloom
-                        ? [
-                            Shadow(
-                              color: themeProvider.bloomGlowColor,
-                              blurRadius: 10,
-                            ),
-                          ]
-                        : [],
-                  ),
-                ),
-                const SizedBox(height: 5),
-                TextField(
-                  controller: _advancedPromptController,
-                  maxLines: 12,
-                  onChanged: (val) {
-                    chatProvider.setAdvancedSystemInstruction(val.trim());
-                    chatProvider.saveSettings(showConfirmation: false);
-                  },
-                  decoration: InputDecoration(
-                    hintText: "Formatting rules, depth prompts, etc...",
-                    border: const OutlineInputBorder(),
-                    filled: true,
-                    isDense: true,
-                    hintStyle: TextStyle(
-                      fontSize: scaleProvider.systemFontSize * 0.8,
-                    ),
-                  ),
-                  style: TextStyle(
-                    fontSize: scaleProvider.systemFontSize * 0.9,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // ── Prompt Saving Section ────────────────────────────────────────────
-        Text(
-          "Save Current Prompts",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: themeProvider.textColor,
-            fontSize: scaleProvider.systemFontSize,
-          ),
-        ),
-        const SizedBox(height: 8),
+        // --- Header with Library Dropdown ---
         Row(
           children: [
             Expanded(
-              child: TextField(
-                controller: _promptTitleController,
-                decoration: const InputDecoration(
-                  hintText: "Preset Title...",
-                  border: OutlineInputBorder(),
-                  isDense: true,
+              child: Text(
+                "Prompt Library",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: fs * 0.9,
+                  color: themeProvider.subtitleColor,
                 ),
-                style: TextStyle(fontSize: scaleProvider.systemFontSize),
               ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.save_as, color: Colors.blueAccent),
-              onPressed: () {
-                final title = _promptTitleController.text.trim();
-                if (title.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Enter a title first")),
+            if (chatProvider.savedSystemPrompts.isNotEmpty)
+              DropdownButton<SystemPromptData>(
+                underline: const SizedBox(),
+                icon: Icon(Icons.library_books, color: accent, size: 20),
+                dropdownColor: themeProvider.dropdownColor,
+                items: chatProvider.savedSystemPrompts.map((p) {
+                  return DropdownMenuItem(
+                    value: p,
+                    child: Text(
+                      p.title,
+                      style: TextStyle(color: themeProvider.textColor, fontSize: fs * 0.85),
+                    ),
                   );
-                  return;
-                }
-                chatProvider.saveCurrentSystemPrompt(title);
-                _promptTitleController.clear();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Prompt saved to library")),
-                );
+                }).toList(),
+                onChanged: (p) {
+                  if (p != null) {
+                    chatProvider.setSystemInstruction(p.content);
+                    _titleController.text = p.title;
+                    _promptController.text = p.content;
+                    chatProvider.saveSettings(showConfirmation: false);
+                  }
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        // --- Title Field ---
+        TextField(
+          controller: _titleController,
+          decoration: InputDecoration(
+            labelText: "Preset Title",
+            hintText: "Enter a title for this prompt...",
+            labelStyle: TextStyle(fontSize: fs * 0.8),
+            hintStyle: TextStyle(fontSize: fs * 0.8),
+            border: const OutlineInputBorder(),
+            filled: true,
+            fillColor: themeProvider.containerFillDarkColor,
+            isDense: true,
+          ),
+          style: TextStyle(fontSize: fs * 0.9, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+
+        // --- Main Prompt Field ---
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            TextField(
+              controller: _promptController,
+              maxLines: 12,
+              minLines: 5,
+              onChanged: (val) {
+                chatProvider.setSystemInstruction(val.trim());
+                chatProvider.saveSettings(showConfirmation: false);
               },
+              decoration: InputDecoration(
+                hintText: "Enter system instructions, persona, or rules...",
+                hintStyle: TextStyle(fontSize: fs * 0.8),
+                border: OutlineInputBorder(
+                  borderSide: useBloom ? BorderSide(color: themeProvider.bloomGlowColor) : const BorderSide(),
+                ),
+                enabledBorder: useBloom
+                    ? OutlineInputBorder(
+                        borderSide: BorderSide(color: themeProvider.bloomGlowColor.withValues(alpha: 0.5)),
+                      )
+                    : const OutlineInputBorder(),
+                filled: true,
+                fillColor: themeProvider.containerFillColor,
+              ),
+              style: TextStyle(fontSize: fs * 0.9),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: IconButton(
+                onPressed: () {
+                  final title = _titleController.text.trim();
+                  if (title.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please enter a title to save")),
+                    );
+                    return;
+                  }
+                  chatProvider.saveCurrentSystemPrompt(title);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Prompt '$title' saved!")),
+                  );
+                },
+                icon: Icon(Icons.save, color: Colors.blueAccent, size: 24 * scaleProvider.iconScale),
+                tooltip: "Save to Library",
+              ),
             ),
           ],
         ),
+        
+        if (chatProvider.savedSystemPrompts.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            "Library Management",
+            style: TextStyle(fontSize: fs * 0.8, color: Colors.grey, fontStyle: FontStyle.italic),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            children: chatProvider.savedSystemPrompts.map((p) {
+              final isCurrent = _titleController.text == p.title;
+              return ActionChip(
+                label: Text(p.title, style: TextStyle(fontSize: fs * 0.7)),
+                onPressed: () {
+                  chatProvider.setSystemInstruction(p.content);
+                  _titleController.text = p.title;
+                  _promptController.text = p.content;
+                },
+                backgroundColor: isCurrent ? Colors.blueAccent.withValues(alpha: 0.2) : null,
+                avatar: isCurrent ? const Icon(Icons.check, size: 12) : null,
+              );
+            }).toList(),
+          ),
+        ],
       ],
     );
   }
