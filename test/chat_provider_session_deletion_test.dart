@@ -38,4 +38,26 @@ void main() {
     expect(provider.messages, isEmpty);
     expect(provider.tokenCount, 0);
   });
+
+  test('loading a deepseek session keeps the deepseek provider and model', () async {
+    final provider = ChatProvider();
+    await _flushAsyncInit();
+
+    final session = ChatSessionData(
+      id: 'deepseek-session',
+      title: 'DeepSeek',
+      messages: [ChatMessage(text: 'hello', isUser: true)],
+      modelName: 'deepseek-chat',
+      tokenCount: 5,
+      systemInstruction: '',
+      provider: 'deepseek',
+    );
+
+    provider.loadSession(session);
+    await _flushAsyncInit();
+
+    expect(provider.currentProvider, AiProvider.deepseek);
+    expect(provider.deepseekModel, 'deepseek-chat');
+    expect(provider.selectedModel, 'deepseek-chat');
+  });
 }

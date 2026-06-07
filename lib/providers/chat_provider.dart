@@ -181,16 +181,16 @@ class ChatProvider extends ChangeNotifier {
   String _openAiModel = 'gpt-4o';
   String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
   String _groqModel = 'llama3-8b-8192';
-  final String _vertexAiModel = '';
-  final String _blackboxAiModel = '';
-  final String _minimaxModel = '';
-  final String _openAiCompatibleModel = '';
-  final String _deepseekModel = '';
-  final String _ollamaModel = '';
-  final String _qwenModel = '';
-  final String _xAiModel = '';
-  final String _zAiModel = '';
-  final String _mistralModel = '';
+  String _vertexAiModel = '';
+  String _blackboxAiModel = '';
+  String _minimaxModel = '';
+  String _openAiCompatibleModel = '';
+  String _deepseekModel = '';
+  String _ollamaModel = '';
+  String _qwenModel = '';
+  String _xAiModel = '';
+  String _zAiModel = '';
+  String _mistralModel = '';
   String _selectedModel = 'models/gemini-3-flash-preview';
 
   String get selectedGeminiModel => _selectedGeminiModel;
@@ -423,6 +423,26 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.huggingFace;
     } else if (providerString == 'groq') {
       _currentProvider = AiProvider.groq;
+    } else if (providerString == 'deepseek') {
+      _currentProvider = AiProvider.deepseek;
+    } else if (providerString == 'openAiCompatible') {
+      _currentProvider = AiProvider.openAiCompatible;
+    } else if (providerString == 'vertexAi') {
+      _currentProvider = AiProvider.vertexAi;
+    } else if (providerString == 'blackboxAi') {
+      _currentProvider = AiProvider.blackboxAi;
+    } else if (providerString == 'minimax') {
+      _currentProvider = AiProvider.minimax;
+    } else if (providerString == 'ollama') {
+      _currentProvider = AiProvider.ollama;
+    } else if (providerString == 'qwen') {
+      _currentProvider = AiProvider.qwen;
+    } else if (providerString == 'xAi') {
+      _currentProvider = AiProvider.xAi;
+    } else if (providerString == 'zAi') {
+      _currentProvider = AiProvider.zAi;
+    } else if (providerString == 'mistral') {
+      _currentProvider = AiProvider.mistral;
     } else {
       _currentProvider = AiProvider.gemini;
     }
@@ -448,6 +468,20 @@ class ChatProvider extends ChangeNotifier {
         'meta-llama/Meta-Llama-3-8B-Instruct';
     _groqModel =
         prefs.getString(ApiConstants.prefModelGroq) ?? 'llama3-8b-8192';
+    _vertexAiModel = prefs.getString(ApiConstants.prefModelVertexAi) ?? _vertexAiModel;
+    _blackboxAiModel =
+      prefs.getString(ApiConstants.prefModelBlackboxAi) ?? _blackboxAiModel;
+    _minimaxModel = prefs.getString(ApiConstants.prefModelMinimax) ?? _minimaxModel;
+    _openAiCompatibleModel =
+      prefs.getString(ApiConstants.prefModelOpenAiCompatible) ??
+      _openAiCompatibleModel;
+    _deepseekModel =
+      prefs.getString(ApiConstants.prefModelDeepseek) ?? _deepseekModel;
+    _ollamaModel = prefs.getString(ApiConstants.prefModelOllama) ?? _ollamaModel;
+    _qwenModel = prefs.getString(ApiConstants.prefModelQwen) ?? _qwenModel;
+    _xAiModel = prefs.getString(ApiConstants.prefModelXAi) ?? _xAiModel;
+    _zAiModel = prefs.getString(ApiConstants.prefModelZAi) ?? _zAiModel;
+    _mistralModel = prefs.getString(ApiConstants.prefModelMistral) ?? _mistralModel;
 
     _selectedModel = _getProviderModel(_currentProvider);
 
@@ -601,6 +635,26 @@ class ChatProvider extends ChangeNotifier {
         return _huggingFaceModel;
       case AiProvider.groq:
         return _groqModel;
+      case AiProvider.vertexAi:
+        return _vertexAiModel;
+      case AiProvider.blackboxAi:
+        return _blackboxAiModel;
+      case AiProvider.minimax:
+        return _minimaxModel;
+      case AiProvider.openAiCompatible:
+        return _openAiCompatibleModel;
+      case AiProvider.deepseek:
+        return _deepseekModel;
+      case AiProvider.ollama:
+        return _ollamaModel;
+      case AiProvider.qwen:
+        return _qwenModel;
+      case AiProvider.xAi:
+        return _xAiModel;
+      case AiProvider.zAi:
+        return _zAiModel;
+      case AiProvider.mistral:
+        return _mistralModel;
       case AiProvider.local:
         return "Local Network AI";
       default:
@@ -633,6 +687,36 @@ class ChatProvider extends ChangeNotifier {
         break;
       case AiProvider.groq:
         _groqModel = model;
+        break;
+      case AiProvider.vertexAi:
+        _vertexAiModel = model;
+        break;
+      case AiProvider.blackboxAi:
+        _blackboxAiModel = model;
+        break;
+      case AiProvider.minimax:
+        _minimaxModel = model;
+        break;
+      case AiProvider.openAiCompatible:
+        _openAiCompatibleModel = model;
+        break;
+      case AiProvider.deepseek:
+        _deepseekModel = model;
+        break;
+      case AiProvider.ollama:
+        _ollamaModel = model;
+        break;
+      case AiProvider.qwen:
+        _qwenModel = model;
+        break;
+      case AiProvider.xAi:
+        _xAiModel = model;
+        break;
+      case AiProvider.zAi:
+        _zAiModel = model;
+        break;
+      case AiProvider.mistral:
+        _mistralModel = model;
         break;
       case AiProvider.local:
         break;
@@ -728,6 +812,19 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString(ApiConstants.prefModelOpenAi, _openAiModel);
     await prefs.setString(ApiConstants.prefModelHuggingFace, _huggingFaceModel);
     await prefs.setString(ApiConstants.prefModelGroq, _groqModel);
+    await prefs.setString(ApiConstants.prefModelVertexAi, _vertexAiModel);
+    await prefs.setString(ApiConstants.prefModelBlackboxAi, _blackboxAiModel);
+    await prefs.setString(ApiConstants.prefModelMinimax, _minimaxModel);
+    await prefs.setString(
+      ApiConstants.prefModelOpenAiCompatible,
+      _openAiCompatibleModel,
+    );
+    await prefs.setString(ApiConstants.prefModelDeepseek, _deepseekModel);
+    await prefs.setString(ApiConstants.prefModelOllama, _ollamaModel);
+    await prefs.setString(ApiConstants.prefModelQwen, _qwenModel);
+    await prefs.setString(ApiConstants.prefModelXAi, _xAiModel);
+    await prefs.setString(ApiConstants.prefModelZAi, _zAiModel);
+    await prefs.setString(ApiConstants.prefModelMistral, _mistralModel);
     
     await prefs.setString(
       'airp_default_system_instruction',
@@ -1652,6 +1749,46 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.huggingFace;
       _selectedModel = session.modelName;
       _huggingFaceModel = session.modelName;
+    } else if (session.provider == 'vertexAi') {
+      _currentProvider = AiProvider.vertexAi;
+      _selectedModel = session.modelName;
+      _vertexAiModel = session.modelName;
+    } else if (session.provider == 'blackboxAi') {
+      _currentProvider = AiProvider.blackboxAi;
+      _selectedModel = session.modelName;
+      _blackboxAiModel = session.modelName;
+    } else if (session.provider == 'minimax') {
+      _currentProvider = AiProvider.minimax;
+      _selectedModel = session.modelName;
+      _minimaxModel = session.modelName;
+    } else if (session.provider == 'openAiCompatible') {
+      _currentProvider = AiProvider.openAiCompatible;
+      _selectedModel = session.modelName;
+      _openAiCompatibleModel = session.modelName;
+    } else if (session.provider == 'deepseek') {
+      _currentProvider = AiProvider.deepseek;
+      _selectedModel = session.modelName;
+      _deepseekModel = session.modelName;
+    } else if (session.provider == 'ollama') {
+      _currentProvider = AiProvider.ollama;
+      _selectedModel = session.modelName;
+      _ollamaModel = session.modelName;
+    } else if (session.provider == 'qwen') {
+      _currentProvider = AiProvider.qwen;
+      _selectedModel = session.modelName;
+      _qwenModel = session.modelName;
+    } else if (session.provider == 'xAi') {
+      _currentProvider = AiProvider.xAi;
+      _selectedModel = session.modelName;
+      _xAiModel = session.modelName;
+    } else if (session.provider == 'zAi') {
+      _currentProvider = AiProvider.zAi;
+      _selectedModel = session.modelName;
+      _zAiModel = session.modelName;
+    } else if (session.provider == 'mistral') {
+      _currentProvider = AiProvider.mistral;
+      _selectedModel = session.modelName;
+      _mistralModel = session.modelName;
     } else {
       _currentProvider = AiProvider.gemini;
       _selectedGeminiModel = session.modelName;
@@ -1828,6 +1965,16 @@ class ChatProvider extends ChangeNotifier {
         'openAi': _openAiModel,
         'huggingFace': _huggingFaceModel,
         'groq': _groqModel,
+        'vertexAi': _vertexAiModel,
+        'blackboxAi': _blackboxAiModel,
+        'minimax': _minimaxModel,
+        'openAiCompatible': _openAiCompatibleModel,
+        'deepseek': _deepseekModel,
+        'ollama': _ollamaModel,
+        'qwen': _qwenModel,
+        'xAi': _xAiModel,
+        'zAi': _zAiModel,
+        'mistral': _mistralModel,
       },
       'modelBookmarks': _bookmarkedModels.toList(),
       'starredProviders': _starredProviders.map((p) => p.name).toList(),
@@ -1867,6 +2014,17 @@ class ChatProvider extends ChangeNotifier {
     _openAiModel = models['openAi'] as String? ?? _openAiModel;
     _huggingFaceModel = models['huggingFace'] as String? ?? _huggingFaceModel;
     _groqModel = models['groq'] as String? ?? _groqModel;
+    _vertexAiModel = models['vertexAi'] as String? ?? _vertexAiModel;
+    _blackboxAiModel = models['blackboxAi'] as String? ?? _blackboxAiModel;
+    _minimaxModel = models['minimax'] as String? ?? _minimaxModel;
+    _openAiCompatibleModel =
+      models['openAiCompatible'] as String? ?? _openAiCompatibleModel;
+    _deepseekModel = models['deepseek'] as String? ?? _deepseekModel;
+    _ollamaModel = models['ollama'] as String? ?? _ollamaModel;
+    _qwenModel = models['qwen'] as String? ?? _qwenModel;
+    _xAiModel = models['xAi'] as String? ?? _xAiModel;
+    _zAiModel = models['zAi'] as String? ?? _zAiModel;
+    _mistralModel = models['mistral'] as String? ?? _mistralModel;
     _selectedModel = _getProviderModel(_currentProvider);
 
     final bookmarks = data['modelBookmarks'] as List<dynamic>?;
