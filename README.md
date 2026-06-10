@@ -213,7 +213,7 @@ AIRP includes a provider-agnostic web search system that works across all AI bac
 * **Tavily**: AI-optimized search with pre-summarized results. 1,000 free searches/month. Best for AI/RAG use cases.
 * **Serper.dev**: Google Search results in clean JSON. 2,500 free searches included.
 * **SearXNG**: Connect to a self-hosted SearXNG instance. Supports IP:port URL format with a live validation button. Completely free and private.
-* **DuckDuckGo (Scraping)**: Free fallback using DuckDuckGo HTML scraping. No API key required but may be unreliable.
+* **DuckDuckGo (Scraping)**: Free fallback using DuckDuckGo's main HTML endpoint. No API key required, but result quality may still vary.
 
 Search results are formatted as a `[WEB_CONTEXT]` block and prepended to your message before sending to the AI. This ensures per-message freshness and works uniformly across all backends. A **Max Results** slider (1-10) controls how many results are injected per query.
 

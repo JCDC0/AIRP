@@ -258,7 +258,7 @@ class WebSearchService {
   // DuckDuckGo  (HTML scraping fallback)
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Scrapes DuckDuckGo's HTML-lite endpoint for [query].
+  /// Scrapes DuckDuckGo's main HTML endpoint for [query].
   ///
   /// This is a best-effort, free approach that requires no API key. Results
   /// quality and availability may be inconsistent — DDG may block scraping.
@@ -267,21 +267,25 @@ class WebSearchService {
   static Future<List<WebSearchResult>> searchDDG(
     String query, {
     int resultCount = 5,
+    http.Client? client,
   }) async {
-    try {
-      final uri = Uri.https('lite.duckduckgo.com', '/lite/', {});
+    final http.Client activeClient = client ?? http.Client();
+    final bool ownsClient = client == null;
 
-      final response = await http
-          .post(
+    try {
+      final uri = Uri.https('html.duckduckgo.com', '/html/', {
+        'q': query,
+      });
+
+      final response = await activeClient
+          .get(
             uri,
             headers: {
               'User-Agent':
                   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
                   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
               'Accept': 'text/html',
-              'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: 'q=$query',
           )
           .timeout(_timeout);
 
@@ -294,6 +298,10 @@ class WebSearchService {
     } catch (e) {
       debugPrint('[WebSearch] DDG error: $e');
       return [];
+    } finally {
+      if (ownsClient) {
+        activeClient.close();
+      }
     }
   }
 

@@ -918,6 +918,17 @@ class ChatProvider extends ChangeNotifier {
     return WebSearchService.formatResultsAsContextBlock(results, query: query);
   }
 
+  static String composeUserMessageWithWebContext(
+    String sentUserText,
+    String? byokWebContext,
+  ) {
+    if (byokWebContext == null || byokWebContext.isEmpty) {
+      return sentUserText;
+    }
+
+    return '$byokWebContext\n\n---\n\n$sentUserText';
+  }
+
   String getEditableMessageText(ChatMessage message) {
     if (message.isUser) return message.text;
     if (_settings!.enableDeveloperMode && _settings!.enableRawReasoningEdit) return message.text;
@@ -1320,9 +1331,7 @@ class ChatProvider extends ChangeNotifier {
       }
 
       final String finalUserMessage =
-          byokWebContext != null
-              ? '$byokWebContext\n\n---\n\n$sentUserText'
-              : sentUserText;
+          composeUserMessageWithWebContext(sentUserText, byokWebContext);
 
       if (_currentProvider == AiProvider.gemini) {
         await initializeModel(systemInstructionOverride: finalSystemInstruction);
