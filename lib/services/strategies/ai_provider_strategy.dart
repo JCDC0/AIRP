@@ -29,6 +29,11 @@ abstract class AiProviderStrategy {
   String formatModelName(String rawId) => cleanModelName(rawId);
 
   /// Streams a response from this provider.
+  ///
+  /// The default implementation forwards every argument to
+  /// [ChatApiService.streamOpenAiCompatible], which is correct for any
+  /// OpenAI-compatible endpoint. Providers with a non-OpenAI protocol (e.g.
+  /// Gemini's SDK) override this method.
   Stream<String> streamResponse({
     required String apiKey,
     required String baseUrl,
@@ -47,8 +52,30 @@ abstract class AiProviderStrategy {
     bool includeUsage = false,
     List<Map<String, dynamic>>? depthMessages,
     Map<String, Uint8List>? attachmentBytes,
+    List<Map<String, dynamic>>? extraMessages,
     dynamic providerSession,
-  });
+  }) {
+    return ChatApiService.streamOpenAiCompatible(
+      apiKey: apiKey,
+      baseUrl: baseUrl,
+      model: model,
+      history: history,
+      systemInstruction: systemInstruction,
+      userMessage: userMessage,
+      imagePaths: imagePaths,
+      temperature: temperature,
+      topP: topP,
+      topK: topK,
+      maxTokens: maxTokens,
+      enableGrounding: enableGrounding,
+      reasoningEffort: reasoningEffort,
+      extraHeaders: extraHeaders,
+      includeUsage: includeUsage,
+      depthMessages: depthMessages,
+      attachmentBytes: attachmentBytes,
+      extraMessages: extraMessages,
+    );
+  }
 }
 
 /// A standard strategy for OpenAI-compatible providers.
@@ -111,45 +138,6 @@ class OpenAiCompatibleStrategy extends AiProviderStrategy {
     }).toList();
   }
 
-  @override
-  Stream<String> streamResponse({
-    required String apiKey,
-    required String baseUrl,
-    required String model,
-    required List<ChatMessage> history,
-    required String systemInstruction,
-    required String userMessage,
-    required List<String> imagePaths,
-    double? temperature,
-    double? topP,
-    int? topK,
-    int? maxTokens,
-    bool enableGrounding = false,
-    String? reasoningEffort,
-    Map<String, String>? extraHeaders,
-    bool includeUsage = false,
-    List<Map<String, dynamic>>? depthMessages,
-    Map<String, Uint8List>? attachmentBytes,
-    dynamic providerSession,
-  }) {
-    return ChatApiService.streamOpenAiCompatible(
-      apiKey: apiKey,
-      baseUrl: baseUrl,
-      model: model,
-      history: history,
-      systemInstruction: systemInstruction,
-      userMessage: userMessage,
-      imagePaths: imagePaths,
-      temperature: temperature,
-      topP: topP,
-      topK: topK,
-      maxTokens: maxTokens,
-      enableGrounding: enableGrounding,
-      reasoningEffort: reasoningEffort,
-      extraHeaders: extraHeaders,
-      includeUsage: includeUsage,
-      depthMessages: depthMessages,
-      attachmentBytes: attachmentBytes,
-    );
-  }
+  // streamResponse inherits the OpenAI-compatible default from
+  // [AiProviderStrategy.streamResponse].
 }

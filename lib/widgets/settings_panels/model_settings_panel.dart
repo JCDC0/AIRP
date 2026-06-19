@@ -6,6 +6,7 @@ import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
+import '../../utils/constants.dart';
 import 'provider_model_selector.dart';
 
 /// A settings panel for configuring the conversation title and selecting AI models.
@@ -355,11 +356,15 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
             ),
           ),
           subtitle: Text(
-            chatProvider.currentProvider == AiProvider.gemini
-                ? "Uses Google Search (Native)"
-                : chatProvider.currentProvider == AiProvider.openRouter
-                ? "Uses OpenRouter Web Plugin"
-                : "Not available on this provider",
+            chatProvider.webSearchUnsupportedReason() ??
+                (chatProvider.currentProvider == AiProvider.gemini
+                    ? "Uses Google Search (Native)"
+                    : chatProvider.currentProvider == AiProvider.openRouter
+                    ? "Uses OpenRouter Web Plugin"
+                    : (settingsProvider.searchProvider ==
+                            SearchProvider.provider
+                        ? "Native grounding"
+                        : "AI decides when to search (tool call)")),
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize * 0.8,
               color: Colors.grey,
@@ -368,10 +373,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
           value: settingsProvider.enableGrounding,
           activeThumbColor: Colors.greenAccent,
           onChanged:
-              (chatProvider.currentProvider == AiProvider.gemini ||
-                  chatProvider.currentProvider == AiProvider.openRouter ||
-                  chatProvider.currentProvider == AiProvider.arliAi ||
-                  chatProvider.currentProvider == AiProvider.nanoGpt)
+              chatProvider.webSearchUnsupportedReason() == null
               ? (val) {
                   settingsProvider.setEnableGrounding(val);
                   chatProvider.saveSettings(showConfirmation: false);

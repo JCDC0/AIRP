@@ -157,6 +157,7 @@ class ChatApiService {
     bool includeUsage = false,
     List<Map<String, dynamic>>? depthMessages,
     Map<String, Uint8List>? attachmentBytes,
+    List<Map<String, dynamic>>? extraMessages,
   }) async* {
     final cleanKey = apiKey.trim();
     List<Map<String, dynamic>> messagesPayload = [];
@@ -262,6 +263,13 @@ class ChatApiService {
         );
         messagesPayload.insert(insertIdx, {'role': role, 'content': content});
       }
+    }
+
+    // Append any extra messages (e.g. assistant tool_calls + tool results from
+    // a prior web_search tool round). These must follow the user message so
+    // the model can produce its final answer grounded in the tool output.
+    if (extraMessages != null && extraMessages.isNotEmpty) {
+      messagesPayload.addAll(extraMessages);
     }
 
     final Map<String, dynamic> bodyMap = {
@@ -516,4 +524,313 @@ class ChatApiService {
       throw Exception('Error fetching models: $e');
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Web Search Tool-Call Detection (non-streaming)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Sends a NON-streaming request to an OpenAI-compatible endpoint with the
+  /// `web_search` function tool attached, and inspects the response to decide
+  /// whether the model wants to call the tool or has produced a final answer.
+  ///
+  /// [extraMessages] is appended to the assembled payload and is used to carry
+  /// prior assistant `tool_calls` messages and `role:"tool"` result messages
+  /// across multiple search rounds.
+  ///
+  /// On a final answer, returns `{type:'text', text, reasoning}`. On a tool
+  /// request, returns `{type:'tool_call', toolCallId, toolName, toolArguments}`.
+  /// On HTTP/parse failure, returns `{type:'error', text}`.
+  static Future<ToolDetectionResult> requestOpenAiCompatibleWithToolDetection({
+    required String apiKey,
+    required String baseUrl,
+    required String model,
+    required List<ChatMessage> history,
+    required String systemInstruction,
+    required String userMessage,
+    required List<Map<String, dynamic>> tools,
+    List<Map<String, dynamic>>? extraMessages,
+    double? temperature,
+    double? topP,
+    int? maxTokens,
+    String? reasoningEffort,
+    Map<String, String>? extraHeaders,
+    int maxRoundsLeft = 1,
+    http.Client? client,
+  }) async {
+    final cleanKey = apiKey.trim();
+    final List<Map<String, dynamic>> messagesPayload = [];
+
+    if (systemInstruction.isNotEmpty) {
+      messagesPayload.add({'role': 'system', 'content': systemInstruction});
+    }
+
+    for (var msg in history) {
+      messagesPayload.add({
+        'role': msg.isUser ? 'user' : 'assistant',
+        'content': msg.isUser
+            ? msg.text
+            : ReasoningUtils.stripThinkBlocks(msg.text),
+      });
+    }
+
+    if (userMessage.isNotEmpty) {
+      messagesPayload.add({'role': 'user', 'content': userMessage});
+    }
+
+    if (extraMessages != null && extraMessages.isNotEmpty) {
+      messagesPayload.addAll(extraMessages);
+    }
+
+    final Map<String, dynamic> bodyMap = {
+      'model': model.trim(),
+      'messages': messagesPayload,
+      'stream': false,
+      'tools': tools,
+      // 'auto' lets the model decide; we only attach the tool when a search
+      // is still permitted this turn.
+      'tool_choice': maxRoundsLeft > 0 ? 'auto' : 'none',
+    };
+
+    if (temperature != null) bodyMap['temperature'] = temperature;
+    if (topP != null) bodyMap['top_p'] = topP;
+    if (maxTokens != null) bodyMap['max_tokens'] = maxTokens;
+    if (reasoningEffort != null && reasoningEffort != 'none') {
+      bodyMap['reasoning_effort'] = reasoningEffort;
+    }
+
+    final request = http.Request('POST', Uri.parse(baseUrl));
+    request.headers.addAll({
+      'Authorization': 'Bearer $cleanKey',
+      'Content-Type': 'application/json',
+      ...?extraHeaders,
+    });
+    request.body = jsonEncode(bodyMap);
+
+    try {
+      final http.Client activeClient = client ?? http.Client();
+      final bool ownsClient = client == null;
+      try {
+        final response = await activeClient.send(request);
+        final body = await response.stream.bytesToString();
+
+        if (response.statusCode != 200) {
+          return ToolDetectionResult(
+            type: 'error',
+            text: 'Error ${response.statusCode}: $body',
+          );
+        }
+
+        final data = jsonDecode(body);
+        final choices = data['choices'] as List?;
+        if (choices == null || choices.isEmpty) {
+          return ToolDetectionResult(
+            type: 'error',
+            text: 'No choices in response: $body',
+          );
+        }
+        final choice = choices[0];
+        final message = choice['message'] ?? choice['delta'] ?? {};
+        final reasoning = (message['reasoning_content'] ?? message['reasoning'])
+                ?.toString() ??
+            '';
+        final toolCalls = message['tool_calls'] as List?;
+
+        if (toolCalls != null && toolCalls.isNotEmpty) {
+          final tc = toolCalls[0];
+          final id = (tc['id'] ?? '').toString();
+          final fn = tc['function'] ?? {};
+          final name = (fn['name'] ?? '').toString();
+          final args = (fn['arguments'] ?? '').toString();
+          return ToolDetectionResult(
+            type: 'tool_call',
+            toolCallId: id,
+            toolName: name,
+            toolArguments: args,
+            reasoning: reasoning,
+          );
+        }
+
+        final content = (message['content'] ?? '').toString();
+        return ToolDetectionResult(
+          type: 'text',
+          text: content,
+          reasoning: reasoning,
+        );
+      } finally {
+        if (ownsClient) activeClient.close();
+      }
+    } catch (e) {
+      return ToolDetectionResult(type: 'error', text: 'Connection Error: $e');
+    }
+  }
+
+  /// Sends a NON-streaming Gemini request with a `functionDeclarations` tool
+  /// and inspects the response for a function call or a final text answer.
+  ///
+  /// Mirrors [performGeminiGrounding] but swaps `google_search` for the
+  /// caller-provided function declarations (used for BYOK web search).
+  static Future<ToolDetectionResult> performGeminiFunctionDetection({
+    required String apiKey,
+    required String model,
+    required List<ChatMessage> history,
+    required String userMessage,
+    required String systemInstruction,
+    required List<Map<String, dynamic>> functionDeclarations,
+    List<Map<String, dynamic>>? extraMessages,
+    bool disableSafety = true,
+    String? thoughtSignature,
+    int maxRoundsLeft = 1,
+    http.Client? client,
+  }) async {
+    final modelId = model.replaceAll('models/', '');
+    final url = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$apiKey',
+    );
+
+    final List<Map<String, dynamic>> contents = [];
+    for (var msg in history) {
+      contents.add({
+        'role': msg.isUser ? 'user' : 'model',
+        'parts': [
+          {'text': msg.isUser ? msg.text : ReasoningUtils.stripThinkBlocks(msg.text)},
+        ],
+      });
+    }
+    if (userMessage.isNotEmpty) {
+      contents.add({
+        'role': 'user',
+        'parts': [{'text': userMessage}],
+      });
+    }
+    if (extraMessages != null) {
+      for (final em in extraMessages) {
+        contents.add(em);
+      }
+    }
+
+    final Map<String, dynamic> bodyMap = {
+      'contents': contents,
+      'tools': [
+        if (maxRoundsLeft > 0)
+          {'functionDeclarations': functionDeclarations}
+        else
+          {'functionDeclarations': const []},
+      ],
+      'system_instruction': systemInstruction.isNotEmpty
+          ? {'parts': [{'text': systemInstruction}]}
+          : null,
+      'safetySettings': disableSafety
+          ? [
+              {'category': 'HARM_CATEGORY_HARASSMENT', 'threshold': 'BLOCK_NONE'},
+              {'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_NONE'},
+              {'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold': 'BLOCK_NONE'},
+              {'category': 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold': 'BLOCK_NONE'},
+            ]
+          : [],
+    };
+
+    if (thoughtSignature != null && thoughtSignature.isNotEmpty) {
+      bodyMap['thought_signature'] = thoughtSignature;
+    }
+
+    try {
+      final http.Client activeClient = client ?? http.Client();
+      final bool ownsClient = client == null;
+      http.Response response;
+      try {
+        response = await activeClient.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(bodyMap),
+        );
+      } finally {
+        if (ownsClient) activeClient.close();
+      }
+
+      if (response.statusCode != 200) {
+        return ToolDetectionResult(
+          type: 'error',
+          text: 'Error ${response.statusCode}: ${response.body}',
+        );
+      }
+
+      final data = jsonDecode(response.body);
+      final candidates = data['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) {
+        return ToolDetectionResult(type: 'error', text: 'No candidates: ${response.body}');
+      }
+      final candidate = candidates[0];
+      final parts = candidate['content']?['parts'] as List? ?? [];
+
+      // Look for a functionCall part first.
+      for (final part in parts) {
+        if (part['functionCall'] != null) {
+          final fc = part['functionCall'];
+          final name = (fc['name'] ?? '').toString();
+          final args = fc['args'] ?? {};
+          return ToolDetectionResult(
+            type: 'tool_call',
+            toolName: name,
+            // Gemini returns args as a JSON object; serialise for uniformity.
+            toolArguments: jsonEncode(args),
+          );
+        }
+      }
+
+      // Otherwise concatenate text parts.
+      String fullText = '';
+      for (final part in parts) {
+        if (part['text'] != null) fullText += part['text'].toString();
+      }
+      return ToolDetectionResult(type: 'text', text: fullText);
+    } catch (e) {
+      return ToolDetectionResult(type: 'error', text: 'Connection Error: $e');
+    }
+  }
+
+  /// Builds the Gemini `contents` entry for a tool result, suitable for
+  /// appending to [extraMessages] in a subsequent [performGeminiFunctionDetection]
+  /// call. Gemini expects the function response under `role: "user"` with a
+  /// `functionResponse` part keyed by the function name.
+  static Map<String, dynamic> geminiToolResultContent({
+    required String functionName,
+    required String resultText,
+  }) {
+    return {
+      'role': 'user',
+      'parts': [
+        {
+          'functionResponse': {
+            'name': functionName,
+            'response': {'result': resultText},
+          },
+        },
+      ],
+    };
+  }
+}
+
+/// Result of a non-streaming tool-detection request.
+///
+/// Either the model produced a final answer ([type] == 'text') or it
+/// requested to call the `web_search` tool ([type] == 'tool_call').
+class ToolDetectionResult {
+  final String type; // 'text' | 'tool_call' | 'error'
+  final String text;
+  final String reasoning;
+  final String toolCallId;
+  final String toolName;
+  final String toolArguments; // raw JSON string
+
+  const ToolDetectionResult({
+    required this.type,
+    this.text = '',
+    this.reasoning = '',
+    this.toolCallId = '',
+    this.toolName = '',
+    this.toolArguments = '',
+  });
+
+  bool get isToolCall => type == 'tool_call';
+  bool get isError => type == 'error';
 }

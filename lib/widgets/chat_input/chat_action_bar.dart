@@ -228,7 +228,15 @@ class ChatActionBar extends StatelessWidget {
               isActive: settingsProvider.enableGrounding,
               activeColor: Colors.blueAccent,
               onToggle: () async {
-                settingsProvider.setEnableGrounding(!settingsProvider.enableGrounding);
+                final turningOn = !settingsProvider.enableGrounding;
+                if (turningOn) {
+                  final reason = chatProvider.webSearchUnsupportedReason();
+                  if (reason != null) {
+                    onShowStatusPopup(reason);
+                    return;
+                  }
+                }
+                settingsProvider.setEnableGrounding(turningOn);
                 await settingsProvider.saveSettings(showConfirmation: false);
                 onShowStatusPopup(
                   settingsProvider.enableGrounding

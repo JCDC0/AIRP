@@ -21,6 +21,7 @@ class SettingsProvider extends ChangeNotifier {
   SearchProvider _searchProvider = SearchProvider.provider;
   String _searxngUrl = '';
   int _searchResultCount = 5;
+  int _maxSearchRounds = ApiConstants.defaultMaxSearchRounds;
 
   // Toggles
   bool _enableSystemPrompt = true;
@@ -76,6 +77,13 @@ class SettingsProvider extends ChangeNotifier {
   SearchProvider get searchProvider => _searchProvider;
   String get searxngUrl => _searxngUrl;
   int get searchResultCount => _searchResultCount;
+  int get maxSearchRounds => _maxSearchRounds;
+
+  /// True when the user has enabled web search AND chosen a BYOK backend
+  /// (i.e. the AI-driven `web_search` tool path, not the AI provider's native
+  /// grounding).
+  bool get webSearchToolEnabled =>
+      _enableGrounding && _searchProvider != SearchProvider.provider;
 
   bool get enableSystemPrompt => _enableSystemPrompt;
   bool get enableCharacterCard => _enableCharacterCard;
@@ -139,8 +147,18 @@ class SettingsProvider extends ChangeNotifier {
       orElse: () => SearchProvider.provider,
     );
     _searxngUrl = prefs.getString(ApiConstants.prefKeySearXNGUrl) ?? '';
+    // One-time convenience: if the user has configured a SearXNG instance but
+    // never explicitly chose a search backend, prefer SearXNG over the default
+    // 'provider' mode (self-hosted, free, private).
+    if (!prefs.containsKey(ApiConstants.prefKeySearchProvider) &&
+        _searxngUrl.trim().isNotEmpty &&
+        _searchProvider == SearchProvider.provider) {
+      _searchProvider = SearchProvider.searxng;
+    }
     _searchResultCount =
         prefs.getInt(ApiConstants.prefSearchResultCount) ?? 5;
+    _maxSearchRounds = prefs.getInt(ApiConstants.prefMaxSearchRounds) ??
+        ApiConstants.defaultMaxSearchRounds;
 
     notifyListeners();
   }
@@ -185,6 +203,7 @@ class SettingsProvider extends ChangeNotifier {
     );
     await prefs.setString(ApiConstants.prefKeySearXNGUrl, _searxngUrl);
     await prefs.setInt(ApiConstants.prefSearchResultCount, _searchResultCount);
+    await prefs.setInt(ApiConstants.prefMaxSearchRounds, _maxSearchRounds);
 
     notifyListeners();
   }
@@ -310,6 +329,14 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setMaxSearchRounds(int val) {
+    _maxSearchRounds = val.clamp(
+      ApiConstants.minSearchRounds,
+      ApiConstants.maxSearchRounds,
+    );
+    notifyListeners();
+  }
+
   Map<String, dynamic> exportSettingsMap() {
     return {
       'generation': {
@@ -339,6 +366,12 @@ class SettingsProvider extends ChangeNotifier {
       },
       'sillyTavernState': {
         'enableLorebook': _enableLorebook,
+      },
+      'webSearch': {
+        'searchProvider': _searchProvider.name,
+        'searxngUrl': _searxngUrl,
+        'searchResultCount': _searchResultCount,
+        'maxSearchRounds': _maxSearchRounds,
       },
     };
   }
@@ -389,6 +422,21 @@ class SettingsProvider extends ChangeNotifier {
 
     final st = data['sillyTavernState'] as Map<String, dynamic>? ?? {};
     _enableLorebook = st['enableLorebook'] as bool? ?? true;
+
+    final ws = data['webSearch'] as Map<String, dynamic>? ?? {};
+    final providerName = ws['searchProvider'] as String?;
+    if (providerName != null) {
+      try {
+        _searchProvider = SearchProvider.values.firstWhere(
+          (e) => e.name == providerName,
+        );
+      } catch (_) {}
+    }
+    _searxngUrl = ws['searxngUrl'] as String? ?? _searxngUrl;
+    _searchResultCount =
+        (ws['searchResultCount'] as num?)?.toInt() ?? _searchResultCount;
+    _maxSearchRounds = (ws['maxSearchRounds'] as num?)?.toInt() ??
+        ApiConstants.defaultMaxSearchRounds;
 
     await saveSettings(showConfirmation: false);
     notifyListeners();

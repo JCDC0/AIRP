@@ -52,7 +52,7 @@ void main() {
     expect(ApiConstants.groqBaseUrl, 'https://api.groq.com/openai/v1/models');
     expect(ApiConstants.blackboxAiBaseUrl, 'https://api.blackbox.ai/api/models');
     expect(ApiConstants.minimaxBaseUrl, 'https://api.minimax.io/v1/models');
-    expect(ApiConstants.deepseekBaseUrl, 'https://api.deepseek.com/v1/models');
+    expect(ApiConstants.deepseekBaseUrl, 'https://api.deepseek.com/models');
     expect(ApiConstants.qwenBaseUrl,
         'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models');
     expect(ApiConstants.xAiBaseUrl, 'https://api.x.ai/v1/models');

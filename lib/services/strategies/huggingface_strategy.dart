@@ -47,6 +47,7 @@ class HuggingFaceStrategy extends AiProviderStrategy {
     bool includeUsage = false,
     List<Map<String, dynamic>>? depthMessages,
     Map<String, Uint8List>? attachmentBytes,
+    List<Map<String, dynamic>>? extraMessages,
     dynamic providerSession,
   }) {
     return ChatApiService.streamOpenAiCompatible(
@@ -67,6 +68,7 @@ class HuggingFaceStrategy extends AiProviderStrategy {
       includeUsage: includeUsage,
       depthMessages: depthMessages,
       attachmentBytes: attachmentBytes,
+      extraMessages: extraMessages,
     );
   }
 }

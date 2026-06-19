@@ -113,23 +113,6 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingHuggingFaceModels =>
       _modelRegistry.isLoading(AiProvider.huggingFace);
   bool get isLoadingGroqModels => _modelRegistry.isLoading(AiProvider.groq);
-  bool get isLoadingVertexAiModels =>
-      _modelRegistry.isLoading(AiProvider.vertexAi);
-  bool get isLoadingBlackboxAiModels =>
-      _modelRegistry.isLoading(AiProvider.blackboxAi);
-  bool get isLoadingMinimaxModels =>
-      _modelRegistry.isLoading(AiProvider.minimax);
-  bool get isLoadingOpenAiCompatibleModels =>
-      _modelRegistry.isLoading(AiProvider.openAiCompatible);
-  bool get isLoadingDeepseekModels =>
-      _modelRegistry.isLoading(AiProvider.deepseek);
-  bool get isLoadingOllamaModels =>
-      _modelRegistry.isLoading(AiProvider.ollama);
-  bool get isLoadingQwenModels => _modelRegistry.isLoading(AiProvider.qwen);
-  bool get isLoadingXAiModels => _modelRegistry.isLoading(AiProvider.xAi);
-  bool get isLoadingZAiModels => _modelRegistry.isLoading(AiProvider.zAi);
-  bool get isLoadingMistralModels =>
-      _modelRegistry.isLoading(AiProvider.mistral);
 
   bool get isRefreshingModels => _modelRegistry.isAnyLoading;
 
@@ -629,6 +612,8 @@ class ChatProvider extends ChangeNotifier {
         return _arliAiModel;
       case AiProvider.nanoGpt:
         return _nanoGptModel;
+      case AiProvider.nvidia:
+        return _nvidiaModel;
       case AiProvider.openAi:
         return _openAiModel;
       case AiProvider.huggingFace:
@@ -657,8 +642,6 @@ class ChatProvider extends ChangeNotifier {
         return _mistralModel;
       case AiProvider.local:
         return "Local Network AI";
-      default:
-        return '';
     }
   }
 
@@ -719,8 +702,6 @@ class ChatProvider extends ChangeNotifier {
         _mistralModel = model;
         break;
       case AiProvider.local:
-        break;
-      default:
         break;
     }
   }
@@ -854,79 +835,263 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Runs the configured BYOK search backend and returns a formatted context
-  /// block, or `null` if the provider is set to [SearchProvider.provider]
-  /// (i.e. delegate to the AI's native grounding) or if the search fails.
-  Future<String?> performByokWebSearch(String query) async {
-    if (_settings!.searchProvider == SearchProvider.provider) return null;
-
-    List<WebSearchResult> results = [];
-
-    switch (_settings!.searchProvider) {
-      case SearchProvider.brave:
-        if (braveApiKey.isEmpty) {
-          debugPrint('[WebSearch] Brave key not set — skipping BYOK search.');
-          return null;
-        }
-        results = await WebSearchService.searchBrave(
-          query,
-          braveApiKey,
-          resultCount: _settings!.searchResultCount,
-        );
-      case SearchProvider.searxng:
-        if (_settings!.searxngUrl.isEmpty) {
-          debugPrint('[WebSearch] SearXNG URL not set — skipping BYOK search.');
-          return null;
-        }
-        results = await WebSearchService.searchSearXNG(
-          query,
-          _settings!.searxngUrl,
-          resultCount: _settings!.searchResultCount,
-        );
-      case SearchProvider.tavily:
-        if (tavilyApiKey.isEmpty) {
-          debugPrint('[WebSearch] Tavily key not set — skipping BYOK search.');
-          return null;
-        }
-        results = await WebSearchService.searchTavily(
-          query,
-          tavilyApiKey,
-          resultCount: _settings!.searchResultCount,
-        );
-      case SearchProvider.serper:
-        if (serperApiKey.isEmpty) {
-          debugPrint('[WebSearch] Serper key not set — skipping BYOK search.');
-          return null;
-        }
-        results = await WebSearchService.searchSerper(
-          query,
-          serperApiKey,
-          resultCount: _settings!.searchResultCount,
-        );
-      case SearchProvider.duckduckgo:
-        results = await WebSearchService.searchDDG(
-          query,
-          resultCount: _settings!.searchResultCount,
-        );
-      case SearchProvider.provider:
-        return null;
+  /// Whether the current provider can drive the AI-initiated `web_search`
+  /// function tool (i.e. supports OpenAI-style function calling or Gemini
+  /// function declarations). Used to gate the web-search toggle in the UI.
+  ///
+  /// HuggingFace's free router does not reliably support function calling, so
+  /// it is excluded. All other providers (OpenAI-compatible + Gemini) are
+  /// considered capable; individual models that ignore the tool simply answer
+  /// without searching.
+  bool supportsWebSearchTool() {
+    switch (_currentProvider) {
+      case AiProvider.huggingFace:
+        return false;
+      default:
+        return true;
     }
-
-    if (results.isEmpty) {
-      return "\n\n*** SYSTEM NOTICE ***\nA web search for \"$query\" was attempted via ${_settings!.searchProvider.name}, but it returned 0 results or was blocked by the provider.\n\nPlease inform the user that the search failed or found nothing, and try answering their question using your knowledge if possible.\n*** END SYSTEM NOTICE ***\n\n";
-    }
-    return WebSearchService.formatResultsAsContextBlock(results, query: query);
   }
 
-  static String composeUserMessageWithWebContext(
-    String sentUserText,
-    String? byokWebContext,
-  ) {
-    if (byokWebContext == null || byokWebContext.isEmpty) {
-      return sentUserText;
+  /// Returns `null` if web search can be enabled with the current provider +
+  /// selected search backend, or a short human-readable reason string
+  /// otherwise. Used to gate the web-search toggle in the UI.
+  String? webSearchUnsupportedReason() {
+    if (_settings!.searchProvider == SearchProvider.provider) {
+      // Native grounding is only wired up for specific providers.
+      switch (_currentProvider) {
+        case AiProvider.gemini:
+        case AiProvider.openRouter:
+        case AiProvider.arliAi:
+        case AiProvider.nanoGpt:
+          return null;
+        default:
+          return 'Native grounding isn\'t available on this provider. '
+              'Use a BYOK backend (SearXNG, Brave, Tavily, Serper, DDG) in '
+              'Web Search settings.';
+      }
+    }
+    // BYOK tool mode requires function-calling support.
+    if (!supportsWebSearchTool()) {
+      return 'This provider doesn\'t support AI-driven web search tool '
+          'calls. Pick another provider or use native grounding on Gemini.';
+    }
+    return null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BYOK Web Search Tool-Call Loop
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Outcome of a BYOK web-search tool-call loop for a single user message.
+  ///
+  /// - [directAnswer]: the model produced a final answer (either without
+  ///   calling the tool, or — for Gemini — after gathering tool results via a
+  ///   final non-streamed call). The caller displays it without streaming.
+  /// - [extraMessages]: accumulated assistant `tool_calls` + `role:"tool"`
+  ///   result messages (OpenAI-compatible) to append to the final STREAMED
+  ///   answer request. Mutually exclusive with [directAnswer].
+  /// - [error]: the detection phase failed; surface as an error message.
+  Future<_WebSearchLoopResult> _runWebSearchToolLoop({
+    required String sentUserText,
+    required List<ChatMessage> history,
+    required List<LorebookEntry> recognizedLoreEntries,
+    required LorebookEvalResult lorebookResult,
+    required List<Map<String, dynamic>> depthEntries,
+    required ValueNotifier<String> contentNotifier,
+    required String streamSessionId,
+  }) async {
+    final int maxRounds = _settings!.maxSearchRounds;
+    final String hint = WebSearchService.buildWebSearchSystemHint(
+      maxRounds: maxRounds,
+    );
+
+    String baseSys = _buildSystemInstruction(
+      lorebookResult: lorebookResult,
+      recognizedLoreEntries: recognizedLoreEntries,
+    );
+    if (depthEntries.isNotEmpty) {
+      for (final de in depthEntries) {
+        baseSys += '\n\n${de['content']}';
+      }
+    }
+    final String sysWithHint = '$baseSys$hint';
+
+    final bool isGemini = _currentProvider == AiProvider.gemini;
+    final String activeKey = _getProviderKey(_currentProvider);
+    final strategy = StrategyResolver.resolve(_currentProvider);
+    String? customUrl;
+    if (_currentProvider == AiProvider.local) {
+      customUrl = _localIp.trim();
+    } else if (_currentProvider == AiProvider.openAiCompatible) {
+      customUrl = _openAiCompatibleEndpoint.trim();
+    } else if (_currentProvider == AiProvider.vertexAi) {
+      customUrl = _vertexAiEndpoint.trim();
+    }
+    final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
+    final String modelName =
+        _currentProvider == AiProvider.local ? _localModelName : _selectedModel;
+
+    final List<Map<String, dynamic>> openAiExtras = [];
+    final List<Map<String, dynamic>> geminiExtras = [];
+
+    for (int round = 0; round < maxRounds; round++) {
+      if (_streamingCoordinator.isCancelled(streamSessionId)) {
+        return _WebSearchLoopResult(
+          extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
+        );
+      }
+
+      ToolDetectionResult det;
+      if (isGemini) {
+        final gemKey = geminiKey.isNotEmpty ? geminiKey : _defaultApiKey;
+        det = await ChatApiService.performGeminiFunctionDetection(
+          apiKey: gemKey,
+          model: _selectedModel,
+          history: history,
+          userMessage: sentUserText,
+          systemInstruction: sysWithHint,
+          functionDeclarations:
+              WebSearchService.buildGeminiFunctionDeclarations(),
+          extraMessages: geminiExtras.isNotEmpty ? geminiExtras : null,
+          disableSafety: _settings!.disableSafety,
+          maxRoundsLeft: 1,
+        );
+      } else {
+        det = await ChatApiService.requestOpenAiCompatibleWithToolDetection(
+          apiKey: activeKey,
+          baseUrl: streamUrl,
+          model: modelName,
+          history: history,
+          systemInstruction: sysWithHint,
+          userMessage: sentUserText,
+          tools: [WebSearchService.buildWebSearchToolSpec()],
+          extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
+          temperature:
+              _settings!.enableGenerationSettings ? _settings!.temperature : null,
+          topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
+          maxTokens:
+              _settings!.enableMaxOutputTokens ? _settings!.maxOutputTokens : null,
+          reasoningEffort:
+              _settings!.enableReasoning ? _settings!.reasoningEffort : null,
+          extraHeaders: strategy.getHeaders(activeKey),
+          maxRoundsLeft: 1,
+        );
+      }
+
+      if (det.isError) {
+        return _WebSearchLoopResult(error: det.text);
+      }
+
+      if (!det.isToolCall) {
+        // The model produced a final answer without (further) tool use.
+        final answer =
+            det.text.trim().isNotEmpty ? det.text : det.reasoning;
+        return _WebSearchLoopResult(directAnswer: answer);
+      }
+
+      // ── Tool call: extract the AI-generated query and execute it ──
+      final query = WebSearchService.extractQueryFromToolArgs(det.toolArguments);
+      if (query == null) {
+        // Malformed tool call — abandon the loop and let the final streamed
+        // answer proceed with whatever context we have (likely none).
+        return _WebSearchLoopResult(
+          extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
+        );
+      }
+
+      // Show a transient "Searching the web for …" indicator on the
+      // placeholder bubble so the user can see the AI's chosen query.
+      final indicator = '🔍 Searching the web for "$query"…';
+      contentNotifier.value = indicator;
+      if (_messages.isNotEmpty && !_messages.last.isUser) {
+        _messages.last = _messages.last.copyWith(text: indicator);
+        notifyListeners();
+      }
+
+      final resultText = await WebSearchService.executeSearch(
+        provider: _settings!.searchProvider,
+        query: query,
+        braveApiKey: braveApiKey,
+        tavilyApiKey: tavilyApiKey,
+        serperApiKey: serperApiKey,
+        searxngUrl: _settings!.searxngUrl,
+        resultCount: _settings!.searchResultCount,
+      );
+
+      // Record the assistant tool call + tool result for the next round /
+      // final answer.
+      if (isGemini) {
+        Map<String, dynamic> argsObj;
+        try {
+          argsObj = det.toolArguments.trim().isEmpty
+              ? {}
+              : jsonDecode(det.toolArguments) as Map<String, dynamic>;
+        } catch (_) {
+          argsObj = {'query': query};
+        }
+        geminiExtras.add({
+          'role': 'model',
+          'parts': [
+            {'functionCall': {'name': det.toolName, 'args': argsObj}},
+          ],
+        });
+        geminiExtras.add(
+          ChatApiService.geminiToolResultContent(
+            functionName: det.toolName,
+            resultText: resultText,
+          ),
+        );
+      } else {
+        final callId =
+            det.toolCallId.isNotEmpty ? det.toolCallId : 'call_$round';
+        openAiExtras.add({
+          'role': 'assistant',
+          'content': det.reasoning.isNotEmpty ? det.reasoning : null,
+          'tool_calls': [
+            {
+              'id': callId,
+              'type': 'function',
+              'function': {
+                'name': det.toolName,
+                'arguments': det.toolArguments,
+              },
+            },
+          ],
+        });
+        openAiExtras.add({
+          'role': 'tool',
+          'tool_call_id': callId,
+          'content': resultText,
+        });
+      }
     }
 
-    return '$byokWebContext\n\n---\n\n$sentUserText';
+    // ── Rounds exhausted: force a final answer ──
+    if (isGemini) {
+      final gemKey = geminiKey.isNotEmpty ? geminiKey : _defaultApiKey;
+      final det = await ChatApiService.performGeminiFunctionDetection(
+        apiKey: gemKey,
+        model: _selectedModel,
+        history: history,
+        userMessage: sentUserText,
+        systemInstruction: sysWithHint,
+        functionDeclarations:
+            WebSearchService.buildGeminiFunctionDeclarations(),
+        extraMessages: geminiExtras.isNotEmpty ? geminiExtras : null,
+        disableSafety: _settings!.disableSafety,
+        maxRoundsLeft: 0,
+      );
+      if (det.isError) return _WebSearchLoopResult(error: det.text);
+      final answer = det.text.trim().isNotEmpty ? det.text : det.reasoning;
+      return _WebSearchLoopResult(directAnswer: answer);
+    }
+
+    // OpenAI-compatible: stream the final answer with the accumulated tool
+    // messages appended (the streaming request does not attach `tools`, so the
+    // model is forced to answer from the gathered context).
+    return _WebSearchLoopResult(
+      extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
+    );
   }
 
   String getEditableMessageText(ChatMessage message) {
@@ -1271,22 +1436,6 @@ class ChatProvider extends ChangeNotifier {
 
     final contentNotifier = ValueNotifier<String>("");
 
-    // ── BYOK Web Search ──────────────────────────────────────────────────────
-    // Fetch search context before streaming when the user has chosen a
-    // non-provider search backend. This runs regardless of AI provider.
-    String? byokWebContext;
-    if (_settings!.enableGrounding && _settings!.searchProvider != SearchProvider.provider) {
-      try {
-        _nonStreamingLoading = true;
-        notifyListeners();
-        byokWebContext = await performByokWebSearch(messageText);
-      } catch (e) {
-        debugPrint('[WebSearch] BYOK fetch failed during sendMessage: $e');
-      } finally {
-        _nonStreamingLoading = false;
-        notifyListeners();
-      }
-    }
     _messages.add(
       ChatMessage(
         text: "",
@@ -1304,6 +1453,80 @@ class ChatProvider extends ChangeNotifier {
     _pendingRegenerationVersions = [];
 
     notifyListeners();
+
+    // ── BYOK Web Search Tool-Call Loop ───────────────────────────────────────
+    // When web search is ON with a BYOK backend (not the AI provider's native
+    // grounding), we expose a `web_search` function tool and let the model
+    // decide whether/what to search — instead of the old behaviour of
+    // pre-searching every message with the user's literal text.
+    //
+    // The loop runs up to `maxSearchRounds` non-streamed detection rounds. If
+    // the model answers without calling the tool, that text is shown directly
+    // (fast path). If the model calls the tool, we execute the search, append
+    // the tool result, and — for OpenAI-compatible providers — stream the final
+    // answer with the tool context. Gemini's final answer is non-streamed.
+    final bool byokToolMode = _settings!.webSearchToolEnabled;
+    List<Map<String, dynamic>>? toolExtraMessages;
+    String? byokDirectAnswer;
+
+    if (byokToolMode && imagesToSend.isEmpty && supportsWebSearchTool()) {
+      try {
+        _nonStreamingLoading = true;
+        notifyListeners();
+
+        final loopResult = await _runWebSearchToolLoop(
+          sentUserText: sentUserText,
+          history: _messages.sublist(0, _messages.length - 2),
+          recognizedLoreEntries: recognizedLoreEntries,
+          lorebookResult: lorebookResult,
+          depthEntries: depthEntries,
+          contentNotifier: contentNotifier,
+          streamSessionId: streamSessionId,
+        );
+
+        if (_streamingCoordinator.isCancelled(streamSessionId)) {
+          _nonStreamingLoading = false;
+          notifyListeners();
+          return;
+        }
+
+        if (loopResult.error != null) {
+          _nonStreamingLoading = false;
+          _messages.last = _messages.last.copyWith(
+            text: loopResult.error!,
+            clearContentNotifier: true,
+          );
+          notifyListeners();
+          _scheduleAutoSave();
+          return;
+        }
+
+        byokDirectAnswer = loopResult.directAnswer;
+        toolExtraMessages = loopResult.extraMessages;
+      } catch (e) {
+        debugPrint('[WebSearch] tool loop failed: $e');
+      } finally {
+        _nonStreamingLoading = false;
+        notifyListeners();
+      }
+    }
+
+    // Fast path: the model produced a final answer without streaming (either
+    // it answered directly, or — for Gemini — after gathering tool results).
+    if (byokDirectAnswer != null) {
+      final direct = byokDirectAnswer;
+      _messages.last = _messages.last.copyWith(
+        text: direct,
+        clearContentNotifier: true,
+      );
+      notifyListeners();
+      _scheduleAutoSave();
+      if (_currentProvider == AiProvider.gemini) {
+        await initializeModel();
+      }
+      if (!_settings!.enableGrounding) updateTokenCount();
+      return;
+    }
 
     Stream<String>? responseStream;
 
@@ -1330,8 +1553,9 @@ class ChatProvider extends ChangeNotifier {
         }
       }
 
-      final String finalUserMessage =
-          composeUserMessageWithWebContext(sentUserText, byokWebContext);
+      // In BYOK tool mode with gathered results, the tool context is delivered
+      // via [toolExtraMessages]; the user message itself is unmodified.
+      final String finalUserMessage = sentUserText;
 
       if (_currentProvider == AiProvider.gemini) {
         await initializeModel(systemInstructionOverride: finalSystemInstruction);
@@ -1365,6 +1589,7 @@ class ChatProvider extends ChangeNotifier {
         includeUsage: _settings!.enableUsage,
         depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
         attachmentBytes: attachmentBytes,
+        extraMessages: toolExtraMessages,
         providerSession: _currentProvider == AiProvider.gemini ? _chat : null,
       );
 
@@ -2150,4 +2375,19 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> refreshCurrentModels() => refreshModels(_currentProvider);
+}
+
+/// Outcome of a BYOK web-search tool-call loop for a single user message.
+///
+/// See [ChatProvider._runWebSearchToolLoop] for field semantics.
+class _WebSearchLoopResult {
+  final String? directAnswer;
+  final List<Map<String, dynamic>>? extraMessages;
+  final String? error;
+
+  const _WebSearchLoopResult({
+    this.directAnswer,
+    this.extraMessages,
+    this.error,
+  });
 }

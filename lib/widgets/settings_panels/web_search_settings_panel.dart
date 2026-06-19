@@ -162,6 +162,13 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
                   ),
                 ),
                 DropdownMenuItem(
+                  value: SearchProvider.searxng,
+                  child: Text(
+                    'SearXNG  (self-hosted — recommended)',
+                    style: TextStyle(fontSize: fs),
+                  ),
+                ),
+                DropdownMenuItem(
                   value: SearchProvider.brave,
                   child: Text(
                     'Brave Web Search  (BYOK)',
@@ -183,16 +190,9 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
                   ),
                 ),
                 DropdownMenuItem(
-                  value: SearchProvider.searxng,
-                  child: Text(
-                    'SearXNG  (self-hosted)',
-                    style: TextStyle(fontSize: fs),
-                  ),
-                ),
-                DropdownMenuItem(
                   value: SearchProvider.duckduckgo,
                   child: Text(
-                    'DuckDuckGo  (free, scraping)',
+                    'DuckDuckGo  (free, scraping — fallback)',
                     style: TextStyle(fontSize: fs),
                   ),
                 ),
@@ -208,16 +208,16 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
         const SizedBox(height: 4),
         Text(
           settingsProvider.searchProvider == SearchProvider.provider
-              ? "Uses the AI provider's native search (e.g. Gemini Search, OpenRouter web plugin)."
+              ? "Uses the AI provider's native search (e.g. Gemini Search, OpenRouter web plugin). The AI searches every message."
               : settingsProvider.searchProvider == SearchProvider.brave
-              ? "Results are fetched via the Brave Search API before each message."
+              ? "BYOK Brave Search API. The AI decides when to search and writes its own query."
               : settingsProvider.searchProvider == SearchProvider.tavily
-              ? "AI-optimised search with pre-summarised results. Fast and accurate."
+              ? "AI-optimised search with pre-summarised results. The AI decides when to search."
               : settingsProvider.searchProvider == SearchProvider.serper
-              ? "Google Search results via Serper.dev — high-quality organic results."
+              ? "Google Search results via Serper.dev. The AI decides when to search and writes its own query."
               : settingsProvider.searchProvider == SearchProvider.searxng
-              ? "Results are fetched from your self-hosted SearXNG instance."
-              : "DuckDuckGo HTML scraping — no API key required.",
+              ? "Recommended: self-hosted, free, private. The AI decides when to search and writes its own query."
+              : "DuckDuckGo HTML scraping — no API key required, but unreliable. Consider SearXNG instead.",
           style: TextStyle(
             fontSize: fs * 0.78,
             color: Colors.grey,
@@ -261,6 +261,33 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
           ),
           Text(
             "Number of search results injected into the AI context per message.",
+            style: TextStyle(
+              fontSize: fs * 0.78,
+              color: Colors.grey,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Max Searches Per Message  —  ${settingsProvider.maxSearchRounds}",
+            style: TextStyle(fontSize: fs - 1, color: Colors.grey),
+          ),
+          Slider(
+            value: settingsProvider.maxSearchRounds.toDouble(),
+            min: ApiConstants.minSearchRounds.toDouble(),
+            max: ApiConstants.maxSearchRounds.toDouble(),
+            divisions:
+                ApiConstants.maxSearchRounds - ApiConstants.minSearchRounds,
+            activeColor: accent,
+            label: settingsProvider.maxSearchRounds.toString(),
+            onChanged: (v) {
+              settingsProvider.setMaxSearchRounds(v.toInt());
+              chatProvider.saveSettings(showConfirmation: false);
+            },
+          ),
+          Text(
+            "How many times the AI may call web_search per user message "
+            "(refining its query if the first results aren't enough).",
             style: TextStyle(
               fontSize: fs * 0.78,
               color: Colors.grey,

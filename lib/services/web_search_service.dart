@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../utils/constants.dart';
 
 /// A result from any web search backend.
 class WebSearchResult {
@@ -416,5 +417,183 @@ class WebSearchService {
     buffer.write('[/WEB_CONTEXT]');
 
     return buffer.toString();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // AI Tool-Call Support
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// The function name exposed to the LLM.
+  static const String toolName = 'web_search';
+
+  /// Builds the OpenAI-style function tool specification that is sent to the
+  /// LLM so it can decide to call [`toolName`] with its own query.
+  ///
+  /// This spec is provider-agnostic (OpenAI-compatible); Gemini uses a
+  /// transformed version of it via [buildGeminiFunctionDeclarations].
+  static Map<String, dynamic> buildWebSearchToolSpec() {
+    return {
+      'type': 'function',
+      'function': {
+        'name': toolName,
+        'description':
+            'Search the public web for up-to-date information that is outside '
+            'your training data. Use this when the user asks about a specific '
+            'person, character, event, product, or fact you are not confident '
+            'about, or when the user explicitly requests current/web '
+            'information. Do NOT use this for creative writing, opinions, '
+            'math, or anything you already know well. Provide a concise, '
+            'search-engine-friendly query string.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'query': {
+              'type': 'string',
+              'description':
+                  'The search query. Keep it concise and keyword-focused. '
+                  'Prefer the most distinctive noun phrase (e.g. a character '
+                  'or entity name).',
+            },
+          },
+          'required': ['query'],
+        },
+      },
+    };
+  }
+
+  /// Builds the Gemini-style `functionDeclarations` tool payload equivalent to
+  /// [buildWebSearchToolSpec] (used for BYOK backends on Gemini).
+  static List<Map<String, dynamic>> buildGeminiFunctionDeclarations() {
+    return [
+      {
+        'name': toolName,
+        'description':
+            'Search the public web for up-to-date information that is outside '
+            'your training data. Use this when the user asks about a specific '
+            'person, character, event, product, or fact you are not confident '
+            'about, or when the user explicitly requests current/web '
+            'information. Do NOT use this for creative writing, opinions, '
+            'math, or anything you already know well. Provide a concise, '
+            'search-engine-friendly query string.',
+        'parameters': {
+          'type': 'OBJECT',
+          'properties': {
+            'query': {
+              'type': 'STRING',
+              'description':
+                  'The search query. Keep it concise and keyword-focused. '
+                  'Prefer the most distinctive noun phrase (e.g. a character '
+                  'or entity name).',
+            },
+          },
+          'required': ['query'],
+        },
+      },
+    ];
+  }
+
+  /// The "secret" system-prompt block appended to the system instruction when
+  /// the web_search tool is enabled. This tells the LLM the tool exists and
+  /// how/when to use it — without surfacing it to the user.
+  static String buildWebSearchSystemHint({int? maxRounds}) {
+    final rounds = maxRounds ?? ApiConstants.defaultMaxSearchRounds;
+    return '''
+
+--- Web Search Tool (system) ---
+You have access to a `web_search` tool. You MAY call it when:
+- The user asks about a specific character, person, franchise, product, or entity you are NOT confident is in your training data.
+- The user asks for current/recent events, prices, releases, or live data.
+- The user explicitly asks you to look something up or verify a fact.
+
+Rules:
+- Issue the tool call FIRST, before answering, when you need it. Do not answer from memory if you are unsure and the tool is available.
+- Provide a concise, keyword-focused query (e.g. a character or entity name). Do not include conversational filler.
+- Do NOT call the tool for creative writing, roleplay, opinions, math, or anything you already know well.
+- You may call the tool up to $rounds time(s) per user message if the first results are insufficient; otherwise answer directly from the results.
+- After receiving results, synthesize a natural answer for the user. Do not dump raw JSON. Cite sources inline as plain text when relevant.
+--- End Web Search Tool ---''';
+  }
+
+  /// Dispatches a single `web_search` tool call against the configured BYOK
+  /// backend and returns a formatted context block (or a failure notice).
+  ///
+  /// [provider] selects the backend; [apiKey]/[searxngUrl] supply credentials.
+  /// [query] is the LLM-generated search query. [resultCount] caps the number
+  /// of results returned.
+  ///
+  /// Returns the formatted context string suitable for injection as a tool
+  /// result message. On failure or empty results, returns a short notice so
+  /// the LLM can fall back to its own knowledge.
+  static Future<String> executeSearch({
+    required SearchProvider provider,
+    required String query,
+    required String braveApiKey,
+    required String tavilyApiKey,
+    required String serperApiKey,
+    required String searxngUrl,
+    int resultCount = 5,
+  }) async {
+    List<WebSearchResult> results = [];
+
+    switch (provider) {
+      case SearchProvider.brave:
+        if (braveApiKey.isEmpty) {
+          return _toolFailureNotice(query, 'Brave API key not set.');
+        }
+        results = await searchBrave(query, braveApiKey, resultCount: resultCount);
+      case SearchProvider.tavily:
+        if (tavilyApiKey.isEmpty) {
+          return _toolFailureNotice(query, 'Tavily API key not set.');
+        }
+        results = await searchTavily(query, tavilyApiKey, resultCount: resultCount);
+      case SearchProvider.serper:
+        if (serperApiKey.isEmpty) {
+          return _toolFailureNotice(query, 'Serper API key not set.');
+        }
+        results = await searchSerper(query, serperApiKey, resultCount: resultCount);
+      case SearchProvider.searxng:
+        if (searxngUrl.isEmpty) {
+          return _toolFailureNotice(query, 'SearXNG instance URL not set.');
+        }
+        results = await searchSearXNG(query, searxngUrl, resultCount: resultCount);
+      case SearchProvider.duckduckgo:
+        results = await searchDDG(query, resultCount: resultCount);
+      case SearchProvider.provider:
+        return _toolFailureNotice(query, 'No BYOK search backend configured.');
+    }
+
+    if (results.isEmpty) {
+      return _toolFailureNotice(
+        query,
+        'The search returned 0 results or was blocked by the provider.',
+      );
+    }
+    return formatResultsAsContextBlock(results, query: query);
+  }
+
+  /// Parses the JSON arguments string emitted by an OpenAI-compatible tool
+  /// call and returns the `query` field, or `null` if it cannot be parsed.
+  static String? extractQueryFromToolArgs(dynamic arguments) {
+    try {
+      if (arguments == null) return null;
+      final Map<String, dynamic> args;
+      if (arguments is String) {
+        if (arguments.trim().isEmpty) return null;
+        args = jsonDecode(arguments) as Map<String, dynamic>;
+      } else if (arguments is Map) {
+        args = Map<String, dynamic>.from(arguments);
+      } else {
+        return null;
+      }
+      final q = args['query']?.toString().trim();
+      return (q == null || q.isEmpty) ? null : q;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _toolFailureNotice(String query, String reason) {
+    return 'Web search for "$query" failed: $reason '
+        'Answer from your own knowledge if possible.';
   }
 }

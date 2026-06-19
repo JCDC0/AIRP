@@ -204,6 +204,12 @@ class ApiConstants {
   static const String secureKeySerperApiKey = 'secure_airp_key_serper_search';
   static const String prefKeySearXNGUrl = 'airp_searxng_url';
   static const String prefSearchResultCount = 'airp_search_result_count';
+  static const String prefMaxSearchRounds = 'airp_max_search_rounds';
+
+  /// Default number of web_search tool round-trips allowed per user message.
+  static const int defaultMaxSearchRounds = 2;
+  static const int minSearchRounds = 1;
+  static const int maxSearchRounds = 5;
 }
 
 /// The web search backend to use when the grounding toggle is active.

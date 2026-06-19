@@ -61,6 +61,7 @@ class GeminiStrategy extends AiProviderStrategy {
     bool includeUsage = false,
     List<Map<String, dynamic>>? depthMessages,
     Map<String, Uint8List>? attachmentBytes,
+    List<Map<String, dynamic>>? extraMessages,
     dynamic providerSession,
   }) {
     if (providerSession is! ChatSession) {
