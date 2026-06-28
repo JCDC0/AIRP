@@ -1,6 +1,6 @@
 # AIRP - Roleplay Chatbot
 
-**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models, the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), and 17 additional providers. It features a full SillyTavern-compatible roleplay engine with world lore — all built on importable character cards with V2 spec parity. Includes a BYOK web search system with 6 backends, full light/dark mode theming, deep visual customization, and persistent local history with search capabilities.
+**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models, the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), and 18 additional providers. It features a full SillyTavern-compatible roleplay engine with world lore — all built on importable character cards with V2 spec parity. Includes a BYOK web search system with 6 backends, full light/dark mode theming, deep visual customization, and persistent local history with search capabilities.
 
 ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
@@ -8,7 +8,7 @@
 
 ## Key Features
 
-* **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, OpenAI, HuggingFace, ArliAI, NanoGPT, Groq, Vertex AI, Blackbox AI, Minimax, Deepseek, Ollama, Qwen, xAI, Z.ai, Mistral, OpenAI Compatible, or Local.
+* **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, OpenAI, HuggingFace, ArliAI, NanoGPT, Groq, Vertex AI, Blackbox AI, Minimax, Deepseek, Ollama, Qwen, xAI, Z.ai, Mistral, Xiaomi MiMo, OpenAI Compatible, or Local.
 * **High-Performance Streaming**: Optimized streaming engine eliminates UI lag by updating only the active message bubble, ensuring silky-smooth performance even on lower-end devices.
 * **Background Streaming**: Send a message, switch to another conversation, and the response continues generating in the background. The conversation drawer shows a spinner on active streams and displays a notification card when the background stream completes.
 * **Dynamic Model Lists**: Fetch the latest available models directly from all API providers with pricing metadata (OpenRouter, NanoGPT).
@@ -101,6 +101,7 @@ This app follows a **BYOK (Bring Your Own Key)** architecture. API keys are stor
 * **xAI**: [xAI](https://x.ai/)
 * **Z.ai**: [Z.ai](https://z.ai/)
 * **Mistral**: [Mistral Console](https://console.mistral.ai/)
+* **Xiaomi MiMo**: [api.xiaomimimo.com](https://api.xiaomimimo.com/) — OpenAI-compatible; auth via `Authorization: Bearer $MIMO_API_KEY`
 * **OpenAI Compatible**: any self-hosted or third-party OpenAI-compatible endpoint
 * **Local**: [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/)
 
@@ -116,7 +117,7 @@ This app follows a **BYOK (Bring Your Own Key)** architecture. API keys are stor
 
 * **Local Network AI (LM Studio / Ollama)**: start your local server, make sure it is reachable on your network, then enter a URL like `http://<YOUR_PC_IP>:<PORT>/v1` in the local server field.
 * **OpenAI Compatible**: expand the API Endpoint settings panel and enter your custom base URL.
-* **Gemini, OpenRouter, OpenAI, HuggingFace, ArliAI, NanoGPT, Groq, Vertex AI, Blackbox AI, Minimax, Deepseek, Qwen, xAI, Z.ai, Mistral**: paste the provider key in the API Key field and save.
+* **Gemini, OpenRouter, OpenAI, HuggingFace, ArliAI, NanoGPT, Groq, Vertex AI, Blackbox AI, Minimax, Deepseek, Qwen, xAI, Z.ai, Mistral, Xiaomi MiMo**: paste the provider key in the API Key field and save.
 
 ---
 
@@ -168,6 +169,7 @@ Slide from the **right** edge or tap the **Settings** icon.
 4. **Tap the Selector**: This opens the new **Model Manager Dialog**.
    * **Search**: Type in the top bar to filter instantly (e.g., "flash", "llama").
    * **Bookmark**: Tap the bookmark icon on the right of any model to pin it to the top of the list forever.
+   * **Refresh**: The refresh icon at the top of the dialog re-fetches the live model list from the provider — the dialog updates in place, no need to close and reopen.
    * **Subtitles**: Every model now displays its raw API ID underneath the clean name, so you know exactly what you are selecting (crucial for OpenRouter).
 5. Select your desired model. The list automatically cleans raw IDs (e.g., `models/gemini-3-pro-preview`) into readable titles (e.g., `Gemini 3 Pro Preview`).
 6. The **Floating Save Button** will appear. Click it to confirm your selection.
@@ -300,8 +302,8 @@ Fine-tune how the AI behaves using the **Settings Drawer**. Each section can be 
   * **Context Memory Limit**: Adjusts the truncation window (e.g., last 20 messages). Lower this if you encounter "Context Window Exceeded" errors.
 
 * **Reasoning Mode**:
-  * **Toggle**: Enable "Thinking" models (if supported by the provider).
-  * **Effort**: Set the depth of thought (Low, Medium, High).
+  * **Toggle**: Enable "Thinking" models (if supported by the provider). The request format is sent per each provider's official spec — `reasoning_effort` for OpenAI/xAI/Groq/Nvidia and other OpenAI-compatible providers, `enable_thinking` for Qwen, `thinking:{type:"enabled"}` for Z.ai, and no parameter (auto-reasoning) for DeepSeek, Mistral, and Xiaomi MiMo.
+  * **Effort**: Set the depth of thought (Low, Medium, High) for providers that accept an effort level.
 
 * **Generation Settings**:
   * **Toggle**: Enable or disable manual control over Temperature, Top P, and Top K.
