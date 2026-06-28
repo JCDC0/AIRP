@@ -463,6 +463,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
       case AiProvider.openAi: return provider.openAiModelsList.length;
       case AiProvider.huggingFace: return provider.huggingFaceModelsList.length;
       case AiProvider.groq: return provider.groqModelsList.length;
+      case AiProvider.mimo: return provider.mimoModelsList.length;
       case AiProvider.local: return 1;
       default: return 0;
     }

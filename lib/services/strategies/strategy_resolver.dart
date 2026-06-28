@@ -47,11 +47,13 @@ class StrategyResolver {
       provider: AiProvider.deepseek,
       baseUrl: ApiConstants.deepseekBaseUrl,
       prefKey: ApiConstants.prefListDeepseek,
+      thinkingFormat: ThinkingFormat.none,
     ),
     AiProvider.qwen: OpenAiCompatibleStrategy(
       provider: AiProvider.qwen,
       baseUrl: ApiConstants.qwenBaseUrl,
       prefKey: ApiConstants.prefListQwen,
+      thinkingFormat: ThinkingFormat.enableThinking,
     ),
     AiProvider.xAi: OpenAiCompatibleStrategy(
       provider: AiProvider.xAi,
@@ -62,11 +64,19 @@ class StrategyResolver {
       provider: AiProvider.zAi,
       baseUrl: ApiConstants.zAiBaseUrl,
       prefKey: ApiConstants.prefListZAi,
+      thinkingFormat: ThinkingFormat.thinkingObject,
     ),
     AiProvider.mistral: OpenAiCompatibleStrategy(
       provider: AiProvider.mistral,
       baseUrl: ApiConstants.mistralBaseUrl,
       prefKey: ApiConstants.prefListMistral,
+      thinkingFormat: ThinkingFormat.none,
+    ),
+    AiProvider.mimo: OpenAiCompatibleStrategy(
+      provider: AiProvider.mimo,
+      baseUrl: ApiConstants.mimoBaseUrl,
+      prefKey: ApiConstants.prefListMimo,
+      thinkingFormat: ThinkingFormat.none,
     ),
     AiProvider.ollama: OpenAiCompatibleStrategy(
       provider: AiProvider.ollama,

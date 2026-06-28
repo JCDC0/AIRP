@@ -99,6 +99,7 @@ class ApiConstants {
   static const String xAiBaseUrl = "https://api.x.ai/v1/models";
   static const String zAiBaseUrl = "https://api.z.ai/api/paas/v4/models";
   static const String mistralBaseUrl = "https://api.mistral.ai/v1/models";
+  static const String mimoBaseUrl = "https://api.xiaomimimo.com/v1/models";
   static const String ollamaDefaultBaseUrl = "http://localhost:11434/v1";
 
   static const String prefListGemini = 'airp_list_gemini';
@@ -119,6 +120,7 @@ class ApiConstants {
   static const String prefListXAi = 'airp_list_xai';
   static const String prefListZAi = 'airp_list_zai';
   static const String prefListMistral = 'airp_list_mistral';
+  static const String prefListMimo = 'airp_list_mimo';
   static const String prefListLocal = 'airp_list_local';
 
   static const String prefKeyGemini = 'airp_key_gemini';
@@ -139,6 +141,7 @@ class ApiConstants {
   static const String prefKeyXAi = 'airp_key_xai';
   static const String prefKeyZAi = 'airp_key_zai';
   static const String prefKeyMistral = 'airp_key_mistral';
+  static const String prefKeyMimo = 'airp_key_mimo';
 
   static const String secureKeyGemini = 'secure_airp_key_gemini';
   static const String secureKeyOpenRouter = 'secure_airp_key_openrouter';
@@ -159,6 +162,7 @@ class ApiConstants {
   static const String secureKeyXAi = 'secure_airp_key_xai';
   static const String secureKeyZAi = 'secure_airp_key_zai';
   static const String secureKeyMistral = 'secure_airp_key_mistral';
+  static const String secureKeyMimo = 'secure_airp_key_mimo';
 
   static const String prefModelGemini = 'airp_model_gemini';
   static const String prefModelOpenRouter = 'airp_model_openrouter';
@@ -179,6 +183,7 @@ class ApiConstants {
   static const String prefModelXAi = 'airp_model_xai';
   static const String prefModelZAi = 'airp_model_zai';
   static const String prefModelMistral = 'airp_model_mistral';
+  static const String prefModelMimo = 'airp_model_mimo';
 
   static const String prefLocalIp = 'airp_local_ip';
   static const String prefLocalModelName = 'airp_local_model_name';

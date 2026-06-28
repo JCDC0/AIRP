@@ -6,6 +6,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/chat_models.dart';
 import 'file_io_helper.dart';
 import 'reasoning_utils.dart';
+import 'strategies/ai_provider_strategy.dart';
 
 /// A service class that handles communication with various AI provider APIs.
 ///
@@ -153,6 +154,7 @@ class ChatApiService {
     int? maxTokens,
     bool enableGrounding = false,
     String? reasoningEffort,
+    ThinkingFormat thinkingFormat = ThinkingFormat.reasoningEffort,
     Map<String, String>? extraHeaders,
     bool includeUsage = false,
     List<Map<String, dynamic>>? depthMessages,
@@ -284,12 +286,31 @@ class ChatApiService {
     if (maxTokens != null) bodyMap["max_tokens"] = maxTokens;
     if (includeUsage) bodyMap["stream_options"] = {"include_usage": true};
 
+    // OpenRouter exposes the model's internal reasoning trace when requested.
     if (baseUrl.contains("openrouter.ai")) {
       bodyMap["include_reasoning"] = true;
     }
 
-    if (reasoningEffort != null && reasoningEffort != "none") {
-      bodyMap["reasoning_effort"] = reasoningEffort;
+    // Apply the provider-correct reasoning request field per official docs.
+    final bool reasoningEnabled =
+        reasoningEffort != null && reasoningEffort != "none";
+    switch (thinkingFormat) {
+      case ThinkingFormat.none:
+        // Provider's reasoning models reason automatically; no request field.
+        break;
+      case ThinkingFormat.reasoningEffort:
+        if (reasoningEnabled) {
+          bodyMap["reasoning_effort"] = reasoningEffort;
+        }
+        break;
+      case ThinkingFormat.enableThinking:
+        bodyMap["enable_thinking"] = reasoningEnabled;
+        break;
+      case ThinkingFormat.thinkingObject:
+        bodyMap["thinking"] = {
+          "type": reasoningEnabled ? "enabled" : "disabled",
+        };
+        break;
     }
 
     if (enableGrounding) {
@@ -553,6 +574,7 @@ class ChatApiService {
     double? topP,
     int? maxTokens,
     String? reasoningEffort,
+    ThinkingFormat thinkingFormat = ThinkingFormat.reasoningEffort,
     Map<String, String>? extraHeaders,
     int maxRoundsLeft = 1,
     http.Client? client,
@@ -594,8 +616,24 @@ class ChatApiService {
     if (temperature != null) bodyMap['temperature'] = temperature;
     if (topP != null) bodyMap['top_p'] = topP;
     if (maxTokens != null) bodyMap['max_tokens'] = maxTokens;
-    if (reasoningEffort != null && reasoningEffort != 'none') {
-      bodyMap['reasoning_effort'] = reasoningEffort;
+    final bool reasoningEnabled =
+        reasoningEffort != null && reasoningEffort != 'none';
+    switch (thinkingFormat) {
+      case ThinkingFormat.none:
+        break;
+      case ThinkingFormat.reasoningEffort:
+        if (reasoningEnabled) {
+          bodyMap['reasoning_effort'] = reasoningEffort;
+        }
+        break;
+      case ThinkingFormat.enableThinking:
+        bodyMap['enable_thinking'] = reasoningEnabled;
+        break;
+      case ThinkingFormat.thinkingObject:
+        bodyMap['thinking'] = {
+          'type': reasoningEnabled ? 'enabled' : 'disabled',
+        };
+        break;
     }
 
     final request = http.Request('POST', Uri.parse(baseUrl));

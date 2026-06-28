@@ -241,5 +241,7 @@ String _providerDisplayNameForTest(AiProvider provider) {
       return 'Z.ai';
     case AiProvider.mistral:
       return 'Mistral';
+    case AiProvider.mimo:
+      return 'Xiaomi MiMo';
   }
 }

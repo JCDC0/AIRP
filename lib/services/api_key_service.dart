@@ -171,6 +171,7 @@ class ApiKeyService {
       case AiProvider.xAi: return ApiConstants.secureKeyXAi;
       case AiProvider.zAi: return ApiConstants.secureKeyZAi;
       case AiProvider.mistral: return ApiConstants.secureKeyMistral;
+      case AiProvider.mimo: return ApiConstants.secureKeyMimo;
       default: return null;
     }
   }
@@ -195,6 +196,7 @@ class ApiKeyService {
       case AiProvider.xAi: return ApiConstants.prefKeyXAi;
       case AiProvider.zAi: return ApiConstants.prefKeyZAi;
       case AiProvider.mistral: return ApiConstants.prefKeyMistral;
+      case AiProvider.mimo: return ApiConstants.prefKeyMimo;
       default: return null;
     }
   }

@@ -3,6 +3,27 @@ import '../../models/chat_models.dart';
 import '../../utils/constants.dart';
 import '../chat_api_service.dart';
 
+/// The reasoning/thinking request format a provider expects in the
+/// OpenAI-compatible request body. Each provider's official docs specify a
+/// different key for enabling reasoning; this enum tells [ChatApiService]
+/// which one to emit (and which to omit).
+enum ThinkingFormat {
+  /// Send no reasoning parameter. Used by providers whose reasoning models
+  /// reason automatically (e.g. DeepSeek `deepseek-reasoner`, Mistral
+  /// Magistral, Xiaomi MiMo-7B-RL).
+  none,
+
+  /// Emit `reasoning_effort: "<effort>"`. The OpenAI-native format used by
+  /// OpenAI o-series, xAI Grok, Groq, Nvidia, Minimax, Blackbox, etc.
+  reasoningEffort,
+
+  /// Emit `enable_thinking: true|false`. The Qwen/DashScope format.
+  enableThinking,
+
+  /// Emit `thinking: {type: "enabled"|"disabled"}`. The Z.AI/Zhipu GLM format.
+  thinkingObject,
+}
+
 /// Base strategy for AI provider-specific logic (URL generation, headers, parsing, and streaming).
 abstract class AiProviderStrategy {
   AiProvider get provider;
@@ -12,6 +33,11 @@ abstract class AiProviderStrategy {
 
   /// The SharedPreferences key for caching this provider's models.
   String get prefKey;
+
+  /// The reasoning request format this provider expects. Defaults to the
+  /// OpenAI-native [ThinkingFormat.reasoningEffort]; providers whose docs
+  /// specify a different format override this.
+  ThinkingFormat get thinkingFormat => ThinkingFormat.reasoningEffort;
 
   /// Returns the streaming endpoint URL.
   String getStreamUrl({String? customUrl}) => customUrl ?? baseUrl;
@@ -69,6 +95,7 @@ abstract class AiProviderStrategy {
       maxTokens: maxTokens,
       enableGrounding: enableGrounding,
       reasoningEffort: reasoningEffort,
+      thinkingFormat: thinkingFormat,
       extraHeaders: extraHeaders,
       includeUsage: includeUsage,
       depthMessages: depthMessages,
@@ -86,11 +113,14 @@ class OpenAiCompatibleStrategy extends AiProviderStrategy {
   final String baseUrl;
   @override
   final String prefKey;
+  @override
+  final ThinkingFormat thinkingFormat;
 
   OpenAiCompatibleStrategy({
     required this.provider,
     required this.baseUrl,
     required this.prefKey,
+    this.thinkingFormat = ThinkingFormat.reasoningEffort,
   });
 
   @override

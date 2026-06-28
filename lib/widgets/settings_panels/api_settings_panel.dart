@@ -72,6 +72,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
       case AiProvider.xAi: return provider.xAiKey;
       case AiProvider.zAi: return provider.zAiKey;
       case AiProvider.mistral: return provider.mistralKey;
+      case AiProvider.mimo: return provider.mimoKey;
       case AiProvider.local: return "";
     }
   }

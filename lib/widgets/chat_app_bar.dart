@@ -83,6 +83,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         return 'Z.ai';
       case AiProvider.mistral:
         return 'Mistral';
+      case AiProvider.mimo:
+        return 'Xiaomi MiMo';
     }
   }
 
@@ -510,6 +512,13 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           chatProvider.mistralModelsList,
           chatProvider.mistralModel,
           'Select Mistral Model',
+        );
+      case AiProvider.mimo:
+        return _standardModelSelector(
+          chatProvider,
+          chatProvider.mimoModelsList,
+          chatProvider.mimoModel,
+          'Select Xiaomi MiMo Model',
         );
       case AiProvider.local:
         return Container(

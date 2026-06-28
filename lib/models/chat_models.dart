@@ -22,6 +22,7 @@ enum AiProvider {
   xAi,
   zAi,
   mistral,
+  mimo,
 }
 
 /// Data structure representing a saved chat session.

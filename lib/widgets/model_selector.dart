@@ -119,7 +119,13 @@ class ModelSelector extends StatelessWidget {
             final chatProvider = Provider.of<ChatProvider>(context);
             final bookmarkedModels = chatProvider.bookmarkedModels;
 
-            final filteredModels = modelsList.where((m) {
+            // Re-bind the list from ChatProvider on every builder invocation
+            // instead of closing over the widget snapshot, so the dialog
+            // reflects freshly fetched models immediately after a refresh
+            // without needing close/reopen.
+            final liveModels = chatProvider.currentModelsList;
+
+            final filteredModels = liveModels.where((m) {
               final name = m.name.toLowerCase();
               final id = m.id.toLowerCase();
               final query = searchQuery.toLowerCase();

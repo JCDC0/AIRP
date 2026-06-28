@@ -98,6 +98,8 @@ class ChatProvider extends ChangeNotifier {
   List<ModelInfo> get zAiModelsList => _modelRegistry.getModels(AiProvider.zAi);
   List<ModelInfo> get mistralModelsList =>
       _modelRegistry.getModels(AiProvider.mistral);
+  List<ModelInfo> get mimoModelsList =>
+      _modelRegistry.getModels(AiProvider.mimo);
 
   bool get isLoadingGeminiModels => _modelRegistry.isLoading(AiProvider.gemini);
   bool get isLoadingOpenRouterModels =>
@@ -119,6 +121,12 @@ class ChatProvider extends ChangeNotifier {
   AiProvider _currentProvider = AiProvider.gemini;
 
   AiProvider get currentProvider => _currentProvider;
+
+  /// The live list of models for the currently active provider. Reads the
+  /// registry directly so callers always observe the most recent fetch —
+  /// used by the model picker dialog to update in place after a refresh.
+  List<ModelInfo> get currentModelsList =>
+      _modelRegistry.getModels(_currentProvider);
   String get geminiKey => _apiKeys.getProviderKey(AiProvider.gemini);
   String get openRouterKey => _apiKeys.getProviderKey(AiProvider.openRouter);
   String get openAiKey => _apiKeys.getProviderKey(AiProvider.openAi);
@@ -138,6 +146,7 @@ class ChatProvider extends ChangeNotifier {
   String get xAiKey => _apiKeys.getProviderKey(AiProvider.xAi);
   String get zAiKey => _apiKeys.getProviderKey(AiProvider.zAi);
   String get mistralKey => _apiKeys.getProviderKey(AiProvider.mistral);
+  String get mimoKey => _apiKeys.getProviderKey(AiProvider.mimo);
 
   String _localIp = ChatDefaults.localIp;
   String _localModelName = 'local-model';
@@ -174,6 +183,7 @@ class ChatProvider extends ChangeNotifier {
   String _xAiModel = '';
   String _zAiModel = '';
   String _mistralModel = '';
+  String _mimoModel = '';
   String _selectedModel = 'models/gemini-3-flash-preview';
 
   String get selectedGeminiModel => _selectedGeminiModel;
@@ -194,6 +204,7 @@ class ChatProvider extends ChangeNotifier {
   String get xAiModel => _xAiModel;
   String get zAiModel => _zAiModel;
   String get mistralModel => _mistralModel;
+  String get mimoModel => _mimoModel;
   String get selectedModel => _selectedModel;
 
   /// Returns the maximum context length for the currently selected model.
@@ -426,6 +437,8 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.zAi;
     } else if (providerString == 'mistral') {
       _currentProvider = AiProvider.mistral;
+    } else if (providerString == 'mimo') {
+      _currentProvider = AiProvider.mimo;
     } else {
       _currentProvider = AiProvider.gemini;
     }
@@ -640,6 +653,8 @@ class ChatProvider extends ChangeNotifier {
         return _zAiModel;
       case AiProvider.mistral:
         return _mistralModel;
+      case AiProvider.mimo:
+        return _mimoModel;
       case AiProvider.local:
         return "Local Network AI";
     }
@@ -700,6 +715,9 @@ class ChatProvider extends ChangeNotifier {
         break;
       case AiProvider.mistral:
         _mistralModel = model;
+        break;
+      case AiProvider.mimo:
+        _mimoModel = model;
         break;
       case AiProvider.local:
         break;
@@ -971,11 +989,12 @@ class ChatProvider extends ChangeNotifier {
           topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
           maxTokens:
               _settings!.enableMaxOutputTokens ? _settings!.maxOutputTokens : null,
-          reasoningEffort:
-              _settings!.enableReasoning ? _settings!.reasoningEffort : null,
-          extraHeaders: strategy.getHeaders(activeKey),
-          maxRoundsLeft: 1,
-        );
+reasoningEffort:
+                _settings!.enableReasoning ? _settings!.reasoningEffort : null,
+            thinkingFormat: strategy.thinkingFormat,
+            extraHeaders: strategy.getHeaders(activeKey),
+            maxRoundsLeft: 1,
+          );
       }
 
       if (det.isError) {
@@ -2023,6 +2042,10 @@ class ChatProvider extends ChangeNotifier {
       _currentProvider = AiProvider.mistral;
       _selectedModel = session.modelName;
       _mistralModel = session.modelName;
+    } else if (session.provider == 'mimo') {
+      _currentProvider = AiProvider.mimo;
+      _selectedModel = session.modelName;
+      _mimoModel = session.modelName;
     } else {
       _currentProvider = AiProvider.gemini;
       _selectedGeminiModel = session.modelName;
