@@ -5,6 +5,9 @@ import '../../providers/vfx_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
+import '../../services/strategies/ai_provider_strategy.dart';
+import '../../services/strategies/strategy_resolver.dart';
+import '../../models/chat_models.dart';
 import 'settings_slider.dart';
 
 /// A panel for configuring AI model generation parameters.
@@ -57,6 +60,39 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
     if (ts == null) return 'No backup metadata available.';
     final dt = DateTime.fromMillisecondsSinceEpoch(ts);
     return 'Latest backup: ${dt.toLocal()}';
+  }
+
+  AiProviderStrategy _strategyFor(AiProvider provider) {
+    return StrategyResolver.resolve(provider);
+  }
+
+  /// Returns the stored reasoning effort if the current provider supports it;
+  /// otherwise falls back to the closest supported value.
+  String _effectiveReasoningEffort(String stored, AiProvider provider) {
+    final strategy = _strategyFor(provider);
+    final supported =
+        strategy.reasoningEffortOptions.map((o) => o.apiValue).toSet();
+    if (supported.contains(stored)) return stored;
+    if (stored == 'xhigh' && supported.contains('high')) return 'high';
+    return 'none';
+  }
+
+  List<DropdownMenuItem<String>> _buildReasoningEffortItems(
+    AiProvider provider,
+    double fontSize,
+  ) {
+    final strategy = _strategyFor(provider);
+    return strategy.reasoningEffortOptions
+        .map(
+          (option) => DropdownMenuItem(
+            value: option.apiValue,
+            child: Text(
+              option.label,
+              style: TextStyle(fontSize: fontSize),
+            ),
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -221,50 +257,19 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
-                      value: settingsProvider.reasoningEffort,
+                      value: _effectiveReasoningEffort(
+                        settingsProvider.reasoningEffort,
+                        chatProvider.currentProvider,
+                      ),
                       dropdownColor: themeProvider.dropdownColor,
                       icon: Icon(
                         Icons.psychology,
                         color: themeProvider.textColor,
                       ),
-                      items: [
-                        DropdownMenuItem(
-                          value: "none",
-                          child: Text(
-                            "Disabled (None)",
-                            style: TextStyle(
-                              fontSize: scaleProvider.systemFontSize,
-                            ),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: "low",
-                          child: Text(
-                            "Low / Minimal",
-                            style: TextStyle(
-                              fontSize: scaleProvider.systemFontSize,
-                            ),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: "medium",
-                          child: Text(
-                            "Medium",
-                            style: TextStyle(
-                              fontSize: scaleProvider.systemFontSize,
-                            ),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: "high",
-                          child: Text(
-                            "High / Deep Think",
-                            style: TextStyle(
-                              fontSize: scaleProvider.systemFontSize,
-                            ),
-                          ),
-                        ),
-                      ],
+                      items: _buildReasoningEffortItems(
+                        chatProvider.currentProvider,
+                        scaleProvider.systemFontSize,
+                      ),
                       onChanged: (val) {
                         if (val != null) {
                           settingsProvider.setReasoningEffort(val);

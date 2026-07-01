@@ -24,6 +24,24 @@ enum ThinkingFormat {
   thinkingObject,
 }
 
+/// A UI-facing label and its corresponding API value for a reasoning effort
+/// setting.
+class ReasoningEffortOption {
+  final String label;
+  final String apiValue;
+
+  const ReasoningEffortOption(this.label, this.apiValue);
+}
+
+/// Default reasoning effort options shown when a provider does not override
+/// [AiProviderStrategy.reasoningEffortOptions].
+const List<ReasoningEffortOption> kDefaultReasoningEfforts = [
+  ReasoningEffortOption('Disabled (None)', 'none'),
+  ReasoningEffortOption('Low / Minimal', 'low'),
+  ReasoningEffortOption('Medium', 'medium'),
+  ReasoningEffortOption('High / Deep Think', 'high'),
+];
+
 /// Base strategy for AI provider-specific logic (URL generation, headers, parsing, and streaming).
 abstract class AiProviderStrategy {
   AiProvider get provider;
@@ -38,6 +56,48 @@ abstract class AiProviderStrategy {
   /// OpenAI-native [ThinkingFormat.reasoningEffort]; providers whose docs
   /// specify a different format override this.
   ThinkingFormat get thinkingFormat => ThinkingFormat.reasoningEffort;
+
+  /// Whether the provider supports a "Max" reasoning effort (e.g. `xhigh`).
+  bool get supportsMaxReasoningEffort => false;
+
+  /// The reasoning effort options shown in the UI for this provider.
+  ///
+  /// Providers that support a maximum effort level should override
+  /// [supportsMaxReasoningEffort] or this getter directly.
+  List<ReasoningEffortOption> get reasoningEffortOptions {
+    final options = List<ReasoningEffortOption>.from(kDefaultReasoningEfforts);
+    if (supportsMaxReasoningEffort) {
+      options.add(const ReasoningEffortOption('Max', 'xhigh'));
+    }
+    return options;
+  }
+
+  /// Applies this provider's reasoning request field to [bodyMap].
+  ///
+  /// [effort] is the stored API value (`none`, `low`, `medium`, `high`, or
+  /// `xhigh`). The base implementation respects [thinkingFormat]; providers
+  /// with special needs (e.g. OpenRouter's dual format) may override this.
+  void applyReasoningEffort(Map<String, dynamic> bodyMap, String effort) {
+    final enabled = effort != 'none';
+    switch (thinkingFormat) {
+      case ThinkingFormat.none:
+        // Provider's reasoning models reason automatically; no request field.
+        break;
+      case ThinkingFormat.reasoningEffort:
+        if (enabled) {
+          bodyMap['reasoning_effort'] = effort;
+        }
+        break;
+      case ThinkingFormat.enableThinking:
+        bodyMap['enable_thinking'] = enabled;
+        break;
+      case ThinkingFormat.thinkingObject:
+        bodyMap['thinking'] = {
+          'type': enabled ? 'enabled' : 'disabled',
+        };
+        break;
+    }
+  }
 
   /// Returns the streaming endpoint URL.
   String getStreamUrl({String? customUrl}) => customUrl ?? baseUrl;
@@ -80,6 +140,7 @@ abstract class AiProviderStrategy {
     Map<String, Uint8List>? attachmentBytes,
     List<Map<String, dynamic>>? extraMessages,
     dynamic providerSession,
+    bool disableSafety = true,
   }) {
     return ChatApiService.streamOpenAiCompatible(
       apiKey: apiKey,
@@ -95,7 +156,7 @@ abstract class AiProviderStrategy {
       maxTokens: maxTokens,
       enableGrounding: enableGrounding,
       reasoningEffort: reasoningEffort,
-      thinkingFormat: thinkingFormat,
+      applyReasoningEffort: applyReasoningEffort,
       extraHeaders: extraHeaders,
       includeUsage: includeUsage,
       depthMessages: depthMessages,

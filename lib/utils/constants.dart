@@ -201,6 +201,7 @@ class ApiConstants {
 
   // Web Search (BYOK)
   static const String prefKeySearchProvider = 'airp_search_provider';
+  static const String prefKeyWebSearchMode = 'airp_web_search_mode';
   static const String prefKeyBraveApiKey = 'airp_key_brave_search';
   static const String secureKeyBraveApiKey = 'secure_airp_key_brave_search';
   static const String prefKeyTavilyApiKey = 'airp_key_tavily_search';
@@ -227,6 +228,16 @@ class ApiConstants {
 /// - [searxng]   : Self-hosted SearXNG instance.
 /// - [duckduckgo]: DuckDuckGo HTML scraping — free but may be unreliable.
 enum SearchProvider { provider, brave, tavily, serper, searxng, duckduckgo }
+
+/// How aggressively the AI-driven web_search tool should be invoked.
+///
+/// - [smart]: RP-aware mode. The model only searches real-world entities,
+///   franchises, or facts it is unsure about; it skips in-character dialogue,
+///   narrative actions, and pure roleplay.
+/// - [eager]: The model may search for any request that could benefit from
+///   up-to-date or external information.
+enum WebSearchMode { smart, eager }
+
 
 /// Path to the default background asset.
 const String kDefaultBackground =

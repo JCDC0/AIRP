@@ -49,6 +49,7 @@ class HuggingFaceStrategy extends AiProviderStrategy {
     Map<String, Uint8List>? attachmentBytes,
     List<Map<String, dynamic>>? extraMessages,
     dynamic providerSession,
+    bool disableSafety = true,
   }) {
     return ChatApiService.streamOpenAiCompatible(
       apiKey: apiKey,
@@ -64,6 +65,7 @@ class HuggingFaceStrategy extends AiProviderStrategy {
       maxTokens: maxTokens,
       enableGrounding: enableGrounding,
       reasoningEffort: reasoningEffort,
+      applyReasoningEffort: applyReasoningEffort,
       extraHeaders: extraHeaders,
       includeUsage: includeUsage,
       depthMessages: depthMessages,

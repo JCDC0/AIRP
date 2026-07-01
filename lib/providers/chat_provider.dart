@@ -921,6 +921,7 @@ class ChatProvider extends ChangeNotifier {
     final int maxRounds = _settings!.maxSearchRounds;
     final String hint = WebSearchService.buildWebSearchSystemHint(
       maxRounds: maxRounds,
+      mode: _settings!.webSearchMode,
     );
 
     String baseSys = _buildSystemInstruction(
@@ -951,11 +952,13 @@ class ChatProvider extends ChangeNotifier {
 
     final List<Map<String, dynamic>> openAiExtras = [];
     final List<Map<String, dynamic>> geminiExtras = [];
+    final List<String> searchedQueries = [];
 
     for (int round = 0; round < maxRounds; round++) {
       if (_streamingCoordinator.isCancelled(streamSessionId)) {
         return _WebSearchLoopResult(
           extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
+          searchedQueries: searchedQueries,
         );
       }
 
@@ -989,23 +992,29 @@ class ChatProvider extends ChangeNotifier {
           topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
           maxTokens:
               _settings!.enableMaxOutputTokens ? _settings!.maxOutputTokens : null,
-reasoningEffort:
+          reasoningEffort:
                 _settings!.enableReasoning ? _settings!.reasoningEffort : null,
-            thinkingFormat: strategy.thinkingFormat,
-            extraHeaders: strategy.getHeaders(activeKey),
-            maxRoundsLeft: 1,
+          applyReasoningEffort: strategy.applyReasoningEffort,
+          extraHeaders: strategy.getHeaders(activeKey),
+          maxRoundsLeft: 1,
           );
       }
 
       if (det.isError) {
-        return _WebSearchLoopResult(error: det.text);
+        return _WebSearchLoopResult(
+          error: det.text,
+          searchedQueries: searchedQueries,
+        );
       }
 
       if (!det.isToolCall) {
         // The model produced a final answer without (further) tool use.
         final answer =
             det.text.trim().isNotEmpty ? det.text : det.reasoning;
-        return _WebSearchLoopResult(directAnswer: answer);
+        return _WebSearchLoopResult(
+          directAnswer: answer,
+          searchedQueries: searchedQueries,
+        );
       }
 
       // ── Tool call: extract the AI-generated query and execute it ──
@@ -1015,8 +1024,10 @@ reasoningEffort:
         // answer proceed with whatever context we have (likely none).
         return _WebSearchLoopResult(
           extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
+          searchedQueries: searchedQueries,
         );
       }
+      searchedQueries.add(query);
 
       // Show a transient "Searching the web for …" indicator on the
       // placeholder bubble so the user can see the AI's chosen query.
@@ -1100,9 +1111,17 @@ reasoningEffort:
         disableSafety: _settings!.disableSafety,
         maxRoundsLeft: 0,
       );
-      if (det.isError) return _WebSearchLoopResult(error: det.text);
+      if (det.isError) {
+        return _WebSearchLoopResult(
+          error: det.text,
+          searchedQueries: searchedQueries,
+        );
+      }
       final answer = det.text.trim().isNotEmpty ? det.text : det.reasoning;
-      return _WebSearchLoopResult(directAnswer: answer);
+      return _WebSearchLoopResult(
+        directAnswer: answer,
+        searchedQueries: searchedQueries,
+      );
     }
 
     // OpenAI-compatible: stream the final answer with the accumulated tool
@@ -1110,7 +1129,23 @@ reasoningEffort:
     // model is forced to answer from the gathered context).
     return _WebSearchLoopResult(
       extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
+      searchedQueries: searchedQueries,
     );
+  }
+
+  /// Builds a compact inline indicator showing which web-search queries were
+  /// executed. Used for both the direct-answer and streaming paths.
+  String _buildSearchIndicator(List<String> queries) {
+    if (queries.isEmpty) return '';
+    final formatted = queries.map((q) => '"$q"').join(', ');
+    return '🔍 Searched the web for $formatted\n\n';
+  }
+
+  /// Prepends the search indicator to [text] when queries exist.
+  String _prefixSearchIndicator(String text, List<String> queries) {
+    final indicator = _buildSearchIndicator(queries);
+    if (indicator.isEmpty) return text;
+    return '$indicator$text';
   }
 
   String getEditableMessageText(ChatMessage message) {
@@ -1261,15 +1296,13 @@ reasoningEffort:
           systemInstructionOverride ?? _buildSystemInstruction();
       String finalSystemInstruction = baseSystemInstruction;
 
-      if (_currentProvider == AiProvider.gemini &&
-          _settings!.enableReasoning &&
-          (_settings!.reasoningEffort != "none" || _selectedModel.contains("thinking"))) {
+      if (_currentProvider == AiProvider.gemini && _settings!.enableReasoning) {
         finalSystemInstruction +=
-            "\n\n[SYSTEM: You are a reasoning model. You MUST enclose your internal thought process in <think> and </think> tags before your final response.";
+            "\n\n[SYSTEM: You are a reasoning model. Enclose your entire internal thought process in <think> and </think> tags. Place your final response only after the closing </think> tag.]";
         if (_settings!.reasoningEffort != "none") {
-          finalSystemInstruction += " Reasoning Effort: $_settings!.reasoningEffort.";
+          finalSystemInstruction +=
+              " Reasoning Effort: ${_settings!.reasoningEffort}.";
         }
-        finalSystemInstruction += "]";
       }
 
       _model = GenerativeModel(
@@ -1487,13 +1520,14 @@ reasoningEffort:
     final bool byokToolMode = _settings!.webSearchToolEnabled;
     List<Map<String, dynamic>>? toolExtraMessages;
     String? byokDirectAnswer;
+    _WebSearchLoopResult? loopResult;
 
     if (byokToolMode && imagesToSend.isEmpty && supportsWebSearchTool()) {
       try {
         _nonStreamingLoading = true;
         notifyListeners();
 
-        final loopResult = await _runWebSearchToolLoop(
+        loopResult = await _runWebSearchToolLoop(
           sentUserText: sentUserText,
           history: _messages.sublist(0, _messages.length - 2),
           recognizedLoreEntries: recognizedLoreEntries,
@@ -1533,7 +1567,10 @@ reasoningEffort:
     // Fast path: the model produced a final answer without streaming (either
     // it answered directly, or — for Gemini — after gathering tool results).
     if (byokDirectAnswer != null) {
-      final direct = byokDirectAnswer;
+      final direct = _prefixSearchIndicator(
+        byokDirectAnswer,
+        loopResult?.searchedQueries ?? const [],
+      );
       _messages.last = _messages.last.copyWith(
         text: direct,
         clearContentNotifier: true,
@@ -1610,7 +1647,20 @@ reasoningEffort:
         attachmentBytes: attachmentBytes,
         extraMessages: toolExtraMessages,
         providerSession: _currentProvider == AiProvider.gemini ? _chat : null,
+        disableSafety: _settings!.disableSafety,
       );
+
+      final queries = loopResult?.searchedQueries ?? const [];
+      if (queries.isNotEmpty) {
+        final indicator = _buildSearchIndicator(queries);
+        final originalStream = responseStream;
+        responseStream = (() async* {
+          yield indicator;
+          await for (final chunk in originalStream) {
+            yield chunk;
+          }
+        })();
+      }
 
       _streamingCoordinator.registerStream(
         sessionId: streamSessionId,
@@ -2406,11 +2456,13 @@ reasoningEffort:
 class _WebSearchLoopResult {
   final String? directAnswer;
   final List<Map<String, dynamic>>? extraMessages;
+  final List<String> searchedQueries;
   final String? error;
 
   const _WebSearchLoopResult({
     this.directAnswer,
     this.extraMessages,
+    this.searchedQueries = const [],
     this.error,
   });
 }

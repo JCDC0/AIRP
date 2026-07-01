@@ -226,6 +226,80 @@ class _WebSearchSettingsPanelState extends State<WebSearchSettingsPanel> {
         ),
         const Divider(height: 24),
 
+        // ── Search mode dropdown ─────────────────────────────────────────
+        if (settingsProvider.searchProvider != SearchProvider.provider) ...[
+          Text(
+            "Search Mode",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: accent,
+              fontSize: fs,
+              shadows: bloomShadow,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: vfxProvider.enableBloom
+                    ? accent.withValues(alpha: 0.5)
+                    : themeProvider.borderColor,
+              ),
+              boxShadow: vfxProvider.enableBloom
+                  ? [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                      ),
+                    ]
+                  : [],
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<WebSearchMode>(
+                value: settingsProvider.webSearchMode,
+                isExpanded: true,
+                dropdownColor: themeProvider.dropdownColor,
+                icon: Icon(Icons.psychology_alt, color: accent),
+                items: [
+                  DropdownMenuItem(
+                    value: WebSearchMode.smart,
+                    child: Text(
+                      'Smart (RP-aware) — search real-world entities only',
+                      style: TextStyle(fontSize: fs),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: WebSearchMode.eager,
+                    child: Text(
+                      'Eager — search whenever useful',
+                      style: TextStyle(fontSize: fs),
+                    ),
+                  ),
+                ],
+                onChanged: (val) {
+                  if (val == null) return;
+                  settingsProvider.setWebSearchMode(val);
+                  chatProvider.saveSettings(showConfirmation: false);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            settingsProvider.webSearchMode == WebSearchMode.smart
+                ? "The AI will only search for real-world entities, franchises, or facts. It skips in-character dialogue and narrative actions."
+                : "The AI may search for any request that could benefit from current or external information.",
+            style: TextStyle(
+              fontSize: fs * 0.78,
+              color: Colors.grey,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const Divider(height: 24),
+        ],
+
         // ── Provider-specific configuration ─────────────────────────────
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),

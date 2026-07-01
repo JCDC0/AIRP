@@ -219,6 +219,15 @@ AIRP includes a provider-agnostic web search system that works across all AI bac
 
 Search results are formatted as a `[WEB_CONTEXT]` block and prepended to your message before sending to the AI. This ensures per-message freshness and works uniformly across all backends. A **Max Results** slider (1-10) controls how many results are injected per query.
 
+### Search Mode
+
+When a BYOK backend is active, the AI-driven `web_search` tool can run in two modes:
+
+* **Smart (RP-aware)** — default. The model only searches for real-world entities, franchises, products, events, or facts it is unsure about. It skips in-character dialogue, narrative actions (`*walks in*`), and pure roleplay scenes.
+* **Eager** — the model may search whenever a request could benefit from current or external information.
+
+The exact query the model used is shown inline in the assistant bubble (e.g. 🔍 *Searched the web for "Radobaan Monster Hunter"*), so you always know when a search happened and why.
+
 ---
 
 ## Text Designer

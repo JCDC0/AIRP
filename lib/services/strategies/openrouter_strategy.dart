@@ -17,6 +17,20 @@ class OpenRouterStrategy extends AiProviderStrategy {
       "https://openrouter.ai/api/v1/chat/completions";
 
   @override
+  bool get supportsMaxReasoningEffort => true;
+
+  @override
+  void applyReasoningEffort(Map<String, dynamic> bodyMap, String effort) {
+    // OpenRouter accepts both the OpenAI-compatible `reasoning_effort` key and
+    // its newer unified `reasoning` object. Emit both for `xhigh` so gateways
+    // that only understand one of the two can still honor the request.
+    bodyMap['reasoning_effort'] = effort;
+    if (effort == 'xhigh') {
+      bodyMap['reasoning'] = {'effort': effort};
+    }
+  }
+
+  @override
   Map<String, String> getHeaders(String apiKey) {
     return {
       "Authorization": "Bearer $apiKey",

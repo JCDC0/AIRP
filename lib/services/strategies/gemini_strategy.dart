@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../models/chat_models.dart';
 import '../../utils/constants.dart';
 import '../chat_api_service.dart';
@@ -63,16 +62,24 @@ class GeminiStrategy extends AiProviderStrategy {
     Map<String, Uint8List>? attachmentBytes,
     List<Map<String, dynamic>>? extraMessages,
     dynamic providerSession,
+    bool disableSafety = true,
   }) {
-    if (providerSession is! ChatSession) {
-      throw Exception('GeminiStrategy requires a ChatSession');
-    }
     return ChatApiService.streamGeminiResponse(
-      chatSession: providerSession,
-      message: userMessage,
-      imagePaths: imagePaths,
+      apiKey: apiKey,
       modelName: model,
+      history: history,
+      userMessage: userMessage,
+      systemInstruction: systemInstruction,
+      imagePaths: imagePaths,
       attachmentBytes: attachmentBytes,
+      temperature: temperature,
+      topP: topP,
+      topK: topK,
+      maxTokens: maxTokens,
+      includeUsage: includeUsage,
+      depthMessages: depthMessages,
+      extraMessages: extraMessages,
+      disableSafety: disableSafety,
     );
   }
 }

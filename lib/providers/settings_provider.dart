@@ -19,6 +19,7 @@ class SettingsProvider extends ChangeNotifier {
 
   // Web Search (BYOK)
   SearchProvider _searchProvider = SearchProvider.provider;
+  WebSearchMode _webSearchMode = WebSearchMode.smart;
   String _searxngUrl = '';
   int _searchResultCount = 5;
   int _maxSearchRounds = ApiConstants.defaultMaxSearchRounds;
@@ -75,6 +76,7 @@ class SettingsProvider extends ChangeNotifier {
   String get reasoningEffort => _reasoningEffort;
 
   SearchProvider get searchProvider => _searchProvider;
+  WebSearchMode get webSearchMode => _webSearchMode;
   String get searxngUrl => _searxngUrl;
   int get searchResultCount => _searchResultCount;
   int get maxSearchRounds => _maxSearchRounds;
@@ -146,6 +148,12 @@ class SettingsProvider extends ChangeNotifier {
       (e) => e.name == providerName,
       orElse: () => SearchProvider.provider,
     );
+    final webSearchModeName =
+        prefs.getString(ApiConstants.prefKeyWebSearchMode) ?? 'smart';
+    _webSearchMode = WebSearchMode.values.firstWhere(
+      (e) => e.name == webSearchModeName,
+      orElse: () => WebSearchMode.smart,
+    );
     _searxngUrl = prefs.getString(ApiConstants.prefKeySearXNGUrl) ?? '';
     // One-time convenience: if the user has configured a SearXNG instance but
     // never explicitly chose a search backend, prefer SearXNG over the default
@@ -200,6 +208,10 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setString(
       ApiConstants.prefKeySearchProvider,
       _searchProvider.name,
+    );
+    await prefs.setString(
+      ApiConstants.prefKeyWebSearchMode,
+      _webSearchMode.name,
     );
     await prefs.setString(ApiConstants.prefKeySearXNGUrl, _searxngUrl);
     await prefs.setInt(ApiConstants.prefSearchResultCount, _searchResultCount);
@@ -319,6 +331,11 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setWebSearchMode(WebSearchMode val) {
+    _webSearchMode = val;
+    notifyListeners();
+  }
+
   void setSearxngUrl(String val) {
     _searxngUrl = val;
     notifyListeners();
@@ -369,6 +386,7 @@ class SettingsProvider extends ChangeNotifier {
       },
       'webSearch': {
         'searchProvider': _searchProvider.name,
+        'webSearchMode': _webSearchMode.name,
         'searxngUrl': _searxngUrl,
         'searchResultCount': _searchResultCount,
         'maxSearchRounds': _maxSearchRounds,
@@ -429,6 +447,14 @@ class SettingsProvider extends ChangeNotifier {
       try {
         _searchProvider = SearchProvider.values.firstWhere(
           (e) => e.name == providerName,
+        );
+      } catch (_) {}
+    }
+    final webSearchModeName = ws['webSearchMode'] as String?;
+    if (webSearchModeName != null) {
+      try {
+        _webSearchMode = WebSearchMode.values.firstWhere(
+          (e) => e.name == webSearchModeName,
         );
       } catch (_) {}
     }

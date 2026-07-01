@@ -438,12 +438,12 @@ class WebSearchService {
         'name': toolName,
         'description':
             'Search the public web for up-to-date information that is outside '
-            'your training data. Use this when the user asks about a specific '
-            'person, character, event, product, or fact you are not confident '
+            'your training data. Use this when the user asks about a real-world '
+            'entity, franchise, product, event, or fact you are not confident '
             'about, or when the user explicitly requests current/web '
-            'information. Do NOT use this for creative writing, opinions, '
-            'math, or anything you already know well. Provide a concise, '
-            'search-engine-friendly query string.',
+            'information. Do NOT use this for in-character dialogue, narrative '
+            'actions, creative writing, opinions, math, or anything you already '
+            'know well. Provide a concise, search-engine-friendly query string.',
         'parameters': {
           'type': 'object',
           'properties': {
@@ -451,8 +451,9 @@ class WebSearchService {
               'type': 'string',
               'description':
                   'The search query. Keep it concise and keyword-focused. '
-                  'Prefer the most distinctive noun phrase (e.g. a character '
-                  'or entity name).',
+                  'Include the entity/franchise name when applicable (e.g. '
+                  '"Radobaan Monster Hunter", "Elden Ring DLC release date"). '
+                  'Never include dialogue, actions, or conversational filler.',
             },
           },
           'required': ['query'],
@@ -469,12 +470,12 @@ class WebSearchService {
         'name': toolName,
         'description':
             'Search the public web for up-to-date information that is outside '
-            'your training data. Use this when the user asks about a specific '
-            'person, character, event, product, or fact you are not confident '
+            'your training data. Use this when the user asks about a real-world '
+            'entity, franchise, product, event, or fact you are not confident '
             'about, or when the user explicitly requests current/web '
-            'information. Do NOT use this for creative writing, opinions, '
-            'math, or anything you already know well. Provide a concise, '
-            'search-engine-friendly query string.',
+            'information. Do NOT use this for in-character dialogue, narrative '
+            'actions, creative writing, opinions, math, or anything you already '
+            'know well. Provide a concise, search-engine-friendly query string.',
         'parameters': {
           'type': 'OBJECT',
           'properties': {
@@ -482,8 +483,9 @@ class WebSearchService {
               'type': 'STRING',
               'description':
                   'The search query. Keep it concise and keyword-focused. '
-                  'Prefer the most distinctive noun phrase (e.g. a character '
-                  'or entity name).',
+                  'Include the entity/franchise name when applicable (e.g. '
+                  '"Radobaan Monster Hunter", "Elden Ring DLC release date"). '
+                  'Never include dialogue, actions, or conversational filler.',
             },
           },
           'required': ['query'],
@@ -495,22 +497,41 @@ class WebSearchService {
   /// The "secret" system-prompt block appended to the system instruction when
   /// the web_search tool is enabled. This tells the LLM the tool exists and
   /// how/when to use it — without surfacing it to the user.
-  static String buildWebSearchSystemHint({int? maxRounds}) {
+  ///
+  /// [mode] selects the RP-aware (smart) or aggressive (eager) variant.
+  static String buildWebSearchSystemHint({
+    int? maxRounds,
+    WebSearchMode mode = WebSearchMode.smart,
+  }) {
     final rounds = maxRounds ?? ApiConstants.defaultMaxSearchRounds;
-    return '''
+    final baseRules = '''
+- Issue the tool call FIRST, before answering, when you need it. Do not answer from memory if you are unsure and the tool is available.
+- Provide a concise, keyword-focused query. Do not include conversational filler, dialogue, or narrative actions.
+- After receiving results, synthesize a natural answer for the user. Do not dump raw JSON. Cite sources inline as plain text when relevant.
+- You may call the tool up to $rounds time(s) per user message if the first results are insufficient; otherwise answer directly from the results.''';return '''
 
 --- Web Search Tool (system) ---
-You have access to a `web_search` tool. You MAY call it when:
-- The user asks about a specific character, person, franchise, product, or entity you are NOT confident is in your training data.
-- The user asks for current/recent events, prices, releases, or live data.
-- The user explicitly asks you to look something up or verify a fact.
+You have access to a `web_search` tool.${mode == WebSearchMode.smart ? '''
 
-Rules:
-- Issue the tool call FIRST, before answering, when you need it. Do not answer from memory if you are unsure and the tool is available.
-- Provide a concise, keyword-focused query (e.g. a character or entity name). Do not include conversational filler.
-- Do NOT call the tool for creative writing, roleplay, opinions, math, or anything you already know well.
-- You may call the tool up to $rounds time(s) per user message if the first results are insufficient; otherwise answer directly from the results.
-- After receiving results, synthesize a natural answer for the user. Do not dump raw JSON. Cite sources inline as plain text when relevant.
+SMART (RP-aware) MODE:
+Call the tool ONLY when the user message is asking about a real-world entity, franchise, product, event, or fact that you are NOT confident is in your training data.
+
+DO NOT call the tool for:
+- In-character dialogue, narrative actions, or scene descriptions (e.g. "*Radobaan walks by*", "Radobaan says...").
+- Creative writing, roleplay, opinions, or world-building that does not reference a real-world source.
+- Math, coding, or general knowledge you already know well.
+
+Query rules:
+- Extract the entity/franchise name and keep it keyword-focused (e.g. "Radobaan Monster Hunter", "Elden Ring DLC release date").
+- If the user mentions a character in an RP context, search the character + franchise, not the RP scenario.''' : '''
+
+EAGER MODE:
+Call the tool when the user asks about a specific character, person, franchise, product, entity, current/recent event, price, release, or live data, or when they explicitly ask you to look something up or verify a fact.
+
+DO NOT call the tool for creative writing, roleplay, opinions, math, or anything you already know well.'''}
+
+Shared rules:
+$baseRules
 --- End Web Search Tool ---''';
   }
 

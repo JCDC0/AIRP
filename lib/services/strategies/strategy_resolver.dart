@@ -7,6 +7,7 @@ import 'huggingface_strategy.dart';
 import 'nanogpt_strategy.dart';
 import 'arliai_strategy.dart';
 import 'groq_strategy.dart';
+import 'xai_strategy.dart';
 
 /// Resolves the appropriate [AiProviderStrategy] for a given [AiProvider].
 ///
@@ -55,11 +56,7 @@ class StrategyResolver {
       prefKey: ApiConstants.prefListQwen,
       thinkingFormat: ThinkingFormat.enableThinking,
     ),
-    AiProvider.xAi: OpenAiCompatibleStrategy(
-      provider: AiProvider.xAi,
-      baseUrl: ApiConstants.xAiBaseUrl,
-      prefKey: ApiConstants.prefListXAi,
-    ),
+    AiProvider.xAi: XAiStrategy(),
     AiProvider.zAi: OpenAiCompatibleStrategy(
       provider: AiProvider.zAi,
       baseUrl: ApiConstants.zAiBaseUrl,
