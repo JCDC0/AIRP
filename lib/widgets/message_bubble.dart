@@ -21,9 +21,6 @@ class MessageBubble extends StatelessWidget {
   /// The chat message to display.
   final ChatMessage msg;
 
-  /// Callback when the bubble is long-pressed.
-  final VoidCallback? onLongPress;
-
   /// Callback for copying message text.
   final VoidCallback? onCopy;
 
@@ -51,7 +48,6 @@ class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
     required this.msg,
-    this.onLongPress,
     this.onCopy,
     this.onEdit,
     this.onRegenerate,
@@ -117,7 +113,7 @@ class MessageBubble extends StatelessWidget {
       child: Column(
         crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          GestureDetector(onLongPress: onLongPress, child: bubble),
+          bubble,
           MessageBubbleActions(
             msg: msg,
             textColor: textColor,

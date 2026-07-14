@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
 
@@ -38,6 +39,13 @@ class MessageBubbleMarkdown extends StatelessWidget {
 
     return MarkdownBody(
       data: text,
+      onTapLink: (text, href, title) {
+        if (href == null || href.trim().isEmpty) return;
+        final uri = Uri.tryParse(href);
+        if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+          launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
       builders: {
         'code': CodeElementBuilder(context, codeStyle, themeProvider),
       },
