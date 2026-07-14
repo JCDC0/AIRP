@@ -196,26 +196,32 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
             ),
             style: TextStyle(fontSize: scaleProvider.systemFontSize - 2),
           ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              icon: chatProvider.isRefreshingModels
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.cloud_sync, size: 18),
-              label: Text(
-                chatProvider.isRefreshingModels ? 'Loading…' : 'Load Models',
+          if (_getApiKey(chatProvider).trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                icon: chatProvider.isRefreshingModels
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_sync, size: 18),
+                label: Text(
+                  chatProvider.isRefreshingModels
+                      ? 'Loading…'
+                      : (chatProvider.currentModelsList.isEmpty
+                          ? 'Load Models'
+                          : 'Refresh Models'),
+                ),
+                onPressed: chatProvider.isRefreshingModels
+                    ? null
+                    : () => chatProvider.refreshCurrentModels(),
               ),
-              onPressed: chatProvider.isRefreshingModels
-                  ? null
-                  : () => chatProvider.refreshCurrentModels(),
             ),
-          ),
-          const SizedBox(height: 20),
+          ],
+          const SizedBox(height: 4),
         ],
 
         if (requiresEndpoint) ...[

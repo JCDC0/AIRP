@@ -55,31 +55,9 @@ class SettingsDrawer extends StatelessWidget {
                 children: [
                   const SettingsHeader(),
 
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 8),
-                    child: Text(
-                      "API & Connectivity",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                  ),
+                  const Divider(),
                   const ApiSettingsPanel(),
-                  const SizedBox(height: 16),
-
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 8),
-                    child: Text(
-                      "Model Configuration",
-                      style: TextStyle(
-                        color: themeProvider.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: scaleProvider.systemFontSize,
-                      ),
-                    ),
-                  ),
+                  const Divider(),
                   const ModelSettingsPanel(),
                   const SizedBox(height: 16),
 

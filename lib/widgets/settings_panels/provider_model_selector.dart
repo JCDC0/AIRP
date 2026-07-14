@@ -122,28 +122,6 @@ class _ProviderModelSelectorState extends State<ProviderModelSelector> {
             },
           ),
 
-        const SizedBox(height: 8),
-
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            icon: widget.isLoading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.cloud_sync, size: 16),
-            label: Text(
-              widget.isLoading ? "Fetching..." : "Refresh Model List",
-              style: TextStyle(fontSize: scaleProvider.systemFontSize),
-            ),
-            onPressed: widget.isLoading ? null : widget.onRefresh,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: widget.refreshButtonColor,
-            ),
-          ),
-        ),
       ],
     );
   }
