@@ -55,37 +55,33 @@ class SettingsDrawer extends StatelessWidget {
                 children: [
                   const SettingsHeader(),
 
-              ExpansionTile(
-                key: Key('api_settings_$resetVersion'),
-                initiallyExpanded: false,
-                title: Text(
-                  "API & Connectivity",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 8),
+                    child: Text(
+                      "API & Connectivity",
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
                   ),
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [const ApiSettingsPanel()],
-              ),
+                  const ApiSettingsPanel(),
+                  const SizedBox(height: 16),
 
-              ExpansionTile(
-                key: Key('model_settings_$resetVersion'),
-                initiallyExpanded: false,
-                title: Text(
-                  "Model Configuration",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 8),
+                    child: Text(
+                      "Model Configuration",
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: scaleProvider.systemFontSize,
+                      ),
+                    ),
                   ),
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [const ModelSettingsPanel()],
-              ),
+                  const ModelSettingsPanel(),
+                  const SizedBox(height: 16),
 
               ExpansionTile(
                 key: Key('system_prompt_$resetVersion'),

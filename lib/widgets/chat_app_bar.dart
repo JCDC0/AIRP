@@ -220,37 +220,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   scaleProvider,
                 ),
               ),
-              const SizedBox(width: 4),
-              SizedBox(
-                width: 40, // Fixed width to prevent layout shift
-                child: chatProvider.isRefreshingModels
-                    ? Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              themeProvider.bloomGlowColor.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    : IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: Icon(
-                          Icons.refresh,
-                          size: 20,
-                          color: themeProvider.textColor.withValues(alpha: 0.7),
-                        ),
-                        onPressed: chatProvider.isLoading
-                            ? null
-                            : () => chatProvider.refreshCurrentModels(),
-                      ),
-              ),
             ],
           ),
         ),

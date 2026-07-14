@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/vfx_provider.dart';
@@ -159,8 +160,60 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
                   : const OutlineInputBorder(),
               filled: true,
               isDense: true,
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.content_copy, size: 18),
+                    tooltip: 'Copy key',
+                    onPressed: () {
+                      Clipboard.setData(
+                        ClipboardData(text: _apiKeyController.text),
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('API key copied'),
+                            duration: Duration(milliseconds: 800),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.content_paste, size: 18),
+                    tooltip: 'Paste key',
+                    onPressed: () async {
+                      final data = await Clipboard.getData('text/plain');
+                      final text = data?.text ?? '';
+                      if (text.trim().isEmpty) return;
+                      _apiKeyController.text = text.trim();
+                      _updateApiKey(chatProvider, text);
+                    },
+                  ),
+                ],
+              ),
             ),
             style: TextStyle(fontSize: scaleProvider.systemFontSize - 2),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              icon: chatProvider.isRefreshingModels
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.cloud_sync, size: 18),
+              label: Text(
+                chatProvider.isRefreshingModels ? 'Loading…' : 'Load Models',
+              ),
+              onPressed: chatProvider.isRefreshingModels
+                  ? null
+                  : () => chatProvider.refreshCurrentModels(),
+            ),
           ),
           const SizedBox(height: 20),
         ],
