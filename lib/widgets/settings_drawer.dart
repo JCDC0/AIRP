@@ -55,7 +55,6 @@ class SettingsDrawer extends StatelessWidget {
                 children: [
                   const SettingsHeader(),
 
-                  const Divider(),
                   const ApiSettingsPanel(),
                   const Divider(),
                   const ModelSettingsPanel(),

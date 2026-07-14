@@ -221,7 +221,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
               ),
             ),
           ],
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
         ],
 
         if (requiresEndpoint) ...[
@@ -263,7 +263,32 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          if (!requiresApiKey && _getEndpoint(chatProvider).trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                icon: chatProvider.isRefreshingModels
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_sync, size: 18),
+                label: Text(
+                  chatProvider.isRefreshingModels
+                      ? 'Loading…'
+                      : (chatProvider.currentModelsList.isEmpty
+                          ? 'Load Models'
+                          : 'Refresh Models'),
+                ),
+                onPressed: chatProvider.isRefreshingModels
+                    ? null
+                    : () => chatProvider.refreshCurrentModels(),
+              ),
+            ),
+          ],
+          const SizedBox(height: 2),
         ],
       ],
     );
@@ -276,6 +301,16 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
       case AiProvider.ollama: return _ollamaEndpointController;
       case AiProvider.local:
       default: return _localIpController;
+    }
+  }
+
+  String _getEndpoint(ChatProvider chatProvider) {
+    switch (chatProvider.currentProvider) {
+      case AiProvider.vertexAi: return chatProvider.vertexAiEndpoint;
+      case AiProvider.openAiCompatible: return chatProvider.openAiCompatibleEndpoint;
+      case AiProvider.ollama: return chatProvider.ollamaEndpoint;
+      case AiProvider.local:
+      default: return chatProvider.localIp;
     }
   }
 
