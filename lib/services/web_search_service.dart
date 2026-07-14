@@ -498,40 +498,25 @@ class WebSearchService {
   /// the web_search tool is enabled. This tells the LLM the tool exists and
   /// how/when to use it — without surfacing it to the user.
   ///
-  /// [mode] selects the RP-aware (smart) or aggressive (eager) variant.
   static String buildWebSearchSystemHint({
     int? maxRounds,
-    WebSearchMode mode = WebSearchMode.smart,
+    int? resultCount,
   }) {
     final rounds = maxRounds ?? ApiConstants.defaultMaxSearchRounds;
-    final baseRules = '''
-- Issue the tool call FIRST, before answering, when you need it. Do not answer from memory if you are unsure and the tool is available.
-- Provide a concise, keyword-focused query. Do not include conversational filler, dialogue, or narrative actions.
-- After receiving results, synthesize a natural answer for the user. Do not dump raw JSON. Cite sources inline as plain text when relevant.
-- You may call the tool up to $rounds time(s) per user message if the first results are insufficient; otherwise answer directly from the results.''';return '''
+    final results = resultCount ?? 5;
+    return '''
 
 --- Web Search Tool (system) ---
-You have access to a `web_search` tool.${mode == WebSearchMode.smart ? '''
+You have access to a `web_search` tool. Each call returns up to $results result(s); you may call it up to $rounds time(s) per user message.
 
-SMART (RP-aware) MODE:
-Call the tool ONLY when the user message is asking about a real-world entity, franchise, product, event, or fact that you are NOT confident is in your training data.
-
-DO NOT call the tool for:
-- In-character dialogue, narrative actions, or scene descriptions (e.g. "*Radobaan walks by*", "Radobaan says...").
-- Creative writing, roleplay, opinions, or world-building that does not reference a real-world source.
-- Math, coding, or general knowledge you already know well.
+When to use it:
+- Call the tool FIRST when you need current or external information you are not confident about (real-world entities, franchises, products, events, facts, prices, releases).
+- Do NOT call it for pure in-character dialogue, narrative actions, creative writing, opinions, math, or anything you already know well.
 
 Query rules:
-- Extract the entity/franchise name and keep it keyword-focused (e.g. "Radobaan Monster Hunter", "Elden Ring DLC release date").
-- If the user mentions a character in an RP context, search the character + franchise, not the RP scenario.''' : '''
-
-EAGER MODE:
-Call the tool when the user asks about a specific character, person, franchise, product, entity, current/recent event, price, release, or live data, or when they explicitly ask you to look something up or verify a fact.
-
-DO NOT call the tool for creative writing, roleplay, opinions, math, or anything you already know well.'''}
-
-Shared rules:
-$baseRules
+- Provide a concise, keyword-focused query (e.g. "Elden Ring DLC release date"). No conversational filler, dialogue, or narrative actions.
+- After receiving results, synthesize a natural answer. Do not dump raw JSON. Cite sources inline as plain text when relevant.
+- If the first results are insufficient and rounds remain, refine the query and call again; otherwise answer from what you have.
 --- End Web Search Tool ---''';
   }
 

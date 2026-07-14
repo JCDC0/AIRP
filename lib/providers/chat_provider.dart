@@ -909,7 +909,7 @@ class ChatProvider extends ChangeNotifier {
     final int maxRounds = _settings!.maxSearchRounds;
     final String hint = WebSearchService.buildWebSearchSystemHint(
       maxRounds: maxRounds,
-      mode: _settings!.webSearchMode,
+      resultCount: _settings!.searchResultCount,
     );
 
     String baseSys = _buildSystemInstruction(
@@ -997,11 +997,12 @@ class ChatProvider extends ChangeNotifier {
 
       if (!det.isToolCall) {
         // The model produced a final answer without (further) tool use.
-        final answer =
-            det.text.trim().isNotEmpty ? det.text : det.reasoning;
+        final answer = _composeDirectAnswer(det.text, det.reasoning);
         return _WebSearchLoopResult(
           directAnswer: answer,
           searchedQueries: searchedQueries,
+          reasoningRecovered:
+              det.text.trim().isEmpty && det.reasoning.trim().isNotEmpty,
         );
       }
 
@@ -1105,10 +1106,12 @@ class ChatProvider extends ChangeNotifier {
           searchedQueries: searchedQueries,
         );
       }
-      final answer = det.text.trim().isNotEmpty ? det.text : det.reasoning;
+      final answer = _composeDirectAnswer(det.text, det.reasoning);
       return _WebSearchLoopResult(
         directAnswer: answer,
         searchedQueries: searchedQueries,
+        reasoningRecovered:
+            det.text.trim().isEmpty && det.reasoning.trim().isNotEmpty,
       );
     }
 
@@ -1134,6 +1137,17 @@ class ChatProvider extends ChangeNotifier {
     final indicator = _buildSearchIndicator(queries);
     if (indicator.isEmpty) return text;
     return '$indicator$text';
+  }
+
+  /// Combines a non-streamed detection result's visible text and reasoning
+  /// into a single message body, mirroring the streamed format (reasoning
+  /// wrapped in think tags, followed by the visible answer). When only one
+  /// part is present, that part alone is returned.
+  String _composeDirectAnswer(String text, String reasoning) {
+    if (reasoning.trim().isNotEmpty && text.trim().isNotEmpty) {
+      return '<think>\n$reasoning\n</think>\n$text';
+    }
+    return text.trim().isNotEmpty ? text : reasoning;
   }
 
   String getEditableMessageText(ChatMessage message) {
@@ -1527,6 +1541,7 @@ class ChatProvider extends ChangeNotifier {
       );
       _messages.last = _messages.last.copyWith(
         text: direct,
+        reasoningRecovered: loopResult?.reasoningRecovered ?? false,
         clearContentNotifier: true,
       );
       notifyListeners();
@@ -2397,11 +2412,14 @@ class _WebSearchLoopResult {
   final List<Map<String, dynamic>>? extraMessages;
   final List<String> searchedQueries;
   final String? error;
+  final bool reasoningRecovered;
 
   const _WebSearchLoopResult({
     this.directAnswer,
     this.extraMessages,
     this.searchedQueries = const [],
     this.error,
+    this.reasoningRecovered = false,
   });
 }
+

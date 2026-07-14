@@ -92,21 +92,19 @@ void main() {
       expect(hint, contains('${ApiConstants.defaultMaxSearchRounds} time(s)'));
     });
 
-    test('smart mode mentions RP-aware restrictions', () {
-      final hint = WebSearchService.buildWebSearchSystemHint(
-        mode: WebSearchMode.smart,
-      );
-      expect(hint, contains('SMART (RP-aware) MODE'));
-      expect(hint, contains('DO NOT call the tool for:'));
-      expect(hint, contains('In-character dialogue'));
+    test('mentions the configured result count', () {
+      final hint = WebSearchService.buildWebSearchSystemHint(resultCount: 8);
+      expect(hint, contains('8 result(s)'));
     });
 
-    test('eager mode omits RP-aware restrictions', () {
-      final hint = WebSearchService.buildWebSearchSystemHint(
-        mode: WebSearchMode.eager,
-      );
-      expect(hint, contains('EAGER MODE'));
-      expect(hint, isNot(contains('SMART (RP-aware) MODE')));
+    test('uses the default result count when none is provided', () {
+      final hint = WebSearchService.buildWebSearchSystemHint();
+      expect(hint, contains('5 result(s)'));
+    });
+
+    test('keeps a light RP guardrail', () {
+      final hint = WebSearchService.buildWebSearchSystemHint();
+      expect(hint, contains('in-character dialogue'));
     });
   });
 
