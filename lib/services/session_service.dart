@@ -6,9 +6,6 @@ import '../models/chat_models.dart';
 
 class SessionService {
   static const String sessionsKey = 'airp_sessions';
-  static const String backupLatestKey = 'airp_sessions_backup_latest';
-  static const String backupTsKey = 'airp_sessions_backup_latest_ts';
-  static const String reasoningPolicyMarkerKey = 'airp_reasoning_policy_marker';
 
   List<ChatSessionData> savedSessions = [];
   Timer? _autoSaveTimer;
@@ -20,7 +17,7 @@ class SessionService {
     _autoSaveTimer?.cancel();
   }
 
-  Future<void> loadSessions(bool shouldStripReasoningFromStorage) async {
+  Future<void> loadSessions() async {
     final prefs = await SharedPreferences.getInstance();
     final String? data = prefs.getString(sessionsKey);
     if (data != null) {
@@ -28,68 +25,11 @@ class SessionService {
         final List<dynamic> jsonList = jsonDecode(data);
         savedSessions =
             jsonList.map((j) => ChatSessionData.fromJson(j)).toList();
-        if (shouldStripReasoningFromStorage) {
-          await applyReasoningStoragePolicyGlobally(true, true);
-        }
         onStateChanged();
       } catch (e) {
         debugPrint("Error loading sessions: $e");
       }
     }
-  }
-
-  Future<void> applyReasoningStoragePolicyGlobally(
-    bool enableReasoningEfficiency,
-    bool persistReasoningBlocks,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool shouldStrip = enableReasoningEfficiency || !persistReasoningBlocks;
-    final targetMarker =
-        'v3|eff=$enableReasoningEfficiency|persist=$persistReasoningBlocks';
-
-    if (!shouldStrip) {
-      await prefs.setString(reasoningPolicyMarkerKey, targetMarker);
-      return;
-    }
-
-    final currentMarker = prefs.getString(reasoningPolicyMarkerKey);
-    if (currentMarker == targetMarker) {
-      return;
-    }
-
-    final currentRaw = prefs.getString(sessionsKey);
-    if (currentRaw != null && currentRaw.isNotEmpty) {
-      await _backupSessionsBeforePolicyPatch(prefs, currentRaw);
-    }
-
-    savedSessions = savedSessions
-        .map(
-          (session) => ChatSessionData(
-            id: session.id,
-            title: session.title,
-            messages: session.messages.map(ChatMessage.sanitizeForStorage).toList(),
-            modelName: session.modelName,
-            tokenCount: session.tokenCount,
-            systemInstruction: session.systemInstruction,
-            backgroundImage: session.backgroundImage,
-            provider: session.provider,
-            isBookmarked: session.isBookmarked,
-          ),
-        )
-        .toList();
-
-    await persistSessions();
-    await prefs.setString(reasoningPolicyMarkerKey, targetMarker);
-    onStateChanged();
-  }
-
-  Future<void> _backupSessionsBeforePolicyPatch(
-    SharedPreferences prefs,
-    String currentSessionsJson,
-  ) async {
-    final ts = DateTime.now().millisecondsSinceEpoch;
-    await prefs.setString(backupLatestKey, currentSessionsJson);
-    await prefs.setInt(backupTsKey, ts);
   }
 
   String _encodeSessionsPayload(List<ChatSessionData> sessions) {
@@ -168,62 +108,11 @@ class SessionService {
     }).toList();
   }
 
-  Future<bool> hasSessionsBackup() async {
-    final prefs = await SharedPreferences.getInstance();
-    final backup = prefs.getString(backupLatestKey);
-    return backup != null && backup.isNotEmpty;
-  }
-
-  Future<int?> getLatestSessionsBackupTimestamp() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(backupTsKey);
-  }
-
-  Future<bool> restoreLatestSessionsBackup() async {
-    final prefs = await SharedPreferences.getInstance();
-    final backup = prefs.getString(backupLatestKey);
-    if (backup == null || backup.isEmpty) {
-      return false;
-    }
-
-    try {
-      final decoded = jsonDecode(backup) as List<dynamic>;
-      savedSessions = decoded
-          .map((j) => ChatSessionData.fromJson(Map<String, dynamic>.from(j)))
-          .toList();
-      await prefs.setString(sessionsKey, backup);
-      await prefs.remove(reasoningPolicyMarkerKey);
-      onStateChanged();
-      return true;
-    } catch (e) {
-      debugPrint('Restore sessions backup failed: $e');
-      return false;
-    }
-  }
-
-  void mergeSessions(List<ChatSessionData> incoming, bool shouldStripReasoning) {
+  void mergeSessions(List<ChatSessionData> incoming) {
     final existingIds = savedSessions.map((s) => s.id).toSet();
     for (final session in incoming) {
       if (!existingIds.contains(session.id)) {
-        if (shouldStripReasoning) {
-          savedSessions.add(
-            ChatSessionData(
-              id: session.id,
-              title: session.title,
-              messages: session.messages
-                  .map(ChatMessage.sanitizeForStorage)
-                  .toList(),
-              modelName: session.modelName,
-              tokenCount: session.tokenCount,
-              systemInstruction: session.systemInstruction,
-              backgroundImage: session.backgroundImage,
-              provider: session.provider,
-              isBookmarked: session.isBookmarked,
-            ),
-          );
-        } else {
-          savedSessions.add(session);
-        }
+        savedSessions.add(session);
         existingIds.add(session.id);
       }
     }
@@ -289,7 +178,6 @@ class SessionService {
     String sessionId,
     String finalText,
     bool reasoningRecovered,
-    bool shouldStripReasoning,
   ) {
     final idx = savedSessions.indexWhere((s) => s.id == sessionId);
     if (idx == -1) return;
@@ -299,10 +187,7 @@ class SessionService {
 
     final messages = List<ChatMessage>.from(session.messages);
     if (messages.isNotEmpty && !messages.last.isUser) {
-      String textToSave = finalText;
-      if (shouldStripReasoning) {
-        textToSave = ChatMessage.sanitizeForContext(textToSave);
-      }
+      final String textToSave = finalText;
       final lastMessage = messages.last;
       final updatedVersions = List<String>.from(
         lastMessage.regenerationVersions,

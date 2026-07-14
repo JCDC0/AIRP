@@ -199,21 +199,6 @@ class ChatMessage {
   static String sanitizeForContext(String text) =>
       ReasoningUtils.stripThinkBlocks(text);
 
-  static ChatMessage sanitizeForStorage(ChatMessage message) {
-    final sanitizedText = sanitizeForContext(message.text);
-    final sanitizedVersions = message.regenerationVersions
-        .map(sanitizeForContext)
-        .toList();
-    return message.copyWith(
-      text: sanitizedText,
-      regenerationVersions: sanitizedVersions,
-      currentVersionIndex: sanitizedVersions.isNotEmpty
-          ? message.currentVersionIndex.clamp(0, sanitizedVersions.length - 1)
-          : 0,
-      reasoningRecovered: false,
-    );
-  }
-
   static bool hasRegenerationHistory(ChatMessage message) {
     return message.regenerationVersions.isNotEmpty ||
         message.currentVersionIndex != 0;

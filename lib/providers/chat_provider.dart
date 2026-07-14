@@ -342,7 +342,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> _loadSessions() async {
-    await _sessionService.loadSessions(_shouldStripReasoningFromStorage);
+    await _sessionService.loadSessions();
   }
 
   Future<void> _loadSystemPrompts() async {
@@ -781,18 +781,6 @@ class ChatProvider extends ChangeNotifier {
     _apiKeys.setSearchKey(SearchProvider.serper, val);
   }
 
-  Future<void> setPersistReasoningBlocks(bool val) async {
-    if (_settings!.persistReasoningBlocks == val &&
-        (val || !_settings!.enableReasoningEfficiency)) {
-      return;
-    }
-    _settings!.setPersistReasoningBlocks(val);
-    _settings!.setEnableReasoningEfficiency(!val);
-    _normalizeReasoningStorageMode();
-    notifyListeners();
-    await _applyReasoningStoragePolicyGlobally();
-  }
-
   void setLoreRecognizerGlowColor(Color color) {
     _loreRecognizerGlowColor = color;
     notifyListeners();
@@ -1150,47 +1138,13 @@ class ChatProvider extends ChangeNotifier {
 
   String getEditableMessageText(ChatMessage message) {
     if (message.isUser) return message.text;
-    if (_settings!.enableDeveloperMode && _settings!.enableRawReasoningEdit) return message.text;
     return ReasoningUtils.split(message.text).content;
   }
 
   String getReadOnlyReasoningForEdit(ChatMessage message) {
     if (message.isUser) return '';
-    if (_settings!.enableDeveloperMode && _settings!.enableRawReasoningEdit) return '';
     return ReasoningUtils.split(message.text).reasoning;
   }
-
-  void _normalizeReasoningStorageMode() {
-    // Keep modes mutually exclusive to avoid contradictory toggle states.
-    if (_settings!.enableReasoningEfficiency) {
-      _settings!.setPersistReasoningBlocks(false);
-      return;
-    }
-    if (_settings!.persistReasoningBlocks) {
-      _settings!.setEnableReasoningEfficiency(false);
-      return;
-    }
-    _settings!.setPersistReasoningBlocks(true);
-  }
-
-  bool get _shouldStripReasoningFromStorage =>
-      _settings?.enableReasoningEfficiency == true || 
-      (_settings?.persistReasoningBlocks == false);
-
-  Future<void> _applyReasoningStoragePolicyGlobally() async {
-    await _sessionService.applyReasoningStoragePolicyGlobally(
-      _settings!.enableReasoningEfficiency,
-      _settings!.persistReasoningBlocks,
-    );
-  }
-
-  Future<bool> hasSessionsBackup() => _sessionService.hasSessionsBackup();
-
-  Future<int?> getLatestSessionsBackupTimestamp() =>
-      _sessionService.getLatestSessionsBackupTimestamp();
-
-  Future<bool> restoreLatestSessionsBackup() =>
-      _sessionService.restoreLatestSessionsBackup();
 
   /// Returns lore entries whose keywords match [input] directly.
   ///
@@ -1696,10 +1650,6 @@ class ChatProvider extends ChangeNotifier {
           }
         },
         onDone: (sessionId, finalText, reasoningRecovered) async {
-          if (_shouldStripReasoningFromStorage) {
-            finalText = ChatMessage.sanitizeForContext(finalText);
-          }
-
           if (_currentSessionId == sessionId) {
             final lastMessage = _messages.last;
             final updatedVersions = List<String>.from(
@@ -1767,7 +1717,6 @@ class ChatProvider extends ChangeNotifier {
       sessionId,
       finalText,
       reasoningRecovered,
-      _shouldStripReasoningFromStorage,
     );
   }
 
@@ -1961,9 +1910,7 @@ class ChatProvider extends ChangeNotifier {
     }
     if (title.isEmpty) title = "New Conversation";
 
-    final messagesSnapshot = _shouldStripReasoningFromStorage
-        ? _messages.map(ChatMessage.sanitizeForStorage).toList()
-        : List<ChatMessage>.from(_messages);
+    final messagesSnapshot = List<ChatMessage>.from(_messages);
     final tokenCountSnapshot = _tokenCount;
     final modelNameSnapshot = _selectedModel;
     final providerNameSnapshot = _currentProvider.name;
@@ -2138,23 +2085,15 @@ class ChatProvider extends ChangeNotifier {
     initializeModel();
   }
 
-  void editMessage(int index, String newText, {bool rawEdit = false}) {
+  void editMessage(int index, String newText) {
     final existing = _messages[index];
-    final canRawEdit =
-        _settings!.enableDeveloperMode && _settings!.enableRawReasoningEdit && rawEdit;
 
     var updatedText = newText;
-    if (!existing.isUser && !canRawEdit) {
+    if (!existing.isUser) {
       final split = ReasoningUtils.split(existing.text);
-      if (split.reasoning.isNotEmpty &&
-          !_shouldStripReasoningFromStorage &&
-          _settings!.persistReasoningBlocks) {
+      if (split.reasoning.isNotEmpty) {
         updatedText = '<think>\n${split.reasoning}\n</think>\n$newText';
       }
-    }
-
-    if (_shouldStripReasoningFromStorage) {
-      updatedText = ChatMessage.sanitizeForContext(updatedText);
     }
 
     _messages[index] = existing.copyWith(
@@ -2421,7 +2360,7 @@ class ChatProvider extends ChangeNotifier {
 
   /// Concatenates imported sessions with existing ones, skipping duplicates by ID.
   void mergeSessions(List<ChatSessionData> incoming) {
-    _sessionService.mergeSessions(incoming, _shouldStripReasoningFromStorage);
+    _sessionService.mergeSessions(incoming);
   }
 
   /// Concatenates imported prompts with existing ones, skipping duplicates by title.

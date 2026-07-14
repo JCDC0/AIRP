@@ -31,19 +31,11 @@ class SettingsProvider extends ChangeNotifier {
   bool _enableReasoning = false;
   bool _enableGenerationSettings = true;
   bool _enableMaxOutputTokens = true;
-  bool _enableReasoningEfficiency = true;
-  bool _persistReasoningBlocks = true;
-  bool _enableDeveloperMode = false;
-  bool _enableRawReasoningEdit = false;
-  bool _rawReasoningEditWarningAcknowledged = false;
   bool _enableLorebook = true;
 
   // Dirty tracking — indicates unsaved changes exist in the settings drawer.
   // Panels call markDirty() to flag changes; the save button calls clearDirty().
   bool _hasPendingChanges = false;
-
-  static const String _rawEditWarningAckKey =
-      'airp_raw_reasoning_edit_warning_ack';
 
   // --- Dirty tracking ---
   bool get hasPendingChanges => _hasPendingChanges;
@@ -93,12 +85,6 @@ class SettingsProvider extends ChangeNotifier {
   bool get enableReasoning => _enableReasoning;
   bool get enableGenerationSettings => _enableGenerationSettings;
   bool get enableMaxOutputTokens => _enableMaxOutputTokens;
-  bool get enableReasoningEfficiency => _enableReasoningEfficiency;
-  bool get persistReasoningBlocks => _persistReasoningBlocks;
-  bool get enableDeveloperMode => _enableDeveloperMode;
-  bool get enableRawReasoningEdit => _enableRawReasoningEdit;
-  bool get rawReasoningEditWarningAcknowledged =>
-      _rawReasoningEditWarningAcknowledged;
   bool get enableLorebook => _enableLorebook;
 
   SettingsProvider() {
@@ -128,16 +114,6 @@ class SettingsProvider extends ChangeNotifier {
         prefs.getBool('airp_enable_generation_settings') ?? true;
     _enableMaxOutputTokens =
         prefs.getBool('airp_enable_max_output_tokens') ?? true;
-    _enableReasoningEfficiency =
-        prefs.getBool('airp_enable_reasoning_efficiency') ?? true;
-    _persistReasoningBlocks =
-        prefs.getBool('airp_persist_reasoning_blocks') ?? true;
-    _enableDeveloperMode = prefs.getBool('airp_enable_developer_mode') ?? false;
-    _enableRawReasoningEdit =
-        prefs.getBool('airp_enable_raw_reasoning_edit') ?? false;
-    _rawReasoningEditWarningAcknowledged =
-        prefs.getBool(_rawEditWarningAckKey) ?? false;
-
     _enableGrounding =
         prefs.getBool(ApiConstants.prefEnableGrounding) ?? false;
     _disableSafety = prefs.getBool(ApiConstants.prefDisableSafety) ?? true;
@@ -192,15 +168,6 @@ class SettingsProvider extends ChangeNotifier {
       _enableGenerationSettings,
     );
     await prefs.setBool('airp_enable_max_output_tokens', _enableMaxOutputTokens);
-    await prefs.setBool(
-      'airp_enable_reasoning_efficiency',
-      _enableReasoningEfficiency,
-    );
-    await prefs.setBool('airp_persist_reasoning_blocks', _persistReasoningBlocks);
-    await prefs.setBool('airp_enable_developer_mode', _enableDeveloperMode);
-    await prefs.setBool('airp_enable_raw_reasoning_edit', _enableRawReasoningEdit);
-    await prefs.setBool(_rawEditWarningAckKey, _rawReasoningEditWarningAcknowledged);
-
     await prefs.setBool(ApiConstants.prefEnableGrounding, _enableGrounding);
     await prefs.setBool(ApiConstants.prefDisableSafety, _disableSafety);
 
@@ -281,31 +248,6 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setEnableReasoningEfficiency(bool val) {
-    _enableReasoningEfficiency = val;
-    notifyListeners();
-  }
-
-  void setPersistReasoningBlocks(bool val) {
-    _persistReasoningBlocks = val;
-    notifyListeners();
-  }
-
-  void setEnableDeveloperMode(bool val) {
-    _enableDeveloperMode = val;
-    notifyListeners();
-  }
-
-  void setEnableRawReasoningEdit(bool val) {
-    _enableRawReasoningEdit = val;
-    notifyListeners();
-  }
-
-  void acknowledgeRawEditWarning() {
-    _rawReasoningEditWarningAcknowledged = true;
-    saveSettings(showConfirmation: false);
-  }
-
   void setEnableUsage(bool val) {
     _enableUsage = val;
     notifyListeners();
@@ -370,12 +312,6 @@ class SettingsProvider extends ChangeNotifier {
         'enableReasoning': _enableReasoning,
         'enableGenerationSettings': _enableGenerationSettings,
         'enableMaxOutputTokens': _enableMaxOutputTokens,
-        'enableReasoningEfficiency': _enableReasoningEfficiency,
-        'persistReasoningBlocks': _persistReasoningBlocks,
-        'enableDeveloperMode': _enableDeveloperMode,
-        'enableRawReasoningEdit': _enableRawReasoningEdit,
-        'rawReasoningEditWarningAcknowledged':
-            _rawReasoningEditWarningAcknowledged,
         'enableGrounding': _enableGrounding,
         'enableUsage': _enableUsage,
         'disableSafety': _disableSafety,
@@ -413,21 +349,6 @@ class SettingsProvider extends ChangeNotifier {
         tog['enableGenerationSettings'] as bool? ?? _enableGenerationSettings;
     _enableMaxOutputTokens =
         tog['enableMaxOutputTokens'] as bool? ?? _enableMaxOutputTokens;
-    _enableReasoningEfficiency =
-        tog['enableReasoningEfficiency'] as bool? ?? _enableReasoningEfficiency;
-    _persistReasoningBlocks =
-        tog['persistReasoningBlocks'] as bool? ?? _persistReasoningBlocks;
-
-    _enableDeveloperMode =
-        tog['enableDeveloperMode'] as bool? ?? _enableDeveloperMode;
-    _enableRawReasoningEdit =
-        tog['enableRawReasoningEdit'] as bool? ?? _enableRawReasoningEdit;
-    _rawReasoningEditWarningAcknowledged =
-        tog['rawReasoningEditWarningAcknowledged'] as bool? ??
-        _rawReasoningEditWarningAcknowledged;
-    if (!_enableDeveloperMode) {
-      _enableRawReasoningEdit = false;
-    }
     _enableGrounding = tog['enableGrounding'] as bool? ?? _enableGrounding;
     _enableUsage = tog['enableUsage'] as bool? ?? _enableUsage;
     _disableSafety = tog['disableSafety'] as bool? ?? _disableSafety;

@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 import '../providers/vfx_provider.dart';
-import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
 import 'message_bubble.dart';
 import 'effects_overlay.dart';
@@ -32,15 +31,12 @@ class ChatMessagesList extends StatelessWidget {
 
   void _showEditDialog(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     if (chatProvider.isLoading) {
       return;
     }
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final message = chatProvider.messages[index];
     final readOnlyReasoning = chatProvider.getReadOnlyReasoningForEdit(message);
-    final canRawEdit =
-        settingsProvider.enableDeveloperMode && settingsProvider.enableRawReasoningEdit;
     final TextEditingController editController = TextEditingController(
       text: chatProvider.getEditableMessageText(message),
     );
@@ -69,7 +65,7 @@ class ChatMessagesList extends StatelessWidget {
                     border: Border.all(color: themeProvider.borderColor),
                   ),
                   child: Text(
-                    'Reasoning is read-only in normal mode.',
+                    'Reasoning is read-only.',
                     style: TextStyle(
                       color: themeProvider.subtitleColor,
                       fontStyle: FontStyle.italic,
@@ -85,7 +81,7 @@ class ChatMessagesList extends StatelessWidget {
                   border: const OutlineInputBorder(),
                   filled: true,
                   fillColor: themeProvider.containerFillColor,
-                  labelText: canRawEdit ? 'Raw message' : 'Visible response',
+                  labelText: 'Visible response',
                 ),
               ),
             ],
@@ -101,7 +97,6 @@ class ChatMessagesList extends StatelessWidget {
               chatProvider.editMessage(
                 index,
                 editController.text,
-                rawEdit: canRawEdit,
               );
               Navigator.pop(context);
             },
