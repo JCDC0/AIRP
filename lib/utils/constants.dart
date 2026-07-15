@@ -66,6 +66,31 @@ class ChatDefaults {
   static const Duration autoSaveDebounce = Duration(milliseconds: 600);
 }
 
+/// Default prompts and parameters for the conversation-summarize feature.
+///
+/// [defaultCompressPrompt] is the OOC compress instruction: given a full
+/// conversation transcript it asks the model to produce a third-person
+/// narrative summary of events, decisions, and current state.
+/// [defaultVoiceSamplesPrompt] asks the model to extract characteristic
+/// speech samples for each character that appears.
+/// Both prompts are editable in the Summarize drawer; edits persist via the
+/// SharedPreferences keys [prefCompressPrompt] / [prefVoiceSamplesPrompt].
+class SummarizeDefaults {
+  static const String defaultCompressPrompt =
+      'You are an out-of-character summarizer. Read the following roleplay conversation transcript and produce a concise, third-person narrative summary of events. Capture: key plot developments, decisions made, relationships and emotional states, the current situation, and any unresolved threads. Do NOT include raw dialogue quotes. Keep it dense and information-rich, aim for 200-400 words. Output ONLY the summary, no preamble.\n\nCONVERSATION TRANSCRIPT:\n';
+
+  static const String defaultVoiceSamplesPrompt =
+      'You are an out-of-character character analyst. From the following roleplay conversation transcript, identify each distinct character (including the user persona) and produce 3-5 characteristic short voice samples per character — sentence-length snippets that demonstrate how that character speaks (vocabulary, tone, quirks). Format as Markdown headings per character, with a bulleted list of samples below each heading. Do NOT invent new content; only extract speech patterns already present in the transcript. Output ONLY the voice samples, no preamble.\n\nCONVERSATION TRANSCRIPT:\n';
+
+  static const int minPairs = 1;
+  static const int maxPairs = 20;
+  static const int defaultPairs = 5;
+
+  static const String prefCompressPrompt = 'airp_summarize_compress_prompt';
+  static const String prefVoiceSamplesPrompt = 'airp_summarize_voice_prompt';
+  static const String prefPairCount = 'airp_summarize_pair_count';
+}
+
 /// Default durations and values for UI animations.
 class AnimationDefaults {
   static const Duration drawerDuration = Duration(milliseconds: 300);
@@ -84,7 +109,8 @@ class ApiConstants {
   static const String arliAiBaseUrl = "https://api.arliai.com/v1/models";
   static const String nanoGptBaseUrl =
       "https://nano-gpt.com/api/v1/models?detailed=true";
-  static const String nvidiaBaseUrl = "https://integrate.api.nvidia.com/v1/models";
+  static const String nvidiaBaseUrl =
+      "https://integrate.api.nvidia.com/v1/models";
   static const String openAiBaseUrl = "https://api.openai.com/v1/models";
   static const String huggingFaceBaseUrl =
       "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100";

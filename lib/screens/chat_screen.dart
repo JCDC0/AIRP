@@ -13,6 +13,7 @@ import '../widgets/chat_messages_list.dart';
 import '../widgets/chat_input_area.dart';
 import '../providers/search_provider.dart';
 import '../widgets/chat_search_bar.dart';
+import '../widgets/summarize_drawer.dart';
 import 'package:flutter/services.dart';
 
 /// The main screen of the application that manages the chat interface.
@@ -34,9 +35,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late AnimationController _drawerController;
   late AnimationController _endDrawerController;
   late AnimationController _searchBarController;
+  late AnimationController _summaryDrawerController;
   late Animation<Offset> _drawerSlideAnimation;
   late Animation<Offset> _endDrawerSlideAnimation;
   late Animation<Offset> _searchBarSlideAnimation;
+  late Animation<Offset> _summarySlideAnimation;
 
   bool _isZoomed = false;
   bool _isZoomMode = false;
@@ -80,6 +83,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           CurvedAnimation(parent: _searchBarController, curve: Curves.easeOut),
         );
 
+    _summaryDrawerController = AnimationController(
+      vsync: this,
+      duration: AnimationDefaults.drawerDuration,
+    );
+    _summarySlideAnimation =
+        Tween<Offset>(begin: const Offset(-1.0, 0.0), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _summaryDrawerController,
+            curve: Curves.easeOut,
+          ),
+        );
+
     _drawerController = AnimationController(
       vsync: this,
       duration: AnimationDefaults.drawerDuration,
@@ -108,6 +123,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _zoomBorderController.dispose();
     _drawerController.dispose();
     _endDrawerController.dispose();
+    _summaryDrawerController.dispose();
     _searchFieldController.removeListener(_onSearchFieldChanged);
     _searchFieldController.dispose();
     _searchFieldFocus.removeListener(_onSearchFocusChanged);
@@ -137,6 +153,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
+  void _toggleSummaryDrawer() {
+    if (_summaryDrawerController.isDismissed) {
+      _summaryDrawerController.forward();
+    } else {
+      _summaryDrawerController.reverse();
+    }
+  }
+
   void _closeDrawers() {
     if (_drawerController.isCompleted ||
         _drawerController.isAnimating ||
@@ -147,6 +171,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _endDrawerController.isAnimating ||
         _endDrawerController.value > 0) {
       _endDrawerController.reverse();
+    }
+    if (_summaryDrawerController.isCompleted ||
+        _summaryDrawerController.isAnimating ||
+        _summaryDrawerController.value > 0) {
+      _summaryDrawerController.reverse();
     }
   }
 
@@ -386,6 +415,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         onOpenDrawer: _toggleDrawer,
                         onOpenEndDrawer: _toggleEndDrawer,
                         onOpenSearch: _openSearch,
+                        onOpenSummary: _toggleSummaryDrawer,
                         systemFontSize: scaleProvider.systemFontSize,
                       ),
                       body: Stack(
@@ -540,11 +570,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       animation: Listenable.merge([
                         _drawerController,
                         _endDrawerController,
+                        _summaryDrawerController,
                       ]),
                       builder: (context, child) {
                         final double opacity =
                             (_drawerController.value +
-                                    _endDrawerController.value)
+                                    _endDrawerController.value +
+                                    _summaryDrawerController.value)
                                 .clamp(0.0, 1.0) *
                             0.5;
                         return opacity > 0
@@ -583,6 +615,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                             resetVersion: _settingsDrawerVersion,
                           ),
                         ),
+                      ),
+                    ),
+
+                    SlideTransition(
+                      position: _summarySlideAnimation,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: SummarizeDrawer(onClose: _closeDrawers),
                       ),
                     ),
 

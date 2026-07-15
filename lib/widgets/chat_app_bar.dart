@@ -25,6 +25,9 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Callback triggered when the in-chat find bar should be opened.
   final VoidCallback? onOpenSearch;
 
+  /// Callback triggered when the summarize drawer should be opened.
+  final VoidCallback? onOpenSummary;
+
   /// The base font size for system UI elements.
   final double systemFontSize;
 
@@ -33,6 +36,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onOpenDrawer,
     this.onOpenEndDrawer,
     this.onOpenSearch,
+    this.onOpenSummary,
     required this.systemFontSize,
   });
 
@@ -126,7 +130,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: vfxProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha(0)
           : themeProvider.scaffoldBackgroundColor,
-      leadingWidth: 96,
+      leadingWidth: 148,
       leading: Row(
         children: [
           IconButton(
@@ -137,6 +141,11 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             icon: Icon(Icons.search, size: scaleProvider.iconScale * 22),
             tooltip: 'Find in chat (Ctrl+F)',
             onPressed: onOpenSearch,
+          ),
+          IconButton(
+            icon: Icon(Icons.compress, size: scaleProvider.iconScale * 22),
+            tooltip: 'Summarize / Context',
+            onPressed: onOpenSummary,
           ),
         ],
       ),

@@ -65,7 +65,8 @@ class ChatProvider extends ChangeNotifier {
     _streamingCoordinator.removeNotification(index);
   }
 
-  List<ModelInfo> get geminiModelsList => _modelRegistry.getModels(AiProvider.gemini);
+  List<ModelInfo> get geminiModelsList =>
+      _modelRegistry.getModels(AiProvider.gemini);
   List<ModelInfo> get openRouterModelsList =>
       _modelRegistry.getModels(AiProvider.openRouter);
   List<ModelInfo> get arliAiModelsList =>
@@ -104,14 +105,11 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingGeminiModels => _modelRegistry.isLoading(AiProvider.gemini);
   bool get isLoadingOpenRouterModels =>
       _modelRegistry.isLoading(AiProvider.openRouter);
-  bool get isLoadingArliAiModels =>
-      _modelRegistry.isLoading(AiProvider.arliAi);
+  bool get isLoadingArliAiModels => _modelRegistry.isLoading(AiProvider.arliAi);
   bool get isLoadingNanoGptModels =>
       _modelRegistry.isLoading(AiProvider.nanoGpt);
-  bool get isLoadingNvidiaModels =>
-      _modelRegistry.isLoading(AiProvider.nvidia);
-  bool get isLoadingOpenAiModels =>
-      _modelRegistry.isLoading(AiProvider.openAi);
+  bool get isLoadingNvidiaModels => _modelRegistry.isLoading(AiProvider.nvidia);
+  bool get isLoadingOpenAiModels => _modelRegistry.isLoading(AiProvider.openAi);
   bool get isLoadingHuggingFaceModels =>
       _modelRegistry.isLoading(AiProvider.huggingFace);
   bool get isLoadingGroqModels => _modelRegistry.isLoading(AiProvider.groq);
@@ -306,8 +304,9 @@ class ChatProvider extends ChangeNotifier {
     _sessionService = SessionService(onStateChanged: notifyListeners);
     _modelRegistry = ModelRegistryService(onStateChanged: notifyListeners);
     _apiKeys = ApiKeyService(onStateChanged: notifyListeners);
-    _streamingCoordinator =
-        StreamingCoordinatorService(onStateChanged: notifyListeners);
+    _streamingCoordinator = StreamingCoordinatorService(
+      onStateChanged: notifyListeners,
+    );
     _loadSettings();
     _loadSessions();
     _loadSystemPrompts();
@@ -456,28 +455,32 @@ class ChatProvider extends ChangeNotifier {
         'Mistral-Nemo-12B-Instruct-v1';
     _nanoGptModel = prefs.getString(ApiConstants.prefModelNanoGpt) ?? 'gpt-4o';
     _nvidiaModel =
-      prefs.getString(ApiConstants.prefModelNvidia) ??
-      'nvidia/llama-3.1-nemotron-ultra-253b-v1';
+        prefs.getString(ApiConstants.prefModelNvidia) ??
+        'nvidia/llama-3.1-nemotron-ultra-253b-v1';
     _openAiModel = prefs.getString(ApiConstants.prefModelOpenAi) ?? 'gpt-4o';
     _huggingFaceModel =
         prefs.getString(ApiConstants.prefModelHuggingFace) ??
         'meta-llama/Meta-Llama-3-8B-Instruct';
     _groqModel =
         prefs.getString(ApiConstants.prefModelGroq) ?? 'llama3-8b-8192';
-    _vertexAiModel = prefs.getString(ApiConstants.prefModelVertexAi) ?? _vertexAiModel;
+    _vertexAiModel =
+        prefs.getString(ApiConstants.prefModelVertexAi) ?? _vertexAiModel;
     _blackboxAiModel =
-      prefs.getString(ApiConstants.prefModelBlackboxAi) ?? _blackboxAiModel;
-    _minimaxModel = prefs.getString(ApiConstants.prefModelMinimax) ?? _minimaxModel;
+        prefs.getString(ApiConstants.prefModelBlackboxAi) ?? _blackboxAiModel;
+    _minimaxModel =
+        prefs.getString(ApiConstants.prefModelMinimax) ?? _minimaxModel;
     _openAiCompatibleModel =
-      prefs.getString(ApiConstants.prefModelOpenAiCompatible) ??
-      _openAiCompatibleModel;
+        prefs.getString(ApiConstants.prefModelOpenAiCompatible) ??
+        _openAiCompatibleModel;
     _deepseekModel =
-      prefs.getString(ApiConstants.prefModelDeepseek) ?? _deepseekModel;
-    _ollamaModel = prefs.getString(ApiConstants.prefModelOllama) ?? _ollamaModel;
+        prefs.getString(ApiConstants.prefModelDeepseek) ?? _deepseekModel;
+    _ollamaModel =
+        prefs.getString(ApiConstants.prefModelOllama) ?? _ollamaModel;
     _qwenModel = prefs.getString(ApiConstants.prefModelQwen) ?? _qwenModel;
     _xAiModel = prefs.getString(ApiConstants.prefModelXAi) ?? _xAiModel;
     _zAiModel = prefs.getString(ApiConstants.prefModelZAi) ?? _zAiModel;
-    _mistralModel = prefs.getString(ApiConstants.prefModelMistral) ?? _mistralModel;
+    _mistralModel =
+        prefs.getString(ApiConstants.prefModelMistral) ?? _mistralModel;
 
     _selectedModel = _getProviderModel(_currentProvider);
 
@@ -558,7 +561,10 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _saveEnableCharacterCard() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('airp_enable_character_card', _settings!.enableCharacterCard);
+    await prefs.setBool(
+      'airp_enable_character_card',
+      _settings!.enableCharacterCard,
+    );
   }
 
   /// Persists SillyTavern state (World Lore) to SharedPreferences.
@@ -768,7 +774,6 @@ class ChatProvider extends ChangeNotifier {
     await _globalSettings.saveModelPickerSortMode(_modelPickerSortMode);
   }
 
-
   void setBraveApiKey(String val) {
     _apiKeys.setSearchKey(SearchProvider.brave, val);
   }
@@ -812,7 +817,7 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString(ApiConstants.prefModelXAi, _xAiModel);
     await prefs.setString(ApiConstants.prefModelZAi, _zAiModel);
     await prefs.setString(ApiConstants.prefModelMistral, _mistralModel);
-    
+
     await prefs.setString(
       'airp_default_system_instruction',
       _systemInstruction,
@@ -935,8 +940,9 @@ class ChatProvider extends ChangeNotifier {
       customUrl = _vertexAiEndpoint.trim();
     }
     final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
-    final String modelName =
-        _currentProvider == AiProvider.local ? _localModelName : _selectedModel;
+    final String modelName = _currentProvider == AiProvider.local
+        ? _localModelName
+        : _selectedModel;
 
     final List<Map<String, dynamic>> openAiExtras = [];
     final List<Map<String, dynamic>> geminiExtras = [];
@@ -975,17 +981,20 @@ class ChatProvider extends ChangeNotifier {
           userMessage: sentUserText,
           tools: [WebSearchService.buildWebSearchToolSpec()],
           extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
-          temperature:
-              _settings!.enableGenerationSettings ? _settings!.temperature : null,
+          temperature: _settings!.enableGenerationSettings
+              ? _settings!.temperature
+              : null,
           topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
-          maxTokens:
-              _settings!.enableMaxOutputTokens ? _settings!.maxOutputTokens : null,
-          reasoningEffort:
-                _settings!.enableReasoning ? _settings!.reasoningEffort : null,
+          maxTokens: _settings!.enableMaxOutputTokens
+              ? _settings!.maxOutputTokens
+              : null,
+          reasoningEffort: _settings!.enableReasoning
+              ? _settings!.reasoningEffort
+              : null,
           applyReasoningEffort: strategy.applyReasoningEffort,
           extraHeaders: strategy.getHeaders(activeKey),
           maxRoundsLeft: 1,
-          );
+        );
       }
 
       if (det.isError) {
@@ -1007,7 +1016,9 @@ class ChatProvider extends ChangeNotifier {
       }
 
       // ── Tool call: extract the AI-generated query and execute it ──
-      final query = WebSearchService.extractQueryFromToolArgs(det.toolArguments);
+      final query = WebSearchService.extractQueryFromToolArgs(
+        det.toolArguments,
+      );
       if (query == null) {
         // Malformed tool call — abandon the loop and let the final streamed
         // answer proceed with whatever context we have (likely none).
@@ -1051,7 +1062,9 @@ class ChatProvider extends ChangeNotifier {
         geminiExtras.add({
           'role': 'model',
           'parts': [
-            {'functionCall': {'name': det.toolName, 'args': argsObj}},
+            {
+              'functionCall': {'name': det.toolName, 'args': argsObj},
+            },
           ],
         });
         geminiExtras.add(
@@ -1061,8 +1074,9 @@ class ChatProvider extends ChangeNotifier {
           ),
         );
       } else {
-        final callId =
-            det.toolCallId.isNotEmpty ? det.toolCallId : 'call_$round';
+        final callId = det.toolCallId.isNotEmpty
+            ? det.toolCallId
+            : 'call_$round';
         openAiExtras.add({
           'role': 'assistant',
           'content': det.reasoning.isNotEmpty ? det.reasoning : null,
@@ -1170,7 +1184,8 @@ class ChatProvider extends ChangeNotifier {
 
     final lorebooks = <Lorebook>[
       if (_globalLorebook.entries.isNotEmpty) _globalLorebook,
-      if (_settings!.enableCharacterCard && _characterCard.characterBook != null)
+      if (_settings!.enableCharacterCard &&
+          _characterCard.characterBook != null)
         _characterCard.characterBook!,
     ];
     if (lorebooks.isEmpty) return const [];
@@ -1280,16 +1295,22 @@ class ChatProvider extends ChangeNotifier {
             ? Content.system(finalSystemInstruction)
             : null,
         generationConfig: GenerationConfig(
-          temperature: _settings!.enableGenerationSettings ? _settings!.temperature : null,
+          temperature: _settings!.enableGenerationSettings
+              ? _settings!.temperature
+              : null,
           topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
           topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
-          maxOutputTokens: _settings!.enableMaxOutputTokens ? _settings!.maxOutputTokens : null,
+          maxOutputTokens: _settings!.enableMaxOutputTokens
+              ? _settings!.maxOutputTokens
+              : null,
         ),
         safetySettings: safetySettings,
       );
 
       List<Content> history = [];
-      int effectiveHistoryLimit = _settings!.enableMsgHistory ? _settings!.historyLimit : 0;
+      int effectiveHistoryLimit = _settings!.enableMsgHistory
+          ? _settings!.historyLimit
+          : 0;
       int startIndex = _messages.length - effectiveHistoryLimit;
       if (startIndex < 0) startIndex = 0;
       final limitedMessages = _messages.sublist(startIndex);
@@ -1357,7 +1378,10 @@ class ChatProvider extends ChangeNotifier {
     // --- Input-based lore recognition ---
     final recognizedLoreEntries = recognizeLoreEntriesFromInput(messageText);
     _lastRecognizedLoreEntries = recognizedLoreEntries;
-    const lorebookResult = LorebookEvalResult(byPosition: {}, estimatedTokens: 0);
+    const lorebookResult = LorebookEvalResult(
+      byPosition: {},
+      estimatedTokens: 0,
+    );
     _lastLorebookEvalResult = lorebookResult;
     final depthEntries = _collectDepthEntries(lorebookResult);
 
@@ -1583,11 +1607,15 @@ class ChatProvider extends ChangeNotifier {
       final String finalUserMessage = sentUserText;
 
       if (_currentProvider == AiProvider.gemini) {
-        await initializeModel(systemInstructionOverride: finalSystemInstruction);
+        await initializeModel(
+          systemInstructionOverride: finalSystemInstruction,
+        );
       }
 
       final contextMessages = _messages.sublist(0, _messages.length - 2);
-      int effectiveHistoryLimit = _settings!.enableMsgHistory ? _settings!.historyLimit : 0;
+      int effectiveHistoryLimit = _settings!.enableMsgHistory
+          ? _settings!.historyLimit
+          : 0;
       int startIndex = contextMessages.length - effectiveHistoryLimit;
       if (startIndex < 0) startIndex = 0;
       final limitedHistory = contextMessages.sublist(startIndex);
@@ -1595,21 +1623,27 @@ class ChatProvider extends ChangeNotifier {
       responseStream = strategy.streamResponse(
         apiKey: activeKey,
         baseUrl: strategy.getStreamUrl(customUrl: customUrl),
-        model:
-            _currentProvider == AiProvider.local
-                ? _localModelName
-                : _selectedModel,
+        model: _currentProvider == AiProvider.local
+            ? _localModelName
+            : _selectedModel,
         history: limitedHistory,
         systemInstruction: finalSystemInstruction,
         userMessage: finalUserMessage,
         imagePaths: imagesToSend,
-        temperature: _settings!.enableGenerationSettings ? _settings!.temperature : null,
+        temperature: _settings!.enableGenerationSettings
+            ? _settings!.temperature
+            : null,
         topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
         topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
-        maxTokens: _settings!.enableMaxOutputTokens ? _settings!.maxOutputTokens : null,
+        maxTokens: _settings!.enableMaxOutputTokens
+            ? _settings!.maxOutputTokens
+            : null,
         enableGrounding:
-            _settings!.enableGrounding && _settings!.searchProvider == SearchProvider.provider,
-        reasoningEffort: _settings!.enableReasoning ? _settings!.reasoningEffort : null,
+            _settings!.enableGrounding &&
+            _settings!.searchProvider == SearchProvider.provider,
+        reasoningEffort: _settings!.enableReasoning
+            ? _settings!.reasoningEffort
+            : null,
         extraHeaders: strategy.getHeaders(activeKey),
         includeUsage: _settings!.enableUsage,
         depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
@@ -1633,10 +1667,9 @@ class ChatProvider extends ChangeNotifier {
 
       _streamingCoordinator.registerStream(
         sessionId: streamSessionId,
-        modelName:
-            _currentProvider == AiProvider.local
-                ? _localModelName
-                : _selectedModel,
+        modelName: _currentProvider == AiProvider.local
+            ? _localModelName
+            : _selectedModel,
         contentNotifier: contentNotifier,
         stream: responseStream,
         onUpdate: (sessionId, text, usage) {
@@ -1906,6 +1939,197 @@ class ChatProvider extends ChangeNotifier {
     return newSessionId;
   }
 
+  /// Compresses the current conversation into a narrative summary + voice
+  /// samples (two one-shot LLM calls), appends both as AI messages into the
+  /// current chat, then creates a fresh branched conversation seeded with
+  /// [summary]+[voices]+[last N assistant/user pairs]. The original
+  /// conversation is left intact (only appended-to).  After branching, the
+  /// active session is switched to the new one.
+  ///
+  /// Returns `null` on success or an error string.
+  Future<String?> compressAndBranch({
+    required int pairCount,
+    required String compressPrompt,
+    required String voiceSamplesPrompt,
+  }) async {
+    if (_messages.isEmpty) {
+      return "Nothing to summarize — the conversation is empty.";
+    }
+    final int n = pairCount.clamp(
+      SummarizeDefaults.minPairs,
+      SummarizeDefaults.maxPairs,
+    );
+
+    // 1. Build a plain-text transcript of the whole conversation.
+    final buf = StringBuffer();
+    for (final m in _messages) {
+      final role = m.isUser ? 'User' : 'Assistant';
+      final body = ChatMessage.sanitizeForContext(m.text).trim();
+      if (body.isEmpty) continue;
+      buf.writeln('$role: $body');
+      buf.writeln();
+    }
+    final transcript = buf.toString().trimRight();
+    if (transcript.isEmpty) {
+      return "Nothing to summarize — no message text found.";
+    }
+
+    _nonStreamingLoading = true;
+    notifyListeners();
+
+    try {
+      // 2. Two one-shot LLM calls.
+      final summaryText = await _oneShotGenerate(
+        '$compressPrompt\n\n$transcript',
+      );
+      if (summaryText == null) {
+        return "Summarize call failed (check API key / model).";
+      }
+      final voicesText = await _oneShotGenerate(
+        '$voiceSamplesPrompt\n\n$transcript',
+      );
+      if (voicesText == null) {
+        return "Voice-samples call failed (check API key / model).";
+      }
+
+      final modelNameForNote = _selectedModel;
+
+      // 3. Emit summary + voices as two AI messages into the current chat.
+      final summaryMessage = ChatMessage(
+        text: '**[Summary]**\n\n$summaryText',
+        isUser: false,
+        modelName: modelNameForNote,
+      );
+      final voicesMessage = ChatMessage(
+        text: '**[Voice Samples]**\n\n$voicesText',
+        isUser: false,
+        modelName: modelNameForNote,
+      );
+      _messages.add(summaryMessage);
+      _messages.add(voicesMessage);
+      notifyListeners();
+      await autoSaveCurrentSession();
+
+      // 4. Collect last N assistant/user pairs from the ORIGINAL messages
+      //    (i.e. before the two emitted notes). Walk backwards anchoring on
+      //    assistant turns.
+      final originalLen = _messages.length - 2; // pre-emit count
+      final pairs = <ChatMessage>[];
+      int i = originalLen - 1;
+      int collected = 0;
+      while (i >= 0 && collected < n) {
+        if (!_messages[i].isUser) {
+          // assistant turn — take it + preceding user turn if present
+          final assistant = _messages[i].copyWith(clearContentNotifier: true);
+          if (i - 1 >= 0 && _messages[i - 1].isUser) {
+            final user = _messages[i - 1].copyWith(clearContentNotifier: true);
+            pairs.insert(0, user);
+          }
+          pairs.insert(0, assistant);
+          collected++;
+          i -= 2;
+        } else {
+          i -= 1;
+        }
+      }
+
+      // 5. New branch: [summary]+[voices]+[last N pairs]
+      final branchedMessages = <ChatMessage>[
+        summaryMessage.copyWith(clearContentNotifier: true),
+        voicesMessage.copyWith(clearContentNotifier: true),
+        ...pairs,
+      ];
+      final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+      final newSession = ChatSessionData(
+        id: newSessionId,
+        title: _currentTitle.isEmpty
+            ? "Summarized Conversation"
+            : "Summary of $_currentTitle",
+        messages: branchedMessages,
+        modelName: _selectedModel,
+        tokenCount: 0,
+        systemInstruction: _systemInstruction,
+        backgroundImage: null,
+        provider: _currentProvider.name,
+        isBookmarked: false,
+      );
+      _sessionService.prependSession(newSession);
+      loadSession(newSession);
+      return null; // success
+    } catch (e) {
+      return "Summarize failed: $e";
+    } finally {
+      _nonStreamingLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// One-shot non-streaming generation using the active provider's strategy.
+  /// Returns the plain text answer or `null` on error.  Does NOT touch chat
+  /// session state.
+  Future<String?> _oneShotGenerate(String userPrompt) async {
+    final bool isGemini = _currentProvider == AiProvider.gemini;
+    final String activeKey = _getProviderKey(_currentProvider);
+    final strategy = StrategyResolver.resolve(_currentProvider);
+    String? customUrl;
+    if (_currentProvider == AiProvider.local) {
+      customUrl = _localIp.trim();
+    } else if (_currentProvider == AiProvider.openAiCompatible) {
+      customUrl = _openAiCompatibleEndpoint.trim();
+    } else if (_currentProvider == AiProvider.vertexAi) {
+      customUrl = _vertexAiEndpoint.trim();
+    }
+    final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
+    final String modelName = _currentProvider == AiProvider.local
+        ? _localModelName
+        : _selectedModel;
+    const String sysInstr = 'You are a helpful assistant.';
+
+    ToolDetectionResult det;
+    if (isGemini) {
+      final gemKey = geminiKey.isNotEmpty ? geminiKey : _defaultApiKey;
+      det = await ChatApiService.performGeminiFunctionDetection(
+        apiKey: gemKey,
+        model: _selectedModel,
+        history: const [],
+        userMessage: userPrompt,
+        systemInstruction: sysInstr,
+        functionDeclarations: const [],
+        extraMessages: null,
+        disableSafety: _settings?.disableSafety ?? true,
+        maxRoundsLeft: 1,
+      );
+    } else {
+      det = await ChatApiService.requestOpenAiCompatibleWithToolDetection(
+        apiKey: activeKey,
+        baseUrl: streamUrl,
+        model: modelName,
+        history: const [],
+        systemInstruction: sysInstr,
+        userMessage: userPrompt,
+        tools: const [],
+        extraMessages: null,
+        temperature: _settings?.enableGenerationSettings == true
+            ? _settings!.temperature
+            : null,
+        topP: _settings?.enableGenerationSettings == true
+            ? _settings!.topP
+            : null,
+        maxTokens: _settings?.enableMaxOutputTokens == true
+            ? _settings!.maxOutputTokens
+            : null,
+        reasoningEffort: _settings?.enableReasoning == true
+            ? _settings!.reasoningEffort
+            : null,
+        applyReasoningEffort: strategy.applyReasoningEffort,
+        extraHeaders: strategy.getHeaders(activeKey),
+        maxRoundsLeft: 1,
+      );
+    }
+    if (det.isError) return null;
+    return ChatMessage.sanitizeForContext(det.text).trim();
+  }
+
   Future<void> autoSaveCurrentSession({
     String? backgroundImagePath,
     bool clearBackground = false,
@@ -2067,7 +2291,8 @@ class ChatProvider extends ChangeNotifier {
     // If this session has an active background stream, reconnect the notifier
     if (_streamingCoordinator.isStreaming(session.id)) {
       final notifier = _streamingCoordinator.getActiveNotifier(session.id);
-      final currentText = _streamingCoordinator.getActiveStreamText(session.id) ?? '';
+      final currentText =
+          _streamingCoordinator.getActiveStreamText(session.id) ?? '';
       if (notifier != null && _messages.isNotEmpty && !_messages.last.isUser) {
         _messages[_messages.length - 1] = _messages.last.copyWith(
           text: currentText,
@@ -2169,7 +2394,9 @@ class ChatProvider extends ChangeNotifier {
             .map(
               (m) => m.isUser
                   ? Content.text(m.text)
-                  : Content.model([TextPart(ChatMessage.sanitizeForContext(m.text))]),
+                  : Content.model([
+                      TextPart(ChatMessage.sanitizeForContext(m.text)),
+                    ]),
             )
             .toList();
         final response = await _model.countTokens(contents);
@@ -2246,9 +2473,7 @@ class ChatProvider extends ChangeNotifier {
       'systemPrompts': _savedSystemPrompts.map((p) => p.toJson()).toList(),
       'sessions': savedSessions.map((s) => s.toJson()).toList(),
       'characterCard': _characterCard.toV3Json(),
-      'sillyTavernState': {
-        'globalLorebook': _globalLorebook.toJson(),
-      },
+      'sillyTavernState': {'globalLorebook': _globalLorebook.toJson()},
     };
   }
 
@@ -2279,7 +2504,7 @@ class ChatProvider extends ChangeNotifier {
     _blackboxAiModel = models['blackboxAi'] as String? ?? _blackboxAiModel;
     _minimaxModel = models['minimax'] as String? ?? _minimaxModel;
     _openAiCompatibleModel =
-      models['openAiCompatible'] as String? ?? _openAiCompatibleModel;
+        models['openAiCompatible'] as String? ?? _openAiCompatibleModel;
     _deepseekModel = models['deepseek'] as String? ?? _deepseekModel;
     _ollamaModel = models['ollama'] as String? ?? _ollamaModel;
     _qwenModel = models['qwen'] as String? ?? _qwenModel;
@@ -2422,4 +2647,3 @@ class _WebSearchLoopResult {
     this.reasoningRecovered = false,
   });
 }
-
