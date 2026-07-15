@@ -215,6 +215,9 @@ class ApiConstants {
   static const int defaultMaxSearchRounds = 2;
   static const int minSearchRounds = 1;
   static const int maxSearchRounds = 5;
+
+  // Config Packs (named settings bundles; exclude conversations + API keys)
+  static const String prefKeyConfigPacks = 'airp_config_packs';
 }
 
 /// The web search backend to use when the grounding toggle is active.

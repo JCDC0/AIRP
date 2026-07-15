@@ -2,20 +2,21 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/vfx_provider.dart';
 import '../../providers/scale_provider.dart';
-import '../../models/preset_model.dart';
+import '../../models/config_pack.dart';
+import '../../services/config_pack_service.dart';
 import '../../services/library_service.dart';
 import '../../services/file_io_helper.dart';
 
 /// Unified Settings Library panel.
 ///
 /// Hosts two tabs:
-///  - **Config Packs** — custom rules manager + preset import / export.
+///  - **Config Packs** — named settings bundles (capture / apply / export /
+///    import) plus tolerant SillyTavern preset import.
 ///  - **Snapshots**    — selective full-state `.airp` export / smart import.
 class SettingsLibraryPanel extends StatefulWidget {
   const SettingsLibraryPanel({super.key});
@@ -29,12 +30,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   late TabController _tabController;
 
   // ── Config Packs state ──────────────────────────────────────────────────
-  late TextEditingController _ruleLabelController;
-  late TextEditingController _newRuleContentController;
-  List<Map<String, dynamic>> _customRules = [];
-
-  static const String kCustomRulesKey = 'airp_custom_rules';
-  static const String _kLegacyCustomRulesKey = 'custom_sys_prompt_rules';
+  List<ConfigPack> _packs = [];
 
   // ── Snapshots state ─────────────────────────────────────────────────────
   bool _exportConversations = true;
@@ -49,239 +45,273 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _ruleLabelController = TextEditingController();
-    _newRuleContentController = TextEditingController();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadCustomRules());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPacks());
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _ruleLabelController.dispose();
-    _newRuleContentController.dispose();
     super.dispose();
   }
 
-  // ── Persistence ──────────────────────────────────────────────────────────
+  // ── Config Packs ──────────────────────────────────────────────────────────
 
-  Future<void> _loadCustomRules() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? json = prefs.getString(kCustomRulesKey);
-    if (json == null) {
-      json = prefs.getString(_kLegacyCustomRulesKey);
-      if (json != null) {
-        await prefs.setString(kCustomRulesKey, json);
-        await prefs.remove(_kLegacyCustomRulesKey);
-      }
-    }
-    if (json != null) {
-      try {
-        final decoded = jsonDecode(json) as List<dynamic>;
-        _customRules = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-      } catch (e) {
-        debugPrint('Error loading custom rules: $e');
-      }
-    }
-    if (mounted) setState(() {});
+  Future<void> _loadPacks() async {
+    final packs = await ConfigPackService.listPacks();
+    if (mounted) setState(() => _packs = packs);
   }
 
-  Future<void> _saveCustomRules() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(kCustomRulesKey, jsonEncode(_customRules));
-  }
+  ThemeProvider get _tp => Provider.of<ThemeProvider>(context, listen: false);
+  ScaleProvider get _sp => Provider.of<ScaleProvider>(context, listen: false);
 
-  // ── Config Pack import / export ─────────────────────────────────────────
-
-  Future<void> _importConfigPack() async {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    try {
-      final content = await FileIOHelper.pickAndReadString(extensions: ['json']);
-      if (content == null) return;
-      final preset = SystemPreset.fromJson(jsonDecode(content));
-      
-      chatProvider.setTitle(preset.name);
-      chatProvider.setSystemInstruction(preset.systemPrompt);
-
-      final existing = [..._customRules];
-      final labels = existing.map((r) => r['label']).toSet();
-      for (final rule in preset.customRules) {
-        if (!labels.contains(rule['label'])) {
-          existing.add(rule);
-          labels.add(rule['label']);
-        }
-      }
-      setState(() {
-        _customRules = existing;
-        _saveCustomRules();
-        
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Imported config pack '${preset.name}'!")),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _exportConfigPack() async {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    final preset = SystemPreset(
-      name: chatProvider.currentTitle.isNotEmpty
-          ? chatProvider.currentTitle
-          : 'Untitled Config Pack',
-      systemPrompt: chatProvider.systemInstruction,
-      customRules: _customRules,
-      generationSettings: {
-        'temperature': settingsProvider.temperature,
-        'top_p': settingsProvider.topP,
-        'top_k': settingsProvider.topK,
-      },
+  Future<String?> _promptForName({
+    required String hint,
+    String initial = '',
+    String title = 'Name',
+  }) async {
+    final tp = _tp;
+    final fs = _sp.systemFontSize;
+    final controller = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: tp.dropdownColor,
+        title: Text(title, style: TextStyle(color: tp.textColor, fontSize: fs)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: hint,
+            filled: true,
+            fillColor: tp.containerFillDarkColor,
+          ),
+          style: TextStyle(color: tp.textColor, fontSize: fs * 0.8),
+          onSubmitted: (v) => Navigator.pop(context, v.trim()),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('OK')),
+        ],
+      ),
     );
+  }
+
+  Future<void> _saveCurrentAsPack() async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider =
+        Provider.of<SettingsProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final vfxProvider = Provider.of<VfxProvider>(context, listen: false);
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+
+    final name = await _promptForName(hint: 'Pack name');
+    if (name == null || name.trim().isEmpty) return;
+
+    final pack = ConfigPackService.captureCurrent(
+      chatProvider: chatProvider,
+      settingsProvider: settingsProvider,
+      themeProvider: themeProvider,
+      vfxProvider: vfxProvider,
+      scaleProvider: scaleProvider,
+      name: name.trim(),
+    );
+    await ConfigPackService.savePack(pack);
+    await _loadPacks();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Saved pack '${pack.name}'")),
+      );
+    }
+  }
+
+  Future<void> _confirmApplyPack(ConfigPack pack) async {
+    final tp = _tp;
+    final fs = _sp.systemFontSize;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: tp.dropdownColor,
+        title: Text('Apply pack?',
+            style: TextStyle(color: tp.textColor, fontSize: fs)),
+        content: Text(
+          "Apply '${pack.name}'? This overwrites all settings. "
+          'Conversations and API keys are not affected.',
+          style: TextStyle(color: tp.subtitleColor, fontSize: fs * 0.8),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Apply')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _applyPack(pack);
+  }
+
+  Future<void> _applyPack(ConfigPack pack) async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider =
+        Provider.of<SettingsProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final vfxProvider = Provider.of<VfxProvider>(context, listen: false);
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      final jsonStr = await LibraryService.exportPreset(preset);
+      await ConfigPackService.applyPack(
+        pack,
+        chatProvider: chatProvider,
+        settingsProvider: settingsProvider,
+        themeProvider: themeProvider,
+        vfxProvider: vfxProvider,
+        scaleProvider: scaleProvider,
+      );
+      messenger.showSnackBar(
+        SnackBar(content: Text("Applied pack '${pack.name}'")),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Apply failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _renamePack(ConfigPack pack) async {
+    final name = await _promptForName(
+      hint: 'New name',
+      initial: pack.name,
+      title: 'Rename pack',
+    );
+    if (name == null || name.trim().isEmpty || name.trim() == pack.name) return;
+    await ConfigPackService.renamePack(pack.name, name.trim());
+    await _loadPacks();
+  }
+
+  Future<void> _confirmDeletePack(ConfigPack pack) async {
+    final tp = _tp;
+    final fs = _sp.systemFontSize;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: tp.dropdownColor,
+        title: Text('Delete pack?',
+            style: TextStyle(color: Colors.redAccent, fontSize: fs)),
+        content: Text("Delete '${pack.name}'?\n\nThis cannot be undone.",
+            style: TextStyle(color: tp.subtitleColor, fontSize: fs * 0.8)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('DELETE')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ConfigPackService.deletePack(pack.name);
+    await _loadPacks();
+  }
+
+  Future<void> _exportPackToFile(ConfigPack pack) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final jsonStr =
+          const JsonEncoder.withIndent('  ').convert(pack.toJson());
       final bytes = Uint8List.fromList(utf8.encode(jsonStr));
       final saved = await FileIOHelper.saveFile(
         bytes: bytes,
-        fileName: '${preset.name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.json',
+        fileName:
+            '${pack.name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.json',
         extensions: ['json'],
         dialogTitle: 'Export Config Pack',
       );
       if (saved && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('Config pack exported!')),
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
     }
   }
 
-  // ── Rule CRUD ────────────────────────────────────────────────────────────
-
-  void _addRule() {
-    final text = _newRuleContentController.text.trim();
-    if (text.isEmpty) return;
-    final label = _ruleLabelController.text.trim().isNotEmpty
-        ? _ruleLabelController.text.trim()
-        : (text.length > 25 ? '${text.substring(0, 25)}…' : text);
-    setState(() {
-      _customRules.add({'content': text, 'active': true, 'label': label});
-      _newRuleContentController.clear();
-      _ruleLabelController.clear();
-      _saveCustomRules();
-      
-    });
+  Future<void> _exportCurrentToFile() async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final settingsProvider =
+        Provider.of<SettingsProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final vfxProvider = Provider.of<VfxProvider>(context, listen: false);
+    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+    final name = await _promptForName(hint: 'Pack name');
+    if (name == null || name.trim().isEmpty) return;
+    final pack = ConfigPackService.captureCurrent(
+      chatProvider: chatProvider,
+      settingsProvider: settingsProvider,
+      themeProvider: themeProvider,
+      vfxProvider: vfxProvider,
+      scaleProvider: scaleProvider,
+      name: name.trim(),
+    );
+    await _exportPackToFile(pack);
   }
 
-  void _editRule(int index) {
-    final sp = Provider.of<ScaleProvider>(context, listen: false);
-    final tp = Provider.of<ThemeProvider>(context, listen: false);
-    final rule = _customRules[index];
-    final label = TextEditingController(text: rule['label']);
-    final content = TextEditingController(text: rule['content']);
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: tp.dropdownColor,
-        title: Text('Edit Rule',
-            style: TextStyle(color: tp.textColor, fontSize: sp.systemFontSize)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: label,
-              decoration: InputDecoration(
-                  labelText: 'Rule Name',
-                  filled: true,
-                  fillColor: tp.containerFillDarkColor),
-              style: TextStyle(
-                  color: tp.textColor, fontSize: sp.systemFontSize * 0.8),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: content,
-              maxLines: 4,
-              decoration: InputDecoration(
-                  labelText: 'Rule Content',
-                  filled: true,
-                  fillColor: tp.containerFillDarkColor),
-              style: TextStyle(
-                  color: tp.textColor, fontSize: sp.systemFontSize * 0.8),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              child: Text('Cancel',
-                  style: TextStyle(fontSize: sp.systemFontSize * 0.8)),
-              onPressed: () => Navigator.pop(context)),
-          TextButton(
-            child: Text('Save',
-                style: TextStyle(
-                    color: Colors.blueAccent,
-                    fontSize: sp.systemFontSize * 0.8)),
-            onPressed: () {
-              setState(() {
-                _customRules[index]['label'] = label.text.trim();
-                _customRules[index]['content'] = content.text.trim();
-                _saveCustomRules();
-              });
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-    );
+  Future<void> _importAirpPackFile() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final content =
+        await FileIOHelper.pickAndReadString(dialogTitle: 'Select Config Pack');
+    if (content == null) return;
+    final pack = ConfigPackService.parsePackFile(content);
+    if (pack == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+            content: Text('Not a valid AIRP config pack'),
+            backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+    await ConfigPackService.savePack(pack);
+    await _loadPacks();
+    if (mounted) {
+      messenger.showSnackBar(
+        SnackBar(content: Text("Imported pack '${pack.name}'")),
+      );
+    }
   }
 
-  void _confirmDeleteRule(int index) {
-    final sp = Provider.of<ScaleProvider>(context, listen: false);
-    final tp = Provider.of<ThemeProvider>(context, listen: false);
-    final label = _customRules[index]['label'];
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: tp.dropdownColor,
-        title: Text('Delete Rule?',
-            style: TextStyle(
-                color: Colors.redAccent, fontSize: sp.systemFontSize)),
-        content: Text("Delete '$label'?\n\nThis cannot be undone.",
-            style: TextStyle(
-                color: tp.subtitleColor, fontSize: sp.systemFontSize * 0.8)),
-        actions: [
-          TextButton(
-              child: Text('Cancel',
-                  style: TextStyle(fontSize: sp.systemFontSize * 0.8)),
-              onPressed: () => Navigator.pop(context)),
-          TextButton(
-            child: Text('DELETE',
-                style: TextStyle(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: sp.systemFontSize * 0.8)),
-            onPressed: () {
-              setState(() {
-                _customRules.removeAt(index);
-                _saveCustomRules();
-              });
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-    );
+  Future<void> _importSillyTavernPreset() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final content = await FileIOHelper.pickAndReadString(
+        dialogTitle: 'Select SillyTavern Preset');
+    if (content == null) return;
+    try {
+      final pack = ConfigPackService.importSillyTavernPreset(content);
+      await ConfigPackService.savePack(pack);
+      await _loadPacks();
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+              content: Text(
+                  "Imported SillyTavern preset '${pack.name}' — tap to apply.")),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+            content: Text('Import failed: $e'),
+            backgroundColor: Colors.redAccent),
+      );
+    }
   }
 
   // ── Snapshot export / import ─────────────────────────────────────────────
@@ -543,7 +573,7 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
 
         // ── Tab views ──
         SizedBox(
-          height: 2000,
+          height: MediaQuery.of(context).size.height * 0.6,
           child: TabBarView(
             controller: _tabController,
             physics: const NeverScrollableScrollPhysics(),
@@ -560,137 +590,114 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   Widget _buildConfigPacksTab(
       ThemeProvider tp, ScaleProvider sp, ChatProvider chatProvider, SettingsProvider settingsProvider, double fs) {
     return Container(
-          decoration: BoxDecoration(
-            color: tp.containerFillColor,
-            border: Border.all(color: tp.borderColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _importConfigPack,
-                        icon: const Icon(Icons.arrow_downward, size: 14),
-                        label: Text('Import', style: TextStyle(fontSize: fs * 0.8)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _exportConfigPack,
-                        icon: const Icon(Icons.arrow_upward, size: 14),
-                        label: Text('Export', style: TextStyle(fontSize: fs * 0.8)),
-                      ),
-                    ),
-                  ],
-                ),
+      decoration: BoxDecoration(
+        color: tp.containerFillColor,
+        border: Border.all(color: tp.borderColor),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _saveCurrentAsPack,
+                    icon: const Icon(Icons.save, size: 14),
+                    label: Text('Save Current',
+                        style: TextStyle(fontSize: fs * 0.8)),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _exportCurrentToFile,
+                    icon: const Icon(Icons.arrow_upward, size: 14),
+                    label: Text('Export',
+                        style: TextStyle(fontSize: fs * 0.8)),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _importAirpPackFile,
+                    icon: const Icon(Icons.arrow_downward, size: 14),
+                    label: Text('Import Pack',
+                        style: TextStyle(fontSize: fs * 0.8)),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _importSillyTavernPreset,
+                    icon: const Icon(Icons.auto_awesome, size: 14),
+                    label: Text('Import ST Preset',
+                        style: TextStyle(fontSize: fs * 0.8)),
+                  ),
+                ],
               ),
-              Divider(color: tp.borderColor, height: 1),
-
-              if (_customRules.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('No custom rules defined.',
-                      style: TextStyle(color: Colors.grey),
-                      textAlign: TextAlign.center),
-                ),
-
-              ..._customRules.asMap().entries.map((entry) {
-                final i = entry.key;
-                final rule = entry.value;
-                return ListTile(
+            ),
+            Divider(color: tp.borderColor, height: 1),
+            if (_packs.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('No saved config packs. Use "Save Current".',
+                    style: TextStyle(color: Colors.grey),
+                    textAlign: TextAlign.center),
+              ),
+            ..._packs.map((pack) => ListTile(
                   dense: true,
-                  title: Text(rule['label'],
-                      style: TextStyle(color: tp.subtitleColor, fontSize: fs * 0.8),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  onTap: () => _confirmApplyPack(pack),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(pack.name,
+                            style: TextStyle(
+                                color: tp.subtitleColor, fontSize: fs * 0.85),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      if (pack.sourceFormat == 'sillytavern')
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Text('ST',
+                              style: TextStyle(
+                                  color: tp.faintColor,
+                                  fontSize: fs * 0.6,
+                                  fontStyle: FontStyle.italic)),
+                        ),
+                    ],
+                  ),
                   subtitle: Text(
-                    (rule['content'] as String).replaceAll('\n', ' '),
+                    pack.description.isNotEmpty
+                        ? pack.description
+                        : 'Tap to apply',
+                    style:
+                        TextStyle(color: tp.faintColor, fontSize: fs * 0.65),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: tp.faintColor, fontSize: 10),
-                  ),
-                  leading: IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 16),
-                    onPressed: () => _editRule(i),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.close, color: tp.faintestColor, size: 16),
-                        onPressed: () => _confirmDeleteRule(i),
+                        tooltip: 'Export',
+                        icon: Icon(Icons.download, size: 16, color: tp.textColor),
+                        onPressed: () => _exportPackToFile(pack),
                       ),
-                      Switch(
-                        value: rule['active'] == true,
-                        activeThumbColor: Colors.blueAccent,
-                        onChanged: (val) => setState(() {
-                          rule['active'] = val;
-                          
-                        }),
+                      IconButton(
+                        tooltip: 'Rename',
+                        icon: Icon(Icons.edit, size: 16, color: Colors.blueAccent),
+                        onPressed: () => _renamePack(pack),
+                      ),
+                      IconButton(
+                        tooltip: 'Delete',
+                        icon: Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                        onPressed: () => _confirmDeletePack(pack),
                       ),
                     ],
                   ),
-                );
-              }),
-
-              Divider(color: tp.borderColor),
-
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: _ruleLabelController,
-                      decoration: InputDecoration(
-                        labelText: 'Rule Name',
-                        hintText: 'Name',
-                        isDense: true,
-                        filled: true,
-                        fillColor: tp.containerFillDarkColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _newRuleContentController,
-                      maxLines: 8,
-                      minLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'New Rule Content',
-                        hintText: 'Enter custom rule content…',
-                        hintStyle: TextStyle(fontSize: fs * 0.8),
-                        border: const OutlineInputBorder(),
-                        filled: true,
-                        fillColor: tp.containerFillColor,
-                      ),
-                      style: TextStyle(fontSize: fs),
-                      onSubmitted: (_) => _addRule(),
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.add_circle, size: 18),
-                        label: const Text('Add Rule'),
-                        onPressed: _addRule,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: tp.dropdownColor,
-                          foregroundColor: Colors.greenAccent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            ],
-          ),
-        );
+                )),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSnapshotsTab(ThemeProvider tp, ScaleProvider sp, double fs) {

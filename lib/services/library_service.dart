@@ -1,13 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/vfx_provider.dart';
 import '../providers/scale_provider.dart';
 import '../utils/version.dart';
 import '../models/character_card.dart';
-import '../models/preset_model.dart';
 
 /// Options controlling which categories to include in a library export.
 class ExportOptions {
@@ -199,11 +197,6 @@ class LibraryService {
         );
       }
 
-      // Apply custom rules if present
-      if (data['customRules'] != null) {
-        await _importCustomRules(data['customRules'] as List<dynamic>);
-      }
-
       final importedVersion = data['app_version'] ?? 'unknown';
       return ImportResult(
         success: true,
@@ -218,42 +211,10 @@ class LibraryService {
     }
   }
 
-  /// Merges imported custom rules into SharedPreferences, deduplicating by label.
-  static Future<void> _importCustomRules(List<dynamic> incoming) async {
-    final prefs = await SharedPreferences.getInstance();
-    List<Map<String, dynamic>> existing = [];
-
-    final String? existingJson = prefs.getString('custom_sys_prompt_rules');
-    if (existingJson != null) {
-      try {
-        existing = (jsonDecode(existingJson) as List)
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
-      } catch (_) {}
-    }
-
-    final existingLabels = existing.map((r) => r['label']).toSet();
-    for (final rule in incoming) {
-      final map = Map<String, dynamic>.from(rule);
-      if (!existingLabels.contains(map['label'])) {
-        existing.add(map);
-        existingLabels.add(map['label']);
-      }
-    }
-
-    await prefs.setString('custom_sys_prompt_rules', jsonEncode(existing));
-  }
-
   // --- Character Card Helpers ---
 
   static Future<String> exportCharacterCard(CharacterCard card) async {
     final map = card.toV3Json();
-    const encoder = JsonEncoder.withIndent('  ');
-    return encoder.convert(map);
-  }
-
-  static Future<String> exportPreset(SystemPreset preset) async {
-    final map = preset.toJson();
     const encoder = JsonEncoder.withIndent('  ');
     return encoder.convert(map);
   }
