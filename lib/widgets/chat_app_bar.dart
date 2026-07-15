@@ -22,6 +22,9 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Callback triggered when the settings drawer should be opened.
   final VoidCallback? onOpenEndDrawer;
 
+  /// Callback triggered when the in-chat find bar should be opened.
+  final VoidCallback? onOpenSearch;
+
   /// The base font size for system UI elements.
   final double systemFontSize;
 
@@ -29,6 +32,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     this.onOpenDrawer,
     this.onOpenEndDrawer,
+    this.onOpenSearch,
     required this.systemFontSize,
   });
 
@@ -122,9 +126,19 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: vfxProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha(0)
           : themeProvider.scaffoldBackgroundColor,
-      leading: IconButton(
-        icon: Icon(Icons.menu, size: scaleProvider.iconScale * 24),
-        onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
+      leadingWidth: 96,
+      leading: Row(
+        children: [
+          IconButton(
+            icon: Icon(Icons.menu, size: scaleProvider.iconScale * 24),
+            onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
+          ),
+          IconButton(
+            icon: Icon(Icons.search, size: scaleProvider.iconScale * 22),
+            tooltip: 'Find in chat (Ctrl+F)',
+            onPressed: onOpenSearch,
+          ),
+        ],
       ),
       title: GestureDetector(
         key: providerPickerTriggerKey,

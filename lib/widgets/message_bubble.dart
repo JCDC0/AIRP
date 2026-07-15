@@ -45,6 +45,12 @@ class MessageBubble extends StatelessWidget {
   /// Whether to show an inline typing indicator inside this bubble.
   final bool showTypingIndicator;
 
+  /// Whether this bubble is the current find-bar match (strong highlight).
+  final bool isSearchCurrent;
+
+  /// Whether this bubble contains a find-bar match (subtle highlight).
+  final bool isSearchMatch;
+
   const MessageBubble({
     super.key,
     required this.msg,
@@ -56,6 +62,8 @@ class MessageBubble extends StatelessWidget {
     this.onPreviousVersion,
     this.onBranch,
     this.showTypingIndicator = false,
+    this.isSearchCurrent = false,
+    this.isSearchMatch = false,
   });
 
   @override
@@ -69,10 +77,22 @@ class MessageBubble extends StatelessWidget {
     final textColor = msg.isUser
         ? themeProvider.userTextColor
         : themeProvider.aiTextColor;
-    final borderColor = msg.isUser
+    var borderColor = msg.isUser
         ? themeProvider.userBubbleColor.withAlpha(128)
         : themeProvider.dividerColor;
     final useBloom = vfxProvider.enableBloom;
+
+    Color searchGlowColor = Colors.transparent;
+    double searchGlowBlur = 0;
+    if (isSearchCurrent) {
+      borderColor = themeProvider.bloomGlowColor;
+      searchGlowColor = themeProvider.bloomGlowColor.withValues(alpha: 0.55);
+      searchGlowBlur = 22;
+    } else if (isSearchMatch) {
+      borderColor = themeProvider.bloomGlowColor.withValues(alpha: 0.45);
+      searchGlowColor = themeProvider.bloomGlowColor.withValues(alpha: 0.20);
+      searchGlowBlur = 10;
+    }
 
     Widget bubble;
     if (msg.contentNotifier != null) {
@@ -90,6 +110,8 @@ class MessageBubble extends StatelessWidget {
             themeProvider,
             vfxProvider,
             showTypingIndicator,
+            searchGlowColor,
+            searchGlowBlur,
           );
         },
       );
@@ -105,13 +127,17 @@ class MessageBubble extends StatelessWidget {
         themeProvider,
         vfxProvider,
         showTypingIndicator,
+        searchGlowColor,
+        searchGlowBlur,
       );
     }
 
     return Align(
       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(
-        crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: msg.isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           bubble,
           MessageBubbleActions(
@@ -142,6 +168,8 @@ class MessageBubble extends StatelessWidget {
     ThemeProvider themeProvider,
     VfxProvider vfxProvider,
     bool showTypingIndicator,
+    Color searchGlowColor,
+    double searchGlowBlur,
   ) {
     final splitContent = ReasoningUtils.split(text);
     final reasoningText = splitContent.reasoning;
@@ -151,7 +179,10 @@ class MessageBubble extends StatelessWidget {
     final bool hasVisibleText = visibleText.trim().isNotEmpty;
     final bool hasAttachments = msg.imagePaths.isNotEmpty;
     final bool shouldShowTypingDots =
-        showTypingIndicator && !hasReasoning && !hasVisibleText && !hasAttachments;
+        showTypingIndicator &&
+        !hasReasoning &&
+        !hasVisibleText &&
+        !hasAttachments;
 
     final contentColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +234,10 @@ class MessageBubble extends StatelessWidget {
               painter: BorderGlowPainter(
                 backgroundColor: bubbleColor,
                 borderColor: borderColor,
-                glowColor: (msg.isUser ? bubbleColor : themeProvider.textColor).withValues(alpha: 0.15),
+                glowColor: searchGlowBlur > 0
+                    ? searchGlowColor
+                    : (msg.isUser ? bubbleColor : themeProvider.textColor)
+                          .withValues(alpha: 0.15),
                 radius: 12.0,
                 strokeWidth: 2.0,
                 glowStrokeWidth: 10.0,
@@ -227,6 +261,15 @@ class MessageBubble extends StatelessWidget {
               color: bubbleColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: borderColor),
+              boxShadow: searchGlowBlur > 0
+                  ? [
+                      BoxShadow(
+                        color: searchGlowColor,
+                        blurRadius: searchGlowBlur,
+                        spreadRadius: searchGlowBlur > 15 ? 2.0 : 0.0,
+                      ),
+                    ]
+                  : const [],
             ),
             child: contentColumn,
           );

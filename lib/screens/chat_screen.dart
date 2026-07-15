@@ -11,6 +11,9 @@ import '../widgets/settings_drawer.dart';
 import '../widgets/chat_app_bar.dart';
 import '../widgets/chat_messages_list.dart';
 import '../widgets/chat_input_area.dart';
+import '../providers/search_provider.dart';
+import '../widgets/chat_search_bar.dart';
+import 'package:flutter/services.dart';
 
 /// The main screen of the application that manages the chat interface.
 ///
@@ -30,14 +33,21 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   late AnimationController _drawerController;
   late AnimationController _endDrawerController;
+  late AnimationController _searchBarController;
   late Animation<Offset> _drawerSlideAnimation;
   late Animation<Offset> _endDrawerSlideAnimation;
+  late Animation<Offset> _searchBarSlideAnimation;
 
   bool _isZoomed = false;
   bool _isZoomMode = false;
   late AnimationController _zoomBorderController;
   String? _previousSessionId;
   int _settingsDrawerVersion = 0;
+
+  ChatSearchProvider? _searchProvider;
+  final TextEditingController _searchFieldController = TextEditingController();
+  final FocusNode _searchFieldFocus = FocusNode();
+  final GlobalKey<State> _messagesListKey = GlobalKey<State>();
 
   @override
   void initState() {
@@ -55,6 +65,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         listen: false,
       ).initializeDeviceType(context);
     });
+
+    _searchProvider = ChatSearchProvider();
+    _searchFieldController.addListener(_onSearchFieldChanged);
+    _searchFieldFocus.addListener(_onSearchFocusChanged);
+    _searchProvider!.addListener(_onSearchCurrentMatchChanged);
+
+    _searchBarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _searchBarSlideAnimation =
+        Tween<Offset>(begin: const Offset(0.0, -1.0), end: Offset.zero).animate(
+          CurvedAnimation(parent: _searchBarController, curve: Curves.easeOut),
+        );
 
     _drawerController = AnimationController(
       vsync: this,
@@ -84,6 +108,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _zoomBorderController.dispose();
     _drawerController.dispose();
     _endDrawerController.dispose();
+    _searchFieldController.removeListener(_onSearchFieldChanged);
+    _searchFieldController.dispose();
+    _searchFieldFocus.removeListener(_onSearchFocusChanged);
+    _searchFieldFocus.dispose();
+    _searchProvider?.removeListener(_onSearchCurrentMatchChanged);
+    _searchProvider?.dispose();
+    _searchBarController.dispose();
     super.dispose();
   }
 
@@ -156,6 +187,72 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
+  void _openSearch() {
+    if (_searchProvider == null) return;
+    _searchProvider!.open();
+    _searchBarController.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFieldFocus.requestFocus();
+    });
+  }
+
+  void _closeSearch() {
+    _searchProvider?.close();
+    _searchFieldController.clear();
+    _searchFieldFocus.unfocus();
+    _searchBarController.reverse();
+  }
+
+  /// Recompute matches when the message list changes while the find bar is
+  /// open (e.g. new messages arrive during/after a search).
+  void _onSearchChanged() {
+    if (_searchProvider == null || !_searchProvider!.isOpen) return;
+    final chat = Provider.of<ChatProvider>(context, listen: false);
+    _searchProvider!.recompute(chat.messages);
+    if (_searchProvider!.hasMatches) {
+      _scrollToCurrentMatch();
+    }
+  }
+
+  void _onSearchFieldChanged() {
+    if (_searchProvider == null) return;
+    final chat = Provider.of<ChatProvider>(context, listen: false);
+    _searchProvider!.setQuery(_searchFieldController.text, chat.messages);
+    if (_searchProvider!.hasMatches) {
+      _scrollToCurrentMatch();
+    }
+  }
+
+  void _onSearchFocusChanged() {
+    if (!_searchFieldFocus.hasFocus && _searchFieldController.text.isEmpty) {
+      _searchProvider?.close();
+    }
+  }
+
+  void _scrollToCurrentMatch() {
+    final idx = _searchProvider?.currentMatchMessageIndex;
+    if (idx == null) return;
+    final state = _messagesListKey.currentState as ChatMessagesListState?;
+    state?.scrollToMessage(idx);
+  }
+
+  /// Callback for SearchProvider when current-match index changes (next/prev).
+  void _onSearchCurrentMatchChanged() {
+    _scrollToCurrentMatch();
+  }
+
+  /// Handler bound to the next-match intent (Ctrl/Cmd+G).
+  void _searchNext() {
+    if (_searchProvider == null || !_searchProvider!.hasMatches) return;
+    _searchProvider!.next();
+  }
+
+  /// Handler bound to the previous-match intent (Shift+Ctrl/Cmd+G).
+  void _searchPrevious() {
+    if (_searchProvider == null || !_searchProvider!.hasMatches) return;
+    _searchProvider!.previous();
+  }
+
   void _resetZoom() {
     final controller = AnimationController(
       vsync: this,
@@ -210,6 +307,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       });
     }
 
+    // Recompute find-bar matches + follow current match when messages change.
+    if (_searchProvider != null && _searchProvider!.isOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onSearchChanged());
+    }
+
     // On desktop, zoom is controlled by _isZoomMode toggle.
     // On mobile, zoom is always enabled (default behavior).
     final bool zoomEnabled = isDesktop ? _isZoomMode : true;
@@ -219,196 +321,302 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final double fabSize = 40 * scaleProvider.iconScale;
     final double fabIconSize = 20 * scaleProvider.iconScale;
 
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: themeProvider.scaffoldBackgroundColor,
-          resizeToAvoidBottomInset: true,
-          drawer: null,
-          endDrawer: null,
-          appBar: ChatAppBar(
-            onOpenDrawer: _toggleDrawer,
-            onOpenEndDrawer: _toggleEndDrawer,
-            systemFontSize: scaleProvider.systemFontSize,
-          ),
-          body: Stack(
-            children: [
-              ChatMessagesList(
-                scrollController: _scrollController,
-                transformationController: _transformationController,
-                isZoomEnabled: zoomEnabled,
-              ),
-
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: ChatInputArea(scrollController: _scrollController),
-              ),
-
-              AnimatedPositioned(
-                duration: AnimationDefaults.zoomButtonDuration,
-                curve: Curves.easeOutCubic,
-                top: showZoomButton ? 16.0 : -60.0,
-                right: 16,
-                child: SafeArea(
-                  child: SizedBox(
-                    width: fabSize,
-                    height: fabSize,
-                    child: AnimatedBuilder(
-                      animation: _zoomBorderController,
-                      builder: (context, child) {
-                        return CustomPaint(
-                          foregroundPainter:
-                              _isZoomMode &&
-                                  isDesktop &&
-                                  vfxProvider.enableLoadingAnimation
-                              ? _ZoomArcPainter(
-                                  progress: _zoomBorderController.value,
-                                  color: themeProvider.textColor,
-                                  enableBloom: vfxProvider.enableBloom,
-                                  bloomColor: themeProvider.bloomGlowColor,
-                                )
-                              : null,
-                          child: child,
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: themeProvider.inputFillColor,
-                          border: Border.all(
-                            color: themeProvider.textColor,
-                            width: 0.5,
+    return ChangeNotifierProvider<ChatSearchProvider>.value(
+      value: _searchProvider!,
+      child: Builder(
+        builder: (context) {
+          return Shortcuts(
+            shortcuts: <ShortcutActivator, Intent>{
+              const SingleActivator(LogicalKeyboardKey.keyF, control: true):
+                  _OpenSearchIntent(),
+              const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
+                  _OpenSearchIntent(),
+              const SingleActivator(LogicalKeyboardKey.keyG, control: true):
+                  _SearchNextIntent(),
+              const SingleActivator(LogicalKeyboardKey.keyG, meta: true):
+                  _SearchNextIntent(),
+              const SingleActivator(
+                LogicalKeyboardKey.keyG,
+                control: true,
+                shift: true,
+              ): _SearchPrevIntent(),
+              const SingleActivator(
+                LogicalKeyboardKey.keyG,
+                meta: true,
+                shift: true,
+              ): _SearchPrevIntent(),
+              const SingleActivator(
+                LogicalKeyboardKey.keyG,
+                control: true,
+                alt: true,
+              ): _SearchPrevIntent(),
+              const SingleActivator(
+                LogicalKeyboardKey.keyG,
+                meta: true,
+                alt: true,
+              ): _SearchPrevIntent(),
+              const SingleActivator(LogicalKeyboardKey.escape):
+                  _CloseSearchIntent(),
+            },
+            child: Actions(
+              actions: <Type, Action<Intent>>{
+                _OpenSearchIntent: CallbackAction<_OpenSearchIntent>(
+                  onInvoke: (_) => _openSearch(),
+                ),
+                _SearchNextIntent: CallbackAction<_SearchNextIntent>(
+                  onInvoke: (_) => _searchNext(),
+                ),
+                _SearchPrevIntent: CallbackAction<_SearchPrevIntent>(
+                  onInvoke: (_) => _searchPrevious(),
+                ),
+                _CloseSearchIntent: CallbackAction<_CloseSearchIntent>(
+                  onInvoke: (_) => _closeSearch(),
+                ),
+              },
+              child: Focus(
+                autofocus: true,
+                child: Stack(
+                  children: [
+                    Scaffold(
+                      backgroundColor: themeProvider.scaffoldBackgroundColor,
+                      resizeToAvoidBottomInset: true,
+                      drawer: null,
+                      endDrawer: null,
+                      appBar: ChatAppBar(
+                        onOpenDrawer: _toggleDrawer,
+                        onOpenEndDrawer: _toggleEndDrawer,
+                        onOpenSearch: _openSearch,
+                        systemFontSize: scaleProvider.systemFontSize,
+                      ),
+                      body: Stack(
+                        children: [
+                          ChatMessagesList(
+                            key: _messagesListKey,
+                            scrollController: _scrollController,
+                            transformationController: _transformationController,
+                            isZoomEnabled: zoomEnabled,
                           ),
-                          boxShadow: vfxProvider.enableBloom
-                              ? [
-                                  BoxShadow(
-                                    color: themeProvider.bloomGlowColor
-                                        .withValues(alpha: 0.6),
-                                    blurRadius: 20,
-                                    spreadRadius: 0,
+
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: ChatInputArea(
+                              scrollController: _scrollController,
+                            ),
+                          ),
+
+                          AnimatedPositioned(
+                            duration: AnimationDefaults.zoomButtonDuration,
+                            curve: Curves.easeOutCubic,
+                            top: showZoomButton ? 16.0 : -60.0,
+                            right: 16,
+                            child: SafeArea(
+                              child: SizedBox(
+                                width: fabSize,
+                                height: fabSize,
+                                child: AnimatedBuilder(
+                                  animation: _zoomBorderController,
+                                  builder: (context, child) {
+                                    return CustomPaint(
+                                      foregroundPainter:
+                                          _isZoomMode &&
+                                              isDesktop &&
+                                              vfxProvider.enableLoadingAnimation
+                                          ? _ZoomArcPainter(
+                                              progress:
+                                                  _zoomBorderController.value,
+                                              color: themeProvider.textColor,
+                                              enableBloom:
+                                                  vfxProvider.enableBloom,
+                                              bloomColor:
+                                                  themeProvider.bloomGlowColor,
+                                            )
+                                          : null,
+                                      child: child,
+                                    );
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: themeProvider.inputFillColor,
+                                      border: Border.all(
+                                        color: themeProvider.textColor,
+                                        width: 0.5,
+                                      ),
+                                      boxShadow: vfxProvider.enableBloom
+                                          ? [
+                                              BoxShadow(
+                                                color: themeProvider
+                                                    .bloomGlowColor
+                                                    .withValues(alpha: 0.6),
+                                                blurRadius: 20,
+                                                spreadRadius: 0,
+                                              ),
+                                            ]
+                                          : [],
+                                    ),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: isDesktop
+                                            ? () => _toggleZoomMode(
+                                                vfxProvider
+                                                    .enableLoadingAnimation,
+                                              )
+                                            : _resetZoom,
+                                        customBorder: const CircleBorder(),
+                                        child: Center(
+                                          child: Icon(
+                                            isDesktop
+                                                ? (_isZoomMode
+                                                      ? Icons.zoom_out_map
+                                                      : Icons.zoom_in)
+                                                : Icons.zoom_out_map,
+                                            size: fabIconSize,
+                                            color: themeProvider.textColor,
+                                            shadows: vfxProvider.enableBloom
+                                                ? [
+                                                    Shadow(
+                                                      color: themeProvider
+                                                          .textColor
+                                                          .withValues(
+                                                            alpha: 0.7,
+                                                          ),
+                                                      blurRadius: 4,
+                                                    ),
+                                                    Shadow(
+                                                      color: themeProvider
+                                                          .bloomGlowColor
+                                                          .withValues(
+                                                            alpha: 0.7,
+                                                          ),
+                                                      blurRadius: 8,
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ]
-                              : [],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: isDesktop
-                                ? () => _toggleZoomMode(
-                                    vfxProvider.enableLoadingAnimation,
-                                  )
-                                : _resetZoom,
-                            customBorder: const CircleBorder(),
-                            child: Center(
-                              child: Icon(
-                                isDesktop
-                                    ? (_isZoomMode
-                                          ? Icons.zoom_out_map
-                                          : Icons.zoom_in)
-                                    : Icons.zoom_out_map,
-                                size: fabIconSize,
-                                color: themeProvider.textColor,
-                                shadows: vfxProvider.enableBloom
-                                    ? [
-                                        Shadow(
-                                          color: themeProvider.textColor
-                                              .withValues(alpha: 0.7),
-                                          blurRadius: 4,
-                                        ),
-                                        Shadow(
-                                          color: themeProvider.bloomGlowColor
-                                              .withValues(alpha: 0.7),
-                                          blurRadius: 8,
-                                        ),
-                                      ]
-                                    : null,
+                                ),
                               ),
                             ),
+                          ),
+
+                          // In-chat find bar (ctrl+F).
+                          AnimatedBuilder(
+                            animation: Listenable.merge([
+                              _searchProvider!,
+                              _searchBarController,
+                            ]),
+                            builder: (context, _) {
+                              if (_searchProvider == null ||
+                                  (!_searchProvider!.isOpen &&
+                                      _searchBarController.isDismissed)) {
+                                return const SizedBox.shrink();
+                              }
+                              return Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                child: SlideTransition(
+                                  position: _searchBarSlideAnimation,
+                                  child: ChatSearchBar(
+                                    controller: _searchFieldController,
+                                    focusNode: _searchFieldFocus,
+                                    onClose: _closeSearch,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    AnimatedBuilder(
+                      animation: Listenable.merge([
+                        _drawerController,
+                        _endDrawerController,
+                      ]),
+                      builder: (context, child) {
+                        final double opacity =
+                            (_drawerController.value +
+                                    _endDrawerController.value)
+                                .clamp(0.0, 1.0) *
+                            0.5;
+                        return opacity > 0
+                            ? GestureDetector(
+                                onTap: _closeDrawers,
+                                child: Container(
+                                  color: Colors.black.withValues(
+                                    alpha: opacity,
+                                  ),
+                                ), // Overlay always dark
+                              )
+                            : const SizedBox.shrink();
+                      },
+                    ),
+
+                    SlideTransition(
+                      position: _drawerSlideAnimation,
+                      child: GestureDetector(
+                        onHorizontalDragUpdate: _handleDrawerDragUpdate,
+                        onHorizontalDragEnd: _handleDrawerDragEnd,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: ConversationDrawer(onClose: _closeDrawers),
+                        ),
+                      ),
+                    ),
+
+                    SlideTransition(
+                      position: _endDrawerSlideAnimation,
+                      child: GestureDetector(
+                        onHorizontalDragUpdate: _handleEndDrawerDragUpdate,
+                        onHorizontalDragEnd: _handleEndDrawerDragEnd,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: SettingsDrawer(
+                            resetVersion: _settingsDrawerVersion,
                           ),
                         ),
                       ),
                     ),
-                  ),
+
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 20,
+                      child: GestureDetector(
+                        onHorizontalDragEnd: (details) {
+                          if (details.primaryVelocity! > 0) _toggleDrawer();
+                        },
+                        behavior: HitTestBehavior.translucent,
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 20,
+                      child: GestureDetector(
+                        onHorizontalDragEnd: (details) {
+                          if (details.primaryVelocity! < 0) _toggleEndDrawer();
+                        },
+                        behavior: HitTestBehavior.translucent,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
-
-        AnimatedBuilder(
-          animation: Listenable.merge([
-            _drawerController,
-            _endDrawerController,
-          ]),
-          builder: (context, child) {
-            final double opacity =
-                (_drawerController.value + _endDrawerController.value).clamp(
-                  0.0,
-                  1.0,
-                ) *
-                0.5;
-            return opacity > 0
-                ? GestureDetector(
-                    onTap: _closeDrawers,
-                    child: Container(
-                      color: Colors.black.withValues(alpha: opacity),
-                    ), // Overlay always dark
-                  )
-                : const SizedBox.shrink();
-          },
-        ),
-
-        SlideTransition(
-          position: _drawerSlideAnimation,
-          child: GestureDetector(
-            onHorizontalDragUpdate: _handleDrawerDragUpdate,
-            onHorizontalDragEnd: _handleDrawerDragEnd,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: ConversationDrawer(onClose: _closeDrawers),
             ),
-          ),
-        ),
-
-        SlideTransition(
-          position: _endDrawerSlideAnimation,
-          child: GestureDetector(
-            onHorizontalDragUpdate: _handleEndDrawerDragUpdate,
-            onHorizontalDragEnd: _handleEndDrawerDragEnd,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: SettingsDrawer(resetVersion: _settingsDrawerVersion),
-            ),
-          ),
-        ),
-
-        Positioned(
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: 20,
-          child: GestureDetector(
-            onHorizontalDragEnd: (details) {
-              if (details.primaryVelocity! > 0) _toggleDrawer();
-            },
-            behavior: HitTestBehavior.translucent,
-          ),
-        ),
-        Positioned(
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 20,
-          child: GestureDetector(
-            onHorizontalDragEnd: (details) {
-              if (details.primaryVelocity! < 0) _toggleEndDrawer();
-            },
-            behavior: HitTestBehavior.translucent,
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 }
@@ -464,4 +672,25 @@ class _ZoomArcPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ZoomArcPainter oldDelegate) =>
       oldDelegate.progress != progress;
+}
+
+/// Intent bound to opening the in-chat find bar (Ctrl/Cmd+F).
+class _OpenSearchIntent extends Intent {
+  const _OpenSearchIntent();
+}
+
+/// Intent bound to jumping to the next find match (Ctrl/Cmd+G).
+class _SearchNextIntent extends Intent {
+  const _SearchNextIntent();
+}
+
+/// Intent bound to jumping to the previous find match
+/// (Shift+Ctrl/Cmd+G or Alt+Ctrl/Cmd+G).
+class _SearchPrevIntent extends Intent {
+  const _SearchPrevIntent();
+}
+
+/// Intent bound to closing the find bar (Esc).
+class _CloseSearchIntent extends Intent {
+  const _CloseSearchIntent();
 }

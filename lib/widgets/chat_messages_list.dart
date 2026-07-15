@@ -5,6 +5,7 @@ import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 import '../providers/vfx_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/search_provider.dart' show ChatSearchProvider;
 import 'message_bubble.dart';
 import 'effects_overlay.dart';
 
@@ -12,7 +13,7 @@ import 'effects_overlay.dart';
 ///
 /// This widget handles rendering the message bubbles, background effects,
 /// and the long-press menu for message actions like copy, edit, and delete.
-class ChatMessagesList extends StatelessWidget {
+class ChatMessagesList extends StatefulWidget {
   /// Controller for managing the scroll position of the message list.
   final ScrollController scrollController;
 
@@ -28,6 +29,35 @@ class ChatMessagesList extends StatelessWidget {
     required this.transformationController,
     this.isZoomEnabled = true,
   });
+
+  @override
+  State<ChatMessagesList> createState() => ChatMessagesListState();
+}
+
+class ChatMessagesListState extends State<ChatMessagesList> {
+  /// Per-message keys used to scroll a specific message into view (find bar).
+  final Map<int, GlobalKey> _messageKeys = {};
+
+  GlobalKey _keyFor(int index) => _messageKeys.putIfAbsent(
+    index,
+    () => GlobalKey(debugLabel: 'msg-$index'),
+  );
+
+  /// Scrolls the message at [index] into view. Used by the in-chat find bar
+  /// to follow the current match.
+  void scrollToMessage(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _messageKeys[index]?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.4,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
 
   void _showEditDialog(BuildContext context, int index) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
@@ -94,10 +124,7 @@ class ChatMessagesList extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              chatProvider.editMessage(
-                index,
-                editController.text,
-              );
+              chatProvider.editMessage(index, editController.text);
               Navigator.pop(context);
             },
             child: Text(
@@ -240,18 +267,20 @@ class ChatMessagesList extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final vfxProvider = Provider.of<VfxProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final searchProvider = Provider.of<ChatSearchProvider>(context);
     final messages = chatProvider.messages;
-    final showTypingIndicator = _showTypingIndicator(
-      chatProvider,
-      vfxProvider,
-    );
+    final showTypingIndicator = _showTypingIndicator(chatProvider, vfxProvider);
     final bool showVirtualAiTypingBubble =
         showTypingIndicator && (messages.isEmpty || messages.last.isUser);
 
+    final int? currentMatchMessageIndex =
+        searchProvider.currentMatchMessageIndex;
+    final Set<int> matchMessageIndices = searchProvider.matchMessageIndices;
+
     return InteractiveViewer(
-      transformationController: transformationController,
-      scaleEnabled: isZoomEnabled,
-      panEnabled: isZoomEnabled,
+      transformationController: widget.transformationController,
+      scaleEnabled: widget.isZoomEnabled,
+      panEnabled: widget.isZoomEnabled,
       minScale: 1.0,
       maxScale: 5.0,
       child: Stack(
@@ -287,7 +316,7 @@ class ChatMessagesList extends StatelessWidget {
               children: [
                 Expanded(
                   child: ListView.builder(
-                    controller: scrollController,
+                    controller: widget.scrollController,
                     itemCount:
                         messages.length + (showVirtualAiTypingBubble ? 1 : 0),
                     padding: const EdgeInsets.only(bottom: 120),
@@ -307,7 +336,10 @@ class ChatMessagesList extends StatelessWidget {
                       final message = messages[index];
                       final bool isLastMessage = index == messages.length - 1;
                       return MessageBubble(
+                        key: _keyFor(index),
                         msg: message,
+                        isSearchCurrent: currentMatchMessageIndex == index,
+                        isSearchMatch: matchMessageIndices.contains(index),
                         showTypingIndicator:
                             showTypingIndicator &&
                             isLastMessage &&
@@ -323,26 +355,25 @@ class ChatMessagesList extends StatelessWidget {
                             ),
                           );
                         },
-                          onEdit: chatProvider.isLoading
+                        onEdit: chatProvider.isLoading
                             ? null
                             : () => _showEditDialog(context, index),
-                          onRegenerate:
-                            (!isLastMessage || chatProvider.isLoading)
+                        onRegenerate: (!isLastMessage || chatProvider.isLoading)
                             ? null
                             : () => _confirmRegenerate(context, index),
-                          onDelete: chatProvider.isLoading
+                        onDelete: chatProvider.isLoading
                             ? null
                             : () => _confirmDeleteMessage(context, index),
                         onNextVersion:
                             message.regenerationVersions.length > 1 &&
-                              !message.isUser &&
-                              !chatProvider.isLoading
+                                !message.isUser &&
+                                !chatProvider.isLoading
                             ? () => chatProvider.nextMessageVersion(index)
                             : null,
                         onPreviousVersion:
                             message.regenerationVersions.length > 1 &&
-                              !message.isUser &&
-                              !chatProvider.isLoading
+                                !message.isUser &&
+                                !chatProvider.isLoading
                             ? () => chatProvider.previousMessageVersion(index)
                             : null,
                         onBranch: !message.isUser
