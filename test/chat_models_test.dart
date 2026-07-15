@@ -37,4 +37,28 @@ void main() {
     final message = ChatMessage.fromJson({'text': 'x', 'isUser': false});
     expect(message.reasoningRecovered, false);
   });
+
+  test('ChatSessionData round-trips through toJson/fromJson', () {
+    final msg = ChatMessage(text: 'hi', isUser: true, modelName: 'm');
+    final session = ChatSessionData(
+      id: '1700000000000',
+      title: 'Test',
+      messages: [msg],
+      modelName: 'gpt',
+      tokenCount: 5,
+      systemInstruction: 'sys',
+      provider: 'openRouter',
+      isBookmarked: true,
+    );
+    final restored = ChatSessionData.fromJson(session.toJson());
+    expect(restored.id, session.id);
+    expect(restored.title, session.title);
+    expect(restored.messages.length, 1);
+    expect(restored.messages.first.text, 'hi');
+    expect(restored.modelName, session.modelName);
+    expect(restored.tokenCount, session.tokenCount);
+    expect(restored.systemInstruction, session.systemInstruction);
+    expect(restored.provider, session.provider);
+    expect(restored.isBookmarked, session.isBookmarked);
+  });
 }

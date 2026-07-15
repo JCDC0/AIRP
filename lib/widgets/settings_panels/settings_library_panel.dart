@@ -7,10 +7,12 @@ import '../../providers/settings_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/vfx_provider.dart';
 import '../../providers/scale_provider.dart';
+import '../../models/chat_models.dart';
 import '../../models/config_pack.dart';
 import '../../services/config_pack_service.dart';
 import '../../services/library_service.dart';
 import '../../services/file_io_helper.dart';
+import '../../utils/version.dart';
 
 /// Unified Settings Library panel.
 ///
@@ -31,15 +33,6 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
 
   // ── Config Packs state ──────────────────────────────────────────────────
   List<ConfigPack> _packs = [];
-
-  // ── Snapshots state ─────────────────────────────────────────────────────
-  bool _exportConversations = true;
-  bool _exportSystemPrompt = true;
-  bool _exportGenerationParams = true;
-  bool _exportLayoutScaling = true;
-  bool _exportVisualsAtmosphere = true;
-  bool _exportCharacterCard = true;
-  bool _exportSubsystemState = true;
 
   @override
   void initState() {
@@ -314,43 +307,30 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
     }
   }
 
-  // ── Snapshot export / import ─────────────────────────────────────────────
+  // ── Conversation export / import ────────────────────────────────────────
 
-  Future<void> _handleSnapshotExport() async {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final vfxProvider = Provider.of<VfxProvider>(context, listen: false);
-    final scaleProvider = Provider.of<ScaleProvider>(context, listen: false);
+  Future<void> _exportConversationsJson(
+      List<ChatSessionData> sessions, String fileName) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final options = ExportOptions(
-        conversations: _exportConversations,
-        systemPrompt: _exportSystemPrompt,
-        generationParams: _exportGenerationParams,
-        layoutScaling: _exportLayoutScaling,
-        visualsAtmosphere: _exportVisualsAtmosphere,
-        characterCard: _exportCharacterCard,
-        sillyTavernState: _exportSubsystemState,
-      );
-      final jsonString = await LibraryService.exportLibraryAsync(
-        chatProvider: chatProvider,
-        themeProvider: themeProvider,
-        vfxProvider: vfxProvider,
-        scaleProvider: scaleProvider,
-        options: options,
-      );
-      final bytes = utf8.encode(jsonString);
+      final jsonStr = const JsonEncoder.withIndent('  ').convert({
+        'airp_library_version': '1.0',
+        'app_version': appVersion,
+        'exported_at': DateTime.now().toIso8601String(),
+        'sessions': sessions.map((s) => s.toJson()).toList(),
+      });
+      final bytes = Uint8List.fromList(utf8.encode(jsonStr));
       final saved = await FileIOHelper.saveFile(
         bytes: bytes,
-        fileName: 'airp_snapshot.airp',
-        dialogTitle: 'Save AIRP Snapshot',
+        fileName: fileName,
+        extensions: ['airp'],
+        dialogTitle: 'Save Conversations',
       );
-      if (!saved) return;
-      messenger.showSnackBar(
-        const SnackBar(
-            content: Text('Snapshot exported!'),
-            duration: Duration(seconds: 3)),
-      );
+      if (saved && mounted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Conversations exported!')),
+        );
+      }
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
@@ -358,6 +338,59 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
             backgroundColor: Colors.redAccent),
       );
     }
+  }
+
+  Future<void> _exportAllConversations() async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    if (chatProvider.savedSessions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No conversations to export.')),
+      );
+      return;
+    }
+    await _exportConversationsJson(
+        chatProvider.savedSessions.toList(), 'airp_conversations.airp');
+  }
+
+  Future<void> _exportSingleConversation(ChatSessionData session) async {
+    final name =
+        '${session.title.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.airp';
+    await _exportConversationsJson([session], name);
+  }
+
+  Future<void> _confirmDeleteConversation(ChatSessionData session) async {
+    final tp = _tp;
+    final fs = _sp.systemFontSize;
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: tp.dropdownColor,
+        title: Text('Delete conversation?',
+            style: TextStyle(color: Colors.redAccent, fontSize: fs)),
+        content: Text("Delete '${session.title}'?\n\nThis cannot be undone.",
+            style: TextStyle(color: tp.subtitleColor, fontSize: fs * 0.8)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('DELETE')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await chatProvider.deleteSession(session.id);
+  }
+
+  String _formatCreated(String id) {
+    final ms = int.tryParse(id);
+    if (ms == null) return 'Unknown date';
+    final dt = DateTime.fromMillisecondsSinceEpoch(ms).toLocal();
+    String two(int v) => v.toString().padLeft(2, '0');
+    return 'Created ${dt.year}-${two(dt.month)}-${two(dt.day)} '
+        '${two(dt.hour)}:${two(dt.minute)}';
   }
 
   Future<void> _handleSnapshotImport() async {
@@ -412,9 +445,8 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
       if (!data.containsKey('airp_library_version')) return null;
       int convCount = 0;
       List<String> convTitles = [];
-      final settings = data['settings'] as Map<String, dynamic>?;
-      if (settings?['sessions'] != null) {
-        final sessions = settings!['sessions'] as List<dynamic>;
+      final sessions = data['sessions'] as List<dynamic>?;
+      if (sessions != null) {
         convCount = sessions.length;
         convTitles = sessions
             .take(3)
@@ -701,87 +733,100 @@ class _SettingsLibraryPanelState extends State<SettingsLibraryPanel>
   }
 
   Widget _buildSnapshotsTab(ThemeProvider tp, ScaleProvider sp, double fs) {
+    final chatProvider = Provider.of<ChatProvider>(context);
+    final sessions = chatProvider.savedSessions;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 10),
-        Text(
-          'Export or import all app settings as a portable .airp snapshot.',
-          style: TextStyle(fontSize: fs * 0.8, color: Colors.grey),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _handleSnapshotImport,
+                icon: const Icon(Icons.download, size: 14),
+                label: Text('Import .airp',
+                    style: TextStyle(fontSize: fs * 0.8)),
+              ),
+              OutlinedButton.icon(
+                onPressed: _exportAllConversations,
+                icon: const Icon(Icons.arrow_upward, size: 14),
+                label: Text('Export All',
+                    style: TextStyle(fontSize: fs * 0.8)),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.greenAccent,
-              side: const BorderSide(color: Colors.greenAccent),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              textStyle: TextStyle(fontSize: fs, fontWeight: FontWeight.bold),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            '⚠ Import merges conversations. API keys never imported.',
+            style: TextStyle(
+              fontSize: fs * 0.7,
+              color: Colors.orangeAccent.withValues(alpha: 0.8),
+              fontStyle: FontStyle.italic,
             ),
-            icon: Icon(Icons.upload_file, size: fs * 1.4),
-            label: const Text('Export Snapshot'),
-            onPressed: _handleSnapshotExport,
           ),
         ),
-        const SizedBox(height: 8),
-
-        _buildSnapshotSwitch('Conversations', _exportConversations,
-            (v) => setState(() => _exportConversations = v), tp, fs),
-        _buildSnapshotSwitch('System Prompt', _exportSystemPrompt,
-            (v) => setState(() => _exportSystemPrompt = v), tp, fs),
-        _buildSnapshotSwitch('Generation Parameters', _exportGenerationParams,
-            (v) => setState(() => _exportGenerationParams = v), tp, fs),
-        _buildSnapshotSwitch('Layout Scaling', _exportLayoutScaling,
-            (v) => setState(() => _exportLayoutScaling = v), tp, fs),
-        _buildSnapshotSwitch('Visuals & Atmosphere', _exportVisualsAtmosphere,
-            (v) => setState(() => _exportVisualsAtmosphere = v), tp, fs),
-        _buildSnapshotSwitch('Character Card', _exportCharacterCard,
-            (v) => setState(() => _exportCharacterCard = v), tp, fs),
-        _buildSnapshotSwitch('World Lore / Text Transforms / Style Rules', _exportSubsystemState,
-            (v) => setState(() => _exportSubsystemState = v), tp, fs),
-
-        const Divider(height: 24),
-
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: tp.textColor,
-              side: BorderSide(color: tp.textColor),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              textStyle: TextStyle(fontSize: fs, fontWeight: FontWeight.bold),
+        Divider(color: tp.borderColor, height: 1),
+        if (sessions.isEmpty)
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('No conversations yet.',
+                    style: TextStyle(color: Colors.grey, fontSize: fs * 0.8)),
+              ),
             ),
-            icon: Icon(Icons.download, size: fs * 1.4),
-            label: const Text('Import Snapshot'),
-            onPressed: _handleSnapshotImport,
+          )
+        else
+          Expanded(
+            child: ListView.builder(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              itemCount: sessions.length,
+              itemBuilder: (context, i) {
+                final s = sessions[i];
+                return ListTile(
+                  dense: true,
+                  title: Text(s.title,
+                      style: TextStyle(
+                          color: tp.subtitleColor, fontSize: fs * 0.85),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    '${_formatCreated(s.id)}  ·  ${s.messages.length} messages',
+                    style: TextStyle(
+                        color: tp.faintColor, fontSize: fs * 0.65),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Export',
+                        icon: Icon(Icons.download,
+                            size: 16, color: tp.textColor),
+                        onPressed: () => _exportSingleConversation(s),
+                      ),
+                      IconButton(
+                        tooltip: 'Delete',
+                        icon: Icon(Icons.delete_outline,
+                            size: 16, color: Colors.redAccent),
+                        onPressed: () =>
+                            _confirmDeleteConversation(s),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '⚠ Import overwrites settings but merges prompts & chats.',
-          style: TextStyle(
-            fontSize: fs * 0.7,
-            color: Colors.orangeAccent.withValues(alpha: 0.8),
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-        const SizedBox(height: 10),
       ],
-    );
-  }
-
-  Widget _buildSnapshotSwitch(String label, bool value,
-      ValueChanged<bool> onChanged, ThemeProvider tp, double fs) {
-    return SwitchListTile(
-      dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      title: Text(label,
-          style: TextStyle(fontSize: fs * 0.85, color: tp.subtitleColor)),
-      value: value,
-      activeThumbColor: tp.textColor,
-      onChanged: onChanged,
     );
   }
 }
