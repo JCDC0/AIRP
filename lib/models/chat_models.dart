@@ -110,6 +110,9 @@ class ChatMessage {
   /// The name of the model that generated the response.
   final String? modelName;
 
+  /// When the message was created.
+  final DateTime timestamp;
+
   /// Token usage statistics for this message.
   final Map<String, dynamic>? usage;
 
@@ -135,19 +138,21 @@ class ChatMessage {
     required this.isUser,
     this.imagePaths = const [],
     this.modelName,
+    DateTime? timestamp,
     this.usage,
     this.thoughtSignature,
     this.reasoningRecovered = false,
     this.contentNotifier,
     this.regenerationVersions = const [],
     this.currentVersionIndex = 0,
-  });
+  }) : timestamp = timestamp ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
     'text': text,
     'isUser': isUser,
     'imagePaths': imagePaths,
     'modelName': modelName,
+    'timestamp': timestamp.toIso8601String(),
     'usage': usage,
     'thoughtSignature': thoughtSignature,
     'reasoningRecovered': reasoningRecovered,
@@ -160,6 +165,9 @@ class ChatMessage {
     isUser: json['isUser'] ?? false,
     imagePaths: List<String>.from(json['imagePaths'] ?? []),
     modelName: json['modelName'],
+    timestamp: json['timestamp'] != null
+        ? DateTime.parse(json['timestamp'])
+        : DateTime.now(),
     usage: json['usage'],
     thoughtSignature: json['thoughtSignature'],
     reasoningRecovered: json['reasoningRecovered'] as bool? ?? false,
@@ -172,6 +180,7 @@ class ChatMessage {
     bool? isUser,
     List<String>? imagePaths,
     String? modelName,
+    DateTime? timestamp,
     Map<String, dynamic>? usage,
     String? thoughtSignature,
     bool? reasoningRecovered,
@@ -185,6 +194,7 @@ class ChatMessage {
       isUser: isUser ?? this.isUser,
       imagePaths: imagePaths ?? this.imagePaths,
       modelName: modelName ?? this.modelName,
+      timestamp: timestamp ?? this.timestamp,
       usage: usage ?? this.usage,
       thoughtSignature: thoughtSignature ?? this.thoughtSignature,
       reasoningRecovered: reasoningRecovered ?? this.reasoningRecovered,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../models/chat_models.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
@@ -27,6 +28,7 @@ class MessageBubbleMetadata extends StatelessWidget {
     final List<Widget> children = [];
 
     if (msg.modelName != null) {
+      final timestampStr = DateFormat('MMMM d, y - h:mm:ssa').format(msg.timestamp);
       children.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 6.0),
@@ -51,7 +53,7 @@ class MessageBubbleMetadata extends StatelessWidget {
                       : [],
                 ),
                 child: Text(
-                  cleanModelName(msg.modelName!),
+                  '${cleanModelName(msg.modelName!)} - $timestampStr',
                   style: TextStyle(
                     fontSize: scaleProvider.chatFontSize - 4,
                     color: textColor.withValues(alpha: 0.7),

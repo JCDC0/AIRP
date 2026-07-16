@@ -2406,18 +2406,41 @@ class ChatProvider extends ChangeNotifier {
         debugPrint('Token count error: $e');
       }
     } else {
-      int totalChars = 0;
+      int totalTokens = 0;
       int imgCount = 0;
       for (var msg in _messages) {
         final effectiveText = msg.isUser
             ? msg.text
             : ChatMessage.sanitizeForContext(msg.text);
-        totalChars += effectiveText.length;
+        totalTokens += _estimateTokens(effectiveText);
         imgCount += msg.imagePaths.length;
       }
-      _tokenCount = (totalChars / 3.5).ceil() + (imgCount * 200);
+      // Add per-message overhead (role tokens, formatting)
+      totalTokens += _messages.length * 4;
+      // Include system instruction if present
+      if (_systemInstruction.isNotEmpty) {
+        totalTokens += _estimateTokens(_systemInstruction);
+      }
+      totalTokens += imgCount * 200;
+      _tokenCount = totalTokens;
       notifyListeners();
     }
+  }
+
+  /// Estimates token count for a text string using a heuristic.
+  /// - CJK/full-width chars count as ~1 token each
+  /// - Latin text: ~4 chars/token + ~0.3 tokens/word for punctuation
+  int _estimateTokens(String text) {
+    if (text.isEmpty) return 0;
+    // Count CJK / full-width Unicode (each ~1 token)
+    final cjkRegex = RegExp(r'[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]');
+    int cjkCount = 0;
+    for (int i = 0; i < text.length; i++) {
+      if (cjkRegex.hasMatch(text[i])) cjkCount++;
+    }
+    final latinChars = text.length - cjkCount;
+    final words = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    return cjkCount + ((latinChars / 4).ceil()) + (words * 0.3).ceil();
   }
 
   void _scheduleAutoSave() {

@@ -276,6 +276,7 @@ class ChatMessagesListState extends State<ChatMessagesList> {
     final int? currentMatchMessageIndex =
         searchProvider.currentMatchMessageIndex;
     final Set<int> matchMessageIndices = searchProvider.matchMessageIndices;
+    final String searchQuery = searchProvider.query;
 
     return InteractiveViewer(
       transformationController: widget.transformationController,
@@ -330,6 +331,8 @@ class ChatMessagesListState extends State<ChatMessagesList> {
                             modelName: chatProvider.selectedModel,
                           ),
                           showTypingIndicator: true,
+                          searchQuery: searchQuery,
+                          isCurrentSearchMessage: false,
                         );
                       }
 
@@ -340,6 +343,9 @@ class ChatMessagesListState extends State<ChatMessagesList> {
                         msg: message,
                         isSearchCurrent: currentMatchMessageIndex == index,
                         isSearchMatch: matchMessageIndices.contains(index),
+                        searchQuery: searchQuery,
+                        isCurrentSearchMessage:
+                            currentMatchMessageIndex == index,
                         showTypingIndicator:
                             showTypingIndicator &&
                             isLastMessage &&

@@ -13,6 +13,8 @@ class MessageBubbleMarkdown extends StatelessWidget {
   final ScaleProvider scaleProvider;
   final Color textColor;
   final bool useBloom;
+  final String? searchQuery;
+  final bool isCurrentSearchMessage;
 
   const MessageBubbleMarkdown({
     super.key,
@@ -21,6 +23,8 @@ class MessageBubbleMarkdown extends StatelessWidget {
     required this.scaleProvider,
     required this.textColor,
     required this.useBloom,
+    this.searchQuery,
+    this.isCurrentSearchMessage = false,
   });
 
   @override
@@ -37,6 +41,8 @@ class MessageBubbleMarkdown extends StatelessWidget {
       fontSize: scaleProvider.chatFontSize - 2,
     );
 
+    final hasSearchQuery = searchQuery != null && searchQuery!.isNotEmpty;
+
     return MarkdownBody(
       data: text,
       onTapLink: (text, href, title) {
@@ -46,8 +52,21 @@ class MessageBubbleMarkdown extends StatelessWidget {
           launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       },
+      inlineSyntaxes: hasSearchQuery
+          ? [
+              _SearchHitSyntax(
+                searchQuery!,
+                isCurrentMatch: isCurrentSearchMessage,
+              ),
+            ]
+          : const [],
       builders: {
         'code': CodeElementBuilder(context, codeStyle, themeProvider),
+        if (hasSearchQuery) 'search-hit': _SearchHitBuilder(
+          themeProvider: themeProvider,
+          scaleProvider: scaleProvider,
+          isCurrentMatch: isCurrentSearchMessage,
+        ),
       },
       styleSheet: MarkdownStyleSheet(
         codeblockPadding: EdgeInsets.zero,
@@ -128,6 +147,62 @@ class MessageBubbleMarkdown extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Custom inline syntax for highlighting search terms in markdown.
+class _SearchHitSyntax extends md.InlineSyntax {
+  _SearchHitSyntax(String query, {required bool isCurrentMatch})
+      : super(
+          RegExp.escape(query),
+          caseSensitive: false,
+        );
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text('search-hit', match.group(0)!));
+    return true;
+  }
+}
+
+/// Custom builder for rendering highlighted search hits.
+class _SearchHitBuilder extends MarkdownElementBuilder {
+  final ThemeProvider themeProvider;
+  final ScaleProvider scaleProvider;
+  final bool isCurrentMatch;
+
+  _SearchHitBuilder({
+    required this.themeProvider,
+    required this.scaleProvider,
+    required this.isCurrentMatch,
+  });
+
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final Color highlightColor = isCurrentMatch
+        ? themeProvider.bloomGlowColor.withValues(alpha: 0.35)
+        : themeProvider.bloomGlowColor.withValues(alpha: 0.18);
+    final Color textColor = isCurrentMatch
+        ? themeProvider.bloomGlowColor
+        : themeProvider.textColor;
+
+    return Text(
+      element.textContent,
+      style: TextStyle(
+        backgroundColor: highlightColor,
+        color: textColor,
+        fontWeight: isCurrentMatch ? FontWeight.bold : FontWeight.normal,
+        fontSize: scaleProvider.chatFontSize,
+        shadows: isCurrentMatch
+            ? [
+                Shadow(
+                  color: themeProvider.bloomGlowColor.withValues(alpha: 0.6),
+                  blurRadius: 4,
+                ),
+              ]
+            : null,
       ),
     );
   }

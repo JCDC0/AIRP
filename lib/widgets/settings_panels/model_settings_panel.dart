@@ -24,6 +24,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
   late TextEditingController _titleController;
   late TextEditingController _openRouterModelController;
   late TextEditingController _groqModelController;
+  late FocusNode _titleFocusNode;
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
       text: chatProvider.openRouterModel,
     );
     _groqModelController = TextEditingController(text: chatProvider.groqModel);
+    _titleFocusNode = FocusNode();
   }
 
   @override
@@ -41,11 +43,13 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
     _titleController.dispose();
     _openRouterModelController.dispose();
     _groqModelController.dispose();
+    _titleFocusNode.dispose();
     super.dispose();
   }
 
   void _syncControllers(ChatProvider chatProvider) {
-    if (_titleController.text != chatProvider.currentTitle) {
+    if (!_titleFocusNode.hasFocus &&
+        _titleController.text != chatProvider.currentTitle) {
       _titleController.text = chatProvider.currentTitle;
     }
     if (_openRouterModelController.text != chatProvider.openRouterModel) {
@@ -101,8 +105,9 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
           ),
           child: TextField(
             controller: _titleController,
+            focusNode: _titleFocusNode,
             onChanged: (val) {
-              chatProvider.setTitle(val.trim());
+              chatProvider.setTitle(val);
               chatProvider.saveSettings(showConfirmation: false);
             },
             style: TextStyle(

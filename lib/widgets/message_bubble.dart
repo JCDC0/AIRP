@@ -45,11 +45,17 @@ class MessageBubble extends StatelessWidget {
   /// Whether to show an inline typing indicator inside this bubble.
   final bool showTypingIndicator;
 
-  /// Whether this bubble is the current find-bar match (strong highlight).
+/// Whether this bubble is the current find-bar match (strong highlight).
   final bool isSearchCurrent;
 
   /// Whether this bubble contains a find-bar match (subtle highlight).
   final bool isSearchMatch;
+
+  /// The active search query, used for inline word highlighting.
+  final String? searchQuery;
+
+  /// Whether this message is the current match (strong highlight) vs other matches.
+  final bool isCurrentSearchMessage;
 
   const MessageBubble({
     super.key,
@@ -64,6 +70,8 @@ class MessageBubble extends StatelessWidget {
     this.showTypingIndicator = false,
     this.isSearchCurrent = false,
     this.isSearchMatch = false,
+    this.searchQuery,
+    this.isCurrentSearchMessage = false,
   });
 
   @override
@@ -223,6 +231,8 @@ class MessageBubble extends StatelessWidget {
             scaleProvider: scaleProvider,
             textColor: textColor,
             useBloom: useBloom,
+            searchQuery: searchQuery,
+            isCurrentSearchMessage: isCurrentSearchMessage,
           ),
       ],
     );

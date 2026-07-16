@@ -42,8 +42,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize {
-    const double baseToolbarHeight = 60.0;
-    const double baseBottomHeight = 40.0;
+    const double baseToolbarHeight = 52.0;
+    const double baseBottomHeight = 34.0;
     final double extraHeight = (systemFontSize - 12).clamp(0, 15);
     final double scaledToolbarHeight = baseToolbarHeight + extraHeight;
     final double scaledBottomHeight = baseBottomHeight + extraHeight * 0.5;
@@ -119,8 +119,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       chatProvider.currentProvider,
     );
 
-    const double baseToolbarHeight = 60.0;
-    const double baseBottomHeight = 40.0;
+    const double baseToolbarHeight = 52.0;
+    const double baseBottomHeight = 34.0;
     final double extraHeight = (scaleProvider.systemFontSize - 12).clamp(0, 15);
     final double scaledToolbarHeight = baseToolbarHeight + extraHeight;
     final double scaledBottomHeight = baseBottomHeight + extraHeight * 0.5;
@@ -130,24 +130,10 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: vfxProvider.backgroundImagePath != null
           ? const Color(0xFFFFFFFF).withAlpha(0)
           : themeProvider.scaffoldBackgroundColor,
-      leadingWidth: 148,
-      leading: Row(
-        children: [
-          IconButton(
-            icon: Icon(Icons.menu, size: scaleProvider.iconScale * 24),
-            onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
-          ),
-          IconButton(
-            icon: Icon(Icons.search, size: scaleProvider.iconScale * 22),
-            tooltip: 'Find in chat (Ctrl+F)',
-            onPressed: onOpenSearch,
-          ),
-          IconButton(
-            icon: Icon(Icons.compress, size: scaleProvider.iconScale * 22),
-            tooltip: 'Summarize / Context',
-            onPressed: onOpenSummary,
-          ),
-        ],
+      leadingWidth: 56,
+      leading: IconButton(
+        icon: Icon(Icons.menu, size: scaleProvider.iconScale * 24),
+        onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
       ),
       title: GestureDetector(
         key: providerPickerTriggerKey,
@@ -160,11 +146,14 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           scaleProvider,
         ),
         child: SizedBox(
-          width: 300 + (scaleProvider.systemFontSize * 10),
+          width: (300 + (scaleProvider.systemFontSize * 10)).clamp(
+            120,
+            MediaQuery.of(context).size.width - 130,
+          ),
           child: Padding(
             padding: EdgeInsets.only(
-              top: scaleProvider.systemFontSize * 1,
-              bottom: scaleProvider.systemFontSize * 0.6,
+              top: scaleProvider.systemFontSize * 0.4,
+              bottom: scaleProvider.systemFontSize * 0.3,
               left: 8.0,
               right: 8.0,
             ),
@@ -231,9 +220,19 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         preferredSize: Size.fromHeight(scaledBottomHeight),
         child: Container(
           height: scaledBottomHeight,
-          padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 2),
           child: Row(
             children: [
+              IconButton(
+                icon: Icon(Icons.search, size: scaleProvider.iconScale * 22),
+                tooltip: 'Find in chat (Ctrl+F)',
+                onPressed: onOpenSearch,
+              ),
+              IconButton(
+                icon: Icon(Icons.compress, size: scaleProvider.iconScale * 22),
+                tooltip: 'Summarize / Context',
+                onPressed: onOpenSummary,
+              ),
               Expanded(
                 child: _buildModelSelector(
                   context,
