@@ -4,29 +4,7 @@ import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/vfx_provider.dart';
 import '../providers/scale_provider.dart';
-import '../utils/version.dart';
 import '../models/character_card.dart';
-
-/// Options controlling which categories to include in a library export.
-class ExportOptions {
-  final bool conversations;
-  final bool systemPrompt;
-  final bool generationParams;
-  final bool layoutScaling;
-  final bool visualsAtmosphere;
-  final bool characterCard;
-  final bool sillyTavernState;
-
-  const ExportOptions({
-    this.conversations = true,
-    this.systemPrompt = true,
-    this.generationParams = true,
-    this.layoutScaling = true,
-    this.visualsAtmosphere = true,
-    this.characterCard = true,
-    this.sillyTavernState = true,
-  });
-}
 
 /// Service for exporting and importing the full application state as a
 /// portable `.airp` library file.
@@ -35,71 +13,6 @@ class ExportOptions {
 /// are **concatenated** (merged without duplicates).
 class LibraryService {
   LibraryService._();
-
-  /// Collects selected application state into a single JSON string.
-  static Future<String> exportLibraryAsync({
-    required ChatProvider chatProvider,
-    required ThemeProvider themeProvider,
-    required VfxProvider vfxProvider,
-    required ScaleProvider scaleProvider,
-    ExportOptions options = const ExportOptions(),
-  }) async {
-    final Map<String, dynamic> library = {
-      'airp_library_version': '1.0',
-      'app_version': appVersion,
-      'exported_at': DateTime.now().toIso8601String(),
-    };
-
-    // --- Chat provider settings ---
-    final chatExport = chatProvider.exportSettingsMap();
-
-    if (options.generationParams) {
-      library['generation'] = chatExport['generation'];
-      library['toggles'] = chatExport['toggles'];
-      library['provider'] = chatExport['provider'];
-      library['models'] = chatExport['models'];
-      library['modelBookmarks'] = chatExport['modelBookmarks'];
-      library['starredProviders'] = chatExport['starredProviders'];
-      library['ui'] = chatExport['ui'];
-      library['localIp'] = chatExport['localIp'];
-      library['localModelName'] = chatExport['localModelName'];
-    }
-
-    if (options.systemPrompt) {
-      library['systemInstruction'] = chatExport['systemInstruction'];
-      library['systemPrompts'] = chatExport['systemPrompts'];
-    }
-
-
-    if (options.conversations) {
-      library['sessions'] = chatExport['sessions'];
-    }
-
-    // --- Character Card ---
-    if (options.characterCard) {
-      library['characterCard'] = chatExport['characterCard'];
-      library['enableCharacterCard'] = chatExport['enableCharacterCard'];
-    }
-
-    // --- SillyTavern State (lorebook, regex, formatting) ---
-    if (options.sillyTavernState) {
-      library['sillyTavernState'] = chatExport['sillyTavernState'];
-    }
-
-    // --- Theme ---
-    if (options.visualsAtmosphere) {
-      library['theme'] = themeProvider.exportSettingsMap();
-      library['vfx'] = vfxProvider.exportSettingsMap();
-    }
-
-    // --- Scale ---
-    if (options.layoutScaling) {
-      library['scale'] = scaleProvider.exportSettingsMap();
-    }
-
-    const encoder = JsonEncoder.withIndent('  ');
-    return encoder.convert(library);
-  }
 
   /// Parses a `.airp` JSON string and applies it to all providers.
   static Future<ImportResult> importLibrary({

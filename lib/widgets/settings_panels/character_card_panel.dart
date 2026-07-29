@@ -13,7 +13,6 @@ import '../../providers/local_library_provider.dart';
 import '../../services/character_card_service.dart';
 import '../../services/library_service.dart';
 import '../../services/file_io_helper.dart';
-import '../../services/lorebook_service.dart';
 import 'settings_color_picker.dart';
 
 /// A panel for managing the AI character card (SillyTavern V1/V2 compatible).
@@ -261,7 +260,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
                   SettingsColorPicker(label: 'Recognizer Glow', color: chatProvider.loreRecognizerGlowColor, onSave: (color) { chatProvider.setLoreRecognizerGlowColor(color); chatProvider.saveSettings(showConfirmation: false); }),
                 ],
               ),
-              _buildLorebookSection(card, themeProvider, scaleProvider, chatProvider.lastLorebookEvalResult.traceByEntryId),
+              _buildLorebookSection(card, themeProvider),
             ],
           ),
         ),
@@ -306,7 +305,7 @@ class _CharacterCardPanelState extends State<CharacterCardPanel> {
     return library.cards.isEmpty ? const SizedBox.shrink() : SizedBox(height: 100, child: ListView.builder(itemCount: library.cards.length, itemBuilder: (context, index) { final c = library.cards[index]; return ListTile(dense: true, title: Text(c.name, style: TextStyle(color: theme.textColor)), trailing: IconButton(icon: const Icon(Icons.check_circle_outline, color: Colors.blueAccent), onPressed: () { final chat = Provider.of<ChatProvider>(context, listen: false); chat.setCharacterCard(CharacterCard.fromJson(c.toV3Json())); _updateCardControllers(chat.characterCard); })); }));
   }
 
-  Widget _buildLorebookSection(CharacterCard card, ThemeProvider tp, ScaleProvider sp, Map<int, LorebookActivationTrace> traces) {
+  Widget _buildLorebookSection(CharacterCard card, ThemeProvider tp) {
     final book = card.characterBook;
     if (book == null || book.entries.isEmpty) return const SizedBox.shrink();
     return ExpansionTile(title: Text('World Lore (${book.entries.length})', style: TextStyle(color: tp.subtitleColor)), children: book.entries.map((e) => ListTile(dense: true, title: Text(e.comment, style: TextStyle(color: tp.textColor)), subtitle: Text(e.keys.join(', '), style: TextStyle(color: tp.faintColor)))).toList());

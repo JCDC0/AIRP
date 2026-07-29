@@ -18,6 +18,43 @@ class ChatApiService {
     }
   }
 
+  /// Builds the `streamGenerateContent` URL for [modelName].
+  ///
+  /// `alt=sse` is required. Without it the endpoint returns a pretty-printed
+  /// JSON array rather than Server-Sent Events, no line carries the `data: `
+  /// prefix the parser expects, and the stream completes with an empty
+  /// accumulator behind an HTTP 200.
+  @visibleForTesting
+  static Uri buildGeminiStreamUrl(String modelName, String apiKey) {
+    final modelId = modelName.replaceAll('models/', '');
+    return Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/'
+      '$modelId:streamGenerateContent?alt=sse&key=${apiKey.trim()}',
+    );
+  }
+
+  /// Builds the message shown when a Gemini stream returns HTTP 200 but no
+  /// answer text, attributing it to [blockReason] or [finishReason] when the
+  /// response carried one.
+  @visibleForTesting
+  static String emptyGeminiStreamNotice(
+    String? blockReason,
+    String? finishReason,
+  ) {
+    if (blockReason != null && blockReason.isNotEmpty) {
+      return '\n\n**Blocked:** the prompt was rejected by Gemini '
+          '(`$blockReason`).';
+    }
+    // STOP with no text means the model genuinely returned nothing.
+    if (finishReason != null &&
+        finishReason.isNotEmpty &&
+        finishReason != 'STOP') {
+      return '\n\n**Empty response:** generation stopped early '
+          '(`$finishReason`).';
+    }
+    return '\n\n**Empty response:** the model returned no content.';
+  }
+
   /// Streams a response from Google Gemini via the raw `v1beta` REST API.
   ///
   /// This intentionally bypasses the `google_generative_ai` SDK because the SDK
@@ -157,10 +194,7 @@ class ChatApiService {
       }
     }
 
-    final modelId = modelName.replaceAll('models/', '');
-    final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/$modelId:streamGenerateContent?key=${apiKey.trim()}',
-    );
+    final url = buildGeminiStreamUrl(modelName, apiKey);
 
     final Map<String, dynamic> bodyMap = {
       'contents': contents,
@@ -205,6 +239,9 @@ class ChatApiService {
 
       bool hasEmittedThinkStart = false;
       bool hasEmittedThinkEnd = false;
+      bool hasEmittedText = false;
+      String? blockReason;
+      String? finishReason;
 
       await for (final line
           in streamedResponse.stream
@@ -221,6 +258,9 @@ class ChatApiService {
             yield "[[USAGE:${jsonEncode(json['usageMetadata'])}]]";
           }
 
+          blockReason =
+              json['promptFeedback']?['blockReason']?.toString() ?? blockReason;
+
           final signature = json['thought_signature']?.toString() ??
               (json['candidates'] as List?)?.firstOrNull?['thought_signature']
                   ?.toString();
@@ -231,6 +271,8 @@ class ChatApiService {
           final candidates = json['candidates'] as List?;
           if (candidates == null || candidates.isEmpty) continue;
           final candidate = candidates[0];
+          finishReason =
+              candidate['finishReason']?.toString() ?? finishReason;
           final content = candidate['content'];
           if (content == null) continue;
           final parts = content['parts'] as List?;
@@ -253,6 +295,7 @@ class ChatApiService {
                 yield '\n</think>\n';
                 hasEmittedThinkEnd = true;
               }
+              hasEmittedText = true;
               yield text;
             }
           }
@@ -263,6 +306,14 @@ class ChatApiService {
 
       if (hasEmittedThinkStart && !hasEmittedThinkEnd) {
         yield '\n</think>\n';
+      }
+
+      // A 200 that produced no answer text is otherwise silent: the bubble just
+      // stays blank. Surface why instead, so this class of failure is visible.
+      // Reasoning-only responses are left alone; StreamingCoordinatorService
+      // already recovers those into the visible body.
+      if (!hasEmittedText && !hasEmittedThinkStart) {
+        yield emptyGeminiStreamNotice(blockReason, finishReason);
       }
     } catch (e) {
       yield "\n\n**Connection Error:** $e";

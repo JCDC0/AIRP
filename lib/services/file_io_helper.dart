@@ -134,21 +134,6 @@ class FileIOHelper {
     }
   }
 
-  /// Convenience: saves a JSON string to a file.
-  static Future<bool> saveString({
-    required String content,
-    required String fileName,
-    List<String>? extensions,
-    String? dialogTitle,
-  }) {
-    return saveFile(
-      bytes: Uint8List.fromList(utf8.encode(content)),
-      fileName: fileName,
-      extensions: extensions,
-      dialogTitle: dialogTitle,
-    );
-  }
-
   // ─── Direct read (for paths already stored) ─────────────────────────────
 
   /// Saves bytes directly to the downloads (or documents) folder
@@ -196,17 +181,6 @@ class FileIOHelper {
   static Future<bool> fileExists(String path) {
     if (kIsWeb) return Future.value(false);
     return platform_io.fileExists(path);
-  }
-
-  /// Writes [bytes] to [path] on native platforms.
-  /// On web this throws.
-  static Future<void> writeBytes(String path, Uint8List bytes) {
-    if (kIsWeb) {
-      throw UnsupportedError(
-        'FileIOHelper.writeBytes is not supported on web.',
-      );
-    }
-    return platform_io.writeFileBytes(path, bytes);
   }
 
   // ─── Image helpers ──────────────────────────────────────────────────────

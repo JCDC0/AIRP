@@ -1,6 +1,6 @@
 # AIRP - Roleplay Chatbot
 
-**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models, the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), and 18 additional providers. It features a full SillyTavern-compatible roleplay engine with world lore — all built on importable character cards with V2 spec parity. Includes a BYOK web search system with 6 backends, full light/dark mode theming, deep visual customization, and persistent local history with search capabilities.
+**AIRP** is a highly customizable, privacy-focused AI chat client built with Flutter. It serves as a unified interface for **Google's Gemini** models, the **OpenRouter** ecosystem (Claude, DeepSeek, Llama, and more), and 18 additional providers. It features a SillyTavern-compatible roleplay engine with input-driven lore recognition, built on importable character cards with V2 spec parity. Includes a BYOK web search system with 6 backends, full light/dark mode theming, deep visual customization, and persistent local history with search capabilities.
 
 ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
@@ -18,7 +18,7 @@
 * **Response Versioning & Forking**: Regenerated responses are preserved as versions. Fork a conversation from any message to create a new branch.
 * **Usage Stats**: Per-message token usage display (prompt + completion = total).
 * **Character Cards (V2 & V3)**: Import character cards from PNG or JSON files with full V2 and V3 schema support, in-app editing, and embedded lorebook loading.
-* **Lorebook System & UI Diagnostics**: Full SillyTavern Character Book V2 parity with real-time UI Evaluation Tracing for insight into entry activation.
+* **Lore Recognition**: Character-card lorebooks are matched against your current input and injected into the system prompt, with a live glow preview of the entry about to fire.
 * **Reasoning Efficiency Controls**: Optional global sanitization strips `<think>` blocks from stored sessions and outbound context to reduce memory/token overhead while preserving visible final answers.
 * **Developer Safety Controls**: Developer mode unlocks raw assistant-block editing and one-click rollback to the latest session backup after policy migrations.
 * **Full Backup (Library)**: Export and import your entire AIRP configuration as `.airp` files with intelligent merging.
@@ -38,7 +38,7 @@ To maintain high performance and reliability, AIRP's core engine has been decomp
 * **Session Service**: Manages asynchronous conversation persistence, auto-saves, and intelligent message history merging.
 * **Model Registry**: Centrally handles discovery, metadata parsing, and loading states for 20+ AI providers.
 * **API Key Service**: Provides secure, encrypted storage for credentials with automated migration from legacy formats.
-* **Prompt Pipeline**: A dedicated orchestration layer that handles character card injection, lorebook keyword evaluation, and multi-layered system instructions.
+* **Prompt Pipeline**: A dedicated orchestration layer that handles character card injection, lore recognition, and multi-layered system instructions.
 
 ## Scalability & Multi-Device Support
 
@@ -200,7 +200,7 @@ In the Settings Drawer, **Generation Parameters** and **Web Search** are placed 
    * **Alternate Greetings**: Manage multiple first messages that can be cycled.
    * **Depth Prompt**: Configure text injected at a specific depth in the message history with role assignment (system/user/assistant).
    * **Tags**: View and manage character tags for organization.
-   * **Embedded Lorebook**: View and edit the character's embedded lorebook entries directly within the character card panel.
+   * **Embedded Lorebook**: View the character's embedded lorebook entries within the character card panel. Entries are read-only; author them in a card editor and re-import.
    * **Export**: Save character cards to JSON, seamlessly packaging them via the native `kCharacterCardV3Schema` structure.
    * **Clear Card**: Remove the active character card without losing your custom rules.
 
@@ -244,61 +244,83 @@ The **Text Designer** panel in Settings centralizes text presentation controls w
 
 Export and import your entire AIRP configuration using `.airp` files. Located in the Settings Drawer under **Library**.
 
-* **Selective Export**: Choose which categories to include with per-category toggles:
-  * Conversations
-  * System Prompt
-  * Advanced System Prompt
-  * Generation Parameters
-  * Layout & Scaling
-  * Visuals & Atmosphere
-  * Character Card
-  * World Lore
-* **Smart Import**: Import preview with the same category toggles. Conversations are merged by ID, system prompts by title — no duplicates. Character card and world lore are restored from the imported file.
+> **Changed in 0.7.22 / 0.7.23.** Per-category export toggles were removed. Settings
+> are now handled by named **Config Packs**, and `.airp` files carry conversations.
+
+* **Conversations**: export a single conversation or all of them from the Snapshots
+  tab, and re-import with `Import .airp`. Conversations are merged by ID and system
+  prompts by title, so re-importing never duplicates.
+* **Config Packs**: named bundles capturing every settings-drawer value except
+  conversations and API keys. Save, apply, rename, delete, export to file, or import
+  from file. SillyTavern Chat-Completion presets can be imported (import only).
+* **Character card and world lore** are restored from an imported file when present.
 
 ---
 
-## Lorebook System
+## Lore Recognition
 
-The Lorebook is a keyword-triggered context injection system with full SillyTavern Character Book V2 parity. It dynamically injects relevant world-building information into the AI's context based on what's being discussed. Located in the Settings Drawer under **Character Card > Lorebook**.
+AIRP recognizes world-lore entries from **what you are currently typing** and injects
+the matching entries into the system instruction for that message.
 
-### How It Works
+> **Changed in 0.6.11.1.** Earlier versions scanned conversation history and injected
+> entries at eight SillyTavern-style prompt positions. That path was replaced by
+> current-input recognition, and `0.8.0` removed the machinery it left behind.
+> Positional injection, timed effects (sticky / cooldown / delay), and evaluation
+> tracing no longer exist. See `docs/audits/DEAD-CODE-AND-DOCS.md`.
 
-1. When you send a message, the lorebook engine scans recent messages for keyword matches.
-2. Entries whose keywords are found become candidates for activation.
-3. Activated entries are injected into the AI's prompt at their configured insertion position.
-4. The AI sees this contextual information alongside your conversation, resulting in more consistent and lore-accurate responses.
+### How it works
 
-### Setting Up a Lorebook
+1. As you type, AIRP scans the input box against the entries of the active
+   character card's embedded `character_book` and the global lorebook.
+2. Entries whose keywords match become candidates.
+3. Matching entries are appended to the system instruction under a single
+   `--- Recognized World Lore ---` heading, ordered by each entry's insertion order.
+4. The first match is previewed as a glow strip under the input box, so you can see
+   that lore is about to fire before you send.
 
-1. Open the **Settings Drawer** and expand **Character Card**.
-2. Scroll to the **Lorebook** sub-section and expand it.
-3. Configure global settings:
-   * **Scan Depth**: How many recent messages to scan for keywords (default: 2).
-   * **Token Budget**: Maximum tokens allocated to lorebook content (default: 2048).
-   * **Case Sensitive**: Whether keyword matching is case-sensitive.
-   * **Match Whole Words**: Whether keywords must match as whole words.
-   * **Recursion Steps**: How many times activated entries are re-scanned for more keyword matches (0 = no recursion).
-4. **View Diagnostics**: Review the visual **Evaluation Tracing** data listed below entries after sending a message to see exactly which constraints or keywords triggered or blocked an entry from activating.
-5. Tap the **+** button to add entries, or **Import** a lorebook JSON file.
+Only the message you are typing is scanned. Something a character said three
+messages ago will not trigger an entry.
 
-### Lorebook Entries
+### What activates an entry
 
-Each entry has these configurable fields:
+Entries come from imported character cards. AIRP honours these fields when matching:
 
-* **Keys** (Primary): Comma-separated keywords that trigger this entry. Example: `dragon, wyrm, drake`.
-* **Content**: The text injected into the prompt when activated.
-* **Secondary Keys**: Optional additional filter with AND or NOT logic. AND mode requires both primary and secondary keys to match. NOT mode excludes the entry if secondary keys are found.
-* **Strategy**: `Triggered` (activates on keyword match) or `Constant` (always active regardless of keywords).
-* **Position**: Where content is inserted — 8 positions matching SillyTavern: Before Character Definitions, After Character Definitions, Author's Note Top/Bottom, At Depth, Examples Top/Bottom, or Outlet.
-* **Depth & Role**: For "At Depth" position, how deep in message history to inject and what role (system/user/assistant).
-* **Probability**: Chance of activation per match (0-100%). Useful for variety.
-* **Inclusion Groups**: Group entries so only the highest-weight entry in a group activates, preventing conflicting information.
-* **Timed Effects**: Delay (matches needed before first trigger), Sticky (forced re-activation for N turns after trigger), Cooldown (turns before re-activation after sticky expires).
+* **Keys** (primary): comma-separated keywords. Example: `dragon, wyrm, drake`.
+  Any one match triggers the entry.
+* **Secondary keys**: an additional filter with AND or NOT logic. AND requires both
+  primary and secondary to match; NOT excludes the entry when the secondary key is
+  found.
+* **Strategy**: `Triggered` (activates on keyword match) or `Constant` (always
+  active regardless of keywords).
+* **Probability**: chance of activation per match (0-100%), for variety.
+* **Inclusion groups**: within a group only the highest-weight entry activates,
+  preventing conflicting information.
+* **Character filter**: restricts an entry to (or excludes it from) named characters.
+* **Recursion**: when a card enables `recursive_scanning`, an activated entry's
+  content is rescanned to trigger further entries.
+* **Token budget**: entries are added in order until the card's budget is exhausted.
 
-### Importing Lorebooks
+### Getting lore into AIRP
 
-* **From Character Cards**: When importing a SillyTavern PNG/JSON character card with an embedded `character_book`, the lorebook entries are automatically loaded as character-scoped entries.
-* **Standalone JSON**: Import/export lorebook JSON files directly from the lorebook section.
+* **From character cards**: importing a SillyTavern PNG or JSON card with an embedded
+  `character_book` loads its entries automatically. They are visible read-only under
+  **Settings > Character Card > World Lore**.
+* **From a config pack or `.airp` backup**: a global lorebook is restored if the
+  imported file contains one.
+
+There is no in-app editor for creating lore entries from scratch. Author them in
+SillyTavern (or another card editor) and import the card.
+
+### Round-trip fidelity
+
+Fields AIRP no longer acts on (insertion position, depth, role, sticky, cooldown,
+delay, scan depth) are still parsed and re-exported unchanged, so a card imported
+into AIRP and exported again keeps its full SillyTavern V2 data.
+
+### Customization
+
+* **Recognizer Glow**: the colour of the input-box lore preview, under
+  **Settings > Character Card**.
 
 ---
 
@@ -351,7 +373,7 @@ Located in the Settings Drawer under **Visuals & Atmosphere**. You have full con
   * **Rain**: A melancholic weather effect (1–200 intensity slider).
   * **Fireflies**: Glowing orbs that pulse and move (1–100 count slider).
 * **Opacity Control**: Fine-tune the transparency of the background dimmer and message bubbles independently.
-* **Custom Backgrounds**: Choose from 36+ built-in AI-generated backgrounds or add custom images from your gallery. Long-press custom images to remove them. Backgrounds persist per-session.
+* **Custom Backgrounds**: Choose from 26 built-in AI-generated backgrounds or add custom images from your gallery. Long-press custom images to remove them. Backgrounds persist per-session.
 * **Reset to Defaults**: One-click reset for all visual settings with a confirmation dialog.
 
 ---
@@ -362,4 +384,4 @@ This project was developed with the assistance of AI tools. It is intended as a 
 
 ## License
 
-This project is open-source and available under the MIT License.
+This project is open-source and available under the MIT License. See [LICENSE](LICENSE).

@@ -218,11 +218,6 @@ class ApiConstants {
       'airp_openai_compatible_endpoint';
   static const String prefOllamaEndpoint = 'airp_ollama_endpoint';
   static const String prefEnableGrounding = 'airp_enable_grounding';
-  // ignore: deprecated_member_use_from_same_package
-  @Deprecated(
-    'Image gen is now model-driven; this key is no longer written. Safe to ignore on read.',
-  )
-  static const String prefEnableImageGen = 'airp_enable_image_gen';
   static const String prefDisableSafety = 'airp_disable_safety';
 
   // Web Search (BYOK)

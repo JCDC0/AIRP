@@ -51,7 +51,6 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoading =>
       _streamingCoordinator.isStreaming(_currentSessionId) ||
       _nonStreamingLoading;
-  bool get isCancelled => _streamingCoordinator.isCancelled(_currentSessionId);
 
   /// Set of session IDs that currently have an active background stream.
   Set<String> get streamingSessionIds =>
@@ -251,11 +250,6 @@ class ChatProvider extends ChangeNotifier {
 
   // --- World Lore state ---
   Lorebook _globalLorebook = Lorebook(name: 'Global');
-  LorebookEvalResult _lastLorebookEvalResult = const LorebookEvalResult(
-    byPosition: {},
-    estimatedTokens: 0,
-  );
-  List<LorebookEntry> _lastRecognizedLoreEntries = const [];
   Color _loreRecognizerGlowColor = Colors.orangeAccent;
 
   // Web Search (BYOK) Getters passed to _apiKeys
@@ -264,16 +258,7 @@ class ChatProvider extends ChangeNotifier {
   String get serperApiKey => _apiKeys.getSearchKey(SearchProvider.serper);
 
   // --- World Lore getters ---
-  Lorebook get globalLorebook => _globalLorebook;
-  LorebookEvalResult get lastLorebookEvalResult => _lastLorebookEvalResult;
-  List<LorebookEntry> get lastRecognizedLoreEntries =>
-      _lastRecognizedLoreEntries;
   Color get loreRecognizerGlowColor => _loreRecognizerGlowColor;
-  bool get enableLorebook => _settings!.enableLorebook;
-
-  /// Returns the character-scoped lorebook (from the active character card),
-  /// or `null` if no card is loaded or the card has no embedded lorebook.
-  Lorebook? get characterLorebook => _characterCard.characterBook;
 
   List<ChatMessage> _messages = [];
   String? _currentSessionId;
@@ -536,20 +521,6 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Lorebook / Regex / Formatting setters ---
-
-  void setGlobalLorebook(Lorebook lorebook) {
-    _globalLorebook = lorebook;
-    notifyListeners();
-    _saveSillyTavernState();
-  }
-
-  void setEnableLorebook(bool enable) {
-    _settings!.setEnableLorebook(enable);
-    notifyListeners();
-    _saveSillyTavernState();
-  }
-
   void setEnableCharacterCard(bool enable) {
     _settings!.setEnableCharacterCard(enable);
     notifyListeners();
@@ -568,13 +539,15 @@ class ChatProvider extends ChangeNotifier {
   }
 
   /// Persists SillyTavern state (World Lore) to SharedPreferences.
+  ///
+  /// `airp_enable_lorebook` is owned by [SettingsProvider] and is deliberately
+  /// not written here.
   Future<void> _saveSillyTavernState() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'airp_global_lorebook',
       jsonEncode(_globalLorebook.toJson()),
     );
-    await prefs.setBool('airp_enable_lorebook', _settings!.enableLorebook);
   }
 
   /// Loads SillyTavern state (World Lore) from SharedPreferences.
@@ -593,14 +566,6 @@ class ChatProvider extends ChangeNotifier {
 
   void setCharacterCard(CharacterCard card) {
     _characterCard = card;
-
-    // Auto-load embedded character book and regex scripts.
-    // The characterBook and regexScripts are stored on the card itself and
-    // accessed via getters (characterLorebook, characterRegexScripts), so
-    // no additional state assignment is needed — they become active
-    // automatically when _settings!.enableCharacterCard and _settings!.enableLorebook/_enableRegex
-    // are true.
-
     notifyListeners();
     _saveCharacterCard();
     if (_currentProvider == AiProvider.gemini) {
@@ -906,7 +871,6 @@ class ChatProvider extends ChangeNotifier {
     required String sentUserText,
     required List<ChatMessage> history,
     required List<LorebookEntry> recognizedLoreEntries,
-    required LorebookEvalResult lorebookResult,
     required List<Map<String, dynamic>> depthEntries,
     required ValueNotifier<String> contentNotifier,
     required String streamSessionId,
@@ -918,7 +882,6 @@ class ChatProvider extends ChangeNotifier {
     );
 
     String baseSys = _buildSystemInstruction(
-      lorebookResult: lorebookResult,
       recognizedLoreEntries: recognizedLoreEntries,
     );
     if (depthEntries.isNotEmpty) {
@@ -1192,12 +1155,13 @@ class ChatProvider extends ChangeNotifier {
 
     final matched = <LorebookEntry>[];
     for (final lorebook in lorebooks) {
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: [trimmed],
-        characterName: _characterCard.name,
+      matched.addAll(
+        LorebookService.matchEntries(
+          lorebook: lorebook,
+          text: trimmed,
+          characterName: _characterCard.name,
+        ),
       );
-      matched.addAll(result.all);
     }
 
     matched.sort((a, b) => a.order.compareTo(b.order));
@@ -1209,27 +1173,19 @@ class ChatProvider extends ChangeNotifier {
     return matched.isEmpty ? null : matched.first;
   }
 
-  /// Collects depth-positioned entries from lorebook results and the character
-  /// card into a flat list of `{content, depth, role}` maps.
-  List<Map<String, dynamic>> _collectDepthEntries(
-    LorebookEvalResult lorebookResult,
-  ) {
+  /// Collects the character card's depth-positioned prompts into a flat list
+  /// of `{content, depth, role}` maps.
+  List<Map<String, dynamic>> _collectDepthEntries() {
     return PromptPipelineService.collectDepthEntries(
-      lorebookResult: lorebookResult,
       characterCard: _characterCard,
       enableCharacterCard: _settings!.enableCharacterCard,
     );
   }
 
   /// Constructs the full system instruction including Main Prompt, Advanced
-  /// Prompt, Character Card, and optionally lorebook entries.
-  ///
-  /// When [lorebookResult] is provided, activated entries are injected at
-  /// their declared positions (beforeCharDefs, afterCharDefs, etc.).
-  /// `atDepth` entries are NOT included here — use [_collectDepthEntries]
-  /// for those.
+  /// Prompt, Character Card, and any lore entries recognized from the current
+  /// user input.
   String _buildSystemInstruction({
-    LorebookEvalResult? lorebookResult,
     List<LorebookEntry> recognizedLoreEntries = const [],
   }) {
     return PromptPipelineService.buildSystemInstruction(
@@ -1237,7 +1193,6 @@ class ChatProvider extends ChangeNotifier {
       enableSystemPrompt: _settings!.enableSystemPrompt,
       enableCharacterCard: _settings!.enableCharacterCard,
       characterCard: _characterCard,
-      lorebookResult: lorebookResult,
       recognizedLoreEntries: recognizedLoreEntries,
     );
   }
@@ -1377,13 +1332,7 @@ class ChatProvider extends ChangeNotifier {
 
     // --- Input-based lore recognition ---
     final recognizedLoreEntries = recognizeLoreEntriesFromInput(messageText);
-    _lastRecognizedLoreEntries = recognizedLoreEntries;
-    const lorebookResult = LorebookEvalResult(
-      byPosition: {},
-      estimatedTokens: 0,
-    );
-    _lastLorebookEvalResult = lorebookResult;
-    final depthEntries = _collectDepthEntries(lorebookResult);
+    final depthEntries = _collectDepthEntries();
 
     String sentUserText = messageText;
 
@@ -1409,7 +1358,6 @@ class ChatProvider extends ChangeNotifier {
         }
 
         String finalSystemInstruction = _buildSystemInstruction(
-          lorebookResult: lorebookResult,
           recognizedLoreEntries: recognizedLoreEntries,
         );
 
@@ -1523,7 +1471,6 @@ class ChatProvider extends ChangeNotifier {
           sentUserText: sentUserText,
           history: _messages.sublist(0, _messages.length - 2),
           recognizedLoreEntries: recognizedLoreEntries,
-          lorebookResult: lorebookResult,
           depthEntries: depthEntries,
           contentNotifier: contentNotifier,
           streamSessionId: streamSessionId,
@@ -1593,7 +1540,6 @@ class ChatProvider extends ChangeNotifier {
       }
 
       String finalSystemInstruction = _buildSystemInstruction(
-        lorebookResult: lorebookResult,
         recognizedLoreEntries: recognizedLoreEntries,
       );
       if (depthEntries.isNotEmpty) {

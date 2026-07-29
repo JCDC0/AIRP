@@ -1,6 +1,5 @@
 import '../models/character_card.dart';
 import '../models/lorebook_models.dart';
-import '../services/lorebook_service.dart';
 
 /// Static helper that encapsulates prompt pipeline operations used by
 /// [ChatProvider].
@@ -14,40 +13,17 @@ class PromptPipelineService {
   // System instruction construction
   // -------------------------------------------------------------------------
 
-  /// Builds the full system instruction string with optional lorebook entries
-  /// injected at their declared positions.
-  ///
-  /// Positions handled:
-  /// - [LorebookPosition.beforeCharDefs] — between advanced prompt and card.
-  /// - [LorebookPosition.emTop] / [LorebookPosition.emBottom] — around
-  ///   example messages within the card block.
-  /// - [LorebookPosition.afterCharDefs] — after the card block.
-  /// - [LorebookPosition.anTop] / [LorebookPosition.anBottom] /
-  ///   [LorebookPosition.outlet] — appended at the end.
-  ///
-  /// [LorebookPosition.atDepth] entries are NOT included — use
-  /// [collectDepthEntries] for those.
+  /// Builds the full system instruction string, appending any lore entries
+  /// recognized from the current user input.
   static String buildSystemInstruction({
     required String systemInstruction,
     required bool enableSystemPrompt,
     required bool enableCharacterCard,
     required CharacterCard characterCard,
-    LorebookEvalResult? lorebookResult,
     List<LorebookEntry> recognizedLoreEntries = const [],
   }) {
     String result = '';
     if (enableSystemPrompt) result += systemInstruction;
-
-    // --- Lorebook: beforeCharDefs ---
-    if (lorebookResult != null) {
-      final before = lorebookResult.forPosition(
-        LorebookPosition.beforeCharDefs,
-      );
-      if (before.isNotEmpty) {
-        if (result.isNotEmpty) result += '\n\n';
-        result += before.map((e) => e.content).join('\n');
-      }
-    }
 
     // --- Character Card ---
     if (enableCharacterCard &&
@@ -72,24 +48,8 @@ class PromptPipelineService {
         buf.writeln('Scenario: ${characterCard.scenario}');
       }
 
-      // --- Lorebook: emTop ---
-      if (lorebookResult != null) {
-        final emTop = lorebookResult.forPosition(LorebookPosition.emTop);
-        if (emTop.isNotEmpty) {
-          buf.writeln(emTop.map((e) => e.content).join('\n'));
-        }
-      }
-
       if (characterCard.mesExample.isNotEmpty) {
         buf.writeln('Dialogue Examples:\n${characterCard.mesExample}');
-      }
-
-      // --- Lorebook: emBottom ---
-      if (lorebookResult != null) {
-        final emBottom = lorebookResult.forPosition(LorebookPosition.emBottom);
-        if (emBottom.isNotEmpty) {
-          buf.writeln(emBottom.map((e) => e.content).join('\n'));
-        }
       }
 
       if (characterCard.systemPrompt.isNotEmpty) {
@@ -97,27 +57,6 @@ class PromptPipelineService {
       }
 
       result += buf.toString();
-    }
-
-    // --- Lorebook: afterCharDefs ---
-    if (lorebookResult != null) {
-      final after = lorebookResult.forPosition(LorebookPosition.afterCharDefs);
-      if (after.isNotEmpty) {
-        if (result.isNotEmpty) result += '\n\n';
-        result += after.map((e) => e.content).join('\n');
-      }
-    }
-
-    // --- Lorebook: Author's Note + outlet ---
-    if (lorebookResult != null) {
-      final anTop = lorebookResult.forPosition(LorebookPosition.anTop);
-      final anBottom = lorebookResult.forPosition(LorebookPosition.anBottom);
-      final outlet = lorebookResult.forPosition(LorebookPosition.outlet);
-      final anEntries = [...anTop, ...anBottom, ...outlet];
-      if (anEntries.isNotEmpty) {
-        if (result.isNotEmpty) result += '\n\n';
-        result += anEntries.map((e) => e.content).join('\n');
-      }
     }
 
     // --- Input-recognized lore entries ---
@@ -138,69 +77,17 @@ class PromptPipelineService {
   }
 
   // -------------------------------------------------------------------------
-  // Lorebook evaluation
-  // -------------------------------------------------------------------------
-
-  /// Evaluates all [lorebooks] against [recentMessages] and returns a merged
-  /// [LorebookEvalResult].
-  ///
-  /// [recentMessages] should be ordered newest-first.
-  static LorebookEvalResult evaluateLorebooks({
-    required List<Lorebook> lorebooks,
-    required List<String> recentMessages,
-    String characterName = '',
-  }) {
-    if (lorebooks.isEmpty) {
-      return const LorebookEvalResult(byPosition: {}, estimatedTokens: 0);
-    }
-
-    final mergedByPosition = <LorebookPosition, List<LorebookEntry>>{};
-    final mergedActivationTraces = <LorebookActivationTrace>[];
-    int totalTokens = 0;
-
-    for (final lorebook in lorebooks) {
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: recentMessages,
-        characterName: characterName,
-      );
-
-      for (final entry in result.byPosition.entries) {
-        mergedByPosition.putIfAbsent(entry.key, () => []).addAll(entry.value);
-      }
-      totalTokens += result.estimatedTokens;
-      mergedActivationTraces.addAll(result.activationTraces);
-    }
-
-    return LorebookEvalResult(
-      byPosition: mergedByPosition,
-      estimatedTokens: totalTokens,
-      activationTraces: mergedActivationTraces,
-    );
-  }
-
-  // -------------------------------------------------------------------------
   // Depth entries collection
   // -------------------------------------------------------------------------
 
-  /// Collects depth-positioned entries from [lorebookResult] and the
-  /// [characterCard] into a flat list of `{content, depth, role}` maps
-  /// suitable for passing to [ChatApiService.streamOpenAiCompatible].
+  /// Collects the [characterCard]'s depth-positioned prompts into a flat list
+  /// of `{content, depth, role}` maps suitable for passing to
+  /// [ChatApiService.streamOpenAiCompatible].
   static List<Map<String, dynamic>> collectDepthEntries({
-    required LorebookEvalResult lorebookResult,
     required CharacterCard characterCard,
     required bool enableCharacterCard,
   }) {
     final entries = <Map<String, dynamic>>[];
-
-    // Lorebook at-depth entries
-    for (final entry in lorebookResult.forPosition(LorebookPosition.atDepth)) {
-      entries.add({
-        'content': entry.content,
-        'depth': entry.depth,
-        'role': entry.role.name,
-      });
-    }
 
     // Character card depth prompt
     if (enableCharacterCard && characterCard.depthPromptText.isNotEmpty) {

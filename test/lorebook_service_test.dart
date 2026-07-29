@@ -2,8 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:airp/models/lorebook_models.dart';
 import 'package:airp/services/lorebook_service.dart';
-import 'package:airp/services/lorebook_state_service.dart';
 
+/// Tests for the surviving lore matcher.
+///
+/// History-based scanning, positional grouping, activation diagnostics, and
+/// timed effects (sticky / cooldown / delay) were removed in `0.6.11.1` when
+/// the lorebook was replaced by current-input lore recognition. The engine now
+/// matches a single text string and returns a flat, order-sorted list.
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -12,220 +17,200 @@ void main() {
   // ---------------------------------------------------------------------------
   // Basic keyword matching
   // ---------------------------------------------------------------------------
-  group('Basic keyword evaluation', () {
+  group('Basic keyword matching', () {
     test('triggered entry activates when keyword found', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['dragon'],
-          content: 'A fearsome dragon.',
-          position: LorebookPosition.beforeCharDefs,
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['I saw a dragon in the mountains.'],
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(id: 1, keys: ['dragon'], content: 'A fearsome dragon.'),
+        ],
       );
 
-      expect(result.isNotEmpty, true);
-      expect(result.all.length, 1);
-      expect(result.all.first.id, 1);
+      final result = LorebookService.matchEntries(
+        lorebook: lorebook,
+        text: 'I saw a dragon in the mountains.',
+      );
+
+      expect(result.length, 1);
+      expect(result.first.id, 1);
     });
 
     test('triggered entry does NOT activate when keyword absent', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['dragon'],
-          content: 'A fearsome dragon.',
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['The cat sat on the mat.'],
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(id: 1, keys: ['dragon'], content: 'A fearsome dragon.'),
+        ],
       );
 
-      expect(result.isEmpty, true);
+      final result = LorebookService.matchEntries(
+        lorebook: lorebook,
+        text: 'The cat sat on the mat.',
+      );
+
+      expect(result, isEmpty);
     });
 
     test('constant entry always activates regardless of keywords', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['nonexistent_keyword'],
-          content: 'Always here.',
-          strategy: LorebookStrategy.constant,
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['Hello, world.'],
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(
+            id: 1,
+            keys: ['unrelated'],
+            content: 'Always present.',
+            strategy: LorebookStrategy.constant,
+          ),
+        ],
       );
 
-      expect(result.isNotEmpty, true);
-      expect(result.all.first.id, 1);
+      final result = LorebookService.matchEntries(
+        lorebook: lorebook,
+        text: 'Nothing matches here.',
+      );
+
+      expect(result.length, 1);
+      expect(result.first.id, 1);
     });
 
     test('disabled entry is skipped', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['dragon'],
-          content: 'Should not appear.',
-          enabled: false,
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['A dragon flew overhead.'],
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(
+            id: 1,
+            keys: ['dragon'],
+            content: 'A fearsome dragon.',
+            enabled: false,
+          ),
+        ],
       );
 
-      expect(result.isEmpty, true);
+      final result = LorebookService.matchEntries(
+        lorebook: lorebook,
+        text: 'I saw a dragon.',
+      );
+
+      expect(result, isEmpty);
     });
 
-    test('keyword matching respects case sensitivity', () {
+    test('matching is case-insensitive by default', () {
+      final lorebook = Lorebook(
+        entries: [LorebookEntry(id: 1, keys: ['Dragon'], content: 'Lore.')],
+      );
+
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: 'a dragon!'),
+        hasLength(1),
+      );
+    });
+
+    test('caseSensitive lorebook requires an exact-case match', () {
       final lorebook = Lorebook(
         caseSensitive: true,
-        entries: [
-          LorebookEntry(id: 1, keys: ['Dragon'], content: 'case match'),
-        ],
+        entries: [LorebookEntry(id: 1, keys: ['Dragon'], content: 'Lore.')],
       );
 
-      // "dragon" (lowercase) should NOT match "Dragon" (capital)
-      final noMatch = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['I saw a dragon.'],
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: 'a dragon!'),
+        isEmpty,
       );
-      expect(noMatch.isEmpty, true);
-
-      // "Dragon" (capital) should match
-      final match = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['I saw a Dragon.'],
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: 'a Dragon!'),
+        hasLength(1),
       );
-      expect(match.isNotEmpty, true);
     });
 
-    test('keyword matching respects whole-word boundaries', () {
+    test('matchWholeWords requires word boundaries', () {
       final lorebook = Lorebook(
         matchWholeWords: true,
+        entries: [LorebookEntry(id: 1, keys: ['cat'], content: 'Lore.')],
+      );
+
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: 'concatenate'),
+        isEmpty,
+      );
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: 'the cat sat'),
+        hasLength(1),
+      );
+    });
+
+    test('any of several keywords triggers the entry', () {
+      final lorebook = Lorebook(
         entries: [
-          LorebookEntry(id: 1, keys: ['cat'], content: 'whole word match'),
+          LorebookEntry(
+            id: 1,
+            keys: ['dragon', 'wyrm', 'drake'],
+            content: 'Lore.',
+          ),
         ],
       );
 
-      // "catalog" contains "cat" but not as a whole word
-      final noMatch = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['Check the catalog.'],
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: 'a drake flew'),
+        hasLength(1),
       );
-      expect(noMatch.isEmpty, true);
-
-      // "cat" as a standalone word should match
-      final match = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['The cat sat down.'],
-      );
-      expect(match.isNotEmpty, true);
     });
   });
 
   // ---------------------------------------------------------------------------
-  // Scan depth
-  // ---------------------------------------------------------------------------
-  group('Scan depth', () {
-    test('only scans scanDepth most recent messages', () {
-      final lorebook = Lorebook(
-        scanDepth: 2,
-        entries: [
-          LorebookEntry(id: 1, keys: ['ancient'], content: 'Old lore'),
-        ],
-      );
-
-      // "ancient" is in the 3rd message (index 2) but scanDepth=2
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['Hello', 'World', 'The ancient temple'],
-      );
-
-      expect(result.isEmpty, true);
-    });
-
-    test('scanDepth 0 scans all messages', () {
-      final lorebook = Lorebook(
-        scanDepth: 0,
-        entries: [
-          LorebookEntry(id: 1, keys: ['ancient'], content: 'Old lore'),
-        ],
-      );
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['Hello', 'World', 'The ancient temple'],
-      );
-
-      expect(result.isNotEmpty, true);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Secondary keywords (selective logic)
+  // Secondary keywords
   // ---------------------------------------------------------------------------
   group('Secondary keywords', () {
-    test('AND mode: requires both primary AND secondary match', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['sword'],
-          secondaryKeys: ['magic'],
-          selectiveLogic: true, // AND
-          content: 'Magic sword lore.',
+    test('AND mode requires both primary and secondary to match', () {
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(
+            id: 1,
+            keys: ['dragon'],
+            secondaryKeys: ['fire'],
+            selectiveLogic: true,
+            content: 'A fire dragon.',
+          ),
+        ],
+      );
+
+      expect(
+        LorebookService.matchEntries(
+          lorebook: lorebook,
+          text: 'a dragon breathing fire',
         ),
-      ]);
-
-      // Only primary matches → should NOT activate
-      final noSecondary = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['I found a sword.'],
+        hasLength(1),
       );
-      expect(noSecondary.isEmpty, true);
-
-      // Both match → should activate
-      final bothMatch = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['I found a magic sword.'],
+      expect(
+        LorebookService.matchEntries(
+          lorebook: lorebook,
+          text: 'a dragon sleeping',
+        ),
+        isEmpty,
       );
-      expect(bothMatch.isNotEmpty, true);
     });
 
-    test('NOT mode: primary must match, secondary must NOT match', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['sword'],
-          secondaryKeys: ['broken'],
-          selectiveLogic: false, // NOT
-          content: 'Intact sword lore.',
+    test('NOT mode requires primary to match and secondary to be absent', () {
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(
+            id: 1,
+            keys: ['dragon'],
+            secondaryKeys: ['friendly'],
+            selectiveLogic: false,
+            content: 'A hostile dragon.',
+          ),
+        ],
+      );
+
+      expect(
+        LorebookService.matchEntries(
+          lorebook: lorebook,
+          text: 'a dragon attacks',
         ),
-      ]);
-
-      // "sword" matches, "broken" also present → should NOT activate
-      final blocked = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['A broken sword lay on the ground.'],
+        hasLength(1),
       );
-      expect(blocked.isEmpty, true);
-
-      // "sword" matches, "broken" absent → should activate
-      final allowed = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['A shining sword gleamed.'],
+      expect(
+        LorebookService.matchEntries(
+          lorebook: lorebook,
+          text: 'a friendly dragon',
+        ),
+        isEmpty,
       );
-      expect(allowed.isNotEmpty, true);
     });
   });
 
@@ -234,41 +219,42 @@ void main() {
   // ---------------------------------------------------------------------------
   group('Probability', () {
     test('probability 0 never activates', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['always_here'],
-          content: 'Should not appear.',
-          probability: 0,
-        ),
-      ]);
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(
+            id: 1,
+            keys: ['dragon'],
+            content: 'Lore.',
+            probability: 0,
+          ),
+        ],
+      );
 
-      // Run several times — should never activate with probability 0.
-      for (int i = 0; i < 10; i++) {
-        final result = LorebookService.evaluateEntries(
-          lorebook: lorebook,
-          recentMessages: ['always_here'],
+      for (int i = 0; i < 50; i++) {
+        expect(
+          LorebookService.matchEntries(lorebook: lorebook, text: 'a dragon'),
+          isEmpty,
         );
-        expect(result.isEmpty, true);
       }
     });
 
     test('probability 100 always activates', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['always_here'],
-          content: 'Always present.',
-          probability: 100,
-        ),
-      ]);
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(
+            id: 1,
+            keys: ['dragon'],
+            content: 'Lore.',
+            probability: 100,
+          ),
+        ],
+      );
 
-      for (int i = 0; i < 10; i++) {
-        final result = LorebookService.evaluateEntries(
-          lorebook: lorebook,
-          recentMessages: ['always_here'],
+      for (int i = 0; i < 50; i++) {
+        expect(
+          LorebookService.matchEntries(lorebook: lorebook, text: 'a dragon'),
+          hasLength(1),
         );
-        expect(result.isNotEmpty, true);
       }
     });
   });
@@ -277,79 +263,63 @@ void main() {
   // Character filter
   // ---------------------------------------------------------------------------
   group('Character filter', () {
-    test('inclusive filter allows matching character', () {
-      final lorebook = Lorebook(entries: [
+    Lorebook bookFor({
+      required List<String> filter,
+      required bool inclusive,
+    }) => Lorebook(
+      entries: [
         LorebookEntry(
           id: 1,
-          keys: ['test'],
-          content: 'For Alice only.',
-          characterFilter: ['Alice'],
-          characterFilterIsInclusive: true,
+          keys: ['dragon'],
+          content: 'Lore.',
+          characterFilter: filter,
+          characterFilterIsInclusive: inclusive,
         ),
-      ]);
+      ],
+    );
 
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['test'],
-        characterName: 'Alice',
+    test('inclusive filter allows a matching character', () {
+      expect(
+        LorebookService.matchEntries(
+          lorebook: bookFor(filter: ['Alice'], inclusive: true),
+          text: 'a dragon',
+          characterName: 'Alice',
+        ),
+        hasLength(1),
       );
-      expect(result.isNotEmpty, true);
     });
 
-    test('inclusive filter blocks non-matching character', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['test'],
-          content: 'For Alice only.',
-          characterFilter: ['Alice'],
-          characterFilterIsInclusive: true,
+    test('inclusive filter blocks a non-matching character', () {
+      expect(
+        LorebookService.matchEntries(
+          lorebook: bookFor(filter: ['Alice'], inclusive: true),
+          text: 'a dragon',
+          characterName: 'Bob',
         ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['test'],
-        characterName: 'Bob',
+        isEmpty,
       );
-      expect(result.isEmpty, true);
     });
 
-    test('exclusive filter blocks matching character', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['test'],
-          content: 'Not for Bob.',
-          characterFilter: ['Bob'],
-          characterFilterIsInclusive: false,
+    test('exclusive filter blocks a matching character', () {
+      expect(
+        LorebookService.matchEntries(
+          lorebook: bookFor(filter: ['Alice'], inclusive: false),
+          text: 'a dragon',
+          characterName: 'Alice',
         ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['test'],
-        characterName: 'Bob',
+        isEmpty,
       );
-      expect(result.isEmpty, true);
     });
 
     test('empty character filter allows all', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['test'],
-          content: 'For everyone.',
-          characterFilter: [],
+      expect(
+        LorebookService.matchEntries(
+          lorebook: bookFor(filter: [], inclusive: true),
+          text: 'a dragon',
+          characterName: 'Anyone',
         ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['test'],
-        characterName: 'Anyone',
+        hasLength(1),
       );
-      expect(result.isNotEmpty, true);
     });
   });
 
@@ -357,98 +327,47 @@ void main() {
   // Inclusion groups
   // ---------------------------------------------------------------------------
   group('Inclusion groups', () {
-    test('only highest-weight entry wins within a group', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['battle'],
-          content: 'Low priority lore.',
-          group: 'combat',
-          groupWeight: 50,
-          strategy: LorebookStrategy.constant,
-        ),
-        LorebookEntry(
-          id: 2,
-          keys: ['battle'],
-          content: 'High priority lore.',
-          group: 'combat',
-          groupWeight: 200,
-          strategy: LorebookStrategy.constant,
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['A battle begins.'],
+    test('only the highest-weight entry wins within a group', () {
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(
+            id: 1,
+            keys: ['dragon'],
+            content: 'Low weight.',
+            group: 'dragons',
+            groupWeight: 10,
+          ),
+          LorebookEntry(
+            id: 2,
+            keys: ['dragon'],
+            content: 'High weight.',
+            group: 'dragons',
+            groupWeight: 90,
+          ),
+        ],
       );
 
-      expect(result.all.length, 1);
-      expect(result.all.first.id, 2);
+      final result = LorebookService.matchEntries(
+        lorebook: lorebook,
+        text: 'a dragon',
+      );
+
+      expect(result.length, 1);
+      expect(result.first.id, 2);
     });
 
     test('ungrouped entries all pass through', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['cat'],
-          content: 'Cat lore.',
-          group: '',
-        ),
-        LorebookEntry(
-          id: 2,
-          keys: ['cat'],
-          content: 'More cat lore.',
-          group: '',
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['The cat meowed.'],
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(id: 1, keys: ['dragon'], content: 'A.'),
+          LorebookEntry(id: 2, keys: ['dragon'], content: 'B.'),
+        ],
       );
 
-      expect(result.all.length, 2);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Position grouping
-  // ---------------------------------------------------------------------------
-  group('Position grouping', () {
-    test('entries are grouped by position in result', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['test'],
-          content: 'Before char.',
-          position: LorebookPosition.beforeCharDefs,
-          strategy: LorebookStrategy.constant,
-        ),
-        LorebookEntry(
-          id: 2,
-          keys: ['test'],
-          content: 'After char.',
-          position: LorebookPosition.afterCharDefs,
-          strategy: LorebookStrategy.constant,
-        ),
-        LorebookEntry(
-          id: 3,
-          keys: ['test'],
-          content: 'At depth.',
-          position: LorebookPosition.atDepth,
-          strategy: LorebookStrategy.constant,
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['test'],
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: 'a dragon'),
+        hasLength(2),
       );
-
-      expect(result.forPosition(LorebookPosition.beforeCharDefs).length, 1);
-      expect(result.forPosition(LorebookPosition.afterCharDefs).length, 1);
-      expect(result.forPosition(LorebookPosition.atDepth).length, 1);
-      expect(result.forPosition(LorebookPosition.anTop), isEmpty);
     });
   });
 
@@ -456,188 +375,60 @@ void main() {
   // Recursive scanning
   // ---------------------------------------------------------------------------
   group('Recursive scanning', () {
-    test('recursive scan activates entries triggered by other entries content',
-        () {
+    test('an activated entry content can trigger another entry', () {
       final lorebook = Lorebook(
         recursionSteps: 1,
         entries: [
-          LorebookEntry(
-            id: 1,
-            keys: ['dragon'],
-            content: 'The dragon guards a treasure in the castle.',
-          ),
-          LorebookEntry(
-            id: 2,
-            keys: ['castle'],
-            content: 'An ancient fortress.',
-          ),
+          LorebookEntry(id: 1, keys: ['dragon'], content: 'It guards a hoard.'),
+          LorebookEntry(id: 2, keys: ['hoard'], content: 'Gold and gems.'),
         ],
       );
 
-      // Only "dragon" is in the message, but entry 1's content contains "castle"
-      // which should trigger entry 2 via recursion.
-      final result = LorebookService.evaluateEntries(
+      final result = LorebookService.matchEntries(
         lorebook: lorebook,
-        recentMessages: ['A dragon appeared!'],
+        text: 'a dragon appears',
       );
 
-      expect(result.all.length, 2);
-      final ids = result.all.map((e) => e.id).toSet();
-      expect(ids, contains(1));
-      expect(ids, contains(2));
+      expect(result.map((e) => e.id).toSet(), {1, 2});
     });
 
-    test('preventRecursion blocks entry content from recursive scanning', () {
+    test('preventRecursion blocks content from the recursion corpus', () {
       final lorebook = Lorebook(
         recursionSteps: 1,
         entries: [
           LorebookEntry(
             id: 1,
             keys: ['dragon'],
-            content: 'The dragon guards a castle.',
+            content: 'It guards a hoard.',
             preventRecursion: true,
           ),
-          LorebookEntry(
-            id: 2,
-            keys: ['castle'],
-            content: 'An ancient fortress.',
-          ),
+          LorebookEntry(id: 2, keys: ['hoard'], content: 'Gold and gems.'),
         ],
       );
 
-      final result = LorebookService.evaluateEntries(
+      final result = LorebookService.matchEntries(
         lorebook: lorebook,
-        recentMessages: ['A dragon appeared!'],
+        text: 'a dragon appears',
       );
 
-      // Entry 1 activates but its content is excluded from recursion,
-      // so entry 2 should NOT be triggered.
-      expect(result.all.length, 1);
-      expect(result.all.first.id, 1);
+      expect(result.map((e) => e.id).toSet(), {1});
     });
 
     test('no recursion when recursionSteps is 0', () {
       final lorebook = Lorebook(
         recursionSteps: 0,
         entries: [
-          LorebookEntry(
-            id: 1,
-            keys: ['dragon'],
-            content: 'The dragon guards a castle.',
-          ),
-          LorebookEntry(
-            id: 2,
-            keys: ['castle'],
-            content: 'An ancient fortress.',
-          ),
+          LorebookEntry(id: 1, keys: ['dragon'], content: 'It guards a hoard.'),
+          LorebookEntry(id: 2, keys: ['hoard'], content: 'Gold and gems.'),
         ],
       );
 
-      final result = LorebookService.evaluateEntries(
+      final result = LorebookService.matchEntries(
         lorebook: lorebook,
-        recentMessages: ['A dragon appeared!'],
+        text: 'a dragon appears',
       );
 
-      expect(result.all.length, 1);
-      expect(result.all.first.id, 1);
-    });
-
-    test('recursive activation emits recursive trace reason', () {
-      final lorebook = Lorebook(
-        recursionSteps: 1,
-        entries: [
-          LorebookEntry(
-            id: 1,
-            keys: ['dragon'],
-            content: 'The dragon guards a castle.',
-          ),
-          LorebookEntry(
-            id: 2,
-            keys: ['castle'],
-            content: 'An ancient fortress.',
-          ),
-        ],
-      );
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['A dragon appeared!'],
-      );
-
-      final byId = result.traceByEntryId;
-      expect(byId[1]?.reason, LorebookActivationReason.keyword);
-      expect(byId[2]?.reason, LorebookActivationReason.recursive);
-      expect(byId[2]?.matchedKey, 'castle');
-    });
-  });
-
-  group('Activation diagnostics', () {
-    test('captures matched key and activation reason', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 10,
-          keys: ['dragon'],
-          content: 'Dragon lore.',
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['The dragon wakes.'],
-      );
-
-      final trace = result.traceByEntryId[10];
-      expect(trace, isNotNull);
-      expect(trace!.activated, true);
-      expect(trace.reason, LorebookActivationReason.keyword);
-      expect(trace.matchedKey, 'dragon');
-      expect(trace.blockedBy, isNull);
-    });
-
-    test('captures secondary AND failure reason', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 11,
-          keys: ['sword'],
-          secondaryKeys: ['magic'],
-          selectiveLogic: true,
-          content: 'Magic sword lore.',
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['A sword is on the table.'],
-      );
-
-      final trace = result.traceByEntryId[11];
-      expect(trace, isNotNull);
-      expect(trace!.activated, false);
-      expect(trace.reason, LorebookActivationReason.rejected);
-      expect(trace.blockedBy, 'secondary_and_failed');
-    });
-
-    test('captures delay pending as timed effect block reason', () {
-      final state = LorebookSessionState(sessionId: 'diag-delay');
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 12,
-          keys: ['phoenix'],
-          content: 'Phoenix lore.',
-          delay: 2,
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['The phoenix rises.'],
-        sessionState: state,
-      );
-
-      final trace = result.traceByEntryId[12];
-      expect(trace, isNotNull);
-      expect(trace!.activated, false);
-      expect(trace.blockedBy, 'delay_pending');
+      expect(result.map((e) => e.id).toSet(), {1});
     });
   });
 
@@ -645,57 +436,56 @@ void main() {
   // Token budget
   // ---------------------------------------------------------------------------
   group('Token budget', () {
-    test('entries are excluded when token budget is exceeded', () {
-      // Each entry content ~5 words → ~7 tokens.
-      // Budget of 10 should allow 1 entry but not 2.
+    test('entries are excluded once the budget is exceeded', () {
       final lorebook = Lorebook(
-        tokenBudget: 10,
+        tokenBudget: 5,
         entries: [
           LorebookEntry(
             id: 1,
-            keys: ['test'],
-            content: 'This is some lore content here.',
+            keys: ['dragon'],
+            content: 'one two three',
             order: 1,
-            strategy: LorebookStrategy.constant,
           ),
           LorebookEntry(
             id: 2,
-            keys: ['test'],
-            content: 'More lore content to fill budget.',
+            keys: ['dragon'],
+            content: 'four five six seven eight nine ten',
             order: 2,
-            strategy: LorebookStrategy.constant,
           ),
         ],
       );
 
-      final result = LorebookService.evaluateEntries(
+      final result = LorebookService.matchEntries(
         lorebook: lorebook,
-        recentMessages: ['test'],
+        text: 'a dragon',
       );
 
-      expect(result.all.length, 1);
-      expect(result.all.first.id, 1); // Lower order wins budget
+      expect(result.map((e) => e.id), [1]);
     });
 
     test('budget 0 means unlimited', () {
       final lorebook = Lorebook(
         tokenBudget: 0,
-        entries: List.generate(
-          10,
-          (i) => LorebookEntry(
-            id: i,
-            content: 'Entry $i with some content for tokens.',
-            strategy: LorebookStrategy.constant,
+        entries: [
+          LorebookEntry(
+            id: 1,
+            keys: ['dragon'],
+            content: 'a very long entry with many words in it',
+            order: 1,
           ),
-        ),
+          LorebookEntry(
+            id: 2,
+            keys: ['dragon'],
+            content: 'another very long entry with many words',
+            order: 2,
+          ),
+        ],
       );
 
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['test'],
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: 'a dragon'),
+        hasLength(2),
       );
-
-      expect(result.all.length, 10);
     });
   });
 
@@ -703,233 +493,61 @@ void main() {
   // Ordering
   // ---------------------------------------------------------------------------
   group('Ordering', () {
-    test('all() returns entries sorted by insertion order', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          content: 'Second.',
-          order: 50,
-          strategy: LorebookStrategy.constant,
-        ),
-        LorebookEntry(
-          id: 2,
-          content: 'First.',
-          order: 10,
-          strategy: LorebookStrategy.constant,
-        ),
-        LorebookEntry(
-          id: 3,
-          content: 'Third.',
-          order: 100,
-          strategy: LorebookStrategy.constant,
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['anything'],
+    test('results are sorted by insertion order', () {
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(id: 1, keys: ['dragon'], content: 'C.', order: 300),
+          LorebookEntry(id: 2, keys: ['dragon'], content: 'A.', order: 100),
+          LorebookEntry(id: 3, keys: ['dragon'], content: 'B.', order: 200),
+        ],
       );
 
-      expect(result.all.map((e) => e.id).toList(), [2, 1, 3]);
+      final result = LorebookService.matchEntries(
+        lorebook: lorebook,
+        text: 'a dragon',
+      );
+
+      expect(result.map((e) => e.id), [2, 3, 1]);
     });
   });
 
   // ---------------------------------------------------------------------------
-  // Empty lorebook
+  // Edge cases
   // ---------------------------------------------------------------------------
   group('Edge cases', () {
-    test('empty lorebook returns empty result', () {
-      final lorebook = Lorebook(entries: []);
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['anything'],
+    test('empty lorebook returns an empty list', () {
+      expect(
+        LorebookService.matchEntries(lorebook: Lorebook(), text: 'anything'),
+        isEmpty,
       );
-      expect(result.isEmpty, true);
-      expect(result.estimatedTokens, 0);
     });
 
-    test('empty messages still activates constant entries', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          content: 'Always on.',
-          strategy: LorebookStrategy.constant,
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: [],
+    test('empty text still activates constant entries', () {
+      final lorebook = Lorebook(
+        entries: [
+          LorebookEntry(
+            id: 1,
+            content: 'Always.',
+            strategy: LorebookStrategy.constant,
+          ),
+        ],
       );
 
-      expect(result.isNotEmpty, true);
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: ''),
+        hasLength(1),
+      );
     });
 
-    test('multiple keywords: any match triggers', () {
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['alpha', 'beta', 'gamma'],
-          content: 'Multi-key entry.',
-        ),
-      ]);
-
-      final result = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['The beta version is ready.'],
+    test('entry with no keys never activates when triggered', () {
+      final lorebook = Lorebook(
+        entries: [LorebookEntry(id: 1, keys: const [], content: 'Lore.')],
       );
 
-      expect(result.isNotEmpty, true);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // LorebookSessionState
-  // ---------------------------------------------------------------------------
-  group('LorebookSessionState', () {
-    test('default state has turn 0', () {
-      final state = LorebookSessionState(sessionId: 'test');
-      expect(state.currentTurn, 0);
-    });
-
-    test('advanceTurn increments counter', () {
-      final state = LorebookSessionState(sessionId: 'test');
-      state.advanceTurn();
-      state.advanceTurn();
-      expect(state.currentTurn, 2);
-    });
-
-    test('delay tracking works', () {
-      final state = LorebookSessionState(sessionId: 'test');
-      expect(state.hasPassedDelay(1, 3), false);
-      state.incrementMatchCount(1);
-      state.incrementMatchCount(1);
-      expect(state.hasPassedDelay(1, 3), false);
-      state.incrementMatchCount(1);
-      expect(state.hasPassedDelay(1, 3), true);
-    });
-
-    test('sticky window tracking works', () {
-      final state = LorebookSessionState(sessionId: 'test');
-      state.setStickyWindow(1, 3);
-      expect(state.isStickyActive(1, 3), true);
-      state.advanceTurn();
-      state.advanceTurn();
-      state.advanceTurn();
-      expect(state.isStickyActive(1, 3), true); // turn 3, expiry 3
-      state.advanceTurn();
-      expect(state.isStickyActive(1, 3), false); // turn 4, past expiry
-    });
-
-    test('cooldown tracking works', () {
-      final state = LorebookSessionState(sessionId: 'test');
-      state.setStickyWindow(1, 2); // sticky expires at turn 2
-      state.setCooldownAfterSticky(1, 3); // cooldown until turn 5
-      expect(state.isOnCooldown(1, 3), true); // turn 0 < 5
-      state.advanceTurn(); // turn 1
-      state.advanceTurn(); // turn 2
-      state.advanceTurn(); // turn 3
-      state.advanceTurn(); // turn 4
-      expect(state.isOnCooldown(1, 3), true); // turn 4 < 5
-      state.advanceTurn(); // turn 5
-      expect(state.isOnCooldown(1, 3), false); // turn 5 >= 5
-    });
-
-    test('recordActivation stores last activation turn', () {
-      final state = LorebookSessionState(sessionId: 'test');
-      expect(state.lastActivation(1), -1);
-      state.recordActivation(1);
-      expect(state.lastActivation(1), 0);
-      state.advanceTurn();
-      state.recordActivation(1);
-      expect(state.lastActivation(1), 1);
-    });
-
-    test('serialization round-trip preserves all state', () {
-      final original = LorebookSessionState(
-        sessionId: 'test123',
-        currentTurn: 5,
-        matchCounts: {1: 3, 2: 7},
-        lastActivationTurn: {1: 4},
-        stickyExpiry: {1: 8},
-        cooldownExpiry: {1: 11},
+      expect(
+        LorebookService.matchEntries(lorebook: lorebook, text: 'anything'),
+        isEmpty,
       );
-
-      final json = original.toJson();
-      final restored = LorebookSessionState.fromJson('test123', json);
-
-      expect(restored.currentTurn, 5);
-      expect(restored.hasPassedDelay(1, 3), true);
-      expect(restored.hasPassedDelay(2, 7), true);
-      expect(restored.lastActivation(1), 4);
-      expect(restored.isStickyActive(1, 0), true); // expiry 8, turn 5
-      expect(restored.isOnCooldown(1, 0), true); // expiry 11, turn 5
-    });
-
-    test('save and load via SharedPreferences', () async {
-      final state = LorebookSessionState(sessionId: 'persist_test');
-      state.advanceTurn();
-      state.advanceTurn();
-      state.incrementMatchCount(5);
-      state.recordActivation(5);
-      await state.save();
-
-      final loaded = await LorebookSessionState.load('persist_test');
-      expect(loaded.currentTurn, 2);
-      expect(loaded.hasPassedDelay(5, 1), true);
-      expect(loaded.lastActivation(5), 2);
-    });
-
-    test('load returns fresh state for unknown session', () async {
-      final state = await LorebookSessionState.load('nonexistent');
-      expect(state.currentTurn, 0);
-      expect(state.sessionId, 'nonexistent');
-    });
-
-    test('clear removes persisted state', () async {
-      final state = LorebookSessionState(sessionId: 'to_clear');
-      state.advanceTurn();
-      await state.save();
-      await LorebookSessionState.clear('to_clear');
-
-      final loaded = await LorebookSessionState.load('to_clear');
-      expect(loaded.currentTurn, 0);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Integration: timed effects with evaluation
-  // ---------------------------------------------------------------------------
-  group('Timed effects integration', () {
-    test('delay prevents activation until match count threshold', () {
-      final state = LorebookSessionState(sessionId: 'delay_test');
-      final lorebook = Lorebook(entries: [
-        LorebookEntry(
-          id: 1,
-          keys: ['magic'],
-          content: 'Delayed magic lore.',
-          delay: 3,
-        ),
-      ]);
-
-      // First 2 keyword matches — should NOT activate.
-      for (int i = 0; i < 2; i++) {
-        final r = LorebookService.evaluateEntries(
-          lorebook: lorebook,
-          recentMessages: ['magic is everywhere'],
-          sessionState: state,
-        );
-        expect(r.isEmpty, true);
-        state.advanceTurn();
-      }
-
-      // 3rd match — should activate.
-      final r = LorebookService.evaluateEntries(
-        lorebook: lorebook,
-        recentMessages: ['magic is everywhere'],
-        sessionState: state,
-      );
-      expect(r.isNotEmpty, true);
     });
   });
 }
