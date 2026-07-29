@@ -15,10 +15,12 @@ class VfxProvider extends ChangeNotifier {
   bool _enableMotes = false;
   bool _enableRain = false;
   bool _enableFireflies = false;
+  bool _enableCrt = false;
 
   int _motesDensity = 75;
   int _rainIntensity = 100;
   int _firefliesCount = 50;
+  double _crtIntensity = AppDefaults.crtIntensity;
 
   List<String> _customImagePaths = [];
 
@@ -29,11 +31,13 @@ class VfxProvider extends ChangeNotifier {
   bool get enableMotes => _enableMotes;
   bool get enableRain => _enableRain;
   bool get enableFireflies => _enableFireflies;
+  bool get enableCrt => _enableCrt;
   List<String> get customImagePaths => _customImagePaths;
 
   int get motesDensity => _motesDensity;
   int get rainIntensity => _rainIntensity;
   int get firefliesCount => _firefliesCount;
+  double get crtIntensity => _crtIntensity;
 
   VfxProvider() {
     _loadPreferences();
@@ -112,6 +116,22 @@ class VfxProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_fireflies', value);
   }
 
+  /// Toggles the CRT treatment applied to the background image.
+  Future<void> toggleCrt(bool value) async {
+    _enableCrt = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_enable_crt', value);
+  }
+
+  /// Sets the CRT effect strength in `[0, 1]`.
+  Future<void> setCrtIntensity(double value) async {
+    _crtIntensity = value.clamp(0.0, 1.0);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('vfx_crt_intensity', _crtIntensity);
+  }
+
   /// Sets the density of floating motes.
   Future<void> setMotesDensity(int value) async {
     _motesDensity = value;
@@ -170,6 +190,9 @@ class VfxProvider extends ChangeNotifier {
     _enableMotes = prefs.getBool('app_enable_motes') ?? false;
     _enableRain = prefs.getBool('app_enable_rain') ?? false;
     _enableFireflies = prefs.getBool('app_enable_fireflies') ?? false;
+    _enableCrt = prefs.getBool('app_enable_crt') ?? false;
+    _crtIntensity =
+        prefs.getDouble('vfx_crt_intensity') ?? AppDefaults.crtIntensity;
     _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
 
     _motesDensity =
@@ -189,10 +212,12 @@ class VfxProvider extends ChangeNotifier {
     _enableMotes = false;
     _enableRain = false;
     _enableFireflies = false;
+    _enableCrt = false;
     _backgroundOpacity = AppDefaults.backgroundOpacity;
     _motesDensity = AppDefaults.motesDensity;
     _rainIntensity = AppDefaults.rainIntensity;
     _firefliesCount = AppDefaults.firefliesCount;
+    _crtIntensity = AppDefaults.crtIntensity;
 
     notifyListeners();
 
@@ -202,10 +227,12 @@ class VfxProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_motes', false);
     await prefs.setBool('app_enable_rain', false);
     await prefs.setBool('app_enable_fireflies', false);
+    await prefs.setBool('app_enable_crt', false);
     await prefs.setDouble('app_bg_opacity', AppDefaults.backgroundOpacity);
     await prefs.setInt('vfx_motes_density', AppDefaults.motesDensity);
     await prefs.setInt('vfx_rain_intensity', AppDefaults.rainIntensity);
     await prefs.setInt('vfx_fireflies_count', AppDefaults.firefliesCount);
+    await prefs.setDouble('vfx_crt_intensity', AppDefaults.crtIntensity);
   }
 
   Map<String, dynamic> exportSettingsMap() {
@@ -217,9 +244,11 @@ class VfxProvider extends ChangeNotifier {
       'motes': _enableMotes,
       'rain': _enableRain,
       'fireflies': _enableFireflies,
+      'crt': _enableCrt,
       'motesDensity': _motesDensity,
       'rainIntensity': _rainIntensity,
       'firefliesCount': _firefliesCount,
+      'crtIntensity': _crtIntensity,
     };
   }
 
@@ -233,10 +262,16 @@ class VfxProvider extends ChangeNotifier {
     _enableMotes = data['motes'] as bool? ?? _enableMotes;
     _enableRain = data['rain'] as bool? ?? _enableRain;
     _enableFireflies = data['fireflies'] as bool? ?? _enableFireflies;
+    _enableCrt = data['crt'] as bool? ?? _enableCrt;
     _motesDensity = (data['motesDensity'] as num?)?.toInt() ?? _motesDensity;
     _rainIntensity = (data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity;
     _firefliesCount =
         (data['firefliesCount'] as num?)?.toInt() ?? _firefliesCount;
+    _crtIntensity =
+        ((data['crtIntensity'] as num?)?.toDouble() ?? _crtIntensity).clamp(
+          0.0,
+          1.0,
+        );
 
     notifyListeners();
 
@@ -255,8 +290,10 @@ class VfxProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_motes', _enableMotes);
     await prefs.setBool('app_enable_rain', _enableRain);
     await prefs.setBool('app_enable_fireflies', _enableFireflies);
+    await prefs.setBool('app_enable_crt', _enableCrt);
     await prefs.setInt('vfx_motes_density', _motesDensity);
     await prefs.setInt('vfx_rain_intensity', _rainIntensity);
     await prefs.setInt('vfx_fireflies_count', _firefliesCount);
+    await prefs.setDouble('vfx_crt_intensity', _crtIntensity);
   }
 }

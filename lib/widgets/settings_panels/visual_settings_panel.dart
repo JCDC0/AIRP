@@ -141,7 +141,9 @@ class VisualSettingsPanel extends StatelessWidget {
             shadows: vfxProvider.enableBloom
                 ? [
                     Shadow(
-                      color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
+                      color: themeProvider.bloomGlowColor.withValues(
+                        alpha: 0.9,
+                      ),
                       blurRadius: 20,
                     ),
                   ]
@@ -157,7 +159,9 @@ class VisualSettingsPanel extends StatelessWidget {
               shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
                         blurRadius: 20,
                       ),
                     ]
@@ -184,7 +188,9 @@ class VisualSettingsPanel extends StatelessWidget {
               shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
                         blurRadius: 20,
                       ),
                     ]
@@ -211,7 +217,9 @@ class VisualSettingsPanel extends StatelessWidget {
               shadows: vfxProvider.enableBloom
                   ? [
                       Shadow(
-                        color: themeProvider.bloomGlowColor.withValues(alpha: 0.9),
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
                         blurRadius: 20,
                       ),
                     ]
@@ -228,6 +236,35 @@ class VisualSettingsPanel extends StatelessWidget {
           value: vfxProvider.enableFireflies,
           activeThumbColor: themeProvider.textColor,
           onChanged: (value) => vfxProvider.toggleFireflies(value),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            'CRT Screen',
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize,
+              shadows: vfxProvider.enableBloom
+                  ? [
+                      Shadow(
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
+                        blurRadius: 20,
+                      ),
+                    ]
+                  : [],
+            ),
+          ),
+          subtitle: Text(
+            'Fisheye, scanlines and vignette on the background only',
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize - 2,
+              color: Colors.grey,
+            ),
+          ),
+          value: vfxProvider.enableCrt,
+          activeThumbColor: themeProvider.textColor,
+          onChanged: (value) => vfxProvider.toggleCrt(value),
         ),
         const Divider(),
         if (vfxProvider.enableMotes)
@@ -262,6 +299,16 @@ class VisualSettingsPanel extends StatelessWidget {
             activeColor: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize * 0.8,
             onChanged: (value) => vfxProvider.setFirefliesCount(value.toInt()),
+          ),
+        if (vfxProvider.enableCrt)
+          SettingsSlider(
+            title: 'CRT Intensity',
+            value: vfxProvider.crtIntensity,
+            min: 0.05,
+            max: 1.0,
+            activeColor: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize * 0.8,
+            onChanged: (value) => vfxProvider.setCrtIntensity(value),
           ),
 
         const Divider(),
@@ -327,8 +374,9 @@ class VisualSettingsPanel extends StatelessWidget {
                 return GestureDetector(
                   onTap: () async {
                     final ImagePicker picker = ImagePicker();
-                    final XFile? image =
-                        await picker.pickImage(source: ImageSource.gallery);
+                    final XFile? image = await picker.pickImage(
+                      source: ImageSource.gallery,
+                    );
                     if (image != null) vfxProvider.addCustomImage(image.path);
                   },
                   child: Container(
@@ -382,20 +430,19 @@ class VisualSettingsPanel extends StatelessWidget {
                     listen: false,
                   ).autoSaveCurrentSession(backgroundImagePath: path);
                 },
-                onLongPress:
-                    isCustom
-                        ? () {
-                          HapticFeedback.mediumImpact();
-                          vfxProvider.removeCustomImage(path);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Image Deleted"),
-                              backgroundColor: Colors.redAccent,
-                              duration: Duration(milliseconds: 500),
-                            ),
-                          );
-                        }
-                        : null,
+                onLongPress: isCustom
+                    ? () {
+                        HapticFeedback.mediumImpact();
+                        vfxProvider.removeCustomImage(path);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Image Deleted"),
+                            backgroundColor: Colors.redAccent,
+                            duration: Duration(milliseconds: 500),
+                          ),
+                        );
+                      }
+                    : null,
                 splashColor: Colors.redAccent.withValues(alpha: 0.8),
                 highlightColor: Colors.redAccent.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(8),
@@ -404,13 +451,12 @@ class VisualSettingsPanel extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child:
-                          isCustom
-                              ? FileIOHelper.imageWidgetFromPath(
-                                path,
-                                fit: BoxFit.cover,
-                              )
-                              : Image.asset(path, fit: BoxFit.cover),
+                      child: isCustom
+                          ? FileIOHelper.imageWidgetFromPath(
+                              path,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.asset(path, fit: BoxFit.cover),
                     ),
                     if (isSelected)
                       Container(
@@ -490,35 +536,34 @@ class VisualSettingsPanel extends StatelessWidget {
             onPressed: () {
               showDialog(
                 context: context,
-                builder:
-                    (ctx) => AlertDialog(
-                      backgroundColor: themeProvider.surfaceColor,
-                      title: Text(
-                        "Reset Theme?",
-                        style: TextStyle(color: themeProvider.textColor),
-                      ),
-                      content: Text(
-                        "This will revert all colors and visual settings.",
-                        style: TextStyle(color: themeProvider.subtitleColor),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text("Cancel"),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.check_circle,
-                            color: Colors.greenAccent,
-                          ),
-                          onPressed: () {
-                            themeProvider.resetToDefaults();
-                            vfxProvider.resetToDefaults();
-                            Navigator.pop(ctx);
-                          },
-                        ),
-                      ],
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: themeProvider.surfaceColor,
+                  title: Text(
+                    "Reset Theme?",
+                    style: TextStyle(color: themeProvider.textColor),
+                  ),
+                  content: Text(
+                    "This will revert all colors and visual settings.",
+                    style: TextStyle(color: themeProvider.subtitleColor),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text("Cancel"),
                     ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.check_circle,
+                        color: Colors.greenAccent,
+                      ),
+                      onPressed: () {
+                        themeProvider.resetToDefaults();
+                        vfxProvider.resetToDefaults();
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                  ],
+                ),
               );
             },
           ),

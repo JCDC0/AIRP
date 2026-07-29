@@ -52,6 +52,7 @@ class AppDefaults {
   static const int motesDensity = 75;
   static const int rainIntensity = 100;
   static const int firefliesCount = 50;
+  static const double crtIntensity = 0.35;
 }
 
 /// Default parameters for AI chat interactions.

@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, Groq, and
 others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.27` (`pubspec.yaml` `0.7.27+3`). Target: `0.8.0` release.
+Current version: `0.7.28` (`pubspec.yaml` `0.7.28+4`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -36,7 +36,7 @@ Current version: `0.7.27` (`pubspec.yaml` `0.7.27+3`). Target: `0.8.0` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (150 tests, all passing)
+*   **Test:** `flutter test` (174 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 

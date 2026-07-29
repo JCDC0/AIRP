@@ -7,6 +7,7 @@ import '../providers/vfx_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/search_provider.dart' show ChatSearchProvider;
 import 'message_bubble.dart';
+import 'crt_background.dart';
 import 'effects_overlay.dart';
 
 /// A widget that displays a list of chat messages with interactive capabilities.
@@ -287,9 +288,10 @@ class ChatMessagesListState extends State<ChatMessagesList> {
       child: Stack(
         children: [
           Positioned.fill(
-            child: Image(
+            child: CrtBackground(
               image: vfxProvider.currentImageProvider,
-              fit: BoxFit.cover,
+              enabled: vfxProvider.enableCrt,
+              intensity: vfxProvider.crtIntensity,
             ),
           ),
           Positioned.fill(
