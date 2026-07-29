@@ -256,7 +256,7 @@ class VisualSettingsPanel extends StatelessWidget {
             ),
           ),
           subtitle: Text(
-            'Fisheye, scanlines and vignette on the background only',
+            'Analog fuzz, scanlines and vignette over the whole chat',
             style: TextStyle(
               fontSize: scaleProvider.systemFontSize - 2,
               color: Colors.grey,
@@ -300,7 +300,7 @@ class VisualSettingsPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize * 0.8,
             onChanged: (value) => vfxProvider.setFirefliesCount(value.toInt()),
           ),
-        if (vfxProvider.enableCrt)
+        if (vfxProvider.enableCrt) ...[
           SettingsSlider(
             title: 'CRT Intensity',
             value: vfxProvider.crtIntensity,
@@ -310,6 +310,45 @@ class VisualSettingsPanel extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize * 0.8,
             onChanged: (value) => vfxProvider.setCrtIntensity(value),
           ),
+          SettingsSlider(
+            title: 'CRT Scanlines',
+            value: vfxProvider.crtScanlines,
+            min: 0.0,
+            max: 1.0,
+            activeColor: themeProvider.textColor,
+            fontSize: scaleProvider.systemFontSize * 0.8,
+            onChanged: (value) => vfxProvider.setCrtScanlines(value),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              'CRT Fisheye',
+              style: TextStyle(
+                fontSize: scaleProvider.systemFontSize,
+                shadows: vfxProvider.enableBloom
+                    ? [
+                        Shadow(
+                          color: themeProvider.bloomGlowColor.withValues(
+                            alpha: 0.9,
+                          ),
+                          blurRadius: 20,
+                        ),
+                      ]
+                    : [],
+              ),
+            ),
+            subtitle: Text(
+              'Curve the picture like a tube screen',
+              style: TextStyle(
+                fontSize: scaleProvider.systemFontSize - 2,
+                color: Colors.grey,
+              ),
+            ),
+            value: vfxProvider.crtFisheye,
+            activeThumbColor: themeProvider.textColor,
+            onChanged: (value) => vfxProvider.toggleCrtFisheye(value),
+          ),
+        ],
 
         const Divider(),
         // ── Background Selection Gallery ───────────────────────────

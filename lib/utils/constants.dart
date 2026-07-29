@@ -49,12 +49,14 @@ class AppColors {
 /// Default configuration for visual effects.
 class AppDefaults {
   static const double backgroundOpacity = 0.7;
+
   /// Effect amounts are percentages of the fixed particle pools in
   /// `effects_overlay.dart`, so a slider reads as a count rather than a seed.
   static const int motesDensity = 50;
   static const int rainIntensity = 50;
   static const int firefliesCount = 35;
   static const double crtIntensity = 0.35;
+  static const double crtScanlines = 0.5;
 
   /// Legacy raw particle counts, used only to migrate stored values to the
   /// percentage scale introduced in 0.7.28.1.

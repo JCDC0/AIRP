@@ -288,6 +288,8 @@ class ChatMessagesListState extends State<ChatMessagesList> {
       child: CrtScreen(
         enabled: vfxProvider.enableCrt,
         intensity: vfxProvider.crtIntensity,
+        scanlines: vfxProvider.crtScanlines,
+        fisheye: vfxProvider.crtFisheye,
         child: Stack(
           children: [
             Positioned.fill(

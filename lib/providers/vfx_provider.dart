@@ -19,11 +19,13 @@ class VfxProvider extends ChangeNotifier {
   bool _enableRain = false;
   bool _enableFireflies = false;
   bool _enableCrt = false;
+  bool _crtFisheye = false;
 
   int _motesDensity = 75;
   int _rainIntensity = 100;
   int _firefliesCount = 50;
   double _crtIntensity = AppDefaults.crtIntensity;
+  double _crtScanlines = AppDefaults.crtScanlines;
 
   List<String> _customImagePaths = [];
 
@@ -35,12 +37,14 @@ class VfxProvider extends ChangeNotifier {
   bool get enableRain => _enableRain;
   bool get enableFireflies => _enableFireflies;
   bool get enableCrt => _enableCrt;
+  bool get crtFisheye => _crtFisheye;
   List<String> get customImagePaths => _customImagePaths;
 
   int get motesDensity => _motesDensity;
   int get rainIntensity => _rainIntensity;
   int get firefliesCount => _firefliesCount;
   double get crtIntensity => _crtIntensity;
+  double get crtScanlines => _crtScanlines;
 
   VfxProvider() {
     _loadPreferences();
@@ -135,6 +139,25 @@ class VfxProvider extends ChangeNotifier {
     await prefs.setDouble('vfx_crt_intensity', _crtIntensity);
   }
 
+  /// Toggles the barrel (fisheye) warp within the CRT treatment.
+  Future<void> toggleCrtFisheye(bool value) async {
+    _crtFisheye = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('vfx_crt_fisheye', value);
+  }
+
+  /// Sets how visible the horizontal scanlines are, in `[0, 1]`.
+  ///
+  /// Independent of [crtIntensity] so the raster structure can be removed
+  /// while the signal artifacts stay.
+  Future<void> setCrtScanlines(double value) async {
+    _crtScanlines = value.clamp(0.0, 1.0);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('vfx_crt_scanlines', _crtScanlines);
+  }
+
   /// Sets the density of floating motes.
   Future<void> setMotesDensity(int value) async {
     _motesDensity = value;
@@ -196,6 +219,9 @@ class VfxProvider extends ChangeNotifier {
     _enableCrt = prefs.getBool('app_enable_crt') ?? false;
     _crtIntensity =
         prefs.getDouble('vfx_crt_intensity') ?? AppDefaults.crtIntensity;
+    _crtScanlines =
+        prefs.getDouble('vfx_crt_scanlines') ?? AppDefaults.crtScanlines;
+    _crtFisheye = prefs.getBool('vfx_crt_fisheye') ?? false;
     _customImagePaths = prefs.getStringList('app_custom_bg_list') ?? [];
 
     _motesDensity =
@@ -253,6 +279,8 @@ class VfxProvider extends ChangeNotifier {
     _enableRain = false;
     _enableFireflies = false;
     _enableCrt = false;
+    _crtFisheye = false;
+    _crtScanlines = AppDefaults.crtScanlines;
     _backgroundOpacity = AppDefaults.backgroundOpacity;
     _motesDensity = AppDefaults.motesDensity;
     _rainIntensity = AppDefaults.rainIntensity;
@@ -273,6 +301,8 @@ class VfxProvider extends ChangeNotifier {
     await prefs.setInt('vfx_rain_intensity', AppDefaults.rainIntensity);
     await prefs.setInt('vfx_fireflies_count', AppDefaults.firefliesCount);
     await prefs.setDouble('vfx_crt_intensity', AppDefaults.crtIntensity);
+    await prefs.setDouble('vfx_crt_scanlines', AppDefaults.crtScanlines);
+    await prefs.setBool('vfx_crt_fisheye', false);
   }
 
   Map<String, dynamic> exportSettingsMap() {
@@ -285,6 +315,8 @@ class VfxProvider extends ChangeNotifier {
       'rain': _enableRain,
       'fireflies': _enableFireflies,
       'crt': _enableCrt,
+      'crtFisheye': _crtFisheye,
+      'crtScanlines': _crtScanlines,
       'motesDensity': _motesDensity,
       'rainIntensity': _rainIntensity,
       'firefliesCount': _firefliesCount,
@@ -303,17 +335,27 @@ class VfxProvider extends ChangeNotifier {
     _enableRain = data['rain'] as bool? ?? _enableRain;
     _enableFireflies = data['fireflies'] as bool? ?? _enableFireflies;
     _enableCrt = data['crt'] as bool? ?? _enableCrt;
+    _crtFisheye = data['crtFisheye'] as bool? ?? _crtFisheye;
+    _crtScanlines =
+        ((data['crtScanlines'] as num?)?.toDouble() ?? _crtScanlines).clamp(
+          0.0,
+          1.0,
+        );
     // Packs exported before 0.7.28.1 carry raw counts, which can exceed 100.
     // Clamping keeps an old pack importable instead of producing an
     // out-of-range slider.
     _motesDensity = ((data['motesDensity'] as num?)?.toInt() ?? _motesDensity)
         .clamp(0, 100);
     _rainIntensity =
-        ((data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity)
-            .clamp(0, 100);
+        ((data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity).clamp(
+          0,
+          100,
+        );
     _firefliesCount =
-        ((data['firefliesCount'] as num?)?.toInt() ?? _firefliesCount)
-            .clamp(0, 100);
+        ((data['firefliesCount'] as num?)?.toInt() ?? _firefliesCount).clamp(
+          0,
+          100,
+        );
     _crtIntensity =
         ((data['crtIntensity'] as num?)?.toDouble() ?? _crtIntensity).clamp(
           0.0,
@@ -338,6 +380,8 @@ class VfxProvider extends ChangeNotifier {
     await prefs.setBool('app_enable_rain', _enableRain);
     await prefs.setBool('app_enable_fireflies', _enableFireflies);
     await prefs.setBool('app_enable_crt', _enableCrt);
+    await prefs.setBool('vfx_crt_fisheye', _crtFisheye);
+    await prefs.setDouble('vfx_crt_scanlines', _crtScanlines);
     await prefs.setInt('vfx_motes_density', _motesDensity);
     await prefs.setInt('vfx_rain_intensity', _rainIntensity);
     await prefs.setInt('vfx_fireflies_count', _firefliesCount);

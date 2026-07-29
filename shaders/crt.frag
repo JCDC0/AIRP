@@ -12,9 +12,11 @@
 // every other stage carries the look.
 
 // Uniform order is load-bearing: setFloat() indices follow declaration order,
-// so uSize occupies 0-1, uIntensity 2, uTime 3.
+// so uSize occupies 0-1, uIntensity 2, uScanline 3, uFisheye 4, uTime 5.
 uniform vec2 uSize;       // Layer size in logical pixels.
-uniform float uIntensity; // 0..1 master strength.
+uniform float uIntensity; // 0..1 master strength for the analog artifacts.
+uniform float uScanline;  // 0..1 scanline visibility, independent of above.
+uniform float uFisheye;   // 1 to apply the barrel warp, 0 to skip it.
 uniform float uTime;      // Seconds, for the scanline roll and noise.
 uniform sampler2D uTexture;
 
@@ -72,7 +74,9 @@ void main() {
     vec2 uv = FlutterFragCoord().xy / uSize;
     float k = clamp(uIntensity, 0.0, 1.0);
 
-    vec2 warped = barrel(uv, kMaxBarrel * k);
+    // Curvature is opt-in. With the switch off the sampling grid is untouched,
+    // so no geometry changes at any intensity.
+    vec2 warped = uFisheye > 0.5 ? barrel(uv, kMaxBarrel * k) : uv;
 
     // Outside the tube the glass is black rather than a smeared edge clamp.
     if (warped.x < 0.0 || warped.x > 1.0 || warped.y < 0.0 || warped.y > 1.0) {
@@ -98,11 +102,17 @@ void main() {
 
     // Scanlines in physical pixels, so the pitch does not change with layer
     // size, plus a slow roll so it does not read as a static texture.
+    //
+    // Driven by its own uniform rather than the master strength: at 0 the
+    // raster structure disappears completely and only the signal artifacts
+    // (smear, bloom, colour separation, grain) remain.
+    float sl = clamp(uScanline, 0.0, 1.0);
     float linePhase = warped.y * uSize.y * 3.14159265 + uTime * 0.6;
-    color *= 1.0 - kMaxScanline * k * (0.5 + 0.5 * sin(linePhase));
+    color *= 1.0 - kMaxScanline * sl * (0.5 + 0.5 * sin(linePhase));
 
-    // Aperture grille: every third subpixel column sits slightly darker.
-    color *= 1.0 - kMaxGrille * k * step(1.5, mod(FlutterFragCoord().x, 3.0));
+    // Aperture grille: every third subpixel column sits slightly darker. Part
+    // of the same raster structure, so it follows the scanline control.
+    color *= 1.0 - kMaxGrille * sl * step(1.5, mod(FlutterFragCoord().x, 3.0));
 
     // Analog grain, resampled every frame.
     float n = hash(warped * uSize + vec2(uTime * 60.0, uTime * 37.0));
