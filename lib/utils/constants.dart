@@ -49,10 +49,18 @@ class AppColors {
 /// Default configuration for visual effects.
 class AppDefaults {
   static const double backgroundOpacity = 0.7;
-  static const int motesDensity = 75;
-  static const int rainIntensity = 100;
-  static const int firefliesCount = 50;
+  /// Effect amounts are percentages of the fixed particle pools in
+  /// `effects_overlay.dart`, so a slider reads as a count rather than a seed.
+  static const int motesDensity = 50;
+  static const int rainIntensity = 50;
+  static const int firefliesCount = 35;
   static const double crtIntensity = 0.35;
+
+  /// Legacy raw particle counts, used only to migrate stored values to the
+  /// percentage scale introduced in 0.7.28.1.
+  static const int legacyMaxMotes = 150;
+  static const int legacyMaxRain = 200;
+  static const int legacyMaxFireflies = 100;
 }
 
 /// Default parameters for AI chat interactions.

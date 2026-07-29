@@ -7,7 +7,7 @@ import '../providers/vfx_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/search_provider.dart' show ChatSearchProvider;
 import 'message_bubble.dart';
-import 'crt_background.dart';
+import 'crt_screen.dart';
 import 'effects_overlay.dart';
 
 /// A widget that displays a list of chat messages with interactive capabilities.
@@ -285,116 +285,120 @@ class ChatMessagesListState extends State<ChatMessagesList> {
       panEnabled: widget.isZoomEnabled,
       minScale: 1.0,
       maxScale: 5.0,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: CrtBackground(
-              image: vfxProvider.currentImageProvider,
-              enabled: vfxProvider.enableCrt,
-              intensity: vfxProvider.crtIntensity,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withAlpha(
-                (vfxProvider.backgroundOpacity * 255).round(),
+      child: CrtScreen(
+        enabled: vfxProvider.enableCrt,
+        intensity: vfxProvider.crtIntensity,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Image(
+                image: vfxProvider.currentImageProvider,
+                fit: BoxFit.cover,
               ),
             ),
-          ),
-
-          Positioned.fill(
-            child: EffectsOverlay(
-              showMotes: vfxProvider.enableMotes,
-              showRain: vfxProvider.enableRain,
-              showFireflies: vfxProvider.enableFireflies,
-              effectColor: themeProvider.bloomGlowColor,
-              motesDensity: vfxProvider.motesDensity.toDouble(),
-              rainIntensity: vfxProvider.rainIntensity.toDouble(),
-              firefliesCount: vfxProvider.firefliesCount.toDouble(),
-            ),
-          ),
-
-          SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    controller: widget.scrollController,
-                    itemCount:
-                        messages.length + (showVirtualAiTypingBubble ? 1 : 0),
-                    padding: const EdgeInsets.only(bottom: 120),
-                    itemBuilder: (context, index) {
-                      if (showVirtualAiTypingBubble &&
-                          index == messages.length) {
-                        return MessageBubble(
-                          msg: ChatMessage(
-                            text: '',
-                            isUser: false,
-                            modelName: chatProvider.selectedModel,
-                          ),
-                          showTypingIndicator: true,
-                          searchQuery: searchQuery,
-                          isCurrentSearchMessage: false,
-                        );
-                      }
-
-                      final message = messages[index];
-                      final bool isLastMessage = index == messages.length - 1;
-                      return MessageBubble(
-                        key: _keyFor(index),
-                        msg: message,
-                        isSearchCurrent: currentMatchMessageIndex == index,
-                        isSearchMatch: matchMessageIndices.contains(index),
-                        searchQuery: searchQuery,
-                        isCurrentSearchMessage:
-                            currentMatchMessageIndex == index,
-                        showTypingIndicator:
-                            showTypingIndicator &&
-                            isLastMessage &&
-                            !message.isUser,
-                        onCopy: () {
-                          Clipboard.setData(
-                            ClipboardData(text: messages[index].text),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Copied!"),
-                              duration: Duration(milliseconds: 600),
-                            ),
-                          );
-                        },
-                        onEdit: chatProvider.isLoading
-                            ? null
-                            : () => _showEditDialog(context, index),
-                        onRegenerate: (!isLastMessage || chatProvider.isLoading)
-                            ? null
-                            : () => _confirmRegenerate(context, index),
-                        onDelete: chatProvider.isLoading
-                            ? null
-                            : () => _confirmDeleteMessage(context, index),
-                        onNextVersion:
-                            message.regenerationVersions.length > 1 &&
-                                !message.isUser &&
-                                !chatProvider.isLoading
-                            ? () => chatProvider.nextMessageVersion(index)
-                            : null,
-                        onPreviousVersion:
-                            message.regenerationVersions.length > 1 &&
-                                !message.isUser &&
-                                !chatProvider.isLoading
-                            ? () => chatProvider.previousMessageVersion(index)
-                            : null,
-                        onBranch: !message.isUser
-                            ? () => _handleBranchConversation(context, index)
-                            : null,
-                      );
-                    },
-                  ),
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withAlpha(
+                  (vfxProvider.backgroundOpacity * 255).round(),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+
+            Positioned.fill(
+              child: EffectsOverlay(
+                showMotes: vfxProvider.enableMotes,
+                showRain: vfxProvider.enableRain,
+                showFireflies: vfxProvider.enableFireflies,
+                effectColor: themeProvider.bloomGlowColor,
+                motesDensity: vfxProvider.motesDensity.toDouble(),
+                rainIntensity: vfxProvider.rainIntensity.toDouble(),
+                firefliesCount: vfxProvider.firefliesCount.toDouble(),
+              ),
+            ),
+
+            SafeArea(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      controller: widget.scrollController,
+                      itemCount:
+                          messages.length + (showVirtualAiTypingBubble ? 1 : 0),
+                      padding: const EdgeInsets.only(bottom: 120),
+                      itemBuilder: (context, index) {
+                        if (showVirtualAiTypingBubble &&
+                            index == messages.length) {
+                          return MessageBubble(
+                            msg: ChatMessage(
+                              text: '',
+                              isUser: false,
+                              modelName: chatProvider.selectedModel,
+                            ),
+                            showTypingIndicator: true,
+                            searchQuery: searchQuery,
+                            isCurrentSearchMessage: false,
+                          );
+                        }
+
+                        final message = messages[index];
+                        final bool isLastMessage = index == messages.length - 1;
+                        return MessageBubble(
+                          key: _keyFor(index),
+                          msg: message,
+                          isSearchCurrent: currentMatchMessageIndex == index,
+                          isSearchMatch: matchMessageIndices.contains(index),
+                          searchQuery: searchQuery,
+                          isCurrentSearchMessage:
+                              currentMatchMessageIndex == index,
+                          showTypingIndicator:
+                              showTypingIndicator &&
+                              isLastMessage &&
+                              !message.isUser,
+                          onCopy: () {
+                            Clipboard.setData(
+                              ClipboardData(text: messages[index].text),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Copied!"),
+                                duration: Duration(milliseconds: 600),
+                              ),
+                            );
+                          },
+                          onEdit: chatProvider.isLoading
+                              ? null
+                              : () => _showEditDialog(context, index),
+                          onRegenerate:
+                              (!isLastMessage || chatProvider.isLoading)
+                              ? null
+                              : () => _confirmRegenerate(context, index),
+                          onDelete: chatProvider.isLoading
+                              ? null
+                              : () => _confirmDeleteMessage(context, index),
+                          onNextVersion:
+                              message.regenerationVersions.length > 1 &&
+                                  !message.isUser &&
+                                  !chatProvider.isLoading
+                              ? () => chatProvider.nextMessageVersion(index)
+                              : null,
+                          onPreviousVersion:
+                              message.regenerationVersions.length > 1 &&
+                                  !message.isUser &&
+                                  !chatProvider.isLoading
+                              ? () => chatProvider.previousMessageVersion(index)
+                              : null,
+                          onBranch: !message.isUser
+                              ? () => _handleBranchConversation(context, index)
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

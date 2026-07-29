@@ -269,10 +269,10 @@ class VisualSettingsPanel extends StatelessWidget {
         const Divider(),
         if (vfxProvider.enableMotes)
           SettingsSlider(
-            title: 'Motes Density',
+            title: 'Motes Density (%)',
             value: vfxProvider.motesDensity.toDouble(),
-            min: 1,
-            max: 150,
+            min: 0,
+            max: 100,
             isInt: true,
             activeColor: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize * 0.8,
@@ -280,10 +280,10 @@ class VisualSettingsPanel extends StatelessWidget {
           ),
         if (vfxProvider.enableRain)
           SettingsSlider(
-            title: 'Rainfall Intensity',
+            title: 'Rainfall Intensity (%)',
             value: vfxProvider.rainIntensity.toDouble(),
-            min: 1,
-            max: 200,
+            min: 0,
+            max: 100,
             isInt: true,
             activeColor: themeProvider.textColor,
             fontSize: scaleProvider.systemFontSize * 0.8,
@@ -291,9 +291,9 @@ class VisualSettingsPanel extends StatelessWidget {
           ),
         if (vfxProvider.enableFireflies)
           SettingsSlider(
-            title: 'Fireflies Count',
+            title: 'Fireflies Count (%)',
             value: vfxProvider.firefliesCount.toDouble(),
-            min: 1,
+            min: 0,
             max: 100,
             isInt: true,
             activeColor: themeProvider.textColor,

@@ -13,6 +13,28 @@ const int _kSpriteDust = 0;
 /// Atlas cell index for the firefly sprite (tight core, wide halo).
 const int _kSpriteFirefly = 1;
 
+/// Pool sizes. Each slider is a percentage of these, so 100% is this many
+/// particles and every intermediate value is a prefix of the same pool.
+const int kMaxMotes = 220;
+const int kMaxRainDrops = 260;
+const int kMaxFireflies = 140;
+
+/// Fixed seeds. Pools are generated once and never regenerated, so moving a
+/// slider adds or removes particles from the tail instead of reshuffling the
+/// whole field, which previously read as a reseed rather than a count.
+const int _kMoteSeed = 0x5EED;
+const int _kRainSeed = 0x2A19;
+const int _kFireflySeed = 0xF17E;
+
+/// Converts a slider percentage in `[0, 100]` to a particle count out of [max].
+///
+/// Because pools are fixed and drawn as a prefix, this is a true count: 50%
+/// draws the same first half of the pool every time rather than resampling it.
+int particleCountFromPercent(double percent, int max) {
+  if (!percent.isFinite || percent <= 0) return 0;
+  return ((percent / 100.0) * max).round().clamp(0, max);
+}
+
 /// A widget that overlays atmospheric effects: dust motes, rain, and fireflies.
 ///
 /// All enabled effects share a single [Ticker] and a single [CustomPaint]
@@ -32,13 +54,13 @@ class EffectsOverlay extends StatefulWidget {
   /// The primary color used for the motes.
   final Color effectColor;
 
-  /// The density of motes (number of particles).
+  /// Mote density as a percentage of [kMaxMotes].
   final double motesDensity;
 
-  /// The intensity of rain (number of drops).
+  /// Rain intensity as a percentage of [kMaxRainDrops].
   final double rainIntensity;
 
-  /// The number of fireflies to display.
+  /// Firefly count as a percentage of [kMaxFireflies].
   final double firefliesCount;
 
   const EffectsOverlay({
@@ -62,11 +84,12 @@ class _EffectsOverlayState extends State<EffectsOverlay>
   final EffectClock _clock = EffectClock();
 
   late final Ticker _ticker;
-  final Random _random = Random();
 
-  MoteField? _motes;
-  RainField? _rain;
-  FireflySwarm? _fireflies;
+  /// Pools are built once at full size and never regenerated. The sliders only
+  /// move how many of each are drawn.
+  late final MoteField _motePool;
+  late final RainField _rainPool;
+  late final FireflySwarm _fireflyPool;
 
   ui.Image? _atlas;
 
@@ -74,7 +97,9 @@ class _EffectsOverlayState extends State<EffectsOverlay>
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick);
-    _rebuildFields();
+    _motePool = MoteField.pool(kMaxMotes, Random(_kMoteSeed));
+    _rainPool = RainField.pool(kMaxRainDrops, Random(_kRainSeed));
+    _fireflyPool = FireflySwarm.pool(kMaxFireflies, Random(_kFireflySeed));
     _syncTicker();
     _buildAtlas();
   }
@@ -82,43 +107,7 @@ class _EffectsOverlayState extends State<EffectsOverlay>
   @override
   void didUpdateWidget(EffectsOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    // Only regenerate a field when its own inputs changed, so nudging the
-    // rain slider does not teleport every mote.
-    if (oldWidget.showMotes != widget.showMotes ||
-        oldWidget.motesDensity != widget.motesDensity) {
-      _motes = widget.showMotes
-          ? MoteField.random(_count(widget.motesDensity), _random)
-          : null;
-    }
-    if (oldWidget.showRain != widget.showRain ||
-        oldWidget.rainIntensity != widget.rainIntensity) {
-      _rain = widget.showRain
-          ? RainField.random(_count(widget.rainIntensity), _random)
-          : null;
-    }
-    if (oldWidget.showFireflies != widget.showFireflies ||
-        oldWidget.firefliesCount != widget.firefliesCount) {
-      _fireflies = widget.showFireflies
-          ? FireflySwarm.random(_count(widget.firefliesCount), _random)
-          : null;
-    }
-
     _syncTicker();
-  }
-
-  int _count(double raw) => raw.isFinite ? raw.round().clamp(0, 400) : 0;
-
-  void _rebuildFields() {
-    _motes = widget.showMotes
-        ? MoteField.random(_count(widget.motesDensity), _random)
-        : null;
-    _rain = widget.showRain
-        ? RainField.random(_count(widget.rainIntensity), _random)
-        : null;
-    _fireflies = widget.showFireflies
-        ? FireflySwarm.random(_count(widget.firefliesCount), _random)
-        : null;
   }
 
   bool get _anyEnabled =>
@@ -217,9 +206,18 @@ class _EffectsOverlayState extends State<EffectsOverlay>
           repaint: _clock,
           clock: _clock,
           atlas: atlas,
-          motes: _motes,
-          rain: _rain,
-          fireflies: _fireflies,
+          motes: _motePool,
+          rain: _rainPool,
+          fireflies: _fireflyPool,
+          moteCount: widget.showMotes
+              ? particleCountFromPercent(widget.motesDensity, kMaxMotes)
+              : 0,
+          rainCount: widget.showRain
+              ? particleCountFromPercent(widget.rainIntensity, kMaxRainDrops)
+              : 0,
+          fireflyCount: widget.showFireflies
+              ? particleCountFromPercent(widget.firefliesCount, kMaxFireflies)
+              : 0,
           moteColor: widget.effectColor,
         ),
       ),
@@ -329,10 +327,24 @@ class MoteField {
 
   const MoteField(this.motes);
 
-  factory MoteField.random(int count, Random random) {
+  /// Builds the full pool. Generated once with a fixed seed; the visible
+  /// count is a prefix of this list, so raising the slider reveals more motes
+  /// without disturbing the ones already on screen.
+  factory MoteField.pool(int count, Random random) {
     return MoteField(
       List.generate(count, (_) {
         final depth = random.nextDouble();
+
+        // Cubic weighting gives a long tail: mostly minute specks with a few
+        // markedly larger, out-of-focus ones, rather than a uniform mid band.
+        final sizeRoll = random.nextDouble();
+        final radius = 0.45 + sizeRoll * sizeRoll * sizeRoll * 13.5;
+
+        // Bigger specks read as nearer the lens and hang dimmer, so they do
+        // not turn into bright blobs.
+        final opacity =
+            0.09 + random.nextDouble() * 0.24 * (1.0 - sizeRoll * 0.55);
+
         return Mote(
           x0: random.nextDouble(),
           y0: random.nextDouble(),
@@ -346,8 +358,8 @@ class MoteField {
           phaseX: random.nextDouble() * 2 * pi,
           phaseY: random.nextDouble() * 2 * pi,
           depth: depth,
-          radius: 1.6 + random.nextDouble() * 4.2,
-          opacity: 0.10 + random.nextDouble() * 0.22,
+          radius: radius,
+          opacity: opacity,
           twinkleF: 0.25 + random.nextDouble() * 0.85,
           twinklePhase: random.nextDouble() * 2 * pi,
         );
@@ -404,7 +416,7 @@ class RainField {
 
   const RainField(this.drops);
 
-  factory RainField.random(int count, Random random) {
+  factory RainField.pool(int count, Random random) {
     return RainField(
       List.generate(count, (_) {
         final depth = random.nextDouble();
@@ -528,7 +540,7 @@ class FireflySwarm {
 
   const FireflySwarm(this.flies);
 
-  factory FireflySwarm.random(int count, Random random) {
+  factory FireflySwarm.pool(int count, Random random) {
     return FireflySwarm(
       List.generate(count, (_) {
         // Yellow-green through warm amber, the real bioluminescent range.
@@ -563,9 +575,15 @@ class FireflySwarm {
 class EnvironmentPainter extends CustomPainter {
   final EffectClock clock;
   final ui.Image atlas;
-  final MoteField? motes;
-  final RainField? rain;
-  final FireflySwarm? fireflies;
+  final MoteField motes;
+  final RainField rain;
+  final FireflySwarm fireflies;
+
+  /// How many of each pool to draw. Zero disables that effect.
+  final int moteCount;
+  final int rainCount;
+  final int fireflyCount;
+
   final Color moteColor;
 
   EnvironmentPainter({
@@ -575,6 +593,9 @@ class EnvironmentPainter extends CustomPainter {
     required this.motes,
     required this.rain,
     required this.fireflies,
+    required this.moteCount,
+    required this.rainCount,
+    required this.fireflyCount,
     required this.moteColor,
   }) : super(repaint: repaint);
 
@@ -598,16 +619,16 @@ class EnvironmentPainter extends CustomPainter {
     final t = clock.seconds;
 
     // Rain sits behind the glows so lit particles read as nearer the viewer.
-    if (rain != null) _paintRain(canvas, size, t);
+    if (rainCount > 0) _paintRain(canvas, size, t);
 
     final transforms = <RSTransform>[];
     final rects = <Rect>[];
     final colors = <Color>[];
 
-    if (motes != null) {
+    if (moteCount > 0) {
       _collectMotes(size, t, transforms, rects, colors);
     }
-    if (fireflies != null) {
+    if (fireflyCount > 0) {
       _collectFireflies(size, t, transforms, rects, colors);
     }
 
@@ -632,7 +653,7 @@ class EnvironmentPainter extends CustomPainter {
     List<Rect> rects,
     List<Color> colors,
   ) {
-    for (final mote in motes!.motes) {
+    for (final mote in motes.motes.take(moteCount)) {
       final alpha = mote.alphaAt(t);
       if (alpha <= 0.004) continue;
 
@@ -661,7 +682,7 @@ class EnvironmentPainter extends CustomPainter {
     List<Rect> rects,
     List<Color> colors,
   ) {
-    for (final fly in fireflies!.flies) {
+    for (final fly in fireflies.flies.take(fireflyCount)) {
       final alpha = fly.alphaAt(t);
       // Dark phase: skip entirely rather than drawing a transparent quad.
       if (alpha <= 0.004) continue;
@@ -686,7 +707,7 @@ class EnvironmentPainter extends CustomPainter {
     final slant = RainField.slantAt(t);
     final paint = Paint()..strokeCap = StrokeCap.round;
 
-    for (final drop in rain!.drops) {
+    for (final drop in rain.drops.take(rainCount)) {
       final headY = drop.yAt(t);
       final len = drop.length;
 
@@ -724,9 +745,9 @@ class EnvironmentPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant EnvironmentPainter oldDelegate) {
-    return oldDelegate.motes != motes ||
-        oldDelegate.rain != rain ||
-        oldDelegate.fireflies != fireflies ||
+    return oldDelegate.moteCount != moteCount ||
+        oldDelegate.rainCount != rainCount ||
+        oldDelegate.fireflyCount != fireflyCount ||
         oldDelegate.moteColor != moteColor ||
         oldDelegate.atlas != atlas;
   }

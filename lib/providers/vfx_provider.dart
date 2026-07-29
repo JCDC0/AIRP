@@ -8,6 +8,9 @@ import '../utils/constants.dart';
 /// This includes background images, bloom (glow) toggles, and animated
 /// environmental effects like motes, rain, and fireflies.
 class VfxProvider extends ChangeNotifier {
+  /// Marks that the stored effect amounts have been rescaled to percentages.
+  static const String _percentMigrationKey = 'vfx_amounts_are_percent_v1';
+
   String? _backgroundImagePath;
   double _backgroundOpacity = 0.7;
   bool _enableBloom = false;
@@ -202,7 +205,44 @@ class VfxProvider extends ChangeNotifier {
     _firefliesCount =
         prefs.getInt('vfx_fireflies_count') ?? AppDefaults.firefliesCount;
 
+    await _migrateEffectAmountsToPercent(prefs);
+
     notifyListeners();
+  }
+
+  /// Converts stored raw particle counts to the percentage scale used since
+  /// 0.7.28.1.
+  ///
+  /// Before that the sliders stored absolute counts on three different ranges
+  /// (motes 1-150, rain 1-200, fireflies 1-100). Reading those as percentages
+  /// would silently pin every effect at 100%, so they are rescaled once and
+  /// the migration is recorded.
+  Future<void> _migrateEffectAmountsToPercent(SharedPreferences prefs) async {
+    if (prefs.getBool(_percentMigrationKey) ?? false) return;
+
+    _motesDensity = percentFromLegacy(
+      _motesDensity,
+      AppDefaults.legacyMaxMotes,
+    );
+    _rainIntensity = percentFromLegacy(
+      _rainIntensity,
+      AppDefaults.legacyMaxRain,
+    );
+    _firefliesCount = percentFromLegacy(
+      _firefliesCount,
+      AppDefaults.legacyMaxFireflies,
+    );
+
+    await prefs.setInt('vfx_motes_density', _motesDensity);
+    await prefs.setInt('vfx_rain_intensity', _rainIntensity);
+    await prefs.setInt('vfx_fireflies_count', _firefliesCount);
+    await prefs.setBool(_percentMigrationKey, true);
+  }
+
+  /// Rescales a legacy absolute count on `1..legacyMax` to a percentage.
+  static int percentFromLegacy(int stored, int legacyMax) {
+    if (legacyMax <= 0) return 0;
+    return ((stored / legacyMax) * 100).round().clamp(0, 100);
   }
 
   /// Resets all VFX settings to their default values.
@@ -263,10 +303,17 @@ class VfxProvider extends ChangeNotifier {
     _enableRain = data['rain'] as bool? ?? _enableRain;
     _enableFireflies = data['fireflies'] as bool? ?? _enableFireflies;
     _enableCrt = data['crt'] as bool? ?? _enableCrt;
-    _motesDensity = (data['motesDensity'] as num?)?.toInt() ?? _motesDensity;
-    _rainIntensity = (data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity;
+    // Packs exported before 0.7.28.1 carry raw counts, which can exceed 100.
+    // Clamping keeps an old pack importable instead of producing an
+    // out-of-range slider.
+    _motesDensity = ((data['motesDensity'] as num?)?.toInt() ?? _motesDensity)
+        .clamp(0, 100);
+    _rainIntensity =
+        ((data['rainIntensity'] as num?)?.toInt() ?? _rainIntensity)
+            .clamp(0, 100);
     _firefliesCount =
-        (data['firefliesCount'] as num?)?.toInt() ?? _firefliesCount;
+        ((data['firefliesCount'] as num?)?.toInt() ?? _firefliesCount)
+            .clamp(0, 100);
     _crtIntensity =
         ((data['crtIntensity'] as num?)?.toDouble() ?? _crtIntensity).clamp(
           0.0,

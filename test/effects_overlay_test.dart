@@ -1,13 +1,13 @@
 import 'dart:math';
 
-import 'package:airp/widgets/crt_background.dart';
+import 'package:airp/providers/vfx_provider.dart';
 import 'package:airp/widgets/effects_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('MoteField', () {
-    final field = MoteField.random(80, Random(7));
+    final field = MoteField.pool(80, Random(7));
 
     test('generates the requested count', () {
       expect(field.motes, hasLength(80));
@@ -34,18 +34,38 @@ void main() {
 
     test('nearer motes are larger and faster than far ones', () {
       const near = Mote(
-        x0: 0, y0: 0, driftX: 0, driftY: 0,
-        wanderAx: 0, wanderAy: 0, wanderFx: 0, wanderFy: 0,
-        phaseX: 0, phaseY: 0,
-        depth: 1.0, radius: 4, opacity: 0.5,
-        twinkleF: 0, twinklePhase: 0,
+        x0: 0,
+        y0: 0,
+        driftX: 0,
+        driftY: 0,
+        wanderAx: 0,
+        wanderAy: 0,
+        wanderFx: 0,
+        wanderFy: 0,
+        phaseX: 0,
+        phaseY: 0,
+        depth: 1.0,
+        radius: 4,
+        opacity: 0.5,
+        twinkleF: 0,
+        twinklePhase: 0,
       );
       const far = Mote(
-        x0: 0, y0: 0, driftX: 0, driftY: 0,
-        wanderAx: 0, wanderAy: 0, wanderFx: 0, wanderFy: 0,
-        phaseX: 0, phaseY: 0,
-        depth: 0.0, radius: 4, opacity: 0.5,
-        twinkleF: 0, twinklePhase: 0,
+        x0: 0,
+        y0: 0,
+        driftX: 0,
+        driftY: 0,
+        wanderAx: 0,
+        wanderAy: 0,
+        wanderFx: 0,
+        wanderFy: 0,
+        phaseX: 0,
+        phaseY: 0,
+        depth: 0.0,
+        radius: 4,
+        opacity: 0.5,
+        twinkleF: 0,
+        twinklePhase: 0,
       );
 
       expect(near.scaledRadius, greaterThan(far.scaledRadius));
@@ -60,26 +80,46 @@ void main() {
   });
 
   group('RainField', () {
-    final field = RainField.random(60, Random(11));
+    final field = RainField.pool(60, Random(11));
 
     test('streak length scales with fall speed', () {
       const slow = RainDrop(
-        x: 0, yStart: 0, speed: 0.6, depth: 0, strokeWidth: 1, opacity: 0.2,
+        x: 0,
+        yStart: 0,
+        speed: 0.6,
+        depth: 0,
+        strokeWidth: 1,
+        opacity: 0.2,
       );
       const fast = RainDrop(
-        x: 0, yStart: 0, speed: 2.2, depth: 1, strokeWidth: 1, opacity: 0.2,
+        x: 0,
+        yStart: 0,
+        speed: 2.2,
+        depth: 1,
+        strokeWidth: 1,
+        opacity: 0.2,
       );
       expect(fast.length, greaterThan(slow.length));
     });
 
     test('streak length is clamped to a sane band', () {
       const absurd = RainDrop(
-        x: 0, yStart: 0, speed: 500, depth: 1, strokeWidth: 1, opacity: 0.2,
+        x: 0,
+        yStart: 0,
+        speed: 500,
+        depth: 1,
+        strokeWidth: 1,
+        opacity: 0.2,
       );
       expect(absurd.length, lessThanOrEqualTo(0.20));
 
       const crawling = RainDrop(
-        x: 0, yStart: 0, speed: 0.001, depth: 0, strokeWidth: 1, opacity: 0.2,
+        x: 0,
+        yStart: 0,
+        speed: 0.001,
+        depth: 0,
+        strokeWidth: 1,
+        opacity: 0.2,
       );
       expect(crawling.length, greaterThanOrEqualTo(0.02));
     });
@@ -117,12 +157,24 @@ void main() {
 
   group('Firefly', () {
     Firefly makeFly({double period = 4.0, double phase = 0.0}) => Firefly(
-          cx: 0.5, cy: 0.5, ax: 0.1, ay: 0.1,
-          fx1: 0.2, fx2: 0.5, fy1: 0.15, fy2: 0.4,
-          px1: 0, px2: 1, py1: 2, py2: 3,
-          blinkPeriod: period, blinkPhase: phase,
-          radius: 2, brightness: 1.0, color: Colors.yellow,
-        );
+      cx: 0.5,
+      cy: 0.5,
+      ax: 0.1,
+      ay: 0.1,
+      fx1: 0.2,
+      fx2: 0.5,
+      fy1: 0.15,
+      fy2: 0.4,
+      px1: 0,
+      px2: 1,
+      py1: 2,
+      py2: 3,
+      blinkPeriod: period,
+      blinkPhase: phase,
+      radius: 2,
+      brightness: 1.0,
+      color: Colors.yellow,
+    );
 
     test('blink is dark for most of the cycle', () {
       final fly = makeFly(period: 4.0);
@@ -165,7 +217,7 @@ void main() {
     });
 
     test('flight stays in the viewport over a long run', () {
-      final swarm = FireflySwarm.random(40, Random(3));
+      final swarm = FireflySwarm.pool(40, Random(3));
       for (final t in [0.0, 12.0, 600.0, 20000.0]) {
         for (final fly in swarm.flies) {
           expect(fly.xAt(t), inInclusiveRange(0.0, 1.0));
@@ -182,13 +234,13 @@ void main() {
       final p1 = Offset(fly.xAt(4), fly.yAt(4));
       final p2 = Offset(fly.xAt(8), fly.yAt(8));
 
-      final cross = (p1.dx - p0.dx) * (p2.dy - p0.dy) -
-          (p1.dy - p0.dy) * (p2.dx - p0.dx);
+      final cross =
+          (p1.dx - p0.dx) * (p2.dy - p0.dy) - (p1.dy - p0.dy) * (p2.dx - p0.dx);
       expect(cross.abs(), greaterThan(1e-4));
     });
 
     test('swarm colours sit in the bioluminescent yellow-green band', () {
-      final swarm = FireflySwarm.random(50, Random(5));
+      final swarm = FireflySwarm.pool(50, Random(5));
       for (final fly in swarm.flies) {
         final hue = HSVColor.fromColor(fly.color).hue;
         expect(hue, inInclusiveRange(50.0, 80.0));
@@ -196,54 +248,89 @@ void main() {
     });
   });
 
-  group('CrtPainter.coverMapping', () {
-    test('crops the sides of a texture wider than the layer', () {
-      final m = CrtPainter.coverMapping(
-        const Size(100, 100),
-        const Size(200, 100),
-      );
-      expect(m.scaleX, closeTo(0.5, 1e-9));
-      expect(m.scaleY, 1.0);
-      expect(m.offsetX, closeTo(0.25, 1e-9));
-      expect(m.offsetY, 0.0);
+  group('particleCountFromPercent', () {
+    test('maps the percentage onto the pool size', () {
+      expect(particleCountFromPercent(0, 200), 0);
+      expect(particleCountFromPercent(50, 200), 100);
+      expect(particleCountFromPercent(100, 200), 200);
     });
 
-    test('crops the top and bottom of a texture taller than the layer', () {
-      final m = CrtPainter.coverMapping(
-        const Size(200, 100),
-        const Size(100, 100),
-      );
-      expect(m.scaleX, 1.0);
-      expect(m.scaleY, closeTo(0.5, 1e-9));
-      expect(m.offsetY, closeTo(0.25, 1e-9));
+    test('clamps out-of-range input', () {
+      expect(particleCountFromPercent(-25, 200), 0);
+      expect(particleCountFromPercent(400, 200), 200);
+      expect(particleCountFromPercent(double.nan, 200), 0);
     });
 
-    test('is identity when aspect ratios match', () {
-      final m = CrtPainter.coverMapping(
-        const Size(400, 200),
-        const Size(800, 400),
-      );
-      expect(m.scaleX, closeTo(1.0, 1e-9));
-      expect(m.scaleY, closeTo(1.0, 1e-9));
-      expect(m.offsetX, closeTo(0.0, 1e-9));
-      expect(m.offsetY, closeTo(0.0, 1e-9));
+    test('is monotonic, so raising the slider never removes particles', () {
+      var previous = -1;
+      for (var pct = 0; pct <= 100; pct++) {
+        final count = particleCountFromPercent(pct.toDouble(), kMaxMotes);
+        expect(count, greaterThanOrEqualTo(previous));
+        previous = count;
+      }
+    });
+  });
+
+  group('pool stability', () {
+    // The visible field is a prefix of a fixed pool. Growing the count must
+    // leave existing particles untouched, otherwise the slider reads as a
+    // reseed rather than a count.
+    test('a larger count is a superset of a smaller one', () {
+      final pool = MoteField.pool(kMaxMotes, Random(0x5EED));
+      final small = pool.motes.take(20).toList();
+      final large = pool.motes.take(60).toList();
+
+      expect(large.length, 60);
+      for (var i = 0; i < small.length; i++) {
+        expect(identical(large[i], small[i]), isTrue);
+      }
     });
 
-    test('maps the full unit range without leaving the texture', () {
-      final m = CrtPainter.coverMapping(
-        const Size(100, 300),
-        const Size(400, 100),
-      );
-      expect(m.offsetX, greaterThanOrEqualTo(0.0));
-      expect(m.offsetX + m.scaleX, lessThanOrEqualTo(1.0 + 1e-9));
-      expect(m.offsetY, greaterThanOrEqualTo(0.0));
-      expect(m.offsetY + m.scaleY, lessThanOrEqualTo(1.0 + 1e-9));
+    test('the same seed reproduces the same pool across rebuilds', () {
+      final a = MoteField.pool(40, Random(0x5EED));
+      final b = MoteField.pool(40, Random(0x5EED));
+      for (var i = 0; i < 40; i++) {
+        expect(a.motes[i].x0, b.motes[i].x0);
+        expect(a.motes[i].radius, b.motes[i].radius);
+      }
+    });
+  });
+
+  group('mote size distribution', () {
+    final pool = MoteField.pool(kMaxMotes, Random(0x5EED));
+    final radii = pool.motes.map((m) => m.radius).toList()..sort();
+
+    test('includes minute specks', () {
+      expect(radii.first, lessThan(1.5));
     });
 
-    test('degenerate sizes fall back to identity', () {
-      final m = CrtPainter.coverMapping(Size.zero, const Size(10, 10));
-      expect(m.scaleX, 1.0);
-      expect(m.scaleY, 1.0);
+    test('includes markedly larger specks', () {
+      expect(radii.last, greaterThan(8.0));
+    });
+
+    test('is weighted toward the small end', () {
+      // Cubic weighting: the median should sit well below the midpoint of the
+      // range, so large specks stay occasional rather than typical.
+      final median = radii[radii.length ~/ 2];
+      final midpoint = (radii.first + radii.last) / 2;
+      expect(median, lessThan(midpoint));
+    });
+  });
+
+  group('VfxProvider.percentFromLegacy', () {
+    test('rescales the old per-effect ranges onto 0-100', () {
+      expect(VfxProvider.percentFromLegacy(75, 150), 50);
+      expect(VfxProvider.percentFromLegacy(100, 200), 50);
+      expect(VfxProvider.percentFromLegacy(50, 100), 50);
+    });
+
+    test('preserves the endpoints', () {
+      expect(VfxProvider.percentFromLegacy(150, 150), 100);
+      expect(VfxProvider.percentFromLegacy(0, 150), 0);
+    });
+
+    test('clamps a stored value above the legacy maximum', () {
+      expect(VfxProvider.percentFromLegacy(999, 150), 100);
     });
   });
 }
