@@ -1957,27 +1957,11 @@ class ChatProvider extends ChangeNotifier {
       await autoSaveCurrentSession();
 
       // 4. Collect last N assistant/user pairs from the ORIGINAL messages
-      //    (i.e. before the two emitted notes). Walk backwards anchoring on
-      //    assistant turns.
-      final originalLen = _messages.length - 2; // pre-emit count
-      final pairs = <ChatMessage>[];
-      int i = originalLen - 1;
-      int collected = 0;
-      while (i >= 0 && collected < n) {
-        if (!_messages[i].isUser) {
-          // assistant turn — take it + preceding user turn if present
-          final assistant = _messages[i].copyWith(clearContentNotifier: true);
-          if (i - 1 >= 0 && _messages[i - 1].isUser) {
-            final user = _messages[i - 1].copyWith(clearContentNotifier: true);
-            pairs.insert(0, user);
-          }
-          pairs.insert(0, assistant);
-          collected++;
-          i -= 2;
-        } else {
-          i -= 1;
-        }
-      }
+      //    (i.e. before the two emitted notes).
+      final pairs = collectTrailingPairs(
+        _messages.sublist(0, _messages.length - 2),
+        n,
+      );
 
       // 5. New branch: [summary]+[voices]+[last N pairs]
       final branchedMessages = <ChatMessage>[
@@ -2008,6 +1992,37 @@ class ChatProvider extends ChangeNotifier {
       _nonStreamingLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Returns the trailing [n] assistant turns from [messages], each preceded by
+  /// its own user turn where one exists, in original conversation order.
+  ///
+  /// Walks backwards anchoring on assistant turns. The result always reads
+  /// user-then-assistant: a pair whose assistant reply came first in the list
+  /// must not be emitted above the message that prompted it.
+  @visibleForTesting
+  static List<ChatMessage> collectTrailingPairs(
+    List<ChatMessage> messages,
+    int n,
+  ) {
+    final pairs = <ChatMessage>[];
+    int i = messages.length - 1;
+    int collected = 0;
+    while (i >= 0 && collected < n) {
+      if (!messages[i].isUser) {
+        // Both inserts target index 0, so the assistant must go in FIRST for
+        // the user turn to end up above it.
+        pairs.insert(0, messages[i].copyWith(clearContentNotifier: true));
+        if (i - 1 >= 0 && messages[i - 1].isUser) {
+          pairs.insert(0, messages[i - 1].copyWith(clearContentNotifier: true));
+        }
+        collected++;
+        i -= 2;
+      } else {
+        i -= 1;
+      }
+    }
+    return pairs;
   }
 
   /// One-shot non-streaming generation using the active provider's strategy.
