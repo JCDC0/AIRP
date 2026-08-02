@@ -148,7 +148,18 @@ Three fixes, all worth doing:
    conversation, not all of them. Same for `ChatMessage.fromJson`: fall back to
    `DateTime.now()` on an unparseable timestamp rather than throwing.
 
-### 2.2 Background stream completions are never written to disk
+### 2.2 Background stream completions are never written to disk — FIXED in 0.7.29
+
+Both methods now call `onStateChanged()` and `persistSessions()`. Guarded by
+`test/session_service_background_persist_test.dart`.
+
+Conversations already damaged on disk are repaired on load by
+`SessionService.dropEmptyAssistantPlaceholders`, which drops the empty assistant
+message left behind when a completion never landed. Autosave is also flushed on
+`paused`/`hidden`/`detached` via the `WidgetsBindingObserver` in `main.dart`, so
+a close inside the 600 ms debounce no longer drops the last turn.
+
+Original finding follows.
 
 `finalizeBackgroundSession` (`session_service.dart:177`) and
 `addMessageToSavedSession` (`session_service.dart:156`) both mutate

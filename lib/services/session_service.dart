@@ -9,6 +9,7 @@ class SessionService {
 
   List<ChatSessionData> savedSessions = [];
   Timer? _autoSaveTimer;
+  VoidCallback? _pendingSave;
   final VoidCallback onStateChanged;
 
   SessionService({required this.onStateChanged});
@@ -23,13 +24,52 @@ class SessionService {
     if (data != null) {
       try {
         final List<dynamic> jsonList = jsonDecode(data);
-        savedSessions =
-            jsonList.map((j) => ChatSessionData.fromJson(j)).toList();
+        savedSessions = jsonList
+            .map((j) => dropEmptyAssistantPlaceholders(ChatSessionData.fromJson(j)))
+            .toList();
         onStateChanged();
       } catch (e) {
         debugPrint("Error loading sessions: $e");
       }
     }
+  }
+
+  /// Removes assistant messages that carry no content of any kind.
+  ///
+  /// A streaming response is seeded as an empty assistant message and filled in
+  /// as chunks arrive. If the app is killed mid-stream, or a completion lands
+  /// while the conversation is not the active one and never reaches disk, that
+  /// empty seed is what gets persisted. On reload it renders as a blank bubble
+  /// between a user turn and the next one, so every later reply appears to sit
+  /// one slot below the message that prompted it.
+  ///
+  /// Only messages with no text, no images, no usage and no regeneration
+  /// history are dropped; anything a user could still read or restore is kept.
+  @visibleForTesting
+  static ChatSessionData dropEmptyAssistantPlaceholders(
+    ChatSessionData session,
+  ) {
+    final kept = session.messages.where((m) {
+      if (m.isUser) return true;
+      return m.text.trim().isNotEmpty ||
+          m.imagePaths.isNotEmpty ||
+          m.usage != null ||
+          m.regenerationVersions.isNotEmpty;
+    }).toList();
+
+    if (kept.length == session.messages.length) return session;
+
+    return ChatSessionData(
+      id: session.id,
+      title: session.title,
+      messages: kept,
+      modelName: session.modelName,
+      tokenCount: session.tokenCount,
+      systemInstruction: session.systemInstruction,
+      backgroundImage: session.backgroundImage,
+      provider: session.provider,
+      isBookmarked: session.isBookmarked,
+    );
   }
 
   String _encodeSessionsPayload(List<ChatSessionData> sessions) {
@@ -150,7 +190,26 @@ class SessionService {
 
   void scheduleAutoSave(int debounceMs, VoidCallback saveAction) {
     _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer(Duration(milliseconds: debounceMs), saveAction);
+    _pendingSave = saveAction;
+    _autoSaveTimer = Timer(Duration(milliseconds: debounceMs), () {
+      _pendingSave = null;
+      saveAction();
+    });
+  }
+
+  /// Runs a debounced save immediately instead of waiting out the timer.
+  ///
+  /// Autosave is debounced, and nothing flushes it when the process goes away,
+  /// so a close within the debounce window drops the most recent turn. Call
+  /// this when the app is backgrounded or detached.
+  Future<void> flushPendingSave() async {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = null;
+    final pending = _pendingSave;
+    _pendingSave = null;
+    if (pending == null) return;
+    pending();
+    await persistSessions();
   }
 
   void addMessageToSavedSession(String sessionId, ChatMessage message) {
@@ -172,6 +231,9 @@ class SessionService {
       provider: session.provider,
       isBookmarked: session.isBookmarked,
     );
+
+    onStateChanged();
+    persistSessions();
   }
 
   void finalizeBackgroundSession(
@@ -219,6 +281,9 @@ class SessionService {
       provider: session.provider,
       isBookmarked: session.isBookmarked,
     );
+
+    onStateChanged();
+    persistSessions();
   }
 
   void saveCurrentSessionData(ChatSessionData sessionData) {

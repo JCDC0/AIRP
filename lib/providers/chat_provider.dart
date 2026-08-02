@@ -305,6 +305,18 @@ class ChatProvider extends ChangeNotifier {
     super.dispose();
   }
 
+  /// Writes a debounced autosave to disk immediately.
+  ///
+  /// Call when the app is backgrounded or detached: autosave is debounced and
+  /// the process can go away before the timer fires, taking the last turn with
+  /// it. Also persists an in-flight streamed response as far as it has got.
+  Future<void> flushPendingSave() async {
+    if (_messages.isNotEmpty || _currentTitle.isNotEmpty) {
+      await autoSaveCurrentSession();
+    }
+    await _sessionService.flushPendingSave();
+  }
+
   Future<void> _loadGlobalSettings(SharedPreferences prefs) async {
     _bookmarkedModels = await _globalSettings.loadModelBookmarks(prefs: prefs);
     _starredProviders
@@ -933,31 +945,59 @@ class ChatProvider extends ChangeNotifier {
           extraMessages: geminiExtras.isNotEmpty ? geminiExtras : null,
           disableSafety: _settings!.disableSafety,
           maxRoundsLeft: 1,
-        );
-      } else {
-        det = await ChatApiService.requestOpenAiCompatibleWithToolDetection(
-          apiKey: activeKey,
-          baseUrl: streamUrl,
-          model: modelName,
-          history: history,
-          systemInstruction: sysWithHint,
-          userMessage: sentUserText,
-          tools: [WebSearchService.buildWebSearchToolSpec()],
-          extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
           temperature: _settings!.enableGenerationSettings
               ? _settings!.temperature
               : null,
           topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
+          topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
           maxTokens: _settings!.enableMaxOutputTokens
               ? _settings!.maxOutputTokens
               : null,
-          reasoningEffort: _settings!.enableReasoning
-              ? _settings!.reasoningEffort
-              : null,
-          applyReasoningEffort: strategy.applyReasoningEffort,
-          extraHeaders: strategy.getHeaders(activeKey),
-          maxRoundsLeft: 1,
         );
+      } else {
+        // Streamed detection: if the model answers instead of searching, the
+        // answer is already flowing and is handed straight to the coordinator,
+        // so reasoning streams live rather than landing as one blob.
+        final aware =
+            await ChatApiService.streamOpenAiCompatibleWithToolDetection(
+              apiKey: activeKey,
+              baseUrl: streamUrl,
+              model: modelName,
+              history: history,
+              systemInstruction: sysWithHint,
+              userMessage: sentUserText,
+              tools: [WebSearchService.buildWebSearchToolSpec()],
+              extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
+              temperature: _settings!.enableGenerationSettings
+                  ? _settings!.temperature
+                  : null,
+              topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
+              topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
+              maxTokens: _settings!.enableMaxOutputTokens
+                  ? _settings!.maxOutputTokens
+                  : null,
+              reasoningEffort: _settings!.enableReasoning
+                  ? _settings!.reasoningEffort
+                  : null,
+              applyReasoningEffort: strategy.applyReasoningEffort,
+              extraHeaders: strategy.getHeaders(activeKey),
+              includeUsage: _settings!.enableUsage,
+              maxRoundsLeft: 1,
+            );
+
+        if (aware.isError) {
+          return _WebSearchLoopResult(
+            error: aware.error,
+            searchedQueries: searchedQueries,
+          );
+        }
+        if (!aware.isToolCall) {
+          return _WebSearchLoopResult(
+            directStream: aware.textStream ?? const Stream<String>.empty(),
+            searchedQueries: searchedQueries,
+          );
+        }
+        det = aware.toolCall!;
       }
 
       if (det.isError) {
@@ -990,11 +1030,20 @@ class ChatProvider extends ChangeNotifier {
           searchedQueries: searchedQueries,
         );
       }
+      // Show progress on the placeholder bubble: every query run so far plus
+      // the one in flight, so a multi-round search reads as a running log
+      // rather than a single line that keeps being overwritten.
+      final done = List<String>.from(searchedQueries);
       searchedQueries.add(query);
-
-      // Show a transient "Searching the web for …" indicator on the
-      // placeholder bubble so the user can see the AI's chosen query.
-      final indicator = '🔍 Searching the web for "$query"…';
+      final progress = StringBuffer();
+      for (final q in done) {
+        progress.writeln('🔍 Searched the web for "$q"');
+      }
+      progress.write(
+        '🔍 Searching the web for "$query"… '
+        '(round ${round + 1} of $maxRounds)',
+      );
+      final indicator = progress.toString();
       contentNotifier.value = indicator;
       if (_messages.isNotEmpty && !_messages.last.isUser) {
         _messages.last = _messages.last.copyWith(text: indicator);
@@ -1076,6 +1125,14 @@ class ChatProvider extends ChangeNotifier {
         extraMessages: geminiExtras.isNotEmpty ? geminiExtras : null,
         disableSafety: _settings!.disableSafety,
         maxRoundsLeft: 0,
+        temperature: _settings!.enableGenerationSettings
+            ? _settings!.temperature
+            : null,
+        topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
+        topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
+        maxTokens: _settings!.enableMaxOutputTokens
+            ? _settings!.maxOutputTokens
+            : null,
       );
       if (det.isError) {
         return _WebSearchLoopResult(
@@ -1469,7 +1526,7 @@ class ChatProvider extends ChangeNotifier {
 
         loopResult = await _runWebSearchToolLoop(
           sentUserText: sentUserText,
-          history: _messages.sublist(0, _messages.length - 2),
+          history: _limitedHistory(),
           recognizedLoreEntries: recognizedLoreEntries,
           depthEntries: depthEntries,
           contentNotifier: contentNotifier,
@@ -1477,6 +1534,9 @@ class ChatProvider extends ChangeNotifier {
         );
 
         if (_streamingCoordinator.isCancelled(streamSessionId)) {
+          // A detection round that answered hands back an open socket. Nothing
+          // downstream will consume it now, so close it here.
+          await loopResult.directStream?.listen(null).cancel();
           _nonStreamingLoading = false;
           notifyListeners();
           return;
@@ -1525,6 +1585,7 @@ class ChatProvider extends ChangeNotifier {
     }
 
     Stream<String>? responseStream;
+    final byokDirectStream = loopResult?.directStream;
 
     try {
       final strategy = StrategyResolver.resolve(_currentProvider);
@@ -1558,46 +1619,47 @@ class ChatProvider extends ChangeNotifier {
         );
       }
 
-      final contextMessages = _messages.sublist(0, _messages.length - 2);
-      int effectiveHistoryLimit = _settings!.enableMsgHistory
-          ? _settings!.historyLimit
-          : 0;
-      int startIndex = contextMessages.length - effectiveHistoryLimit;
-      if (startIndex < 0) startIndex = 0;
-      final limitedHistory = contextMessages.sublist(startIndex);
+      final limitedHistory = _limitedHistory();
 
-      responseStream = strategy.streamResponse(
-        apiKey: activeKey,
-        baseUrl: strategy.getStreamUrl(customUrl: customUrl),
-        model: _currentProvider == AiProvider.local
-            ? _localModelName
-            : _selectedModel,
-        history: limitedHistory,
-        systemInstruction: finalSystemInstruction,
-        userMessage: finalUserMessage,
-        imagePaths: imagesToSend,
-        temperature: _settings!.enableGenerationSettings
-            ? _settings!.temperature
-            : null,
-        topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
-        topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
-        maxTokens: _settings!.enableMaxOutputTokens
-            ? _settings!.maxOutputTokens
-            : null,
-        enableGrounding:
-            _settings!.enableGrounding &&
-            _settings!.searchProvider == SearchProvider.provider,
-        reasoningEffort: _settings!.enableReasoning
-            ? _settings!.reasoningEffort
-            : null,
-        extraHeaders: strategy.getHeaders(activeKey),
-        includeUsage: _settings!.enableUsage,
-        depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
-        attachmentBytes: attachmentBytes,
-        extraMessages: toolExtraMessages,
-        providerSession: _currentProvider == AiProvider.gemini ? _chat : null,
-        disableSafety: _settings!.disableSafety,
-      );
+      // When the tool-detection round already answered, that socket is live
+      // and carries the whole response; re-requesting would bill a second
+      // generation and discard the one in flight.
+      responseStream =
+          byokDirectStream ??
+          strategy.streamResponse(
+            apiKey: activeKey,
+            baseUrl: strategy.getStreamUrl(customUrl: customUrl),
+            model: _currentProvider == AiProvider.local
+                ? _localModelName
+                : _selectedModel,
+            history: limitedHistory,
+            systemInstruction: finalSystemInstruction,
+            userMessage: finalUserMessage,
+            imagePaths: imagesToSend,
+            temperature: _settings!.enableGenerationSettings
+                ? _settings!.temperature
+                : null,
+            topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
+            topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
+            maxTokens: _settings!.enableMaxOutputTokens
+                ? _settings!.maxOutputTokens
+                : null,
+            enableGrounding:
+                _settings!.enableGrounding &&
+                _settings!.searchProvider == SearchProvider.provider,
+            reasoningEffort: _settings!.enableReasoning
+                ? _settings!.reasoningEffort
+                : null,
+            extraHeaders: strategy.getHeaders(activeKey),
+            includeUsage: _settings!.enableUsage,
+            depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
+            attachmentBytes: attachmentBytes,
+            extraMessages: toolExtraMessages,
+            providerSession: _currentProvider == AiProvider.gemini
+                ? _chat
+                : null,
+            disableSafety: _settings!.disableSafety,
+          );
 
       final queries = loopResult?.searchedQueries ?? const [];
       if (queries.isNotEmpty) {
@@ -1686,13 +1748,13 @@ class ChatProvider extends ChangeNotifier {
     } catch (e) {
       if (!_streamingCoordinator.isCancelled(streamSessionId)) {
         if (_currentSessionId == streamSessionId) {
-          _messages.last = _messages.last.copyWith(clearContentNotifier: true);
-          _messages.add(
-            ChatMessage(
-              text: "**System Error**\n\n```\n$e\n```",
-              isUser: false,
-              modelName: "System Alert",
-            ),
+          // Write the error into the placeholder rather than appending after
+          // it; leaving the empty bubble in place strands a blank turn between
+          // the prompt and the error.
+          _messages.last = _messages.last.copyWith(
+            text: "**System Error**\n\n```\n$e\n```",
+            modelName: "System Alert",
+            clearContentNotifier: true,
           );
           notifyListeners();
           _scheduleAutoSave();
@@ -1700,6 +1762,23 @@ class ChatProvider extends ChangeNotifier {
       }
       _streamingCoordinator.cancelStream(streamSessionId);
     }
+  }
+
+  /// The conversation history to send, excluding the user message currently
+  /// being answered and its streaming placeholder, trimmed to the configured
+  /// history limit.
+  ///
+  /// Shared by the plain send path and the web-search tool loop; when only the
+  /// former applied the limit, turning web search on silently sent the entire
+  /// conversation.
+  List<ChatMessage> _limitedHistory() {
+    final contextMessages = _messages.sublist(0, _messages.length - 2);
+    final int effectiveHistoryLimit = _settings!.enableMsgHistory
+        ? _settings!.historyLimit
+        : 0;
+    int startIndex = contextMessages.length - effectiveHistoryLimit;
+    if (startIndex < 0) startIndex = 0;
+    return contextMessages.sublist(startIndex);
   }
 
   void _finalizeBackgroundSession(
@@ -2618,6 +2697,7 @@ class ChatProvider extends ChangeNotifier {
 /// See [ChatProvider._runWebSearchToolLoop] for field semantics.
 class _WebSearchLoopResult {
   final String? directAnswer;
+  final Stream<String>? directStream;
   final List<Map<String, dynamic>>? extraMessages;
   final List<String> searchedQueries;
   final String? error;
@@ -2625,6 +2705,7 @@ class _WebSearchLoopResult {
 
   const _WebSearchLoopResult({
     this.directAnswer,
+    this.directStream,
     this.extraMessages,
     this.searchedQueries = const [],
     this.error,

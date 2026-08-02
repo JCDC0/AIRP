@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:async/async.dart' show StreamQueue;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/chat_models.dart';
@@ -809,6 +810,13 @@ class ChatApiService {
     if (topP != null) bodyMap['top_p'] = topP;
     if (maxTokens != null) bodyMap['max_tokens'] = maxTokens;
 
+    // OpenRouter omits the reasoning trace unless it is asked for. Without
+    // this the detection response carries no `reasoning` field and the answer
+    // reaches the user with its thinking silently dropped.
+    if (baseUrl.contains('openrouter.ai')) {
+      bodyMap['include_reasoning'] = true;
+    }
+
     if (reasoningEffort != null && reasoningEffort.isNotEmpty) {
       if (applyReasoningEffort != null) {
         applyReasoningEffort(bodyMap, reasoningEffort);
@@ -900,6 +908,289 @@ class ChatApiService {
     }
   }
 
+  /// Sends a STREAMING OpenAI-compatible request with the `web_search` tool
+  /// attached and classifies the response from its first deltas.
+  ///
+  /// A model either calls a tool or answers; it does not do both in one turn.
+  /// So the first delta carrying tool call fragments means "search", and the
+  /// first delta carrying content or reasoning means "this is the answer". By
+  /// buffering only until that point, a direct answer streams live — reasoning
+  /// included — instead of arriving as one blob from a non-streamed round.
+  ///
+  /// Returns once classified: either [ToolAwareStream.toolCall] is set (the
+  /// socket is drained and closed), or [ToolAwareStream.textStream] replays the
+  /// buffered chunks and then continues from the live socket.
+  static Future<ToolAwareStream> streamOpenAiCompatibleWithToolDetection({
+    required String apiKey,
+    required String baseUrl,
+    required String model,
+    required List<ChatMessage> history,
+    required String systemInstruction,
+    required String userMessage,
+    required List<Map<String, dynamic>> tools,
+    List<Map<String, dynamic>>? extraMessages,
+    double? temperature,
+    double? topP,
+    int? topK,
+    int? maxTokens,
+    String? reasoningEffort,
+    ThinkingFormat thinkingFormat = ThinkingFormat.reasoningEffort,
+    void Function(Map<String, dynamic> body, String effort)?
+    applyReasoningEffort,
+    Map<String, String>? extraHeaders,
+    bool includeUsage = false,
+    int maxRoundsLeft = 1,
+    http.Client? client,
+  }) async {
+    final cleanKey = apiKey.trim();
+    final List<Map<String, dynamic>> messagesPayload = [];
+
+    if (systemInstruction.isNotEmpty) {
+      messagesPayload.add({'role': 'system', 'content': systemInstruction});
+    }
+    for (final msg in history) {
+      messagesPayload.add({
+        'role': msg.isUser ? 'user' : 'assistant',
+        'content': msg.isUser
+            ? msg.text
+            : ReasoningUtils.stripThinkBlocks(msg.text),
+      });
+    }
+    if (userMessage.isNotEmpty) {
+      messagesPayload.add({'role': 'user', 'content': userMessage});
+    }
+    if (extraMessages != null && extraMessages.isNotEmpty) {
+      messagesPayload.addAll(extraMessages);
+    }
+
+    final Map<String, dynamic> bodyMap = {
+      'model': model.trim(),
+      'messages': messagesPayload,
+      'stream': true,
+      'tools': tools,
+      'tool_choice': maxRoundsLeft > 0 ? 'auto' : 'none',
+    };
+
+    if (temperature != null) bodyMap['temperature'] = temperature;
+    if (topP != null) bodyMap['top_p'] = topP;
+    if (topK != null) bodyMap['top_k'] = topK;
+    if (maxTokens != null) bodyMap['max_tokens'] = maxTokens;
+    if (includeUsage) bodyMap['stream_options'] = {'include_usage': true};
+    if (baseUrl.contains('openrouter.ai')) {
+      bodyMap['include_reasoning'] = true;
+    }
+
+    if (reasoningEffort != null && reasoningEffort.isNotEmpty) {
+      if (applyReasoningEffort != null) {
+        applyReasoningEffort(bodyMap, reasoningEffort);
+      } else {
+        final bool reasoningEnabled = reasoningEffort != 'none';
+        switch (thinkingFormat) {
+          case ThinkingFormat.none:
+            break;
+          case ThinkingFormat.reasoningEffort:
+            if (reasoningEnabled) bodyMap['reasoning_effort'] = reasoningEffort;
+            break;
+          case ThinkingFormat.enableThinking:
+            bodyMap['enable_thinking'] = reasoningEnabled;
+            break;
+          case ThinkingFormat.thinkingObject:
+            bodyMap['thinking'] = {
+              'type': reasoningEnabled ? 'enabled' : 'disabled',
+            };
+            break;
+        }
+      }
+    }
+
+    final request = http.Request('POST', Uri.parse(baseUrl));
+    request.headers.addAll({
+      'Authorization': 'Bearer $cleanKey',
+      'Content-Type': 'application/json',
+      ...?extraHeaders,
+    });
+    request.body = jsonEncode(bodyMap);
+
+    final http.Client activeClient = client ?? http.Client();
+    final bool ownsClient = client == null;
+
+    try {
+      final streamedResponse = await activeClient.send(request);
+      if (streamedResponse.statusCode != 200) {
+        final errorBody = await streamedResponse.stream.bytesToString();
+        if (ownsClient) activeClient.close();
+        return ToolAwareStream(
+          error: 'Error ${streamedResponse.statusCode}: $errorBody',
+        );
+      }
+
+      final lines = StreamQueue(
+        streamedResponse.stream
+            .transform(utf8.decoder)
+            .transform(const LineSplitter()),
+      );
+
+      final buffered = <String>[];
+      final toolFragments = <int, Map<String, dynamic>>{};
+      bool hasEmittedThinkStart = false;
+      bool classifiedAsText = false;
+      bool exhausted = false;
+
+      // Phase 1: read until the response classifies itself.
+      while (!classifiedAsText && await lines.hasNext) {
+        final line = await lines.next;
+        if (!line.startsWith('data: ')) continue;
+        final dataStr = line.substring(6).trim();
+        if (dataStr == '[DONE]') {
+          exhausted = true;
+          break;
+        }
+
+        try {
+          final json = jsonDecode(dataStr);
+          if (includeUsage && json['usage'] != null) {
+            buffered.add('[[USAGE:${jsonEncode(json['usage'])}]]');
+          }
+          final choices = json['choices'] as List?;
+          if (choices == null || choices.isEmpty) continue;
+          final delta = choices[0]['delta'];
+          if (delta == null) continue;
+
+          final deltaToolCalls = delta['tool_calls'] as List?;
+          if (deltaToolCalls != null && deltaToolCalls.isNotEmpty) {
+            _accumulateToolCallFragments(deltaToolCalls, toolFragments);
+            continue;
+          }
+
+          final reasoningChunk = delta['reasoning_content'] ?? delta['reasoning'];
+          if (reasoningChunk != null && reasoningChunk.toString().isNotEmpty) {
+            if (!hasEmittedThinkStart) {
+              buffered.add('<think>\n');
+              hasEmittedThinkStart = true;
+            }
+            buffered.add(reasoningChunk.toString());
+            classifiedAsText = true;
+          }
+
+          final contentChunk = delta['content'];
+          if (contentChunk != null && contentChunk.toString().isNotEmpty) {
+            if (hasEmittedThinkStart) buffered.add('\n</think>\n');
+            buffered.add(contentChunk.toString());
+            classifiedAsText = true;
+          }
+        } catch (e) {
+          _logWarning('Tool-aware stream chunk parse warning: $e');
+        }
+      }
+
+      if (!classifiedAsText && toolFragments.isNotEmpty) {
+        // The model wants to search. Drain and close; the caller runs the
+        // search and issues a follow-up request with the results.
+        await lines.cancel(immediate: true);
+        if (ownsClient) activeClient.close();
+        final fragment = toolFragments[toolFragments.keys.reduce(
+          (a, b) => a < b ? a : b,
+        )]!;
+        return ToolAwareStream(
+          toolCall: ToolDetectionResult(
+            type: 'tool_call',
+            toolCallId: (fragment['id'] ?? '').toString(),
+            toolName: (fragment['name'] ?? '').toString(),
+            toolArguments: (fragment['arguments'] ?? '').toString(),
+          ),
+        );
+      }
+
+      // Phase 2: hand back the buffered prefix followed by the live remainder.
+      Stream<String> replay() async* {
+        try {
+          for (final chunk in buffered) {
+            yield chunk;
+          }
+          if (exhausted) {
+            if (hasEmittedThinkStart) yield '\n</think>\n';
+            return;
+          }
+
+          bool thinkClosed = !hasEmittedThinkStart;
+          while (await lines.hasNext) {
+            final line = await lines.next;
+            if (!line.startsWith('data: ')) continue;
+            final dataStr = line.substring(6).trim();
+            if (dataStr == '[DONE]') break;
+
+            try {
+              final json = jsonDecode(dataStr);
+              if (includeUsage && json['usage'] != null) {
+                yield '[[USAGE:${jsonEncode(json['usage'])}]]';
+              }
+              final choices = json['choices'] as List?;
+              if (choices == null || choices.isEmpty) continue;
+              final delta = choices[0]['delta'];
+              if (delta == null) continue;
+
+              final reasoningChunk =
+                  delta['reasoning_content'] ?? delta['reasoning'];
+              if (reasoningChunk != null &&
+                  reasoningChunk.toString().isNotEmpty) {
+                yield reasoningChunk.toString();
+              }
+
+              final contentChunk = delta['content'];
+              if (contentChunk != null && contentChunk.toString().isNotEmpty) {
+                if (!thinkClosed) {
+                  yield '\n</think>\n';
+                  thinkClosed = true;
+                }
+                yield contentChunk.toString();
+              }
+            } catch (e) {
+              _logWarning('Tool-aware stream chunk parse warning: $e');
+            }
+          }
+          if (!thinkClosed) yield '\n</think>\n';
+        } catch (e) {
+          yield '\n\n**Connection Error:** $e';
+        } finally {
+          await lines.cancel(immediate: true);
+          if (ownsClient) activeClient.close();
+        }
+      }
+
+      return ToolAwareStream(textStream: replay());
+    } catch (e) {
+      if (ownsClient) activeClient.close();
+      return ToolAwareStream(error: 'Connection Error: $e');
+    }
+  }
+
+  /// Merges streamed `tool_calls` deltas into whole calls keyed by their index.
+  ///
+  /// Providers split a single call across deltas: the first carries `id` and
+  /// `function.name`, later ones append `function.arguments` fragments.
+  static void _accumulateToolCallFragments(
+    List<dynamic> deltaToolCalls,
+    Map<int, Map<String, dynamic>> into,
+  ) {
+    for (final tc in deltaToolCalls) {
+      if (tc is! Map) continue;
+      final index = tc['index'] is int ? tc['index'] as int : 0;
+      final slot = into.putIfAbsent(
+        index,
+        () => <String, dynamic>{'id': '', 'name': '', 'arguments': ''},
+      );
+      if (tc['id'] != null) slot['id'] = tc['id'].toString();
+      final fn = tc['function'];
+      if (fn is Map) {
+        if (fn['name'] != null) slot['name'] = fn['name'].toString();
+        if (fn['arguments'] != null) {
+          slot['arguments'] =
+              '${slot['arguments']}${fn['arguments']}';
+        }
+      }
+    }
+  }
+
   /// Sends a NON-streaming Gemini request with a `functionDeclarations` tool
   /// and inspects the response for a function call or a final text answer.
   ///
@@ -916,6 +1207,10 @@ class ChatApiService {
     bool disableSafety = true,
     String? thoughtSignature,
     int maxRoundsLeft = 1,
+    double? temperature,
+    double? topP,
+    int? topK,
+    int? maxTokens,
     http.Client? client,
   }) async {
     final modelId = model.replaceAll('models/', '');
@@ -969,6 +1264,16 @@ class ChatApiService {
       bodyMap['thought_signature'] = thoughtSignature;
     }
 
+    final Map<String, dynamic> generationConfig = {
+      'temperature': ?temperature,
+      'topP': ?topP,
+      'topK': ?topK,
+      'maxOutputTokens': ?maxTokens,
+    };
+    if (generationConfig.isNotEmpty) {
+      bodyMap['generationConfig'] = generationConfig;
+    }
+
     try {
       final http.Client activeClient = client ?? http.Client();
       final bool ownsClient = client == null;
@@ -998,6 +1303,12 @@ class ChatApiService {
       final candidate = candidates[0];
       final parts = candidate['content']?['parts'] as List? ?? [];
 
+      // Parts carrying `thought: true` are the model's reasoning trace, not
+      // its answer. Split them out so they surface as a thinking block instead
+      // of being concatenated into the visible text.
+      final splitParts = splitGeminiThoughtParts(parts);
+      final String reasoning = splitParts.reasoning;
+
       // Look for a functionCall part first.
       for (final part in parts) {
         if (part['functionCall'] != null) {
@@ -1009,19 +1320,42 @@ class ChatApiService {
             toolName: name,
             // Gemini returns args as a JSON object; serialise for uniformity.
             toolArguments: jsonEncode(args),
+            reasoning: reasoning,
           );
         }
       }
 
-      // Otherwise concatenate text parts.
-      String fullText = '';
-      for (final part in parts) {
-        if (part['text'] != null) fullText += part['text'].toString();
-      }
-      return ToolDetectionResult(type: 'text', text: fullText);
+      return ToolDetectionResult(
+        type: 'text',
+        text: splitParts.content,
+        reasoning: reasoning,
+      );
     } catch (e) {
       return ToolDetectionResult(type: 'error', text: 'Connection Error: $e');
     }
+  }
+
+  /// Splits Gemini `parts` into the reasoning trace and the visible answer.
+  ///
+  /// Gemini marks thinking output with `thought: true` on the part rather than
+  /// in a separate field. Concatenating every text part blindly splices the
+  /// model's reasoning into its answer as plain prose.
+  @visibleForTesting
+  static ({String reasoning, String content}) splitGeminiThoughtParts(
+    List<dynamic> parts,
+  ) {
+    final reasoning = StringBuffer();
+    final content = StringBuffer();
+    for (final part in parts) {
+      final text = part is Map ? part['text'] : null;
+      if (text == null) continue;
+      final isThought = part is Map && part['thought'] == true;
+      (isThought ? reasoning : content).write(text.toString());
+    }
+    return (
+      reasoning: reasoning.toString().trim(),
+      content: content.toString(),
+    );
   }
 
   /// Builds the Gemini `contents` entry for a tool result, suitable for
@@ -1069,4 +1403,20 @@ class ToolDetectionResult {
 
   bool get isToolCall => type == 'tool_call';
   bool get isError => type == 'error';
+}
+
+/// Result of a streaming request that had a tool attached.
+///
+/// Exactly one field is set. [toolCall] means the model asked to search and
+/// nothing was streamed. [textStream] means the model answered and the stream
+/// is already live. [error] means the request never got that far.
+class ToolAwareStream {
+  final ToolDetectionResult? toolCall;
+  final Stream<String>? textStream;
+  final String? error;
+
+  const ToolAwareStream({this.toolCall, this.textStream, this.error});
+
+  bool get isToolCall => toolCall != null;
+  bool get isError => error != null;
 }

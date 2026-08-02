@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, Groq, and
 others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.28.3` (`pubspec.yaml` `0.7.28+7`). Target: `0.8.0` release.
+Current version: `0.7.29` (`pubspec.yaml` `0.7.29+8`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -124,6 +124,16 @@ request formats live in `AiProviderStrategy.applyReasoningEffort()`:
 Reasoning is persisted in session JSON for redisplay. The thinking tag is stripped
 ONLY from the outbound LLM payload, never from displayed or stored text.
 
+When BYOK web search is on, OpenAI-compatible providers go through
+`ChatApiService.streamOpenAiCompatibleWithToolDetection`: the tool is attached to
+a STREAMED request and the response is classified from its first deltas. Tool
+call fragments mean search; content or reasoning means the model answered and the
+live socket is handed to `StreamingCoordinatorService` unchanged. Do not put a
+non-streaming round back in front of this — that is what made reasoning stop
+streaming whenever web search was enabled. Gemini still uses non-streamed
+detection (`performGeminiFunctionDetection`), which splits `thought: true` parts
+out via `splitGeminiThoughtParts`.
+
 ## Lore recognition (formerly the lorebook)
 
 **Read this before touching anything named "lorebook".**
@@ -187,11 +197,13 @@ guards this.
 guarded by `test/gemini_stream_url_test.dart`. Everything else in all three
 documents remains open.
 
-The highest-priority open items are the two that cause permanent, unrecoverable
-data loss, both in `AUDIT-0.8-ADDENDUM.md` section 2:
+The highest-priority open item is the remaining cause of permanent,
+unrecoverable data loss, in `AUDIT-0.8-ADDENDUM.md` section 2:
 
 *   **2.1** a corrupt `airp_sessions` blob wipes every conversation, and the next
     autosave overwrites it.
-*   **2.2** background stream completions are never written to disk.
+
+**2.2** (background stream completions never written to disk) was FIXED in
+`0.7.29` and is guarded by `test/session_service_background_persist_test.dart`.
 
 Version history lives in `docs/agents/CHANGELOG.md`.

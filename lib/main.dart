@@ -33,9 +33,37 @@ void main() {
 
 /// The root widget of the application.
 ///
-/// Configures the global theme, typography, and initial navigation route.
-class AIRP extends StatelessWidget {
+/// Configures the global theme, typography, and initial navigation route, and
+/// flushes the debounced session autosave when the app leaves the foreground.
+class AIRP extends StatefulWidget {
   const AIRP({super.key});
+
+  @override
+  State<AIRP> createState() => _AIRPState();
+}
+
+class _AIRPState extends State<AIRP> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      context.read<ChatProvider>().flushPendingSave();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
