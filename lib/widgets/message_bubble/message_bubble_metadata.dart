@@ -4,6 +4,7 @@ import '../../models/chat_models.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../utils/constants.dart';
+import '../../utils/token_utils.dart';
 
 class MessageBubbleMetadata extends StatelessWidget {
   final ChatMessage msg;
@@ -88,7 +89,22 @@ class MessageBubbleMetadata extends StatelessWidget {
       );
     }
 
-    if (msg.usage != null) {
+    // Normalized on read so sessions saved before 0.7.29.1, which stored raw
+    // provider payloads, still render instead of showing zeroes.
+    final usage = TokenUtils.normalizeUsage(msg.usage);
+    if (usage != null) {
+      final int? reasoningTokens = usage['reasoning_tokens'] as int?;
+      final int? cachedTokens = usage['cached_tokens'] as int?;
+      final extras = <String>[
+        if (reasoningTokens != null) "$reasoningTokens reasoning",
+        if (cachedTokens != null) "$cachedTokens cached",
+      ];
+      final usageLabel = StringBuffer(
+        "Usage: ${usage['prompt_tokens']} in + ${usage['completion_tokens']} out"
+        " = ${usage['total_tokens']} total",
+      );
+      if (extras.isNotEmpty) usageLabel.write(" (${extras.join(', ')})");
+
       children.add(
         Padding(
           padding: const EdgeInsets.only(top: 6.0),
@@ -107,7 +123,7 @@ class MessageBubbleMetadata extends StatelessWidget {
                   : [],
             ),
             child: Text(
-              "Usage: ${msg.usage!['prompt_tokens'] ?? 0} in + ${msg.usage!['completion_tokens'] ?? 0} out = ${msg.usage!['total_tokens'] ?? 0} total",
+              usageLabel.toString(),
               style: TextStyle(
                 fontSize: scaleProvider.chatFontSize - 4,
                 color: textColor.withValues(alpha: 0.7),

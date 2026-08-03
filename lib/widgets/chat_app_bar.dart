@@ -162,7 +162,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "Context: ${chatProvider.tokenCount} / ${chatProvider.formatNumber(maxContext.toString())}",
+                  "Context: ${chatProvider.formatNumber(currentTokens.toString())}"
+                  " / ${chatProvider.formatNumber(maxContext.toString())}",
                   style: TextStyle(
                     color: tokenColor.withValues(alpha: 0.8),
                     fontSize: scaleProvider.systemFontSize - 2,

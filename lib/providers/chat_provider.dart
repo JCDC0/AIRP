@@ -20,6 +20,7 @@ import '../services/api_key_service.dart';
 import '../services/streaming_coordinator_service.dart';
 import '../services/strategies/strategy_resolver.dart';
 import '../utils/constants.dart';
+import '../utils/token_utils.dart';
 import 'settings_provider.dart';
 
 /// Central provider for managing chat state, API communication, and settings.
@@ -263,6 +264,17 @@ class ChatProvider extends ChangeNotifier {
   List<ChatMessage> _messages = [];
   String? _currentSessionId;
   int _tokenCount = 0;
+
+  /// Last `prompt_tokens` the active provider actually reported, with the
+  /// message count it covered. The context meter is anchored to this and only
+  /// estimates what has been added since. Cleared when the session or provider
+  /// changes, because a reading from one does not describe the other.
+  int? _anchorPromptTokens;
+  int _anchorMessageCount = 0;
+
+  /// Per-provider ratio of reported tokens to locally estimated tokens.
+  /// Persisted so a fresh session starts from an already-calibrated meter.
+  final Map<String, double> _tokenCalibration = {};
   String _currentTitle = "";
   String _systemInstruction = "";
   CharacterCard _characterCard = CharacterCard();
@@ -387,6 +399,7 @@ class ChatProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     await _loadGlobalSettings(prefs);
+    await _loadTokenCalibration(prefs);
     await _apiKeys.loadAllKeys();
 
     _localIp =
@@ -502,6 +515,8 @@ class ChatProvider extends ChangeNotifier {
   void setProvider(AiProvider provider) {
     _currentProvider = provider;
     _selectedModel = _getProviderModel(provider);
+    _clearTokenAnchor();
+    updateTokenCount();
 
     notifyListeners();
     saveSettings(showConfirmation: false);
@@ -1580,7 +1595,7 @@ class ChatProvider extends ChangeNotifier {
       if (_currentProvider == AiProvider.gemini) {
         await initializeModel();
       }
-      if (!_settings!.enableGrounding) updateTokenCount();
+      updateTokenCount();
       return;
     }
 
@@ -1683,7 +1698,8 @@ class ChatProvider extends ChangeNotifier {
         onUpdate: (sessionId, text, usage) {
           if (usage != null && _currentSessionId == sessionId) {
             _messages.last = _messages.last.copyWith(usage: usage);
-            notifyListeners();
+            _recordUsage(usage);
+            updateTokenCount();
           } else if (text.isNotEmpty && _currentSessionId == sessionId) {
             _messages.last = _messages.last.copyWith(text: text);
           }
@@ -1733,7 +1749,7 @@ class ChatProvider extends ChangeNotifier {
               await initializeModel();
             }
 
-            if (!_settings!.enableGrounding) updateTokenCount();
+            updateTokenCount();
           } else {
             // Background completion: update saved session and show notification
             _finalizeBackgroundSession(
@@ -2232,6 +2248,7 @@ class ChatProvider extends ChangeNotifier {
     _safeDisposeMessageNotifiers(_messages);
     _messages.clear();
     _tokenCount = 0;
+    _clearTokenAnchor();
     _nonStreamingLoading = false;
     _currentSessionId = null;
     _currentTitle = "";
@@ -2328,6 +2345,9 @@ class ChatProvider extends ChangeNotifier {
       _selectedModel = session.modelName;
     }
 
+    _restoreTokenAnchorFromHistory();
+    updateTokenCount();
+
     // If this session has an active background stream, reconnect the notifier
     if (_streamingCoordinator.isStreaming(session.id)) {
       final notifier = _streamingCoordinator.getActiveNotifier(session.id);
@@ -2363,6 +2383,7 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
     _scheduleAutoSave();
     initializeModel();
+    updateTokenCount();
   }
 
   void editMessage(int index, String newText) {
@@ -2383,6 +2404,7 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
     _scheduleAutoSave();
     initializeModel();
+    updateTokenCount();
   }
 
   Future<void> savePromptToLibrary(String title, String content) async {
@@ -2421,66 +2443,147 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString('airp_system_prompts', data);
   }
 
-  Future<void> updateTokenCount() async {
-    if (_messages.isEmpty) {
+  /// Recomputes the context meter.
+  ///
+  /// Local and synchronous: the meter is projected from the provider's own
+  /// last `prompt_tokens` reading rather than measured by a separate
+  /// `countTokens` round trip, which cost a request per turn, needed a valid
+  /// key, and left a silently stale number whenever it failed.
+  void updateTokenCount() {
+    if (_messages.isEmpty || _settings == null) {
       _tokenCount = 0;
       notifyListeners();
       return;
     }
 
-    if (_currentProvider == AiProvider.gemini) {
-      try {
-        final contents = _messages
-            .map(
-              (m) => m.isUser
-                  ? Content.text(m.text)
-                  : Content.model([
-                      TextPart(ChatMessage.sanitizeForContext(m.text)),
-                    ]),
-            )
-            .toList();
-        final response = await _model.countTokens(contents);
-        _tokenCount = response.totalTokens;
-        notifyListeners();
-      } catch (e) {
-        debugPrint('Token count error: $e');
-      }
-    } else {
-      int totalTokens = 0;
-      int imgCount = 0;
-      for (var msg in _messages) {
-        final effectiveText = msg.isUser
-            ? msg.text
-            : ChatMessage.sanitizeForContext(msg.text);
-        totalTokens += _estimateTokens(effectiveText);
-        imgCount += msg.imagePaths.length;
-      }
-      // Add per-message overhead (role tokens, formatting)
-      totalTokens += _messages.length * 4;
-      // Include system instruction if present
-      if (_systemInstruction.isNotEmpty) {
-        totalTokens += _estimateTokens(_systemInstruction);
-      }
-      totalTokens += imgCount * 200;
-      _tokenCount = totalTokens;
-      notifyListeners();
+    final int rawEstimate = _estimatePromptTokens(_messages.length);
+    int? anchorRaw;
+    if (_anchorPromptTokens != null &&
+        _anchorMessageCount > 0 &&
+        _anchorMessageCount <= _messages.length) {
+      anchorRaw = _estimatePromptTokens(_anchorMessageCount);
+    }
+
+    _tokenCount = TokenUtils.projectContext(
+      rawEstimate: rawEstimate,
+      calibration: _currentCalibration,
+      anchorPromptTokens: anchorRaw == null ? null : _anchorPromptTokens,
+      anchorRawEstimate: anchorRaw,
+    );
+    notifyListeners();
+  }
+
+  double get _currentCalibration =>
+      _tokenCalibration[_currentProvider.name] ?? 1.0;
+
+  /// Estimates the outbound prompt for the first [messageCount] messages.
+  ///
+  /// Mirrors what is actually sent: the assembled system instruction (system
+  /// prompt plus character card plus recognized lore) rather than the raw
+  /// prompt field, and only the messages inside the active history window.
+  int _estimatePromptTokens(int messageCount) {
+    final int end = messageCount.clamp(0, _messages.length);
+    final considered = _messages.sublist(0, end);
+
+    final int effectiveHistoryLimit = _settings!.enableMsgHistory
+        ? _settings!.historyLimit
+        : 0;
+    int startIndex = considered.length - effectiveHistoryLimit;
+    if (startIndex < 0) startIndex = 0;
+    final window = considered.sublist(startIndex);
+
+    int imageCount = 0;
+    for (final msg in window) {
+      imageCount += msg.imagePaths.length;
+    }
+
+    return TokenUtils.estimatePrompt(
+      messageTexts: window.map(
+        (m) => m.isUser ? m.text : ChatMessage.sanitizeForContext(m.text),
+      ),
+      systemInstruction: _buildSystemInstruction(),
+      imageCount: imageCount,
+    );
+  }
+
+  /// Anchors the context meter to a real usage reading and folds it into the
+  /// provider's calibration ratio.
+  ///
+  /// [usage] is already normalized by [StreamingCoordinatorService]. The
+  /// reading describes every message except the assistant reply currently
+  /// being written, hence the count of one less than the list length.
+  void _recordUsage(Map<String, dynamic> usage) {
+    final promptTokens = usage['prompt_tokens'];
+    if (promptTokens is! int || promptTokens <= 0) return;
+
+    final int covered = _messages.length - 1;
+    if (covered <= 0) return;
+
+    final int rawEstimate = _estimatePromptTokens(covered);
+    final double updated = TokenUtils.calibrate(
+      _currentCalibration,
+      promptTokens,
+      rawEstimate,
+    );
+
+    _anchorPromptTokens = promptTokens;
+    _anchorMessageCount = covered;
+
+    if (updated != _currentCalibration) {
+      _tokenCalibration[_currentProvider.name] = updated;
+      _saveTokenCalibration();
     }
   }
 
-  /// Estimates token count for a text string using a heuristic.
-  /// - CJK/full-width chars count as ~1 token each
-  /// - Latin text: ~4 chars/token + ~0.3 tokens/word for punctuation
-  int _estimateTokens(String text) {
-    if (text.isEmpty) return 0;
-    // Count CJK / full-width Unicode (each ~1 token)
-    final cjkRegex = RegExp(r'[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]');
-    int cjkCount = 0;
-    for (int i = 0; i < text.length; i++) {
-      if (cjkRegex.hasMatch(text[i])) cjkCount++;
+  /// Drops the anchor when it can no longer describe the current request,
+  /// leaving the meter on a pure calibrated estimate until the next reply.
+  void _clearTokenAnchor() {
+    _anchorPromptTokens = null;
+    _anchorMessageCount = 0;
+  }
+
+  /// Re-anchors from the most recent reply that carries a usage reading, so a
+  /// reopened conversation keeps the provider-accurate meter it had.
+  void _restoreTokenAnchorFromHistory() {
+    _clearTokenAnchor();
+    for (int i = _messages.length - 1; i > 0; i--) {
+      final msg = _messages[i];
+      if (msg.isUser) continue;
+      final promptTokens = TokenUtils.normalizeUsage(
+        msg.usage,
+      )?['prompt_tokens'];
+      if (promptTokens is int && promptTokens > 0) {
+        _anchorPromptTokens = promptTokens;
+        _anchorMessageCount = i;
+        return;
+      }
     }
-    final latinChars = text.length - cjkCount;
-    final words = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
-    return cjkCount + ((latinChars / 4).ceil()) + (words * 0.3).ceil();
+  }
+
+  Future<void> _loadTokenCalibration(SharedPreferences prefs) async {
+    final raw = prefs.getString('airp_token_calibration');
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      decoded.forEach((key, value) {
+        if (value is num) {
+          _tokenCalibration[key] = value.toDouble().clamp(
+            TokenUtils.minCalibration,
+            TokenUtils.maxCalibration,
+          );
+        }
+      });
+    } catch (e) {
+      debugPrint('Token calibration load error: $e');
+    }
+  }
+
+  Future<void> _saveTokenCalibration() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'airp_token_calibration',
+      jsonEncode(_tokenCalibration),
+    );
   }
 
   void _scheduleAutoSave() {

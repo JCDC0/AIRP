@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, Groq, and
 others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.29` (`pubspec.yaml` `0.7.29+8`). Target: `0.8.0` release.
+Current version: `0.7.29.1` (`pubspec.yaml` `0.7.29+9`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -36,7 +36,7 @@ Current version: `0.7.29` (`pubspec.yaml` `0.7.29+8`). Target: `0.8.0` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (180 tests, all passing)
+*   **Test:** `flutter test` (239 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -133,6 +133,35 @@ non-streaming round back in front of this — that is what made reasoning stop
 streaming whenever web search was enabled. Gemini still uses non-streamed
 detection (`performGeminiFunctionDetection`), which splits `thought: true` parts
 out via `splitGeminiThoughtParts`.
+
+## Token accounting
+
+`lib/utils/token_utils.dart` is the single source for token math. Nothing else
+should hand-roll a heuristic; `LorebookService` and the context meter share it so
+a budget is spent in the unit the meter reports.
+
+The context meter is anchored, not measured. `ChatProvider._recordUsage` stores
+the `prompt_tokens` the provider actually reported and the message count it
+covered; `updateTokenCount` estimates only the text added since that anchor and
+scales that delta by a per-provider calibration ratio persisted under
+`airp_token_calibration`. The delta is allowed to go negative so deleting a
+message shrinks the meter. There is deliberately no local tokenizer and no
+`countTokens` round trip: AIRP targets a dozen providers with different
+tokenizers, a vocab asset would be correct for only one of them, and the round
+trip cost a request per turn and failed silently.
+
+Two rules keep the estimate honest:
+
+*   Estimate the prompt that is actually sent. Use the assembled instruction
+    from `PromptPipelineService.buildSystemInstruction`, never the raw
+    `_systemInstruction` field, and window messages by `historyLimit` exactly as
+    `_limitedHistory` does.
+*   Normalize usage at the boundary. Providers disagree on shape: Gemini emits
+    camelCase `usageMetadata` whose `candidatesTokenCount` excludes thoughts,
+    some gateways emit `input_tokens`/`output_tokens`, and reasoning and cache
+    figures sit inside `*_details` objects. `TokenUtils.normalizeUsage` maps all
+    of them onto `prompt_tokens` / `completion_tokens` / `total_tokens`, and is
+    applied on read as well as on write so older sessions still render.
 
 ## Lore recognition (formerly the lorebook)
 

@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 import 'dart:math';
 
 import '../models/lorebook_models.dart';
+import '../utils/token_utils.dart';
 
 /// Matches [LorebookEntry] items against text to determine which entries
 /// should be injected into the prompt.
@@ -261,12 +262,10 @@ class LorebookService {
   // Token budget
   // ---------------------------------------------------------------------------
 
-  /// Simple word-count heuristic: ~1.3 tokens per word.
-  static int _estimateTokens(String text) {
-    if (text.isEmpty) return 0;
-    final wordCount = text.split(RegExp(r'\s+')).length;
-    return (wordCount * 1.3).ceil();
-  }
+  /// Delegates to [TokenUtils.estimate] so the budget is spent in the same
+  /// unit the context meter reports. The former word-count heuristic ran about
+  /// a quarter low against it, which let budgeted entries overshoot.
+  static int _estimateTokens(String text) => TokenUtils.estimate(text);
 
   /// Enforces the token budget by including entries in order until the budget
   /// is exhausted.

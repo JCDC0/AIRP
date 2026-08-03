@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/chat_models.dart';
 import '../services/reasoning_utils.dart';
+import '../utils/token_utils.dart';
 
 /// Coordinates background streaming operations across multiple chat sessions.
 ///
@@ -86,8 +87,9 @@ class StreamingCoordinatorService {
         if (chunk.startsWith('[[USAGE:')) {
           final usageStr = chunk.substring(8, chunk.length - 2);
           try {
-            final usage = jsonDecode(usageStr) as Map<String, dynamic>;
-            onUpdate(sessionId, "", usage);
+            final raw = jsonDecode(usageStr) as Map<String, dynamic>;
+            final usage = TokenUtils.normalizeUsage(raw);
+            if (usage != null) onUpdate(sessionId, "", usage);
           } catch (_) {}
         } else if (chunk.startsWith('[[THOUGHT_SIG:')) {
           final sig = chunk.substring(14, chunk.length - 2);
