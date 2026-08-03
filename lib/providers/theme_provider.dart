@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../utils/app_fonts.dart';
 import '../utils/constants.dart';
 
 /// Provider for managing the application's visual theme (colors and typography).
@@ -136,40 +136,7 @@ class ThemeProvider extends ChangeNotifier {
     final baseTheme = (_isLightMode ? ThemeData.light() : ThemeData.dark())
         .textTheme
         .apply(bodyColor: baseColor, displayColor: baseColor);
-    switch (_fontStyle) {
-      case 'Google':
-        return GoogleFonts.openSansTextTheme(baseTheme);
-      case 'Apple':
-        return GoogleFonts.interTextTheme(baseTheme);
-      case 'Claude':
-        return GoogleFonts.sourceSerif4TextTheme(baseTheme);
-      case 'Roleplay':
-        return GoogleFonts.loraTextTheme(baseTheme);
-      case 'Terminal':
-        return GoogleFonts.spaceMonoTextTheme(baseTheme);
-      case 'Manuscript':
-        return GoogleFonts.ebGaramondTextTheme(baseTheme);
-      case 'Cyber':
-        return GoogleFonts.orbitronTextTheme(baseTheme);
-      case 'ModernAnime':
-        return GoogleFonts.quicksandTextTheme(baseTheme);
-      case 'AnimeSub':
-        return GoogleFonts.kosugiMaruTextTheme(baseTheme);
-      case 'Gothic':
-        return GoogleFonts.crimsonProTextTheme(baseTheme);
-      case 'Journal':
-        return GoogleFonts.caveatTextTheme(baseTheme);
-      case 'CleanThin':
-        return GoogleFonts.ralewayTextTheme(baseTheme);
-      case 'Stylized':
-        return GoogleFonts.playfairDisplayTextTheme(baseTheme);
-      case 'Fantasy':
-        return GoogleFonts.cinzelTextTheme(baseTheme);
-      case 'Typewriter':
-        return GoogleFonts.specialEliteTextTheme(baseTheme);
-      default:
-        return baseTheme;
-    }
+    return AppFonts.textTheme(_fontStyle, baseTheme);
   }
 
   /// Toggles between light and dark mode.

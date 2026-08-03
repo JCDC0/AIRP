@@ -6,6 +6,7 @@ import '../providers/theme_provider.dart';
 import '../providers/scale_provider.dart';
 import '../models/chat_models.dart';
 import '../utils/constants.dart';
+import '../utils/model_details.dart';
 
 /// A widget that allows users to select an AI model from a list.
 ///
@@ -509,7 +510,10 @@ class ModelSelector extends StatelessWidget {
             fontSize: scaleProvider.systemFontSize,
           ),
         ),
-        content: SingleChildScrollView(
+        // Bounded and explicitly scrollable: OpenRouter descriptions run to
+        // several paragraphs and used to be cut off with no way to read on.
+        content: _ScrollableDialogBody(
+          height: MediaQuery.of(context).size.height * 0.5,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -533,6 +537,13 @@ class ModelSelector extends StatelessWidget {
                 _detailRow(
                   "",
                   _formatPricing(model.pricing),
+                  scaleProvider,
+                  themeProvider,
+                ),
+              for (final detail in ModelDetails.extract(model))
+                _detailRow(
+                  "${detail.label}:",
+                  detail.value,
                   scaleProvider,
                   themeProvider,
                 ),
@@ -651,5 +662,47 @@ class ModelSelector extends StatelessWidget {
     } catch (e) {
       return p;
     }
+  }
+}
+
+/// Fixed-height scrollable body for the model details dialog.
+///
+/// Stateful only to own a [ScrollController]: [Scrollbar] needs an explicit one
+/// rather than claiming the ambient [PrimaryScrollController], and the
+/// controller has to be disposed with the dialog.
+class _ScrollableDialogBody extends StatefulWidget {
+  const _ScrollableDialogBody({required this.height, required this.child});
+
+  final double height;
+  final Widget child;
+
+  @override
+  State<_ScrollableDialogBody> createState() => _ScrollableDialogBodyState();
+}
+
+class _ScrollableDialogBodyState extends State<_ScrollableDialogBody> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.maxFinite,
+      height: widget.height,
+      child: Scrollbar(
+        controller: _controller,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _controller,
+          padding: const EdgeInsets.only(right: 12),
+          child: widget.child,
+        ),
+      ),
+    );
   }
 }

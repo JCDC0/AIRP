@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/vfx_provider.dart';
 import '../../providers/scale_provider.dart';
+import '../../utils/app_fonts.dart';
 import 'settings_color_picker.dart';
 
 /// A panel for designing text presentation across the app.
@@ -197,23 +198,12 @@ class TextDesignerPanel extends StatelessWidget {
               value: themeProvider.fontStyle,
               dropdownColor: themeProvider.dropdownColor,
               icon: Icon(Icons.text_fields, color: themeProvider.textColor),
-              items: const [
-                DropdownMenuItem(value: 'Default', child: Text('Default (System)')),
-                DropdownMenuItem(value: 'Google', child: Text('Google Sans (Open Sans)')),
-                DropdownMenuItem(value: 'Apple', child: Text('Apple SF (Inter)')),
-                DropdownMenuItem(value: 'Claude', child: Text('Assistant (Source Serif 4)')),
-                DropdownMenuItem(value: 'Roleplay', child: Text('Storybook (Lora)')),
-                DropdownMenuItem(value: 'Terminal', child: Text('Hacker (Space Mono)')),
-                DropdownMenuItem(value: 'Manuscript', child: Text('Ancient Tome (EB Garamond)')),
-                DropdownMenuItem(value: 'Cyber', child: Text('Neon HUD (Orbitron)')),
-                DropdownMenuItem(value: 'ModernAnime', child: Text('Light Novel (Quicksand)')),
-                DropdownMenuItem(value: 'AnimeSub', child: Text('Subtitles (Kosugi Maru)')),
-                DropdownMenuItem(value: 'Gothic', child: Text('Victorian (Crimson Text)')),
-                DropdownMenuItem(value: 'Journal', child: Text('Handwritten (Caveat)')),
-                DropdownMenuItem(value: 'CleanThin', child: Text('Minimalist (Raleway)')),
-                DropdownMenuItem(value: 'Stylized', child: Text('Vogue (Playfair Display)')),
-                DropdownMenuItem(value: 'Fantasy', child: Text('MMORPG (Cinzel)')),
-                DropdownMenuItem(value: 'Typewriter', child: Text('Detective (Special Elite)')),
+              items: [
+                for (final font in AppFonts.all)
+                  DropdownMenuItem(
+                    value: font.key,
+                    child: Text(font.menuLabel, overflow: TextOverflow.ellipsis),
+                  ),
               ],
               onChanged: (String? newValue) {
                 if (newValue != null) themeProvider.setFont(newValue);

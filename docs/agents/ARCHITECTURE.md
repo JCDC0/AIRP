@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, Groq, and
 others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.29.1` (`pubspec.yaml` `0.7.29+9`). Target: `0.8.0` release.
+Current version: `0.7.29.2` (`pubspec.yaml` `0.7.29+10`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -36,7 +36,7 @@ Current version: `0.7.29.1` (`pubspec.yaml` `0.7.29+9`). Target: `0.8.0` release
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (239 tests, all passing)
+*   **Test:** `flutter test` (255 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -133,6 +133,19 @@ non-streaming round back in front of this — that is what made reasoning stop
 streaming whenever web search was enabled. Gemini still uses non-streamed
 detection (`performGeminiFunctionDetection`), which splits `thought: true` parts
 out via `splitGeminiThoughtParts`.
+
+## Fonts
+
+`lib/utils/app_fonts.dart` is the font catalogue. `ThemeProvider` resolves
+through it and the text designer generates its menu from it; do not add a face
+to one without the other, which is the bug the table replaced.
+
+`AppFont.key` is persisted under `app_font_style` and travels in config packs.
+Never rename a key or repoint one at a different face: it silently resets a
+user's font. `AppFonts.resolve` falls back to the system default for unknown
+keys, so a config pack from a newer build degrades instead of crashing.
+
+Faces are fetched by `google_fonts` at first use, not bundled.
 
 ## Token accounting
 

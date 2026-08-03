@@ -7,6 +7,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
 import '../../utils/constants.dart';
+import '../../utils/model_details.dart';
 import 'provider_model_selector.dart';
 
 /// A settings panel for configuring the conversation title and selecting AI models.
@@ -26,6 +27,11 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
   late TextEditingController _groqModelController;
   late FocusNode _titleFocusNode;
 
+  /// Explicit controller for the model description box. Without one it would
+  /// claim the PrimaryScrollController that the settings drawer around it
+  /// already owns, which trips the "attached to multiple scroll views" assert.
+  final ScrollController _descriptionScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +50,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
     _openRouterModelController.dispose();
     _groqModelController.dispose();
     _titleFocusNode.dispose();
+    _descriptionScrollController.dispose();
     super.dispose();
   }
 
@@ -320,18 +327,39 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
                       themeProvider,
                       scaleProvider,
                     ),
+                  for (final detail in ModelDetails.extract(activeModel))
+                    _buildDetailRow(
+                      detail.label,
+                      detail.value,
+                      themeProvider,
+                      scaleProvider,
+                    ),
                   if (activeModel.description !=
                       "No description provided.") ...[
                     const SizedBox(height: 4),
-                    Text(
-                      activeModel.description,
-                      style: TextStyle(
-                        fontSize: scaleProvider.systemFontSize * 0.75,
-                        color: themeProvider.faintestColor,
-                        height: 1.3,
+                    // Scrolls instead of ellipsizing at three lines: OpenRouter
+                    // ships multi-paragraph descriptions and the rest of the
+                    // text was unreachable.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: scaleProvider.systemFontSize * 0.75 * 1.3 * 8,
                       ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
+                      child: Scrollbar(
+                        controller: _descriptionScrollController,
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _descriptionScrollController,
+                          padding: const EdgeInsets.only(right: 10),
+                          child: Text(
+                            activeModel.description,
+                            style: TextStyle(
+                              fontSize: scaleProvider.systemFontSize * 0.75,
+                              color: themeProvider.faintestColor,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ],
