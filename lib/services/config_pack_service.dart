@@ -125,7 +125,6 @@ class ConfigPackService {
       await scaleProvider
           .importSettingsMap(Map<String, dynamic>.from(s['scale'] as Map));
     }
-    await chatProvider.initializeModel();
   }
 
   /// Parses an exported AIRP ConfigPack file. Returns null if the content is

@@ -187,7 +187,6 @@ abstract class AiProviderStrategy {
     List<Map<String, dynamic>>? depthMessages,
     Map<String, Uint8List>? attachmentBytes,
     List<Map<String, dynamic>>? extraMessages,
-    dynamic providerSession,
     bool disableSafety = true,
   }) {
     return ChatApiService.streamOpenAiCompatible(

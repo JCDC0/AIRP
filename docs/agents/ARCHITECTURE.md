@@ -9,14 +9,17 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.30.1` (`pubspec.yaml` `0.7.30+12`). Target: `0.8.0` release.
+Current version: `0.7.30.2` (`pubspec.yaml` `0.7.30+13`). Target: `0.8.0` release.
 
 ## Project overview
 
-*   **Stack:** Flutter (Dart), `Provider` for state management, `google_generative_ai`
-    for Gemini token counting only, custom REST/streaming for all generation.
+*   **Stack:** Flutter (Dart), `Provider` for state management, custom
+    REST/streaming for every provider including Gemini. There is deliberately no
+    vendor SDK: `google_generative_ai` was dropped in `0.7.30.2` after its last
+    real caller disappeared. An SDK concatenates Gemini's `thought` parts into
+    the answer text, which is exactly the boundary reasoning display needs.
 *   **Orchestration:** `ChatProvider` is the central state hub
-    (`lib/providers/chat_provider.dart`, ~2,600 lines).
+    (`lib/providers/chat_provider.dart`, ~2,500 lines).
 *   **Services:**
     *   `PromptPipelineService`: stateless prompt assembly (pure functions).
     *   `ChatApiService`: low-level API communication (Gemini raw REST and
@@ -144,6 +147,22 @@ the API panel renders it. Do not go back to swallowing the error in a
 key having been ignored. Entering a key or endpoint also schedules a debounced
 fetch (`ChatProvider._scheduleModelAutoFetch`), so credentials produce a request
 without hunting for the refresh button.
+
+### No vendor SDK, and no `initializeModel`
+
+`ChatProvider.initializeModel` built a `GenerativeModel` plus a `ChatSession`
+from the full conversation, reading every attached image off disk to do it, and
+ran on session load, provider switch, message edit, delete, regenerate and every
+send. Nothing consumed the result: `GeminiStrategy.streamResponse` received the
+session as `providerSession` and ignored it, streaming over raw REST from
+`history` and `systemInstruction` instead. It also appended a prompt telling
+Gemini to wrap its thoughts in `<think>` tags, which never reached a request
+because the send path builds its own instruction from
+`PromptPipelineService`. All of it was removed in `0.7.30.2` along with the
+`google_generative_ai` dependency and the `providerSession` parameter.
+
+If Gemini needs per-request state again, add it to the REST builders in
+`ChatApiService`, not to a parallel SDK object.
 
 ## Reasoning / thinking handling
 

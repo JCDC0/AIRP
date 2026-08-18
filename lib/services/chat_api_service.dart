@@ -116,11 +116,10 @@ class ChatApiService {
 
   /// Streams a response from Google Gemini via the raw `v1beta` REST API.
   ///
-  /// This intentionally bypasses the `google_generative_ai` SDK because the SDK
-  /// concatenates thinking (`thought`) parts and answer text into a single
-  /// `response.text` string, which breaks reasoning display for Gemma and
-  /// Gemini thinking models. The raw endpoint returns `thought` flags per part,
-  /// letting us wrap reasoning in `<think>` tags.
+  /// AIRP speaks to Gemini over raw REST rather than an SDK: an SDK
+  /// concatenates thinking (`thought`) parts and answer text into one string,
+  /// which loses the boundary reasoning display depends on. The raw endpoint
+  /// flags `thought` per part, so reasoning can be wrapped in `<think>` tags.
   static Stream<String> streamGeminiResponse({
     required String apiKey,
     required String modelName,

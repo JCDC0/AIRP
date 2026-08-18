@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import '../services/file_io_helper.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_models.dart';
 import '../models/character_card.dart';
@@ -241,8 +239,6 @@ class ChatProvider extends ChangeNotifier {
   Set<String> _bookmarkedModels = {};
   Set<String> get bookmarkedModels => _bookmarkedModels;
 
-  late GenerativeModel _model;
-  late ChatSession _chat;
   static const _defaultApiKey = '';
 
   ChatProvider() {
@@ -399,10 +395,6 @@ class ChatProvider extends ChangeNotifier {
     await _loadSillyTavernState();
 
     notifyListeners();
-
-    if (_currentProvider == AiProvider.gemini) {
-      await initializeModel();
-    }
   }
 
   /// Resolves a persisted provider name back to its enum value.
@@ -425,7 +417,6 @@ class ChatProvider extends ChangeNotifier {
 
     notifyListeners();
     saveSettings(showConfirmation: false);
-    if (provider == AiProvider.gemini) initializeModel();
   }
 
   void setApiKey(String key) {
@@ -483,9 +474,6 @@ class ChatProvider extends ChangeNotifier {
     _settings!.setEnableCharacterCard(enable);
     notifyListeners();
     _saveEnableCharacterCard();
-    if (_currentProvider == AiProvider.gemini) {
-      initializeModel();
-    }
   }
 
   Future<void> _saveEnableCharacterCard() async {
@@ -526,9 +514,6 @@ class ChatProvider extends ChangeNotifier {
     _characterCard = card;
     notifyListeners();
     _saveCharacterCard();
-    if (_currentProvider == AiProvider.gemini) {
-      initializeModel();
-    }
   }
 
   Future<void> _saveCharacterCard() async {
@@ -709,10 +694,6 @@ class ChatProvider extends ChangeNotifier {
 
     if (_currentSessionId != null) {
       _scheduleAutoSave();
-    }
-
-    if (_currentProvider == AiProvider.gemini) {
-      await initializeModel();
     }
   }
 
@@ -1138,116 +1119,6 @@ class ChatProvider extends ChangeNotifier {
     );
   }
 
-  /// Initializes the generative model based on the current provider and settings.
-  ///
-  /// This configures safety settings, system instructions, and generation
-  /// parameters. It also rebuilds the chat history for the Gemini provider.
-  Future<void> initializeModel({String? systemInstructionOverride}) async {
-    String activeKey = _getProviderKey(_currentProvider);
-    if (_currentProvider == AiProvider.gemini && activeKey.isEmpty) {
-      activeKey = _defaultApiKey;
-    }
-
-    if (activeKey.isEmpty &&
-        _currentProvider != AiProvider.local &&
-        _currentProvider != AiProvider.ollama) {
-      // Local runtimes and Ollama serve unauthenticated by default.
-      debugPrint("Warning: No API Key found for ${_currentProvider.name}");
-    }
-
-    try {
-      final List<SafetySetting> safetySettings = _settings!.disableSafety
-          ? [
-              SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
-              SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
-              SafetySetting(
-                HarmCategory.sexuallyExplicit,
-                HarmBlockThreshold.none,
-              ),
-              SafetySetting(
-                HarmCategory.dangerousContent,
-                HarmBlockThreshold.none,
-              ),
-            ]
-          : [];
-
-      final String baseSystemInstruction =
-          systemInstructionOverride ?? _buildSystemInstruction();
-      String finalSystemInstruction = baseSystemInstruction;
-
-      if (_currentProvider == AiProvider.gemini && _settings!.enableReasoning) {
-        finalSystemInstruction +=
-            "\n\n[SYSTEM: You are a reasoning model. Enclose your entire internal thought process in <think> and </think> tags. Place your final response only after the closing </think> tag.]";
-        if (_settings!.reasoningEffort != "none") {
-          finalSystemInstruction +=
-              " Reasoning Effort: ${_settings!.reasoningEffort}.";
-        }
-      }
-
-      _model = GenerativeModel(
-        model: _selectedModel,
-        apiKey: activeKey,
-        systemInstruction: finalSystemInstruction.isNotEmpty
-            ? Content.system(finalSystemInstruction)
-            : null,
-        generationConfig: GenerationConfig(
-          temperature: _settings!.enableGenerationSettings
-              ? _settings!.temperature
-              : null,
-          topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
-          topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
-          maxOutputTokens: _settings!.enableMaxOutputTokens
-              ? _settings!.maxOutputTokens
-              : null,
-        ),
-        safetySettings: safetySettings,
-      );
-
-      List<Content> history = [];
-      int effectiveHistoryLimit = _settings!.enableMsgHistory
-          ? _settings!.historyLimit
-          : 0;
-      int startIndex = _messages.length - effectiveHistoryLimit;
-      if (startIndex < 0) startIndex = 0;
-      final limitedMessages = _messages.sublist(startIndex);
-
-      for (var msg in limitedMessages) {
-        final String role = msg.isUser ? 'user' : 'model';
-        final String contextText = msg.isUser
-            ? msg.text
-            : ChatMessage.sanitizeForContext(msg.text);
-        if (msg.isUser && msg.imagePaths.isNotEmpty) {
-          List<Part> parts = [];
-          if (contextText.isNotEmpty) parts.add(TextPart(contextText));
-          for (String path in msg.imagePaths) {
-            if (await FileIOHelper.fileExists(path)) {
-              final bytes = await FileIOHelper.readBytes(path);
-              final mimeType = path.toLowerCase().endsWith('.png')
-                  ? 'image/png'
-                  : 'image/jpeg';
-              parts.add(DataPart(mimeType, bytes));
-            }
-          }
-          history.add(Content(role, parts));
-        } else if (history.isNotEmpty && history.last.role == role) {
-          final List<Part> existingParts = history.last.parts.toList();
-          existingParts.add(TextPart("\n\n$contextText"));
-          history[history.length - 1] = Content(role, existingParts);
-        } else {
-          history.add(
-            msg.isUser
-                ? Content.text(contextText)
-                : Content.model([TextPart(contextText)]),
-          );
-        }
-      }
-
-      _chat = _model.startChat(history: history);
-    } catch (e) {
-      debugPrint("Model Init Error: $e");
-    }
-  }
-
   /// Sends a message to the active AI provider and streams the response.
   ///
   /// This method handles optimistic updates, grounding, image generation,
@@ -1461,9 +1332,6 @@ class ChatProvider extends ChangeNotifier {
       );
       notifyListeners();
       _scheduleAutoSave();
-      if (_currentProvider == AiProvider.gemini) {
-        await initializeModel();
-      }
       updateTokenCount();
       return;
     }
@@ -1489,12 +1357,6 @@ class ChatProvider extends ChangeNotifier {
       // In BYOK tool mode with gathered results, the tool context is delivered
       // via [toolExtraMessages]; the user message itself is unmodified.
       final String finalUserMessage = sentUserText;
-
-      if (_currentProvider == AiProvider.gemini) {
-        await initializeModel(
-          systemInstructionOverride: finalSystemInstruction,
-        );
-      }
 
       final limitedHistory = _limitedHistory();
 
@@ -1532,9 +1394,6 @@ class ChatProvider extends ChangeNotifier {
             depthMessages: depthEntries.isNotEmpty ? depthEntries : null,
             attachmentBytes: attachmentBytes,
             extraMessages: toolExtraMessages,
-            providerSession: _currentProvider == AiProvider.gemini
-                ? _chat
-                : null,
             disableSafety: _settings!.disableSafety,
           );
 
@@ -1606,11 +1465,6 @@ class ChatProvider extends ChangeNotifier {
             );
             notifyListeners();
             _scheduleAutoSave();
-
-            if (_currentProvider == AiProvider.gemini) {
-              await initializeModel();
-            }
-
             updateTokenCount();
           } else {
             // Background completion: update saved session and show notification
@@ -1760,7 +1614,6 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
     }
 
-    await initializeModel();
     sendMessage(textToResend, imagesToResend);
   }
 
@@ -2111,7 +1964,6 @@ class ChatProvider extends ChangeNotifier {
     _currentSessionId = null;
     _currentTitle = "";
     notifyListeners();
-    initializeModel();
   }
 
   void loadSession(ChatSessionData session) {
@@ -2154,7 +2006,6 @@ class ChatProvider extends ChangeNotifier {
     }
 
     notifyListeners();
-    initializeModel();
   }
 
   Future<void> deleteSession(String id) async {
@@ -2174,7 +2025,6 @@ class ChatProvider extends ChangeNotifier {
     _messages.removeAt(index);
     notifyListeners();
     _scheduleAutoSave();
-    initializeModel();
     updateTokenCount();
   }
 
@@ -2195,7 +2045,6 @@ class ChatProvider extends ChangeNotifier {
     );
     notifyListeners();
     _scheduleAutoSave();
-    initializeModel();
     updateTokenCount();
   }
 
