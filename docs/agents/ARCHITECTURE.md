@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.30` (`pubspec.yaml` `0.7.30+11`). Target: `0.8.0` release.
+Current version: `0.7.30.1` (`pubspec.yaml` `0.7.30+12`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -36,7 +36,7 @@ Current version: `0.7.30` (`pubspec.yaml` `0.7.30+11`). Target: `0.8.0` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (277 tests, all passing)
+*   **Test:** `flutter test` (288 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -86,10 +86,10 @@ currently clean and must stay that way.
 
 ## Providers
 
-Nine providers ship: `gemini`, `openRouter`, `nanoGpt`, `nvidia`, `xAi`,
-`deepseek`, `ollama`, `openAiCompatible`, `local`. `0.7.30` retired ArliAI,
-Blackbox AI, Groq, HuggingFace, Minimax, Mistral, OpenAI, Qwen, Vertex AI,
-Xiaomi MiMo and Z.ai. Do not reintroduce one without a user asking for it.
+Eight providers ship: `gemini`, `openRouter`, `nanoGpt`, `nvidia`, `deepseek`,
+`ollama`, `openAiCompatible`, `local`. `0.7.30` retired ArliAI, Blackbox AI,
+Groq, HuggingFace, Minimax, Mistral, OpenAI, Qwen, Vertex AI, Xiaomi MiMo and
+Z.ai; `0.7.30.1` retired xAI. Do not reintroduce one without a user asking.
 
 A retired provider name in a stored session or config pack is not an error.
 `ChatProvider._providerFromName` maps an unknown name to Gemini, and
@@ -151,19 +151,53 @@ AIRP normalizes reasoning output by wrapping reasoning content in `<think>` tags
 parsed by `ReasoningUtils` in `lib/services/reasoning_utils.dart`. Provider-specific
 request formats live in `AiProviderStrategy.applyReasoningEffort()`:
 
-`ThinkingFormat` has two members: `reasoningEffort` and `none`. The Qwen
-(`enable_thinking`) and Z.AI (`thinking: {type: ...}`) formats were removed in
-`0.7.30` with their providers; do not re-add a member without an implementor.
+`ThinkingFormat` selects the request shape for OpenAI-compatible bodies.
+`AiProviderStrategy.applyThinkingFormat` is the single implementation;
+`ChatApiService` calls it rather than keeping copies of the switch.
 
-*   **OpenAI-compatible** providers use `reasoning_effort: low|medium|high`.
-*   **xAI Grok** sends `reasoning_effort: none|low|medium|high`.
-*   **OpenRouter** supports `reasoning_effort` and emits `reasoning: {effort: ...}`
-    for the `Max` (`xhigh`) level.
-*   **NVIDIA / NanoGPT / OpenAI Compatible / Ollama** use `reasoning_effort`.
-*   **DeepSeek** reasoning models reason automatically; no input parameter is
-    sent.
-*   **Gemini / Gemma** thinking content is parsed from raw `v1beta`
-    `streamGenerateContent` responses where parts carry `thought: true`.
+*   `reasoningEffort` emits `reasoning_effort` and OMITS the field when the
+    user disables reasoning. Correct only where an absent field means off.
+*   `reasoningEffortAlways` emits it on every request including the literal
+    `none`. Required where an absent field means default-on.
+*   `thinkingObject` emits `thinking: {"type": "enabled"|"disabled"}` plus
+    `reasoning_effort` when enabled.
+*   `none` sends nothing.
+
+Per provider, verified against vendor docs in `0.7.30.1`:
+
+*   **Gemini / Gemma** do NOT use `reasoning_effort`. Reasoning is requested via
+    `generationConfig.thinkingConfig`, built by
+    `ChatApiService.buildGeminiThinkingConfig`. Gemini 3+ takes a
+    `thinkingLevel` enum (`minimal|low|medium|high`); Gemini 2.x takes a
+    `thinkingBudget` in tokens (`0` disables, `-1` is dynamic, and 2.5 Pro
+    cannot disable so it gets `-1`). Thought parts are only returned when
+    `includeThoughts` is true. Anything that is not a `gemini-<n>` id gets
+    `includeThoughts` alone. Nothing is sent at all unless the user has
+    reasoning enabled, which preserves each model's own default.
+*   **OpenRouter** emits `reasoning_effort`, plus `reasoning: {effort: ...}` for
+    the `Max` (`xhigh`) level.
+*   **NanoGPT** documents `reasoning_effort` as both the depth control and the
+    reasoning-mode signal, `none` through `xhigh`; sent always.
+*   **NVIDIA NIM** validates `reasoning_effort` against `low|medium|high` and
+    returns 400 for anything else, so `xhigh` is never offered. Nemotron models
+    additionally gate reasoning on a `detailed thinking on|off` system prompt,
+    which AIRP does not inject because it would overwrite the user's own.
+*   **DeepSeek** V4 defaults thinking ON at `high`. It takes
+    `thinking: {type: ...}` and a `low|high|max` ladder with no `medium`, so its
+    `reasoningEffortOptions` are overridden to match.
+*   **Ollama** maps `reasoning_effort` onto its native `think` parameter and
+    auto-enables thinking when the field is absent, so it is sent always. It
+    accepts `none|low|medium|high` and rejects `xhigh`.
+*   **OpenAI Compatible / Local** point at endpoints AIRP cannot introspect;
+    they use the conservative omit-when-disabled form.
+
+`GenerationSettingsPanel._effectiveReasoningEffort` steps a stored level down to
+the nearest one the active provider accepts, so switching providers does not
+silently read as Disabled.
+
+**Do not** add a `ThinkingFormat` member without a provider that implements it,
+and do not assume a new provider uses `reasoning_effort` without checking its
+docs. Three of the eight do not.
 
 Reasoning is persisted in session JSON for redisplay. The thinking tag is stripped
 ONLY from the outbound LLM payload, never from displayed or stored text.

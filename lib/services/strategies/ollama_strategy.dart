@@ -15,7 +15,14 @@ class OllamaStrategy extends OpenAiCompatibleStrategy {
         provider: AiProvider.ollama,
         baseUrl: '${ApiConstants.ollamaDefaultEndpoint}/api/tags',
         prefKey: ApiConstants.prefListOllama,
+        thinkingFormat: ThinkingFormat.reasoningEffortAlways,
       );
+
+  /// Ollama's OpenAI layer maps `reasoning_effort` onto its native `think`
+  /// parameter and accepts `none|low|medium|high`. It auto-enables thinking
+  /// for any thinking-capable model when the field is absent, so the field is
+  /// sent on every request; omitting it would make Disabled unreachable.
+  /// `xhigh` is deliberately not offered: Ollama rejects it.
 
   /// Strips any API suffix the user pasted, leaving the bare server root.
   ///

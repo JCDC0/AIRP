@@ -227,17 +227,6 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
             refreshButtonColor: Colors.blueAccent,
           ),
 
-        if (chatProvider.currentProvider == AiProvider.xAi)
-          ProviderModelSelector(
-            modelsList: chatProvider.xAiModelsList,
-            selectedModel: chatProvider.xAiModel,
-            onSelected: chatProvider.setModel,
-            placeholder: 'grok-4',
-            isLoading: chatProvider.isLoadingXAiModels,
-            onRefresh: () => chatProvider.refreshModels(AiProvider.xAi),
-            refreshButtonColor: Colors.white70,
-          ),
-
         if (chatProvider.currentProvider == AiProvider.ollama)
           ProviderModelSelector(
             modelsList: chatProvider.ollamaModelsList,

@@ -34,6 +34,64 @@ class ChatApiService {
     );
   }
 
+  /// Builds `generationConfig.thinkingConfig` for [modelName], or null when
+  /// the user has reasoning switched off entirely.
+  ///
+  /// Gemini does not use `reasoning_effort`. Reasoning is requested through
+  /// `thinkingConfig`, and thought parts are only returned when
+  /// `includeThoughts` is true. AIRP sent neither before `0.7.30.1`, so the
+  /// effort dropdown had no effect on Gemini at all.
+  ///
+  /// The two families take different fields: Gemini 3 and newer take a
+  /// `thinkingLevel` enum, Gemini 2.x takes a `thinkingBudget` in tokens.
+  /// Sending the wrong one degrades or rejects the request, so the family is
+  /// read off the model id. Anything that is not a `gemini-<n>` id (Gemma, or
+  /// a name this build has not seen) gets `includeThoughts` alone, which is
+  /// accepted everywhere.
+  ///
+  /// Budget `0` disables thinking, but Gemini 2.5 Pro cannot disable it, so
+  /// Pro ids fall back to `-1` (dynamic) instead of erroring.
+  @visibleForTesting
+  static Map<String, dynamic>? buildGeminiThinkingConfig(
+    String modelName,
+    String? effort,
+  ) {
+    if (effort == null || effort.isEmpty) return null;
+
+    final id = modelName.replaceAll('models/', '').toLowerCase();
+    final bool enabled = effort != 'none';
+    final config = <String, dynamic>{'includeThoughts': enabled};
+
+    final major = RegExp(r'gemini-(\d+)').firstMatch(id);
+    if (major == null) return config;
+
+    final version = int.tryParse(major.group(1)!) ?? 3;
+    if (version >= 3) {
+      config['thinkingLevel'] = const {
+        'none': 'minimal',
+        'low': 'low',
+        'medium': 'medium',
+        'high': 'high',
+        'xhigh': 'high',
+        'max': 'high',
+      }[effort] ?? 'medium';
+      return config;
+    }
+
+    if (!enabled) {
+      config['thinkingBudget'] = id.contains('pro') ? -1 : 0;
+      return config;
+    }
+    config['thinkingBudget'] = const {
+      'low': 4096,
+      'medium': 8192,
+      'high': 24576,
+      'xhigh': 24576,
+      'max': 24576,
+    }[effort] ?? 8192;
+    return config;
+  }
+
   /// Builds the message shown when a Gemini stream returns HTTP 200 but no
   /// answer text, attributing it to [blockReason] or [finishReason] when the
   /// response carried one.
@@ -79,6 +137,7 @@ class ChatApiService {
     List<Map<String, dynamic>>? depthMessages,
     List<Map<String, dynamic>>? extraMessages,
     bool disableSafety = true,
+    String? reasoningEffort,
   }) async* {
     String accumulatedText = userMessage;
     final List<Map<String, dynamic>> inlineParts = [];
@@ -220,6 +279,10 @@ class ChatApiService {
     if (topP != null) generationConfig['topP'] = topP;
     if (topK != null) generationConfig['topK'] = topK;
     if (maxTokens != null) generationConfig['maxOutputTokens'] = maxTokens;
+    final thinkingConfig = buildGeminiThinkingConfig(modelName, reasoningEffort);
+    if (thinkingConfig != null) {
+      generationConfig['thinkingConfig'] = thinkingConfig;
+    }
     if (generationConfig.isNotEmpty) {
       bodyMap['generationConfig'] = generationConfig;
     }
@@ -483,17 +546,13 @@ class ChatApiService {
       if (applyReasoningEffort != null) {
         applyReasoningEffort(bodyMap, reasoningEffort);
       } else {
-        // Fallback for callers that do not supply a strategy callback.
-        final bool reasoningEnabled = reasoningEffort != "none";
-        switch (thinkingFormat) {
-          case ThinkingFormat.none:
-            break;
-          case ThinkingFormat.reasoningEffort:
-            if (reasoningEnabled) {
-              bodyMap["reasoning_effort"] = reasoningEffort;
-            }
-            break;
-        }
+        // Callers without a strategy callback share the strategy's rules
+        // rather than keeping a second copy of the switch here.
+        AiProviderStrategy.applyThinkingFormat(
+          bodyMap,
+          reasoningEffort,
+          thinkingFormat,
+        );
       }
     }
 
@@ -813,16 +872,13 @@ class ChatApiService {
       if (applyReasoningEffort != null) {
         applyReasoningEffort(bodyMap, reasoningEffort);
       } else {
-        final bool reasoningEnabled = reasoningEffort != 'none';
-        switch (thinkingFormat) {
-          case ThinkingFormat.none:
-            break;
-          case ThinkingFormat.reasoningEffort:
-            if (reasoningEnabled) {
-              bodyMap['reasoning_effort'] = reasoningEffort;
-            }
-            break;
-        }
+        // Callers without a strategy callback share the strategy's rules
+        // rather than keeping a second copy of the switch here.
+        AiProviderStrategy.applyThinkingFormat(
+          bodyMap,
+          reasoningEffort,
+          thinkingFormat,
+        );
       }
     }
 
@@ -968,14 +1024,13 @@ class ChatApiService {
       if (applyReasoningEffort != null) {
         applyReasoningEffort(bodyMap, reasoningEffort);
       } else {
-        final bool reasoningEnabled = reasoningEffort != 'none';
-        switch (thinkingFormat) {
-          case ThinkingFormat.none:
-            break;
-          case ThinkingFormat.reasoningEffort:
-            if (reasoningEnabled) bodyMap['reasoning_effort'] = reasoningEffort;
-            break;
-        }
+        // Callers without a strategy callback share the strategy's rules
+        // rather than keeping a second copy of the switch here.
+        AiProviderStrategy.applyThinkingFormat(
+          bodyMap,
+          reasoningEffort,
+          thinkingFormat,
+        );
       }
     }
 
@@ -1187,6 +1242,7 @@ class ChatApiService {
     double? topP,
     int? topK,
     int? maxTokens,
+    String? reasoningEffort,
     http.Client? client,
   }) async {
     final modelId = model.replaceAll('models/', '');
@@ -1246,6 +1302,10 @@ class ChatApiService {
       'topK': ?topK,
       'maxOutputTokens': ?maxTokens,
     };
+    final detectionThinking = buildGeminiThinkingConfig(model, reasoningEffort);
+    if (detectionThinking != null) {
+      generationConfig['thinkingConfig'] = detectionThinking;
+    }
     if (generationConfig.isNotEmpty) {
       bodyMap['generationConfig'] = generationConfig;
     }

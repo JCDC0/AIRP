@@ -14,7 +14,6 @@ void main() {
       'nanoGpt': ApiConstants.nanoGptBaseUrl,
       'nvidia': ApiConstants.nvidiaBaseUrl,
       'deepseek': ApiConstants.deepseekBaseUrl,
-      'xAi': ApiConstants.xAiBaseUrl,
       'ollamaDefault': ApiConstants.ollamaDefaultEndpoint,
     };
 
@@ -37,7 +36,6 @@ void main() {
     expect(ApiConstants.nvidiaBaseUrl,
       'https://integrate.api.nvidia.com/v1/models');
     expect(ApiConstants.deepseekBaseUrl, 'https://api.deepseek.com/models');
-    expect(ApiConstants.xAiBaseUrl, 'https://api.x.ai/v1/models');
     expect(ApiConstants.ollamaDefaultEndpoint, 'http://localhost:11434');
   });
 
@@ -50,9 +48,8 @@ void main() {
       ApiConstants.prefListOpenAiCompatible,
       ApiConstants.prefListDeepseek,
       ApiConstants.prefListOllama,
-      ApiConstants.prefListXAi,
       ApiConstants.prefListLocal,
     };
-    expect(prefKeys.length, 9);
+    expect(prefKeys.length, 8);
   });
 }

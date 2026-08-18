@@ -57,7 +57,6 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
       case AiProvider.openAiCompatible: return provider.openAiCompatibleKey;
       case AiProvider.deepseek: return provider.deepseekKey;
       case AiProvider.ollama: return provider.ollamaKey;
-      case AiProvider.xAi: return provider.xAiKey;
       case AiProvider.local: return "";
     }
   }

@@ -4,9 +4,9 @@ import 'ai_provider_strategy.dart';
 import 'gemini_strategy.dart';
 import 'openrouter_strategy.dart';
 import 'nanogpt_strategy.dart';
+import 'deepseek_strategy.dart';
 import 'nvidia_strategy.dart';
 import 'ollama_strategy.dart';
-import 'xai_strategy.dart';
 
 /// Resolves the appropriate [AiProviderStrategy] for a given [AiProvider].
 ///
@@ -19,16 +19,11 @@ class StrategyResolver {
     AiProvider.openRouter: OpenRouterStrategy(),
     AiProvider.nanoGpt: NanoGptStrategy(),
     AiProvider.nvidia: NvidiaStrategy(),
-    AiProvider.xAi: XAiStrategy(),
     AiProvider.ollama: OllamaStrategy(),
 
+    AiProvider.deepseek: DeepseekStrategy(),
+
     // OpenAI Compatible Defaults
-    AiProvider.deepseek: OpenAiCompatibleStrategy(
-      provider: AiProvider.deepseek,
-      baseUrl: ApiConstants.deepseekBaseUrl,
-      prefKey: ApiConstants.prefListDeepseek,
-      thinkingFormat: ThinkingFormat.none,
-    ),
     AiProvider.openAiCompatible: OpenAiCompatibleStrategy(
       provider: AiProvider.openAiCompatible,
       baseUrl: '',

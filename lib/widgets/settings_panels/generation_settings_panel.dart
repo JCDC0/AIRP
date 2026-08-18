@@ -34,7 +34,19 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
     final supported =
         strategy.reasoningEffortOptions.map((o) => o.apiValue).toSet();
     if (supported.contains(stored)) return stored;
-    if (stored == 'xhigh' && supported.contains('high')) return 'high';
+    // Step down to the nearest level the provider actually accepts rather
+    // than silently reading as Disabled: DeepSeek has no `medium`, NVIDIA
+    // rejects `xhigh`, and Ollama accepts neither `xhigh` nor `max`.
+    const fallbacks = <String, List<String>>{
+      'xhigh': ['max', 'high'],
+      'max': ['xhigh', 'high'],
+      'medium': ['high', 'low'],
+      'low': ['low', 'medium'],
+      'high': ['high', 'max'],
+    };
+    for (final candidate in fallbacks[stored] ?? const <String>[]) {
+      if (supported.contains(candidate)) return candidate;
+    }
     return 'none';
   }
 

@@ -12,6 +12,15 @@ class NanoGptStrategy extends AiProviderStrategy {
   @override
   String get prefKey => ApiConstants.prefListNanoGpt;
 
+  /// NanoGPT documents `reasoning_effort` as both the depth control and the
+  /// explicit reasoning-mode signal, accepting `none` through `xhigh`. The
+  /// field is always sent so selecting Disabled actually reaches the gateway.
+  @override
+  ThinkingFormat get thinkingFormat => ThinkingFormat.reasoningEffortAlways;
+
+  @override
+  bool get supportsMaxReasoningEffort => true;
+
   @override
   String getStreamUrl({String? customUrl}) =>
       'https://nano-gpt.com/api/v1/chat/completions';

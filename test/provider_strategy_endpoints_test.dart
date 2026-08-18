@@ -1,4 +1,5 @@
 import 'package:airp/models/chat_models.dart';
+import 'package:airp/services/chat_api_service.dart';
 import 'package:airp/services/strategies/ai_provider_strategy.dart';
 import 'package:airp/services/strategies/nvidia_strategy.dart';
 import 'package:airp/services/strategies/ollama_strategy.dart';
@@ -148,28 +149,75 @@ void main() {
   });
 
   group('reasoning request format', () {
-    test('reasoningEffort providers emit the OpenAI field', () {
+    Map<String, dynamic> bodyFor(AiProvider provider, String effort) {
       final body = <String, dynamic>{};
-      StrategyResolver.resolve(
+      StrategyResolver.resolve(provider).applyReasoningEffort(body, effort);
+      return body;
+    }
+
+    test('NVIDIA sends reasoning_effort and omits it when disabled', () {
+      expect(bodyFor(AiProvider.nvidia, 'high'), {'reasoning_effort': 'high'});
+      expect(bodyFor(AiProvider.nvidia, 'none'), isEmpty);
+    });
+
+    test('NVIDIA never offers an effort its API rejects', () {
+      final values = StrategyResolver.resolve(
         AiProvider.nvidia,
-      ).applyReasoningEffort(body, 'high');
-      expect(body['reasoning_effort'], 'high');
+      ).reasoningEffortOptions.map((o) => o.apiValue);
+      expect(values, isNot(contains('xhigh')));
+      expect(values, isNot(contains('max')));
     });
 
-    test('none providers stay silent', () {
-      final body = <String, dynamic>{};
-      StrategyResolver.resolve(
-        AiProvider.deepseek,
-      ).applyReasoningEffort(body, 'high');
-      expect(body, isEmpty);
+    test('Ollama always sends reasoning_effort, including none', () {
+      // Ollama auto-enables thinking when the field is absent, so omitting it
+      // would make Disabled unreachable.
+      expect(bodyFor(AiProvider.ollama, 'none'), {'reasoning_effort': 'none'});
+      expect(bodyFor(AiProvider.ollama, 'medium'), {
+        'reasoning_effort': 'medium',
+      });
     });
 
-    test('disabled reasoning omits the field entirely', () {
-      final body = <String, dynamic>{};
-      StrategyResolver.resolve(
-        AiProvider.xAi,
-      ).applyReasoningEffort(body, 'none');
-      expect(body['reasoning_effort'], 'none');
+    test('Ollama does not offer xhigh, which its API rejects', () {
+      final values = StrategyResolver.resolve(
+        AiProvider.ollama,
+      ).reasoningEffortOptions.map((o) => o.apiValue);
+      expect(values, isNot(contains('xhigh')));
+    });
+
+    test('NanoGPT always sends reasoning_effort and offers xhigh', () {
+      expect(bodyFor(AiProvider.nanoGpt, 'none'), {'reasoning_effort': 'none'});
+      expect(
+        StrategyResolver.resolve(
+          AiProvider.nanoGpt,
+        ).reasoningEffortOptions.map((o) => o.apiValue),
+        contains('xhigh'),
+      );
+    });
+
+    test('DeepSeek sends the thinking object, which defaults to on', () {
+      expect(bodyFor(AiProvider.deepseek, 'high'), {
+        'thinking': {'type': 'enabled'},
+        'reasoning_effort': 'high',
+      });
+      expect(bodyFor(AiProvider.deepseek, 'none'), {
+        'thinking': {'type': 'disabled'},
+      });
+    });
+
+    test('DeepSeek offers only the ladder its API accepts', () {
+      expect(
+        StrategyResolver.resolve(
+          AiProvider.deepseek,
+        ).reasoningEffortOptions.map((o) => o.apiValue),
+        ['none', 'low', 'high', 'max'],
+      );
+    });
+
+    test('OpenRouter emits both formats for its Max level', () {
+      expect(bodyFor(AiProvider.openRouter, 'xhigh'), {
+        'reasoning_effort': 'xhigh',
+        'reasoning': {'effort': 'xhigh'},
+      });
     });
 
     test('every live provider resolves a strategy', () {
@@ -180,6 +228,67 @@ void main() {
           reason: '${provider.name} must resolve',
         );
       }
+    });
+  });
+
+  group('Gemini thinkingConfig', () {
+    test('sends nothing when the user has reasoning switched off', () {
+      expect(
+        ChatApiService.buildGeminiThinkingConfig(
+          'models/gemini-3-flash-preview',
+          null,
+        ),
+        isNull,
+      );
+    });
+
+    test('Gemini 3 takes a thinkingLevel', () {
+      expect(
+        ChatApiService.buildGeminiThinkingConfig(
+          'models/gemini-3-flash-preview',
+          'high',
+        ),
+        {'includeThoughts': true, 'thinkingLevel': 'high'},
+      );
+      expect(
+        ChatApiService.buildGeminiThinkingConfig('models/gemini-3.1-pro', 'none'),
+        {'includeThoughts': false, 'thinkingLevel': 'minimal'},
+      );
+    });
+
+    test('Gemini 2.5 takes a thinkingBudget instead', () {
+      expect(
+        ChatApiService.buildGeminiThinkingConfig('models/gemini-2.5-flash', 'low'),
+        {'includeThoughts': true, 'thinkingBudget': 4096},
+      );
+      expect(
+        ChatApiService.buildGeminiThinkingConfig('models/gemini-2.5-flash', 'none'),
+        {'includeThoughts': false, 'thinkingBudget': 0},
+      );
+    });
+
+    test('Gemini 2.5 Pro cannot disable thinking, so it goes dynamic', () {
+      expect(
+        ChatApiService.buildGeminiThinkingConfig('models/gemini-2.5-pro', 'none'),
+        {'includeThoughts': false, 'thinkingBudget': -1},
+      );
+    });
+
+    test('a non-Gemini id gets includeThoughts alone', () {
+      expect(
+        ChatApiService.buildGeminiThinkingConfig('models/gemma-3-27b-it', 'high'),
+        {'includeThoughts': true},
+      );
+    });
+
+    test('an effort the family does not name degrades to its default', () {
+      expect(
+        ChatApiService.buildGeminiThinkingConfig(
+          'models/gemini-3-flash-preview',
+          'xhigh',
+        ),
+        {'includeThoughts': true, 'thinkingLevel': 'high'},
+      );
     });
   });
 

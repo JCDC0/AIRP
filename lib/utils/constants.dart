@@ -122,7 +122,6 @@ class ApiConstants {
   static const String nvidiaBaseUrl =
       "https://integrate.api.nvidia.com/v1/models";
   static const String deepseekBaseUrl = "https://api.deepseek.com/models";
-  static const String xAiBaseUrl = "https://api.x.ai/v1/models";
 
   /// Root of a default local Ollama install. The user-visible endpoint field
   /// stores the server root (no `/v1`); [OllamaStrategy] appends the
@@ -136,7 +135,6 @@ class ApiConstants {
   static const String prefListOpenAiCompatible = 'airp_list_openai_compatible';
   static const String prefListDeepseek = 'airp_list_deepseek';
   static const String prefListOllama = 'airp_list_ollama';
-  static const String prefListXAi = 'airp_list_xai';
   static const String prefListLocal = 'airp_list_local';
 
   static const String prefKeyGemini = 'airp_key_gemini';
@@ -146,7 +144,6 @@ class ApiConstants {
   static const String prefKeyOpenAiCompatible = 'airp_key_openai_compatible';
   static const String prefKeyDeepseek = 'airp_key_deepseek';
   static const String prefKeyOllama = 'airp_key_ollama';
-  static const String prefKeyXAi = 'airp_key_xai';
 
   static const String secureKeyGemini = 'secure_airp_key_gemini';
   static const String secureKeyOpenRouter = 'secure_airp_key_openrouter';
@@ -156,7 +153,6 @@ class ApiConstants {
       'secure_airp_key_openai_compatible';
   static const String secureKeyDeepseek = 'secure_airp_key_deepseek';
   static const String secureKeyOllama = 'secure_airp_key_ollama';
-  static const String secureKeyXAi = 'secure_airp_key_xai';
 
   static const String prefModelGemini = 'airp_model_gemini';
   static const String prefModelOpenRouter = 'airp_model_openrouter';
@@ -166,7 +162,6 @@ class ApiConstants {
       'airp_model_openai_compatible';
   static const String prefModelDeepseek = 'airp_model_deepseek';
   static const String prefModelOllama = 'airp_model_ollama';
-  static const String prefModelXAi = 'airp_model_xai';
 
   static const String prefLocalIp = 'airp_local_ip';
   static const String prefLocalModelName = 'airp_local_model_name';

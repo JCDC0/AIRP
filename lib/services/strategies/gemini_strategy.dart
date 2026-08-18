@@ -80,6 +80,7 @@ class GeminiStrategy extends AiProviderStrategy {
       depthMessages: depthMessages,
       extraMessages: extraMessages,
       disableSafety: disableSafety,
+      reasoningEffort: reasoningEffort,
     );
   }
 }

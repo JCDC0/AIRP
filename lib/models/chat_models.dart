@@ -11,7 +11,6 @@ enum AiProvider {
   openAiCompatible,
   deepseek,
   ollama,
-  xAi,
 }
 
 /// Data structure representing a saved chat session.

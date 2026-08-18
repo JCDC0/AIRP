@@ -19,6 +19,14 @@ class NvidiaStrategy extends AiProviderStrategy {
   @override
   String get prefKey => ApiConstants.prefListNvidia;
 
+  /// NIM validates `reasoning_effort` against `low|medium|high` and returns
+  /// 400 for anything else, so `xhigh` is never offered and the field is
+  /// omitted rather than sent as `none`. Nemotron models additionally gate
+  /// reasoning on a `detailed thinking on|off` system prompt, which AIRP does
+  /// not inject because it would overwrite the user's own instruction.
+  @override
+  ThinkingFormat get thinkingFormat => ThinkingFormat.reasoningEffort;
+
   @override
   String getStreamUrl({String? customUrl}) =>
       "https://integrate.api.nvidia.com/v1/chat/completions";

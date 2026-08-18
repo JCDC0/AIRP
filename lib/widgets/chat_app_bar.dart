@@ -69,8 +69,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         return 'Deepseek';
       case AiProvider.ollama:
         return 'Ollama';
-      case AiProvider.xAi:
-        return 'xAI';
     }
   }
 
@@ -405,13 +403,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           chatProvider.ollamaModelsList,
           chatProvider.ollamaModel,
           'Select Ollama Model',
-        );
-      case AiProvider.xAi:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.xAiModelsList,
-          chatProvider.xAiModel,
-          'Select xAI Model',
         );
       case AiProvider.local:
         return Container(

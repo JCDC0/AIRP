@@ -79,7 +79,6 @@ class ChatProvider extends ChangeNotifier {
       _modelRegistry.getModels(AiProvider.deepseek);
   List<ModelInfo> get ollamaModelsList =>
       _modelRegistry.getModels(AiProvider.ollama);
-  List<ModelInfo> get xAiModelsList => _modelRegistry.getModels(AiProvider.xAi);
 
   bool get isLoadingGeminiModels => _modelRegistry.isLoading(AiProvider.gemini);
   bool get isLoadingOpenRouterModels =>
@@ -92,7 +91,6 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingDeepseekModels =>
       _modelRegistry.isLoading(AiProvider.deepseek);
   bool get isLoadingOllamaModels => _modelRegistry.isLoading(AiProvider.ollama);
-  bool get isLoadingXAiModels => _modelRegistry.isLoading(AiProvider.xAi);
 
   bool get isRefreshingModels => _modelRegistry.isAnyLoading;
 
@@ -121,7 +119,6 @@ class ChatProvider extends ChangeNotifier {
       _apiKeys.getProviderKey(AiProvider.openAiCompatible);
   String get deepseekKey => _apiKeys.getProviderKey(AiProvider.deepseek);
   String get ollamaKey => _apiKeys.getProviderKey(AiProvider.ollama);
-  String get xAiKey => _apiKeys.getProviderKey(AiProvider.xAi);
 
   String _localIp = ChatDefaults.localIp;
   String _localModelName = 'local-model';
@@ -145,7 +142,6 @@ class ChatProvider extends ChangeNotifier {
   String _openAiCompatibleModel = '';
   String _deepseekModel = '';
   String _ollamaModel = '';
-  String _xAiModel = '';
   String _selectedModel = 'models/gemini-3-flash-preview';
 
   String get selectedGeminiModel => _selectedGeminiModel;
@@ -155,7 +151,6 @@ class ChatProvider extends ChangeNotifier {
   String get openAiCompatibleModel => _openAiCompatibleModel;
   String get deepseekModel => _deepseekModel;
   String get ollamaModel => _ollamaModel;
-  String get xAiModel => _xAiModel;
   String get selectedModel => _selectedModel;
 
   /// Returns the maximum context length for the currently selected model.
@@ -383,7 +378,6 @@ class ChatProvider extends ChangeNotifier {
         prefs.getString(ApiConstants.prefModelDeepseek) ?? _deepseekModel;
     _ollamaModel =
         prefs.getString(ApiConstants.prefModelOllama) ?? _ollamaModel;
-    _xAiModel = prefs.getString(ApiConstants.prefModelXAi) ?? _xAiModel;
 
     _openAiCompatibleEndpoint =
         prefs.getString(ApiConstants.prefOpenAiCompatibleEndpoint) ??
@@ -566,8 +560,6 @@ class ChatProvider extends ChangeNotifier {
         return _deepseekModel;
       case AiProvider.ollama:
         return _ollamaModel;
-      case AiProvider.xAi:
-        return _xAiModel;
       case AiProvider.local:
         return "Local Network AI";
     }
@@ -595,9 +587,6 @@ class ChatProvider extends ChangeNotifier {
         break;
       case AiProvider.ollama:
         _ollamaModel = model;
-        break;
-      case AiProvider.xAi:
-        _xAiModel = model;
         break;
       case AiProvider.local:
         break;
@@ -692,7 +681,6 @@ class ChatProvider extends ChangeNotifier {
     );
     await prefs.setString(ApiConstants.prefModelDeepseek, _deepseekModel);
     await prefs.setString(ApiConstants.prefModelOllama, _ollamaModel);
-    await prefs.setString(ApiConstants.prefModelXAi, _xAiModel);
 
     await prefs.setString(
       ApiConstants.prefOpenAiCompatibleEndpoint,
@@ -842,6 +830,9 @@ class ChatProvider extends ChangeNotifier {
           topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
           maxTokens: _settings!.enableMaxOutputTokens
               ? _settings!.maxOutputTokens
+              : null,
+          reasoningEffort: _settings!.enableReasoning
+              ? _settings!.reasoningEffort
               : null,
         );
       } else {
@@ -1022,6 +1013,9 @@ class ChatProvider extends ChangeNotifier {
         topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
         maxTokens: _settings!.enableMaxOutputTokens
             ? _settings!.maxOutputTokens
+            : null,
+        reasoningEffort: _settings!.enableReasoning
+            ? _settings!.reasoningEffort
             : null,
       );
       if (det.isError) {
@@ -2015,6 +2009,9 @@ class ChatProvider extends ChangeNotifier {
         extraMessages: null,
         disableSafety: _settings?.disableSafety ?? true,
         maxRoundsLeft: 1,
+        reasoningEffort: _settings?.enableReasoning == true
+            ? _settings!.reasoningEffort
+            : null,
       );
     } else {
       det = await ChatApiService.requestOpenAiCompatibleWithToolDetection(
@@ -2413,7 +2410,6 @@ class ChatProvider extends ChangeNotifier {
         'openAiCompatible': _openAiCompatibleModel,
         'deepseek': _deepseekModel,
         'ollama': _ollamaModel,
-        'xAi': _xAiModel,
       },
       'modelBookmarks': _bookmarkedModels.toList(),
       'starredProviders': _starredProviders.map((p) => p.name).toList(),
@@ -2449,7 +2445,6 @@ class ChatProvider extends ChangeNotifier {
         models['openAiCompatible'] as String? ?? _openAiCompatibleModel;
     _deepseekModel = models['deepseek'] as String? ?? _deepseekModel;
     _ollamaModel = models['ollama'] as String? ?? _ollamaModel;
-    _xAiModel = models['xAi'] as String? ?? _xAiModel;
     _selectedModel = _getProviderModel(_currentProvider);
 
     _openAiCompatibleEndpoint =

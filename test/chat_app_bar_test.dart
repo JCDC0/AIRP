@@ -219,7 +219,5 @@ String _providerDisplayNameForTest(AiProvider provider) {
       return 'Deepseek';
     case AiProvider.ollama:
       return 'Ollama';
-    case AiProvider.xAi:
-      return 'xAI';
   }
 }

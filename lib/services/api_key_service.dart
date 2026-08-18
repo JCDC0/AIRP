@@ -160,7 +160,6 @@ class ApiKeyService {
       case AiProvider.openAiCompatible: return ApiConstants.secureKeyOpenAiCompatible;
       case AiProvider.deepseek: return ApiConstants.secureKeyDeepseek;
       case AiProvider.ollama: return ApiConstants.secureKeyOllama;
-      case AiProvider.xAi: return ApiConstants.secureKeyXAi;
       case AiProvider.local: return null;
     }
   }
@@ -174,7 +173,6 @@ class ApiKeyService {
       case AiProvider.openAiCompatible: return ApiConstants.prefKeyOpenAiCompatible;
       case AiProvider.deepseek: return ApiConstants.prefKeyDeepseek;
       case AiProvider.ollama: return ApiConstants.prefKeyOllama;
-      case AiProvider.xAi: return ApiConstants.prefKeyXAi;
       case AiProvider.local: return null;
     }
   }

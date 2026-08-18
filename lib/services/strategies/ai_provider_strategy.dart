@@ -8,14 +8,27 @@ import '../chat_api_service.dart';
 /// different key for enabling reasoning; this enum tells [ChatApiService]
 /// which one to emit (and which to omit).
 enum ThinkingFormat {
-  /// Send no reasoning parameter. Used by providers whose reasoning models
-  /// reason automatically (e.g. DeepSeek `deepseek-reasoner`) and by local
-  /// runtimes that expose thinking as a model-level setting (Ollama).
+  /// Send no reasoning parameter at all. For endpoints whose reasoning
+  /// behaviour is not controllable from the request body.
   none,
 
-  /// Emit `reasoning_effort: "<effort>"`. The OpenAI-native format used by
-  /// xAI Grok, NVIDIA NIM, OpenRouter, and most hosted gateways.
+  /// Emit `reasoning_effort: "<effort>"`, and omit the field entirely when
+  /// the user disables reasoning. Correct where an absent field means "off".
+  /// NVIDIA NIM validates this field and rejects anything outside
+  /// `low|medium|high`, so `xhigh` must not be offered for it.
   reasoningEffort,
+
+  /// Emit `reasoning_effort` on EVERY request, including the literal `none`.
+  ///
+  /// Required by providers that turn thinking ON when the field is absent:
+  /// Ollama auto-enables thinking for any thinking-capable model it loads, so
+  /// omitting the field is not "off", it is "default on".
+  reasoningEffortAlways,
+
+  /// Emit `thinking: {"type": "enabled"|"disabled"}` plus `reasoning_effort`
+  /// when enabled. The DeepSeek V4 format, whose thinking mode defaults to ON
+  /// at `high` when nothing is sent.
+  thinkingObject,
 }
 
 /// A UI-facing label and its corresponding API value for a reasoning effort
@@ -71,13 +84,33 @@ abstract class AiProviderStrategy {
   /// [effort] is the stored API value (`none`, `low`, `medium`, `high`, or
   /// `xhigh`). The base implementation respects [thinkingFormat]; providers
   /// with special needs (e.g. OpenRouter's dual format) may override this.
-  void applyReasoningEffort(Map<String, dynamic> bodyMap, String effort) {
+  void applyReasoningEffort(Map<String, dynamic> bodyMap, String effort) =>
+      applyThinkingFormat(bodyMap, effort, thinkingFormat);
+
+  /// Writes [format]'s reasoning fields into [bodyMap].
+  ///
+  /// Static so [ChatApiService] can apply the same rules for callers that do
+  /// not hand it a strategy callback, instead of keeping its own copy of the
+  /// switch in three request builders.
+  static void applyThinkingFormat(
+    Map<String, dynamic> bodyMap,
+    String effort,
+    ThinkingFormat format,
+  ) {
     final enabled = effort != 'none';
-    switch (thinkingFormat) {
+    switch (format) {
       case ThinkingFormat.none:
-        // Provider's reasoning models reason automatically; no request field.
         break;
       case ThinkingFormat.reasoningEffort:
+        if (enabled) {
+          bodyMap['reasoning_effort'] = effort;
+        }
+        break;
+      case ThinkingFormat.reasoningEffortAlways:
+        bodyMap['reasoning_effort'] = effort;
+        break;
+      case ThinkingFormat.thinkingObject:
+        bodyMap['thinking'] = {'type': enabled ? 'enabled' : 'disabled'};
         if (enabled) {
           bodyMap['reasoning_effort'] = effort;
         }
