@@ -493,14 +493,6 @@ class ChatApiService {
               bodyMap["reasoning_effort"] = reasoningEffort;
             }
             break;
-          case ThinkingFormat.enableThinking:
-            bodyMap["enable_thinking"] = reasoningEnabled;
-            break;
-          case ThinkingFormat.thinkingObject:
-            bodyMap["thinking"] = {
-              "type": reasoningEnabled ? "enabled" : "disabled",
-            };
-            break;
         }
       }
     }
@@ -830,14 +822,6 @@ class ChatApiService {
               bodyMap['reasoning_effort'] = reasoningEffort;
             }
             break;
-          case ThinkingFormat.enableThinking:
-            bodyMap['enable_thinking'] = reasoningEnabled;
-            break;
-          case ThinkingFormat.thinkingObject:
-            bodyMap['thinking'] = {
-              'type': reasoningEnabled ? 'enabled' : 'disabled',
-            };
-            break;
         }
       }
     }
@@ -990,14 +974,6 @@ class ChatApiService {
             break;
           case ThinkingFormat.reasoningEffort:
             if (reasoningEnabled) bodyMap['reasoning_effort'] = reasoningEffort;
-            break;
-          case ThinkingFormat.enableThinking:
-            bodyMap['enable_thinking'] = reasoningEnabled;
-            break;
-          case ThinkingFormat.thinkingObject:
-            bodyMap['thinking'] = {
-              'type': reasoningEnabled ? 'enabled' : 'disabled',
-            };
             break;
         }
       }

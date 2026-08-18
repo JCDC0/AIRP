@@ -3,10 +3,9 @@ import '../../utils/constants.dart';
 import 'ai_provider_strategy.dart';
 import 'gemini_strategy.dart';
 import 'openrouter_strategy.dart';
-import 'huggingface_strategy.dart';
 import 'nanogpt_strategy.dart';
-import 'arliai_strategy.dart';
-import 'groq_strategy.dart';
+import 'nvidia_strategy.dart';
+import 'ollama_strategy.dart';
 import 'xai_strategy.dart';
 
 /// Resolves the appropriate [AiProviderStrategy] for a given [AiProvider].
@@ -18,67 +17,22 @@ class StrategyResolver {
   static final Map<AiProvider, AiProviderStrategy> _strategies = {
     AiProvider.gemini: GeminiStrategy(),
     AiProvider.openRouter: OpenRouterStrategy(),
-    AiProvider.huggingFace: HuggingFaceStrategy(),
     AiProvider.nanoGpt: NanoGptStrategy(),
-    AiProvider.arliAi: ArliAiStrategy(),
-    AiProvider.groq: GroqStrategy(),
+    AiProvider.nvidia: NvidiaStrategy(),
+    AiProvider.xAi: XAiStrategy(),
+    AiProvider.ollama: OllamaStrategy(),
 
     // OpenAI Compatible Defaults
-    AiProvider.nvidia: OpenAiCompatibleStrategy(
-      provider: AiProvider.nvidia,
-      baseUrl: ApiConstants.nvidiaBaseUrl,
-      prefKey: ApiConstants.prefListNvidia,
-    ),
-    AiProvider.openAi: OpenAiCompatibleStrategy(
-      provider: AiProvider.openAi,
-      baseUrl: ApiConstants.openAiBaseUrl,
-      prefKey: ApiConstants.prefListOpenAi,
-    ),
-    AiProvider.blackboxAi: OpenAiCompatibleStrategy(
-      provider: AiProvider.blackboxAi,
-      baseUrl: ApiConstants.blackboxAiBaseUrl,
-      prefKey: ApiConstants.prefListBlackboxAi,
-    ),
-    AiProvider.minimax: OpenAiCompatibleStrategy(
-      provider: AiProvider.minimax,
-      baseUrl: ApiConstants.minimaxBaseUrl,
-      prefKey: ApiConstants.prefListMinimax,
-    ),
     AiProvider.deepseek: OpenAiCompatibleStrategy(
       provider: AiProvider.deepseek,
       baseUrl: ApiConstants.deepseekBaseUrl,
       prefKey: ApiConstants.prefListDeepseek,
       thinkingFormat: ThinkingFormat.none,
     ),
-    AiProvider.qwen: OpenAiCompatibleStrategy(
-      provider: AiProvider.qwen,
-      baseUrl: ApiConstants.qwenBaseUrl,
-      prefKey: ApiConstants.prefListQwen,
-      thinkingFormat: ThinkingFormat.enableThinking,
-    ),
-    AiProvider.xAi: XAiStrategy(),
-    AiProvider.zAi: OpenAiCompatibleStrategy(
-      provider: AiProvider.zAi,
-      baseUrl: ApiConstants.zAiBaseUrl,
-      prefKey: ApiConstants.prefListZAi,
-      thinkingFormat: ThinkingFormat.thinkingObject,
-    ),
-    AiProvider.mistral: OpenAiCompatibleStrategy(
-      provider: AiProvider.mistral,
-      baseUrl: ApiConstants.mistralBaseUrl,
-      prefKey: ApiConstants.prefListMistral,
-      thinkingFormat: ThinkingFormat.none,
-    ),
-    AiProvider.mimo: OpenAiCompatibleStrategy(
-      provider: AiProvider.mimo,
-      baseUrl: ApiConstants.mimoBaseUrl,
-      prefKey: ApiConstants.prefListMimo,
-      thinkingFormat: ThinkingFormat.none,
-    ),
-    AiProvider.ollama: OpenAiCompatibleStrategy(
-      provider: AiProvider.ollama,
-      baseUrl: ApiConstants.ollamaDefaultBaseUrl,
-      prefKey: ApiConstants.prefListOllama,
+    AiProvider.openAiCompatible: OpenAiCompatibleStrategy(
+      provider: AiProvider.openAiCompatible,
+      baseUrl: '',
+      prefKey: ApiConstants.prefListOpenAiCompatible,
     ),
     AiProvider.local: OpenAiCompatibleStrategy(
       provider: AiProvider.local,

@@ -57,42 +57,20 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         return 'Gemini';
       case AiProvider.openRouter:
         return 'OpenRouter';
-      case AiProvider.arliAi:
-        return 'ArliAI';
       case AiProvider.nanoGpt:
         return 'NanoGPT';
       case AiProvider.nvidia:
         return 'NVIDIA';
       case AiProvider.local:
         return 'Local';
-      case AiProvider.openAi:
-        return 'OpenAI';
-      case AiProvider.huggingFace:
-        return 'HuggingFace';
-      case AiProvider.groq:
-        return 'Groq';
-      case AiProvider.vertexAi:
-        return 'Vertex AI';
-      case AiProvider.blackboxAi:
-        return 'Blackbox AI';
-      case AiProvider.minimax:
-        return 'Minimax';
       case AiProvider.openAiCompatible:
         return 'OpenAI Compatible';
       case AiProvider.deepseek:
         return 'Deepseek';
       case AiProvider.ollama:
         return 'Ollama';
-      case AiProvider.qwen:
-        return 'Qwen';
       case AiProvider.xAi:
         return 'xAI';
-      case AiProvider.zAi:
-        return 'Z.ai';
-      case AiProvider.mistral:
-        return 'Mistral';
-      case AiProvider.mimo:
-        return 'Xiaomi MiMo';
     }
   }
 
@@ -393,13 +371,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           chatProvider.openRouterModel,
           "Select OpenRouter Model",
         );
-      case AiProvider.arliAi:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.arliAiModelsList,
-          chatProvider.arliAiModel,
-          "Select ArliAI Model",
-        );
       case AiProvider.nanoGpt:
         return _standardModelSelector(
           chatProvider,
@@ -413,48 +384,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           chatProvider.nvidiaModelsList,
           chatProvider.nvidiaModel,
           'Select NVIDIA Model',
-        );
-      case AiProvider.openAi:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.openAiModelsList,
-          chatProvider.openAiModel,
-          'Select OpenAI Model',
-        );
-      case AiProvider.huggingFace:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.huggingFaceModelsList,
-          chatProvider.huggingFaceModel,
-          'Select HuggingFace Model',
-        );
-      case AiProvider.groq:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.groqModelsList,
-          chatProvider.groqModel,
-          'Select Groq Model',
-        );
-      case AiProvider.vertexAi:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.vertexAiModelsList,
-          chatProvider.vertexAiModel,
-          'Select Vertex AI Model',
-        );
-      case AiProvider.blackboxAi:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.blackboxAiModelsList,
-          chatProvider.blackboxAiModel,
-          'Select Blackbox AI Model',
-        );
-      case AiProvider.minimax:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.minimaxModelsList,
-          chatProvider.minimaxModel,
-          'Select Minimax Model',
         );
       case AiProvider.openAiCompatible:
         return _standardModelSelector(
@@ -477,40 +406,12 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           chatProvider.ollamaModel,
           'Select Ollama Model',
         );
-      case AiProvider.qwen:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.qwenModelsList,
-          chatProvider.qwenModel,
-          'Select Qwen Model',
-        );
       case AiProvider.xAi:
         return _standardModelSelector(
           chatProvider,
           chatProvider.xAiModelsList,
           chatProvider.xAiModel,
           'Select xAI Model',
-        );
-      case AiProvider.zAi:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.zAiModelsList,
-          chatProvider.zAiModel,
-          'Select Z.ai Model',
-        );
-      case AiProvider.mistral:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.mistralModelsList,
-          chatProvider.mistralModel,
-          'Select Mistral Model',
-        );
-      case AiProvider.mimo:
-        return _standardModelSelector(
-          chatProvider,
-          chatProvider.mimoModelsList,
-          chatProvider.mimoModel,
-          'Select Xiaomi MiMo Model',
         );
       case AiProvider.local:
         return Container(

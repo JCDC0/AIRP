@@ -6,10 +6,10 @@ so tool-specific entry points stay auto-discoverable while the content lives in
 one place. Edit this file, not the pointers.
 
 AIRP is a highly customizable, privacy-focused AI chat client built with Flutter.
-It is a unified interface for multiple AI providers (Gemini, OpenRouter, Groq, and
-others) with a focus on roleplay features and modular architecture.
+It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
+Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.29.2` (`pubspec.yaml` `0.7.29+10`). Target: `0.8.0` release.
+Current version: `0.7.30` (`pubspec.yaml` `0.7.30+11`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -36,7 +36,7 @@ Current version: `0.7.29.2` (`pubspec.yaml` `0.7.29+10`). Target: `0.8.0` releas
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (255 tests, all passing)
+*   **Test:** `flutter test` (277 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -84,26 +84,66 @@ currently clean and must stay that way.
     ~1,400 lines of passing tests for a path with no production caller for nine
     versions. A send-path integration test is the recommended guard.
 
-## Adding or changing a provider
+## Providers
 
-Provider state in `ChatProvider` is duplicated across eight-plus places. When
-touching providers, check ALL of these or state will silently fail to persist:
+Nine providers ship: `gemini`, `openRouter`, `nanoGpt`, `nvidia`, `xAi`,
+`deepseek`, `ollama`, `openAiCompatible`, `local`. `0.7.30` retired ArliAI,
+Blackbox AI, Groq, HuggingFace, Minimax, Mistral, OpenAI, Qwen, Vertex AI,
+Xiaomi MiMo and Z.ai. Do not reintroduce one without a user asking for it.
+
+A retired provider name in a stored session or config pack is not an error.
+`ChatProvider._providerFromName` maps an unknown name to Gemini, and
+`GlobalSettingsService._decodeProviders` skips unknown starred providers, so old
+data degrades instead of throwing. Keep that property.
+
+### Adding or changing a provider
+
+Provider state in `ChatProvider` is still duplicated. When touching providers,
+check ALL of these or state will silently fail to persist:
 
 1.  `AiProvider` enum in `lib/models/chat_models.dart`
 2.  Private field + public getter in `ChatProvider`
-3.  `_getProviderModel()` switch
-4.  `_setProviderModel()` switch
-5.  `_loadSettings()` prefs read
-6.  `saveSettings()` prefs write
-7.  `exportSettingsMap()` / `importSettingsMap()`
-8.  `loadSession()` provider-name if/else chain
-9.  `ApiKeyService._getSecureKeyForAiProvider()` and `_getPrefsKeyForAiProvider()`
-10. `StrategyResolver._strategies` map
+3.  `_getProviderModel()` / `_setProviderModel()` switches
+4.  `_loadSettings()` prefs read and `saveSettings()` prefs write
+5.  `exportSettingsMap()` / `importSettingsMap()`
+6.  `_customEndpointFor()`, if the provider talks to a user-owned endpoint
+7.  `ApiKeyService._getSecureKeyForAiProvider()` and `_getPrefsKeyForAiProvider()`
+8.  `StrategyResolver._strategies` map
+9.  `ChatAppBar._providerDisplayName()` and `_buildModelSelector()`
+10. `ApiSettingsPanel._getApiKey()` (and the endpoint switches, if applicable)
 11. Constants in `lib/utils/constants.dart` (`prefList*`, `prefKey*`, `secureKey*`,
     `prefModel*`, base URL)
 
 This duplication has caused real bugs. See `docs/audits/AUDIT-0.8.md`. Collapsing it
-into a map-driven `ProviderState` is the recommended refactor.
+into a map-driven `ProviderState` is still the recommended refactor.
+
+### Endpoints and model discovery
+
+Providers that talk to a server the user owns (`local`, `openAiCompatible`,
+`ollama`) resolve their base through `ChatProvider._customEndpointFor`, which
+feeds both `AiProviderStrategy.getStreamUrl` and `getModelsUrl`. There is
+exactly one copy of that chain; the three inlined copies it replaced were the
+reason Ollama streamed against `localhost:11434` no matter what the user typed.
+Both endpoint values persist (`airp_ollama_endpoint`,
+`airp_openai_compatible_endpoint`), export, and travel in config packs; add new
+keys to `LibraryService.importLibrary`'s whitelist as well or an import drops
+them.
+
+`OllamaStrategy` accepts a bare root, a `/v1` root, or a full completions URL
+and normalizes all three. It lists models over the native `/api/tags`, not
+`/v1/models`, because only the former reports family, parameter size and
+quantization.
+
+`NvidiaStrategy` filters catalogue entries that have no `/chat/completions`
+route (embedding, reranking, `nvclip`, retriever-parse). Selecting one produced
+a 404 that looked like an authentication failure.
+
+A model fetch that fails records `ModelRegistryService.lastError(provider)` and
+the API panel renders it. Do not go back to swallowing the error in a
+`debugPrint`: an empty list after entering a key is indistinguishable from the
+key having been ignored. Entering a key or endpoint also schedules a debounced
+fetch (`ChatProvider._scheduleModelAutoFetch`), so credentials produce a request
+without hunting for the refresh button.
 
 ## Reasoning / thinking handling
 
@@ -111,13 +151,17 @@ AIRP normalizes reasoning output by wrapping reasoning content in `<think>` tags
 parsed by `ReasoningUtils` in `lib/services/reasoning_utils.dart`. Provider-specific
 request formats live in `AiProviderStrategy.applyReasoningEffort()`:
 
+`ThinkingFormat` has two members: `reasoningEffort` and `none`. The Qwen
+(`enable_thinking`) and Z.AI (`thinking: {type: ...}`) formats were removed in
+`0.7.30` with their providers; do not re-add a member without an implementor.
+
 *   **OpenAI-compatible** providers use `reasoning_effort: low|medium|high`.
 *   **xAI Grok** sends `reasoning_effort: none|low|medium|high`.
 *   **OpenRouter** supports `reasoning_effort` and emits `reasoning: {effort: ...}`
     for the `Max` (`xhigh`) level.
-*   **Qwen** uses `enable_thinking`; **Z.AI** uses `thinking: {type: ...}`.
-*   **DeepSeek / Mistral / MIMO** reasoning models reason automatically; no input
-    parameter is sent.
+*   **NVIDIA / NanoGPT / OpenAI Compatible / Ollama** use `reasoning_effort`.
+*   **DeepSeek** reasoning models reason automatically; no input parameter is
+    sent.
 *   **Gemini / Gemma** thinking content is parsed from raw `v1beta`
     `streamGenerateContent` responses where parts carry `thought: true`.
 
@@ -222,6 +266,7 @@ guards this.
 *   `lib/services/chat_api_service.dart`: raw Gemini REST + OpenAI-compatible streaming.
 *   `lib/services/prompt_pipeline_service.dart`: prompt engineering core.
 *   `lib/services/strategies/`: strategy implementations per provider.
+*   `lib/services/model_registry_service.dart`: model discovery, caching, fetch errors.
 *   `lib/models/`: data models for chat, lorebooks, and character cards.
 *   `lib/utils/constants.dart`: pref keys, base URLs, defaults, asset lists.
 

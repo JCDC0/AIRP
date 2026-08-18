@@ -17,13 +17,13 @@ void main() {
     final provider = ChatProvider();
     await _flushAsyncInit();
 
-    provider.toggleProviderStar(AiProvider.groq);
+    provider.toggleProviderStar(AiProvider.deepseek);
     await _flushAsyncInit();
 
     final reloaded = ChatProvider();
     await _flushAsyncInit();
 
-    expect(reloaded.starredProviders.contains(AiProvider.groq), isTrue);
+    expect(reloaded.starredProviders.contains(AiProvider.deepseek), isTrue);
   });
 
   test('model bookmarks persist across provider reload', () async {
@@ -55,6 +55,69 @@ void main() {
     await _flushAsyncInit();
 
     expect(reloaded.modelPickerSortMode, equals('Name (Z-A)'));
+  });
+
+  test('ollama endpoint persists across provider reload', () async {
+    final provider = ChatProvider();
+    await _flushAsyncInit();
+
+    provider.setOllamaEndpoint('http://192.168.1.40:11434');
+    await provider.saveSettings(showConfirmation: false);
+    await _flushAsyncInit();
+
+    final reloaded = ChatProvider();
+    await _flushAsyncInit();
+
+    expect(reloaded.ollamaEndpoint, 'http://192.168.1.40:11434');
+  });
+
+  test('openai compatible endpoint persists across provider reload', () async {
+    final provider = ChatProvider();
+    await _flushAsyncInit();
+
+    provider.setOpenAiCompatibleEndpoint('https://api.example.com/v1');
+    await provider.saveSettings(showConfirmation: false);
+    await _flushAsyncInit();
+
+    final reloaded = ChatProvider();
+    await _flushAsyncInit();
+
+    expect(reloaded.openAiCompatibleEndpoint, 'https://api.example.com/v1');
+  });
+
+  test('endpoints round-trip through a settings export/import', () async {
+    final provider = ChatProvider();
+    await _flushAsyncInit();
+
+    provider.setOllamaEndpoint('http://ollama.lan:11434');
+    provider.setOpenAiCompatibleEndpoint('https://gateway.example/v1');
+    final exported = provider.exportSettingsMap();
+
+    final target = ChatProvider();
+    await _flushAsyncInit();
+    await target.importSettingsMap(exported);
+
+    expect(target.ollamaEndpoint, 'http://ollama.lan:11434');
+    expect(target.openAiCompatibleEndpoint, 'https://gateway.example/v1');
+  });
+
+  test('a session saved under a retired provider loads as Gemini', () async {
+    final provider = ChatProvider();
+    await _flushAsyncInit();
+
+    provider.loadSession(
+      ChatSessionData(
+        id: 'retired-session',
+        title: 'Old Groq chat',
+        messages: const [],
+        modelName: 'llama3-8b-8192',
+        tokenCount: 0,
+        systemInstruction: '',
+        provider: 'groq',
+      ),
+    );
+
+    expect(provider.currentProvider, AiProvider.gemini);
   });
 
   test('deepseek model persists and restores with the session provider', () async {

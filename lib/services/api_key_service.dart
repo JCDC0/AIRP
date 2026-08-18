@@ -155,24 +155,13 @@ class ApiKeyService {
     switch (provider) {
       case AiProvider.gemini: return ApiConstants.secureKeyGemini;
       case AiProvider.openRouter: return ApiConstants.secureKeyOpenRouter;
-      case AiProvider.openAi: return ApiConstants.secureKeyOpenAi;
-      case AiProvider.arliAi: return ApiConstants.secureKeyArliAi;
       case AiProvider.nanoGpt: return ApiConstants.secureKeyNanoGpt;
       case AiProvider.nvidia: return ApiConstants.secureKeyNvidia;
-      case AiProvider.huggingFace: return ApiConstants.secureKeyHuggingFace;
-      case AiProvider.groq: return ApiConstants.secureKeyGroq;
-      case AiProvider.vertexAi: return ApiConstants.secureKeyVertexAi;
-      case AiProvider.blackboxAi: return ApiConstants.secureKeyBlackboxAi;
-      case AiProvider.minimax: return ApiConstants.secureKeyMinimax;
       case AiProvider.openAiCompatible: return ApiConstants.secureKeyOpenAiCompatible;
       case AiProvider.deepseek: return ApiConstants.secureKeyDeepseek;
       case AiProvider.ollama: return ApiConstants.secureKeyOllama;
-      case AiProvider.qwen: return ApiConstants.secureKeyQwen;
       case AiProvider.xAi: return ApiConstants.secureKeyXAi;
-      case AiProvider.zAi: return ApiConstants.secureKeyZAi;
-      case AiProvider.mistral: return ApiConstants.secureKeyMistral;
-      case AiProvider.mimo: return ApiConstants.secureKeyMimo;
-      default: return null;
+      case AiProvider.local: return null;
     }
   }
 
@@ -180,24 +169,13 @@ class ApiKeyService {
     switch (provider) {
       case AiProvider.gemini: return ApiConstants.prefKeyGemini;
       case AiProvider.openRouter: return ApiConstants.prefKeyOpenRouter;
-      case AiProvider.openAi: return ApiConstants.prefKeyOpenAi;
-      case AiProvider.arliAi: return ApiConstants.prefKeyArliAi;
       case AiProvider.nanoGpt: return ApiConstants.prefKeyNanoGpt;
       case AiProvider.nvidia: return ApiConstants.prefKeyNvidia;
-      case AiProvider.huggingFace: return ApiConstants.prefKeyHuggingFace;
-      case AiProvider.groq: return ApiConstants.prefKeyGroq;
-      case AiProvider.vertexAi: return ApiConstants.prefKeyVertexAi;
-      case AiProvider.blackboxAi: return ApiConstants.prefKeyBlackboxAi;
-      case AiProvider.minimax: return ApiConstants.prefKeyMinimax;
       case AiProvider.openAiCompatible: return ApiConstants.prefKeyOpenAiCompatible;
       case AiProvider.deepseek: return ApiConstants.prefKeyDeepseek;
       case AiProvider.ollama: return ApiConstants.prefKeyOllama;
-      case AiProvider.qwen: return ApiConstants.prefKeyQwen;
       case AiProvider.xAi: return ApiConstants.prefKeyXAi;
-      case AiProvider.zAi: return ApiConstants.prefKeyZAi;
-      case AiProvider.mistral: return ApiConstants.prefKeyMistral;
-      case AiProvider.mimo: return ApiConstants.prefKeyMimo;
-      default: return null;
+      case AiProvider.local: return null;
     }
   }
 }

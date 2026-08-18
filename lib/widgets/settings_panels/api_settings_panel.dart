@@ -21,7 +21,6 @@ class ApiSettingsPanel extends StatefulWidget {
 class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
   late TextEditingController _apiKeyController;
   late TextEditingController _localIpController;
-  late TextEditingController _vertexAiEndpointController;
   late TextEditingController _openAiCompatibleEndpointController;
   late TextEditingController _ollamaEndpointController;
 
@@ -32,9 +31,6 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
     
     _apiKeyController = TextEditingController(text: _getApiKey(chatProvider));
     _localIpController = TextEditingController(text: chatProvider.localIp);
-    _vertexAiEndpointController = TextEditingController(
-      text: chatProvider.vertexAiEndpoint,
-    );
     _openAiCompatibleEndpointController = TextEditingController(
       text: chatProvider.openAiCompatibleEndpoint,
     );
@@ -47,7 +43,6 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
   void dispose() {
     _apiKeyController.dispose();
     _localIpController.dispose();
-    _vertexAiEndpointController.dispose();
     _openAiCompatibleEndpointController.dispose();
     _ollamaEndpointController.dispose();
     super.dispose();
@@ -57,23 +52,12 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
     switch (provider.currentProvider) {
       case AiProvider.gemini: return provider.geminiKey;
       case AiProvider.openRouter: return provider.openRouterKey;
-      case AiProvider.openAi: return provider.openAiKey;
-      case AiProvider.arliAi: return provider.arliAiKey;
       case AiProvider.nanoGpt: return provider.nanoGptKey;
       case AiProvider.nvidia: return provider.nvidiaKey;
-      case AiProvider.huggingFace: return provider.huggingFaceKey;
-      case AiProvider.groq: return provider.groqKey;
-      case AiProvider.vertexAi: return provider.vertexAiKey;
-      case AiProvider.blackboxAi: return provider.blackboxAiKey;
-      case AiProvider.minimax: return provider.minimaxKey;
       case AiProvider.openAiCompatible: return provider.openAiCompatibleKey;
       case AiProvider.deepseek: return provider.deepseekKey;
       case AiProvider.ollama: return provider.ollamaKey;
-      case AiProvider.qwen: return provider.qwenKey;
       case AiProvider.xAi: return provider.xAiKey;
-      case AiProvider.zAi: return provider.zAiKey;
-      case AiProvider.mistral: return provider.mistralKey;
-      case AiProvider.mimo: return provider.mimoKey;
       case AiProvider.local: return "";
     }
   }
@@ -90,9 +74,6 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
     }
     if (_localIpController.text != chatProvider.localIp) {
       _localIpController.text = chatProvider.localIp;
-    }
-    if (_vertexAiEndpointController.text != chatProvider.vertexAiEndpoint) {
-      _vertexAiEndpointController.text = chatProvider.vertexAiEndpoint;
     }
     if (_openAiCompatibleEndpointController.text != chatProvider.openAiCompatibleEndpoint) {
       _openAiCompatibleEndpointController.text = chatProvider.openAiCompatibleEndpoint;
@@ -116,7 +97,6 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
 
     final bool requiresEndpoint =
         chatProvider.currentProvider == AiProvider.local ||
-        chatProvider.currentProvider == AiProvider.vertexAi ||
         chatProvider.currentProvider == AiProvider.openAiCompatible ||
         chatProvider.currentProvider == AiProvider.ollama;
 
@@ -198,28 +178,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
           ),
           if (_getApiKey(chatProvider).trim().isNotEmpty) ...[
             const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                icon: chatProvider.isRefreshingModels
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.cloud_sync, size: 18),
-                label: Text(
-                  chatProvider.isRefreshingModels
-                      ? 'Loading…'
-                      : (chatProvider.currentModelsList.isEmpty
-                          ? 'Load Models'
-                          : 'Refresh Models'),
-                ),
-                onPressed: chatProvider.isRefreshingModels
-                    ? null
-                    : () => chatProvider.refreshCurrentModels(),
-              ),
-            ),
+            _buildModelLoadRow(chatProvider, scaleProvider),
           ],
           const SizedBox(height: 2),
         ],
@@ -265,28 +224,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
           ),
           if (!requiresApiKey && _getEndpoint(chatProvider).trim().isNotEmpty) ...[
             const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                icon: chatProvider.isRefreshingModels
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.cloud_sync, size: 18),
-                label: Text(
-                  chatProvider.isRefreshingModels
-                      ? 'Loading…'
-                      : (chatProvider.currentModelsList.isEmpty
-                          ? 'Load Models'
-                          : 'Refresh Models'),
-                ),
-                onPressed: chatProvider.isRefreshingModels
-                    ? null
-                    : () => chatProvider.refreshCurrentModels(),
-              ),
-            ),
+            _buildModelLoadRow(chatProvider, scaleProvider),
           ],
           const SizedBox(height: 2),
         ],
@@ -294,9 +232,75 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
     );
   }
 
+  /// Refresh button plus the outcome of the last model fetch.
+  ///
+  /// A failed fetch used to be swallowed by the registry, so entering a valid
+  /// key against an unreachable endpoint looked identical to entering a bad
+  /// one: nothing happened either way.
+  Widget _buildModelLoadRow(
+    ChatProvider chatProvider,
+    ScaleProvider scaleProvider,
+  ) {
+    final String? error = chatProvider.currentModelFetchError;
+    final int count = chatProvider.currentModelsList.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        OutlinedButton.icon(
+          icon: chatProvider.isRefreshingModels
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.cloud_sync, size: 18),
+          label: Text(
+            chatProvider.isRefreshingModels
+                ? 'Loading…'
+                : (count == 0 ? 'Load Models' : 'Refresh Models'),
+          ),
+          onPressed: chatProvider.isRefreshingModels
+              ? null
+              : () => chatProvider.refreshCurrentModels(),
+        ),
+        if (!chatProvider.isRefreshingModels)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  error != null
+                      ? Icons.error_outline
+                      : (count > 0 ? Icons.check_circle_outline : Icons.info_outline),
+                  size: scaleProvider.systemFontSize - 2,
+                  color: error != null
+                      ? Colors.redAccent
+                      : (count > 0 ? Colors.greenAccent : Colors.grey),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    error ??
+                        (count > 0
+                            ? '$count models available.'
+                            : 'No models loaded yet.'),
+                    style: TextStyle(
+                      fontSize: scaleProvider.systemFontSize - 4,
+                      color: error != null ? Colors.redAccent : Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   TextEditingController _getEndpointController(AiProvider provider) {
     switch (provider) {
-      case AiProvider.vertexAi: return _vertexAiEndpointController;
       case AiProvider.openAiCompatible: return _openAiCompatibleEndpointController;
       case AiProvider.ollama: return _ollamaEndpointController;
       case AiProvider.local:
@@ -306,7 +310,6 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
 
   String _getEndpoint(ChatProvider chatProvider) {
     switch (chatProvider.currentProvider) {
-      case AiProvider.vertexAi: return chatProvider.vertexAiEndpoint;
       case AiProvider.openAiCompatible: return chatProvider.openAiCompatibleEndpoint;
       case AiProvider.ollama: return chatProvider.ollamaEndpoint;
       case AiProvider.local:
@@ -318,9 +321,6 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
     final provider = chatProvider.currentProvider;
     final cleaned = val.trim();
     switch (provider) {
-      case AiProvider.vertexAi:
-        chatProvider.setVertexAiEndpoint(cleaned);
-        break;
       case AiProvider.openAiCompatible:
         chatProvider.setOpenAiCompatibleEndpoint(cleaned);
         break;
@@ -336,9 +336,8 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
 
   String _getEndpointHint(AiProvider provider) {
     switch (provider) {
-      case AiProvider.vertexAi: return "https://{region}-aiplatform.googleapis.com/...";
       case AiProvider.openAiCompatible: return "https://api.your-provider.com/v1";
-      case AiProvider.ollama: return "http://localhost:11434/v1";
+      case AiProvider.ollama: return "http://localhost:11434";
       case AiProvider.local:
       default: return "http://192.168.1.X:1234/v1";
     }
@@ -346,9 +345,8 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
 
   String _getEndpointHelpText(AiProvider provider) {
     switch (provider) {
-      case AiProvider.vertexAi: return "Requires full URL up to /v1beta1/projects/.../chat/completions";
       case AiProvider.openAiCompatible: return "Base URL ending before /chat/completions";
-      case AiProvider.ollama: return "Default is usually http://localhost:11434/v1";
+      case AiProvider.ollama: return "Server root, with or without /v1. Default: http://localhost:11434";
       case AiProvider.local:
       default: return "Ensure your local AI is listening on Network (0.0.0.0)";
     }

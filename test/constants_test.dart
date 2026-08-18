@@ -11,20 +11,11 @@ void main() {
     const endpoints = <String, String>{
       'gemini': ApiConstants.geminiBaseUrl,
       'openRouter': ApiConstants.openRouterBaseUrl,
-      'arliAi': ApiConstants.arliAiBaseUrl,
       'nanoGpt': ApiConstants.nanoGptBaseUrl,
       'nvidia': ApiConstants.nvidiaBaseUrl,
-      'openAi': ApiConstants.openAiBaseUrl,
-      'huggingFace': ApiConstants.huggingFaceBaseUrl,
-      'groq': ApiConstants.groqBaseUrl,
-      'blackboxAi': ApiConstants.blackboxAiBaseUrl,
-      'minimax': ApiConstants.minimaxBaseUrl,
       'deepseek': ApiConstants.deepseekBaseUrl,
-      'qwen': ApiConstants.qwenBaseUrl,
       'xAi': ApiConstants.xAiBaseUrl,
-      'zAi': ApiConstants.zAiBaseUrl,
-      'mistral': ApiConstants.mistralBaseUrl,
-      'ollamaDefault': ApiConstants.ollamaDefaultBaseUrl,
+      'ollamaDefault': ApiConstants.ollamaDefaultEndpoint,
     };
 
     for (final entry in endpoints.entries) {
@@ -41,23 +32,27 @@ void main() {
     expect(ApiConstants.geminiBaseUrl,
         'https://generativelanguage.googleapis.com/v1beta/models');
     expect(ApiConstants.openRouterBaseUrl, 'https://openrouter.ai/api/v1/models');
-    expect(ApiConstants.arliAiBaseUrl, 'https://api.arliai.com/v1/models');
     expect(ApiConstants.nanoGptBaseUrl,
         'https://nano-gpt.com/api/v1/models?detailed=true');
     expect(ApiConstants.nvidiaBaseUrl,
       'https://integrate.api.nvidia.com/v1/models');
-    expect(ApiConstants.openAiBaseUrl, 'https://api.openai.com/v1/models');
-    expect(ApiConstants.huggingFaceBaseUrl,
-        'https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=100');
-    expect(ApiConstants.groqBaseUrl, 'https://api.groq.com/openai/v1/models');
-    expect(ApiConstants.blackboxAiBaseUrl, 'https://api.blackbox.ai/api/models');
-    expect(ApiConstants.minimaxBaseUrl, 'https://api.minimax.io/v1/models');
     expect(ApiConstants.deepseekBaseUrl, 'https://api.deepseek.com/models');
-    expect(ApiConstants.qwenBaseUrl,
-        'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models');
     expect(ApiConstants.xAiBaseUrl, 'https://api.x.ai/v1/models');
-    expect(ApiConstants.zAiBaseUrl, 'https://api.z.ai/api/paas/v4/models');
-    expect(ApiConstants.mistralBaseUrl, 'https://api.mistral.ai/v1/models');
-    expect(ApiConstants.ollamaDefaultBaseUrl, 'http://localhost:11434/v1');
+    expect(ApiConstants.ollamaDefaultEndpoint, 'http://localhost:11434');
+  });
+
+  test('every live provider resolves a distinct model-cache pref key', () {
+    const prefKeys = <String>{
+      ApiConstants.prefListGemini,
+      ApiConstants.prefListOpenRouter,
+      ApiConstants.prefListNanoGpt,
+      ApiConstants.prefListNvidia,
+      ApiConstants.prefListOpenAiCompatible,
+      ApiConstants.prefListDeepseek,
+      ApiConstants.prefListOllama,
+      ApiConstants.prefListXAi,
+      ApiConstants.prefListLocal,
+    };
+    expect(prefKeys.length, 9);
   });
 }

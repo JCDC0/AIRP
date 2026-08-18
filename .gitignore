@@ -47,3 +47,10 @@ app.*.map.json
 *.env
 main.dart.txt
 .kilo/old_plans/
+
+# Secrets and credentials
+google-services.json
+GoogleService-Info.plist
+*.keystore
+*.jks
+key.properties

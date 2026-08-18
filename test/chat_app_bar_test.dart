@@ -126,8 +126,8 @@ void main() {
       final vfxProvider = VfxProvider();
       final scaleProvider = ScaleProvider();
 
-      // Pre-star the Groq provider before the dialog is opened.
-      chatProvider.toggleProviderStar(AiProvider.groq);
+      // Pre-star the Deepseek provider before the dialog is opened.
+      chatProvider.toggleProviderStar(AiProvider.deepseek);
 
       await tester.pumpWidget(
         _buildTestApp(
@@ -146,7 +146,7 @@ void main() {
       final dialogFinder = find.byKey(ChatAppBar.providerPickerDialogKey);
       expect(dialogFinder, findsOneWidget);
 
-      // Exactly one filled star visible (for Groq which was pre-starred).
+      // Exactly one filled star visible (for Deepseek which was pre-starred).
       expect(
         find.descendant(of: dialogFinder, matching: find.byIcon(Icons.star)),
         findsOneWidget,
@@ -154,7 +154,7 @@ void main() {
 
       // Tap the filled star to un-star.
       await tester.tap(
-        find.byKey(ValueKey<String>('provider-star-${AiProvider.groq.name}')),
+        find.byKey(ValueKey<String>('provider-star-${AiProvider.deepseek.name}')),
       );
       await tester.pumpAndSettle();
 
@@ -207,41 +207,19 @@ String _providerDisplayNameForTest(AiProvider provider) {
       return 'Gemini';
     case AiProvider.openRouter:
       return 'OpenRouter';
-    case AiProvider.arliAi:
-      return 'ArliAI';
     case AiProvider.nanoGpt:
       return 'NanoGPT';
     case AiProvider.nvidia:
       return 'NVIDIA';
     case AiProvider.local:
       return 'Local';
-    case AiProvider.openAi:
-      return 'OpenAI';
-    case AiProvider.huggingFace:
-      return 'HuggingFace';
-    case AiProvider.groq:
-      return 'Groq';
-    case AiProvider.vertexAi:
-      return 'Vertex AI';
-    case AiProvider.blackboxAi:
-      return 'Blackbox AI';
-    case AiProvider.minimax:
-      return 'Minimax';
     case AiProvider.openAiCompatible:
       return 'OpenAI Compatible';
     case AiProvider.deepseek:
       return 'Deepseek';
     case AiProvider.ollama:
       return 'Ollama';
-    case AiProvider.qwen:
-      return 'Qwen';
     case AiProvider.xAi:
       return 'xAI';
-    case AiProvider.zAi:
-      return 'Z.ai';
-    case AiProvider.mistral:
-      return 'Mistral';
-    case AiProvider.mimo:
-      return 'Xiaomi MiMo';
   }
 }

@@ -69,52 +69,40 @@ class ChatProvider extends ChangeNotifier {
       _modelRegistry.getModels(AiProvider.gemini);
   List<ModelInfo> get openRouterModelsList =>
       _modelRegistry.getModels(AiProvider.openRouter);
-  List<ModelInfo> get arliAiModelsList =>
-      _modelRegistry.getModels(AiProvider.arliAi);
   List<ModelInfo> get nanoGptModelsList =>
       _modelRegistry.getModels(AiProvider.nanoGpt);
   List<ModelInfo> get nvidiaModelsList =>
       _modelRegistry.getModels(AiProvider.nvidia);
-  List<ModelInfo> get openAiModelsList =>
-      _modelRegistry.getModels(AiProvider.openAi);
-  List<ModelInfo> get huggingFaceModelsList =>
-      _modelRegistry.getModels(AiProvider.huggingFace);
-  List<ModelInfo> get groqModelsList =>
-      _modelRegistry.getModels(AiProvider.groq);
-  List<ModelInfo> get vertexAiModelsList =>
-      _modelRegistry.getModels(AiProvider.vertexAi);
-  List<ModelInfo> get blackboxAiModelsList =>
-      _modelRegistry.getModels(AiProvider.blackboxAi);
-  List<ModelInfo> get minimaxModelsList =>
-      _modelRegistry.getModels(AiProvider.minimax);
   List<ModelInfo> get openAiCompatibleModelsList =>
       _modelRegistry.getModels(AiProvider.openAiCompatible);
   List<ModelInfo> get deepseekModelsList =>
       _modelRegistry.getModels(AiProvider.deepseek);
   List<ModelInfo> get ollamaModelsList =>
       _modelRegistry.getModels(AiProvider.ollama);
-  List<ModelInfo> get qwenModelsList =>
-      _modelRegistry.getModels(AiProvider.qwen);
   List<ModelInfo> get xAiModelsList => _modelRegistry.getModels(AiProvider.xAi);
-  List<ModelInfo> get zAiModelsList => _modelRegistry.getModels(AiProvider.zAi);
-  List<ModelInfo> get mistralModelsList =>
-      _modelRegistry.getModels(AiProvider.mistral);
-  List<ModelInfo> get mimoModelsList =>
-      _modelRegistry.getModels(AiProvider.mimo);
 
   bool get isLoadingGeminiModels => _modelRegistry.isLoading(AiProvider.gemini);
   bool get isLoadingOpenRouterModels =>
       _modelRegistry.isLoading(AiProvider.openRouter);
-  bool get isLoadingArliAiModels => _modelRegistry.isLoading(AiProvider.arliAi);
   bool get isLoadingNanoGptModels =>
       _modelRegistry.isLoading(AiProvider.nanoGpt);
   bool get isLoadingNvidiaModels => _modelRegistry.isLoading(AiProvider.nvidia);
-  bool get isLoadingOpenAiModels => _modelRegistry.isLoading(AiProvider.openAi);
-  bool get isLoadingHuggingFaceModels =>
-      _modelRegistry.isLoading(AiProvider.huggingFace);
-  bool get isLoadingGroqModels => _modelRegistry.isLoading(AiProvider.groq);
+  bool get isLoadingOpenAiCompatibleModels =>
+      _modelRegistry.isLoading(AiProvider.openAiCompatible);
+  bool get isLoadingDeepseekModels =>
+      _modelRegistry.isLoading(AiProvider.deepseek);
+  bool get isLoadingOllamaModels => _modelRegistry.isLoading(AiProvider.ollama);
+  bool get isLoadingXAiModels => _modelRegistry.isLoading(AiProvider.xAi);
 
   bool get isRefreshingModels => _modelRegistry.isAnyLoading;
+
+  /// The failure message from the last model fetch for [provider], or null.
+  String? modelFetchError(AiProvider provider) =>
+      _modelRegistry.lastError(provider);
+
+  /// The failure message from the last model fetch for the active provider.
+  String? get currentModelFetchError =>
+      _modelRegistry.lastError(_currentProvider);
 
   AiProvider _currentProvider = AiProvider.gemini;
 
@@ -127,37 +115,24 @@ class ChatProvider extends ChangeNotifier {
       _modelRegistry.getModels(_currentProvider);
   String get geminiKey => _apiKeys.getProviderKey(AiProvider.gemini);
   String get openRouterKey => _apiKeys.getProviderKey(AiProvider.openRouter);
-  String get openAiKey => _apiKeys.getProviderKey(AiProvider.openAi);
-  String get arliAiKey => _apiKeys.getProviderKey(AiProvider.arliAi);
   String get nanoGptKey => _apiKeys.getProviderKey(AiProvider.nanoGpt);
   String get nvidiaKey => _apiKeys.getProviderKey(AiProvider.nvidia);
-  String get huggingFaceKey => _apiKeys.getProviderKey(AiProvider.huggingFace);
-  String get groqKey => _apiKeys.getProviderKey(AiProvider.groq);
-  String get vertexAiKey => _apiKeys.getProviderKey(AiProvider.vertexAi);
-  String get blackboxAiKey => _apiKeys.getProviderKey(AiProvider.blackboxAi);
-  String get minimaxKey => _apiKeys.getProviderKey(AiProvider.minimax);
   String get openAiCompatibleKey =>
       _apiKeys.getProviderKey(AiProvider.openAiCompatible);
   String get deepseekKey => _apiKeys.getProviderKey(AiProvider.deepseek);
   String get ollamaKey => _apiKeys.getProviderKey(AiProvider.ollama);
-  String get qwenKey => _apiKeys.getProviderKey(AiProvider.qwen);
   String get xAiKey => _apiKeys.getProviderKey(AiProvider.xAi);
-  String get zAiKey => _apiKeys.getProviderKey(AiProvider.zAi);
-  String get mistralKey => _apiKeys.getProviderKey(AiProvider.mistral);
-  String get mimoKey => _apiKeys.getProviderKey(AiProvider.mimo);
 
   String _localIp = ChatDefaults.localIp;
   String _localModelName = 'local-model';
-  String _vertexAiEndpoint = '';
   String _openAiCompatibleEndpoint = '';
-  String _ollamaEndpoint = 'http://localhost:11434';
+  String _ollamaEndpoint = ApiConstants.ollamaDefaultEndpoint;
   final Set<AiProvider> _starredProviders = {};
   final GlobalSettingsService _globalSettings = GlobalSettingsService();
   String _modelPickerSortMode = GlobalSettingsService.defaultModelSortMode;
 
   String get localIp => _localIp;
   String get localModelName => _localModelName;
-  String get vertexAiEndpoint => _vertexAiEndpoint;
   String get openAiCompatibleEndpoint => _openAiCompatibleEndpoint;
   String get ollamaEndpoint => _ollamaEndpoint;
   Set<AiProvider> get starredProviders => _starredProviders;
@@ -165,44 +140,22 @@ class ChatProvider extends ChangeNotifier {
 
   String _selectedGeminiModel = 'models/gemini-3-flash-preview';
   String _openRouterModel = 'z-ai/glm-4.5-air:free';
-  String _arliAiModel = 'Mistral-Nemo-12B-Instruct-v1';
   String _nanoGptModel = 'gpt-4o';
   String _nvidiaModel = 'nvidia/llama-3.1-nemotron-ultra-253b-v1';
-  String _openAiModel = 'gpt-4o';
-  String _huggingFaceModel = 'meta-llama/Meta-Llama-3-8B-Instruct';
-  String _groqModel = 'llama3-8b-8192';
-  String _vertexAiModel = '';
-  String _blackboxAiModel = '';
-  String _minimaxModel = '';
   String _openAiCompatibleModel = '';
   String _deepseekModel = '';
   String _ollamaModel = '';
-  String _qwenModel = '';
   String _xAiModel = '';
-  String _zAiModel = '';
-  String _mistralModel = '';
-  String _mimoModel = '';
   String _selectedModel = 'models/gemini-3-flash-preview';
 
   String get selectedGeminiModel => _selectedGeminiModel;
   String get openRouterModel => _openRouterModel;
-  String get arliAiModel => _arliAiModel;
   String get nanoGptModel => _nanoGptModel;
   String get nvidiaModel => _nvidiaModel;
-  String get openAiModel => _openAiModel;
-  String get huggingFaceModel => _huggingFaceModel;
-  String get groqModel => _groqModel;
-  String get vertexAiModel => _vertexAiModel;
-  String get blackboxAiModel => _blackboxAiModel;
-  String get minimaxModel => _minimaxModel;
   String get openAiCompatibleModel => _openAiCompatibleModel;
   String get deepseekModel => _deepseekModel;
   String get ollamaModel => _ollamaModel;
-  String get qwenModel => _qwenModel;
   String get xAiModel => _xAiModel;
-  String get zAiModel => _zAiModel;
-  String get mistralModel => _mistralModel;
-  String get mimoModel => _mimoModel;
   String get selectedModel => _selectedModel;
 
   /// Returns the maximum context length for the currently selected model.
@@ -311,6 +264,7 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _modelAutoFetchTimer?.cancel();
     _sessionService.dispose();
     _streamingCoordinator.dispose();
     _safeDisposeMessageNotifiers(_messages);
@@ -408,49 +362,7 @@ class ChatProvider extends ChangeNotifier {
         prefs.getString(ApiConstants.prefLocalModelName) ?? _localModelName;
 
     final providerString = prefs.getString('airp_provider') ?? 'gemini';
-    if (providerString == 'openRouter') {
-      _currentProvider = AiProvider.openRouter;
-    } else if (providerString == 'openAi') {
-      _currentProvider = AiProvider.openAi;
-    } else if (providerString == 'local') {
-      _currentProvider = AiProvider.local;
-    } else if (providerString == 'arliAi') {
-      _currentProvider = AiProvider.arliAi;
-    } else if (providerString == 'nanoGpt') {
-      _currentProvider = AiProvider.nanoGpt;
-    } else if (providerString == 'nvidia') {
-      _currentProvider = AiProvider.nvidia;
-    } else if (providerString == 'nanoGptImage') {
-      _currentProvider = AiProvider.nanoGpt;
-    } else if (providerString == 'huggingFace') {
-      _currentProvider = AiProvider.huggingFace;
-    } else if (providerString == 'groq') {
-      _currentProvider = AiProvider.groq;
-    } else if (providerString == 'deepseek') {
-      _currentProvider = AiProvider.deepseek;
-    } else if (providerString == 'openAiCompatible') {
-      _currentProvider = AiProvider.openAiCompatible;
-    } else if (providerString == 'vertexAi') {
-      _currentProvider = AiProvider.vertexAi;
-    } else if (providerString == 'blackboxAi') {
-      _currentProvider = AiProvider.blackboxAi;
-    } else if (providerString == 'minimax') {
-      _currentProvider = AiProvider.minimax;
-    } else if (providerString == 'ollama') {
-      _currentProvider = AiProvider.ollama;
-    } else if (providerString == 'qwen') {
-      _currentProvider = AiProvider.qwen;
-    } else if (providerString == 'xAi') {
-      _currentProvider = AiProvider.xAi;
-    } else if (providerString == 'zAi') {
-      _currentProvider = AiProvider.zAi;
-    } else if (providerString == 'mistral') {
-      _currentProvider = AiProvider.mistral;
-    } else if (providerString == 'mimo') {
-      _currentProvider = AiProvider.mimo;
-    } else {
-      _currentProvider = AiProvider.gemini;
-    }
+    _currentProvider = _providerFromName(providerString);
 
     await _modelRegistry.loadCachedModels();
 
@@ -460,25 +372,10 @@ class ChatProvider extends ChangeNotifier {
     _openRouterModel =
         prefs.getString(ApiConstants.prefModelOpenRouter) ??
         'z-ai/glm-4.5-air:free';
-    _arliAiModel =
-        prefs.getString(ApiConstants.prefModelArliAi) ??
-        'Mistral-Nemo-12B-Instruct-v1';
     _nanoGptModel = prefs.getString(ApiConstants.prefModelNanoGpt) ?? 'gpt-4o';
     _nvidiaModel =
         prefs.getString(ApiConstants.prefModelNvidia) ??
         'nvidia/llama-3.1-nemotron-ultra-253b-v1';
-    _openAiModel = prefs.getString(ApiConstants.prefModelOpenAi) ?? 'gpt-4o';
-    _huggingFaceModel =
-        prefs.getString(ApiConstants.prefModelHuggingFace) ??
-        'meta-llama/Meta-Llama-3-8B-Instruct';
-    _groqModel =
-        prefs.getString(ApiConstants.prefModelGroq) ?? 'llama3-8b-8192';
-    _vertexAiModel =
-        prefs.getString(ApiConstants.prefModelVertexAi) ?? _vertexAiModel;
-    _blackboxAiModel =
-        prefs.getString(ApiConstants.prefModelBlackboxAi) ?? _blackboxAiModel;
-    _minimaxModel =
-        prefs.getString(ApiConstants.prefModelMinimax) ?? _minimaxModel;
     _openAiCompatibleModel =
         prefs.getString(ApiConstants.prefModelOpenAiCompatible) ??
         _openAiCompatibleModel;
@@ -486,11 +383,13 @@ class ChatProvider extends ChangeNotifier {
         prefs.getString(ApiConstants.prefModelDeepseek) ?? _deepseekModel;
     _ollamaModel =
         prefs.getString(ApiConstants.prefModelOllama) ?? _ollamaModel;
-    _qwenModel = prefs.getString(ApiConstants.prefModelQwen) ?? _qwenModel;
     _xAiModel = prefs.getString(ApiConstants.prefModelXAi) ?? _xAiModel;
-    _zAiModel = prefs.getString(ApiConstants.prefModelZAi) ?? _zAiModel;
-    _mistralModel =
-        prefs.getString(ApiConstants.prefModelMistral) ?? _mistralModel;
+
+    _openAiCompatibleEndpoint =
+        prefs.getString(ApiConstants.prefOpenAiCompatibleEndpoint) ??
+        _openAiCompatibleEndpoint;
+    _ollamaEndpoint =
+        prefs.getString(ApiConstants.prefOllamaEndpoint) ?? _ollamaEndpoint;
 
     _selectedModel = _getProviderModel(_currentProvider);
 
@@ -512,6 +411,18 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  /// Resolves a persisted provider name back to its enum value.
+  ///
+  /// Unknown names (a provider that has since been retired, or a config pack
+  /// from a newer build) fall back to Gemini rather than throwing.
+  static AiProvider _providerFromName(String name) {
+    if (name == 'nanoGptImage') return AiProvider.nanoGpt;
+    for (final provider in AiProvider.values) {
+      if (provider.name == name) return provider;
+    }
+    return AiProvider.gemini;
+  }
+
   void setProvider(AiProvider provider) {
     _currentProvider = provider;
     _selectedModel = _getProviderModel(provider);
@@ -526,6 +437,32 @@ class ChatProvider extends ChangeNotifier {
   void setApiKey(String key) {
     _setProviderKey(_currentProvider, key);
     notifyListeners();
+    _scheduleModelAutoFetch(_currentProvider);
+  }
+
+  /// Debounce for the model list fetch that follows a credential edit.
+  Timer? _modelAutoFetchTimer;
+
+  /// Fetches the model list shortly after the user finishes entering an API
+  /// key or endpoint.
+  ///
+  /// Entering a key used to issue no request at all: the list stayed empty
+  /// until the user found the separate refresh button, which reads as the key
+  /// having been ignored. The debounce keeps a pasted key from firing a
+  /// request per keystroke.
+  void _scheduleModelAutoFetch(AiProvider provider) {
+    _modelAutoFetchTimer?.cancel();
+    _modelAutoFetchTimer = Timer(const Duration(milliseconds: 900), () {
+      if (provider != _currentProvider) return;
+      if (_modelRegistry.isLoading(provider)) return;
+
+      final needsKey = provider != AiProvider.local &&
+          provider != AiProvider.ollama;
+      if (needsKey && _getProviderKey(provider).trim().isEmpty) return;
+      if (!needsKey && (_customEndpointFor(provider) ?? '').isEmpty) return;
+
+      refreshModels(provider);
+    });
   }
 
   void setLocalIp(String ip) {
@@ -619,40 +556,18 @@ class ChatProvider extends ChangeNotifier {
         return _selectedGeminiModel;
       case AiProvider.openRouter:
         return _openRouterModel;
-      case AiProvider.arliAi:
-        return _arliAiModel;
       case AiProvider.nanoGpt:
         return _nanoGptModel;
       case AiProvider.nvidia:
         return _nvidiaModel;
-      case AiProvider.openAi:
-        return _openAiModel;
-      case AiProvider.huggingFace:
-        return _huggingFaceModel;
-      case AiProvider.groq:
-        return _groqModel;
-      case AiProvider.vertexAi:
-        return _vertexAiModel;
-      case AiProvider.blackboxAi:
-        return _blackboxAiModel;
-      case AiProvider.minimax:
-        return _minimaxModel;
       case AiProvider.openAiCompatible:
         return _openAiCompatibleModel;
       case AiProvider.deepseek:
         return _deepseekModel;
       case AiProvider.ollama:
         return _ollamaModel;
-      case AiProvider.qwen:
-        return _qwenModel;
       case AiProvider.xAi:
         return _xAiModel;
-      case AiProvider.zAi:
-        return _zAiModel;
-      case AiProvider.mistral:
-        return _mistralModel;
-      case AiProvider.mimo:
-        return _mimoModel;
       case AiProvider.local:
         return "Local Network AI";
     }
@@ -666,32 +581,11 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.openRouter:
         _openRouterModel = model;
         break;
-      case AiProvider.arliAi:
-        _arliAiModel = model;
-        break;
       case AiProvider.nanoGpt:
         _nanoGptModel = model;
         break;
       case AiProvider.nvidia:
         _nvidiaModel = model;
-        break;
-      case AiProvider.openAi:
-        _openAiModel = model;
-        break;
-      case AiProvider.huggingFace:
-        _huggingFaceModel = model;
-        break;
-      case AiProvider.groq:
-        _groqModel = model;
-        break;
-      case AiProvider.vertexAi:
-        _vertexAiModel = model;
-        break;
-      case AiProvider.blackboxAi:
-        _blackboxAiModel = model;
-        break;
-      case AiProvider.minimax:
-        _minimaxModel = model;
         break;
       case AiProvider.openAiCompatible:
         _openAiCompatibleModel = model;
@@ -702,20 +596,8 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.ollama:
         _ollamaModel = model;
         break;
-      case AiProvider.qwen:
-        _qwenModel = model;
-        break;
       case AiProvider.xAi:
         _xAiModel = model;
-        break;
-      case AiProvider.zAi:
-        _zAiModel = model;
-        break;
-      case AiProvider.mistral:
-        _mistralModel = model;
-        break;
-      case AiProvider.mimo:
-        _mimoModel = model;
         break;
       case AiProvider.local:
         break;
@@ -731,19 +613,31 @@ class ChatProvider extends ChangeNotifier {
     _apiKeys.setProviderKey(provider, key);
   }
 
-  void setVertexAiEndpoint(String val) {
-    _vertexAiEndpoint = val;
-    notifyListeners();
+  /// The user-configured server root for providers that talk to an endpoint
+  /// the user owns, or null for hosted providers that use a fixed base URL.
+  String? _customEndpointFor(AiProvider provider) {
+    switch (provider) {
+      case AiProvider.local:
+        return _localIp.trim();
+      case AiProvider.openAiCompatible:
+        return _openAiCompatibleEndpoint.trim();
+      case AiProvider.ollama:
+        return _ollamaEndpoint.trim();
+      default:
+        return null;
+    }
   }
 
   void setOpenAiCompatibleEndpoint(String val) {
     _openAiCompatibleEndpoint = val;
     notifyListeners();
+    _scheduleModelAutoFetch(AiProvider.openAiCompatible);
   }
 
   void setOllamaEndpoint(String val) {
     _ollamaEndpoint = val;
     notifyListeners();
+    _scheduleModelAutoFetch(AiProvider.ollama);
   }
 
   void toggleProviderStar(AiProvider provider) {
@@ -790,25 +684,21 @@ class ChatProvider extends ChangeNotifier {
     await prefs.setString('airp_provider', _currentProvider.name);
     await prefs.setString(ApiConstants.prefModelGemini, _selectedGeminiModel);
     await prefs.setString(ApiConstants.prefModelOpenRouter, _openRouterModel);
-    await prefs.setString(ApiConstants.prefModelArliAi, _arliAiModel);
     await prefs.setString(ApiConstants.prefModelNanoGpt, _nanoGptModel);
     await prefs.setString(ApiConstants.prefModelNvidia, _nvidiaModel);
-    await prefs.setString(ApiConstants.prefModelOpenAi, _openAiModel);
-    await prefs.setString(ApiConstants.prefModelHuggingFace, _huggingFaceModel);
-    await prefs.setString(ApiConstants.prefModelGroq, _groqModel);
-    await prefs.setString(ApiConstants.prefModelVertexAi, _vertexAiModel);
-    await prefs.setString(ApiConstants.prefModelBlackboxAi, _blackboxAiModel);
-    await prefs.setString(ApiConstants.prefModelMinimax, _minimaxModel);
     await prefs.setString(
       ApiConstants.prefModelOpenAiCompatible,
       _openAiCompatibleModel,
     );
     await prefs.setString(ApiConstants.prefModelDeepseek, _deepseekModel);
     await prefs.setString(ApiConstants.prefModelOllama, _ollamaModel);
-    await prefs.setString(ApiConstants.prefModelQwen, _qwenModel);
     await prefs.setString(ApiConstants.prefModelXAi, _xAiModel);
-    await prefs.setString(ApiConstants.prefModelZAi, _zAiModel);
-    await prefs.setString(ApiConstants.prefModelMistral, _mistralModel);
+
+    await prefs.setString(
+      ApiConstants.prefOpenAiCompatibleEndpoint,
+      _openAiCompatibleEndpoint,
+    );
+    await prefs.setString(ApiConstants.prefOllamaEndpoint, _ollamaEndpoint);
 
     await prefs.setString(
       'airp_default_system_instruction',
@@ -846,14 +736,7 @@ class ChatProvider extends ChangeNotifier {
   /// it is excluded. All other providers (OpenAI-compatible + Gemini) are
   /// considered capable; individual models that ignore the tool simply answer
   /// without searching.
-  bool supportsWebSearchTool() {
-    switch (_currentProvider) {
-      case AiProvider.huggingFace:
-        return false;
-      default:
-        return true;
-    }
-  }
+  bool supportsWebSearchTool() => true;
 
   /// Returns `null` if web search can be enabled with the current provider +
   /// selected search backend, or a short human-readable reason string
@@ -864,7 +747,6 @@ class ChatProvider extends ChangeNotifier {
       switch (_currentProvider) {
         case AiProvider.gemini:
         case AiProvider.openRouter:
-        case AiProvider.arliAi:
         case AiProvider.nanoGpt:
           return null;
         default:
@@ -921,14 +803,7 @@ class ChatProvider extends ChangeNotifier {
     final bool isGemini = _currentProvider == AiProvider.gemini;
     final String activeKey = _getProviderKey(_currentProvider);
     final strategy = StrategyResolver.resolve(_currentProvider);
-    String? customUrl;
-    if (_currentProvider == AiProvider.local) {
-      customUrl = _localIp.trim();
-    } else if (_currentProvider == AiProvider.openAiCompatible) {
-      customUrl = _openAiCompatibleEndpoint.trim();
-    } else if (_currentProvider == AiProvider.vertexAi) {
-      customUrl = _vertexAiEndpoint.trim();
-    }
+    final String? customUrl = _customEndpointFor(_currentProvider);
     final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
     final String modelName = _currentProvider == AiProvider.local
         ? _localModelName
@@ -1281,8 +1156,8 @@ class ChatProvider extends ChangeNotifier {
 
     if (activeKey.isEmpty &&
         _currentProvider != AiProvider.local &&
-        _currentProvider != AiProvider.huggingFace) {
-      // HuggingFace can work without a key for some models, but rate limited.
+        _currentProvider != AiProvider.ollama) {
+      // Local runtimes and Ollama serve unauthenticated by default.
       debugPrint("Warning: No API Key found for ${_currentProvider.name}");
     }
 
@@ -1606,14 +1481,7 @@ class ChatProvider extends ChangeNotifier {
       final strategy = StrategyResolver.resolve(_currentProvider);
       final activeKey = _getProviderKey(_currentProvider);
 
-      String? customUrl;
-      if (_currentProvider == AiProvider.local) {
-        customUrl = _localIp.trim();
-      } else if (_currentProvider == AiProvider.openAiCompatible) {
-        customUrl = _openAiCompatibleEndpoint.trim();
-      } else if (_currentProvider == AiProvider.vertexAi) {
-        customUrl = _vertexAiEndpoint.trim();
-      }
+      final String? customUrl = _customEndpointFor(_currentProvider);
 
       String finalSystemInstruction = _buildSystemInstruction(
         recognizedLoreEntries: recognizedLoreEntries,
@@ -2127,14 +1995,7 @@ class ChatProvider extends ChangeNotifier {
     final bool isGemini = _currentProvider == AiProvider.gemini;
     final String activeKey = _getProviderKey(_currentProvider);
     final strategy = StrategyResolver.resolve(_currentProvider);
-    String? customUrl;
-    if (_currentProvider == AiProvider.local) {
-      customUrl = _localIp.trim();
-    } else if (_currentProvider == AiProvider.openAiCompatible) {
-      customUrl = _openAiCompatibleEndpoint.trim();
-    } else if (_currentProvider == AiProvider.vertexAi) {
-      customUrl = _vertexAiEndpoint.trim();
-    }
+    final String? customUrl = _customEndpointFor(_currentProvider);
     final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
     final String modelName = _currentProvider == AiProvider.local
         ? _localModelName
@@ -2270,78 +2131,12 @@ class ChatProvider extends ChangeNotifier {
     _currentTitle = session.title;
     _nonStreamingLoading = false;
 
-    if (session.provider == 'openRouter') {
-      _currentProvider = AiProvider.openRouter;
-      _openRouterModel = session.modelName;
-      _selectedModel = session.modelName;
-    } else if (session.provider == 'local') {
-      _currentProvider = AiProvider.local;
+    final sessionProvider = _providerFromName(session.provider);
+    _currentProvider = sessionProvider;
+    if (sessionProvider == AiProvider.local) {
       _selectedModel = "Local Network AI";
-    } else if (session.provider == 'openAi') {
-      _currentProvider = AiProvider.openAi;
-      _selectedModel = session.modelName;
-    } else if (session.provider == 'groq') {
-      _currentProvider = AiProvider.groq;
-      _selectedModel = session.modelName;
-    } else if (session.provider == 'nanoGpt') {
-      _currentProvider = AiProvider.nanoGpt;
-      _selectedModel = session.modelName;
-      _nanoGptModel = session.modelName;
-    } else if (session.provider == 'arliAi') {
-      _currentProvider = AiProvider.arliAi;
-      _selectedModel = session.modelName;
-      _arliAiModel = session.modelName;
-    } else if (session.provider == 'huggingFace') {
-      _currentProvider = AiProvider.huggingFace;
-      _selectedModel = session.modelName;
-      _huggingFaceModel = session.modelName;
-    } else if (session.provider == 'vertexAi') {
-      _currentProvider = AiProvider.vertexAi;
-      _selectedModel = session.modelName;
-      _vertexAiModel = session.modelName;
-    } else if (session.provider == 'blackboxAi') {
-      _currentProvider = AiProvider.blackboxAi;
-      _selectedModel = session.modelName;
-      _blackboxAiModel = session.modelName;
-    } else if (session.provider == 'minimax') {
-      _currentProvider = AiProvider.minimax;
-      _selectedModel = session.modelName;
-      _minimaxModel = session.modelName;
-    } else if (session.provider == 'openAiCompatible') {
-      _currentProvider = AiProvider.openAiCompatible;
-      _selectedModel = session.modelName;
-      _openAiCompatibleModel = session.modelName;
-    } else if (session.provider == 'deepseek') {
-      _currentProvider = AiProvider.deepseek;
-      _selectedModel = session.modelName;
-      _deepseekModel = session.modelName;
-    } else if (session.provider == 'ollama') {
-      _currentProvider = AiProvider.ollama;
-      _selectedModel = session.modelName;
-      _ollamaModel = session.modelName;
-    } else if (session.provider == 'qwen') {
-      _currentProvider = AiProvider.qwen;
-      _selectedModel = session.modelName;
-      _qwenModel = session.modelName;
-    } else if (session.provider == 'xAi') {
-      _currentProvider = AiProvider.xAi;
-      _selectedModel = session.modelName;
-      _xAiModel = session.modelName;
-    } else if (session.provider == 'zAi') {
-      _currentProvider = AiProvider.zAi;
-      _selectedModel = session.modelName;
-      _zAiModel = session.modelName;
-    } else if (session.provider == 'mistral') {
-      _currentProvider = AiProvider.mistral;
-      _selectedModel = session.modelName;
-      _mistralModel = session.modelName;
-    } else if (session.provider == 'mimo') {
-      _currentProvider = AiProvider.mimo;
-      _selectedModel = session.modelName;
-      _mimoModel = session.modelName;
     } else {
-      _currentProvider = AiProvider.gemini;
-      _selectedGeminiModel = session.modelName;
+      _setProviderModel(sessionProvider, session.modelName);
       _selectedModel = session.modelName;
     }
 
@@ -2613,28 +2408,20 @@ class ChatProvider extends ChangeNotifier {
       'models': {
         'gemini': _selectedGeminiModel,
         'openRouter': _openRouterModel,
-        'arliAi': _arliAiModel,
         'nanoGpt': _nanoGptModel,
         'nvidia': _nvidiaModel,
-        'openAi': _openAiModel,
-        'huggingFace': _huggingFaceModel,
-        'groq': _groqModel,
-        'vertexAi': _vertexAiModel,
-        'blackboxAi': _blackboxAiModel,
-        'minimax': _minimaxModel,
         'openAiCompatible': _openAiCompatibleModel,
         'deepseek': _deepseekModel,
         'ollama': _ollamaModel,
-        'qwen': _qwenModel,
         'xAi': _xAiModel,
-        'zAi': _zAiModel,
-        'mistral': _mistralModel,
       },
       'modelBookmarks': _bookmarkedModels.toList(),
       'starredProviders': _starredProviders.map((p) => p.name).toList(),
       'ui': {'modelPickerSortMode': _modelPickerSortMode},
       'localIp': _localIp,
       'localModelName': _localModelName,
+      'openAiCompatibleEndpoint': _openAiCompatibleEndpoint,
+      'ollamaEndpoint': _ollamaEndpoint,
       'systemInstruction': _systemInstruction,
       'systemPrompts': _savedSystemPrompts.map((p) => p.toJson()).toList(),
       'sessions': savedSessions.map((s) => s.toJson()).toList(),
@@ -2650,34 +2437,25 @@ class ChatProvider extends ChangeNotifier {
   Future<void> importSettingsMap(Map<String, dynamic> data) async {
     final providerName = data['provider'] as String?;
     if (providerName != null) {
-      try {
-        _currentProvider = AiProvider.values.firstWhere(
-          (p) => p.name == providerName,
-        );
-      } catch (_) {}
+      _currentProvider = _providerFromName(providerName);
     }
 
     final models = data['models'] as Map<String, dynamic>? ?? {};
     _selectedGeminiModel = models['gemini'] as String? ?? _selectedGeminiModel;
     _openRouterModel = models['openRouter'] as String? ?? _openRouterModel;
-    _arliAiModel = models['arliAi'] as String? ?? _arliAiModel;
     _nanoGptModel = models['nanoGpt'] as String? ?? _nanoGptModel;
     _nvidiaModel = models['nvidia'] as String? ?? _nvidiaModel;
-    _openAiModel = models['openAi'] as String? ?? _openAiModel;
-    _huggingFaceModel = models['huggingFace'] as String? ?? _huggingFaceModel;
-    _groqModel = models['groq'] as String? ?? _groqModel;
-    _vertexAiModel = models['vertexAi'] as String? ?? _vertexAiModel;
-    _blackboxAiModel = models['blackboxAi'] as String? ?? _blackboxAiModel;
-    _minimaxModel = models['minimax'] as String? ?? _minimaxModel;
     _openAiCompatibleModel =
         models['openAiCompatible'] as String? ?? _openAiCompatibleModel;
     _deepseekModel = models['deepseek'] as String? ?? _deepseekModel;
     _ollamaModel = models['ollama'] as String? ?? _ollamaModel;
-    _qwenModel = models['qwen'] as String? ?? _qwenModel;
     _xAiModel = models['xAi'] as String? ?? _xAiModel;
-    _zAiModel = models['zAi'] as String? ?? _zAiModel;
-    _mistralModel = models['mistral'] as String? ?? _mistralModel;
     _selectedModel = _getProviderModel(_currentProvider);
+
+    _openAiCompatibleEndpoint =
+        data['openAiCompatibleEndpoint'] as String? ??
+        _openAiCompatibleEndpoint;
+    _ollamaEndpoint = data['ollamaEndpoint'] as String? ?? _ollamaEndpoint;
 
     final bookmarks = data['modelBookmarks'] as List<dynamic>?;
     if (bookmarks != null) {
@@ -2789,7 +2567,12 @@ class ChatProvider extends ChangeNotifier {
         "X-Title": "AIRP Chat",
       };
     }
-    await _modelRegistry.fetchModels(provider, key, headers: headers);
+    await _modelRegistry.fetchModels(
+      provider,
+      key,
+      headers: headers,
+      customBase: _customEndpointFor(provider),
+    );
   }
 
   Future<void> refreshCurrentModels() => refreshModels(_currentProvider);

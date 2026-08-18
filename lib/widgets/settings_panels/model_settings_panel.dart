@@ -24,7 +24,6 @@ class ModelSettingsPanel extends StatefulWidget {
 class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
   late TextEditingController _titleController;
   late TextEditingController _openRouterModelController;
-  late TextEditingController _groqModelController;
   late FocusNode _titleFocusNode;
 
   /// Explicit controller for the model description box. Without one it would
@@ -40,7 +39,6 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
     _openRouterModelController = TextEditingController(
       text: chatProvider.openRouterModel,
     );
-    _groqModelController = TextEditingController(text: chatProvider.groqModel);
     _titleFocusNode = FocusNode();
   }
 
@@ -48,7 +46,6 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
   void dispose() {
     _titleController.dispose();
     _openRouterModelController.dispose();
-    _groqModelController.dispose();
     _titleFocusNode.dispose();
     _descriptionScrollController.dispose();
     super.dispose();
@@ -61,9 +58,6 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
     }
     if (_openRouterModelController.text != chatProvider.openRouterModel) {
       _openRouterModelController.text = chatProvider.openRouterModel;
-    }
-    if (_groqModelController.text != chatProvider.groqModel) {
-      _groqModelController.text = chatProvider.groqModel;
     }
   }
 
@@ -200,17 +194,6 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
           ),
         ],
 
-        if (chatProvider.currentProvider == AiProvider.arliAi)
-          ProviderModelSelector(
-            modelsList: chatProvider.arliAiModelsList,
-            selectedModel: chatProvider.arliAiModel,
-            onSelected: chatProvider.setModel,
-            placeholder: "Gemma-3-27B-Big-Tiger-v3",
-            isLoading: chatProvider.isLoadingArliAiModels,
-            onRefresh: () => chatProvider.refreshModels(AiProvider.arliAi),
-            refreshButtonColor: Colors.orangeAccent,
-          ),
-
         if (chatProvider.currentProvider == AiProvider.nanoGpt)
           ProviderModelSelector(
             modelsList: chatProvider.nanoGptModelsList,
@@ -233,42 +216,51 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
             refreshButtonColor: Colors.lightGreenAccent,
           ),
 
-        if (chatProvider.currentProvider == AiProvider.openAi)
+        if (chatProvider.currentProvider == AiProvider.deepseek)
           ProviderModelSelector(
-            modelsList: chatProvider.openAiModelsList,
-            selectedModel: chatProvider.openAiModel,
+            modelsList: chatProvider.deepseekModelsList,
+            selectedModel: chatProvider.deepseekModel,
             onSelected: chatProvider.setModel,
-            placeholder: "gpt-4o",
-            isLoading: chatProvider.isLoadingOpenAiModels,
-            onRefresh: () => chatProvider.refreshModels(AiProvider.openAi),
-            refreshButtonColor: Colors.greenAccent,
+            placeholder: 'deepseek-chat',
+            isLoading: chatProvider.isLoadingDeepseekModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.deepseek),
+            refreshButtonColor: Colors.blueAccent,
           ),
 
-        if (chatProvider.currentProvider == AiProvider.huggingFace)
+        if (chatProvider.currentProvider == AiProvider.xAi)
           ProviderModelSelector(
-            modelsList: chatProvider.huggingFaceModelsList,
-            selectedModel: chatProvider.huggingFaceModel,
+            modelsList: chatProvider.xAiModelsList,
+            selectedModel: chatProvider.xAiModel,
             onSelected: chatProvider.setModel,
-            placeholder: "meta-llama/Meta-Llama-3-8B-Instruct",
-            isLoading: chatProvider.isLoadingHuggingFaceModels,
-            onRefresh: () => chatProvider.refreshModels(AiProvider.huggingFace),
-            refreshButtonColor: Colors.amberAccent,
+            placeholder: 'grok-4',
+            isLoading: chatProvider.isLoadingXAiModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.xAi),
+            refreshButtonColor: Colors.white70,
           ),
 
-        if (chatProvider.currentProvider == AiProvider.groq)
+        if (chatProvider.currentProvider == AiProvider.ollama)
           ProviderModelSelector(
-            modelsList: chatProvider.groqModelsList,
-            selectedModel: chatProvider.groqModel,
-            onSelected: (val) {
-              chatProvider.setModel(val);
-              _groqModelController.text = val;
-            },
-            placeholder: "llama3-8b-8192",
-            isLoading: chatProvider.isLoadingGroqModels,
-            onRefresh: () => chatProvider.refreshModels(AiProvider.groq),
-            refreshButtonColor: Colors.deepOrangeAccent,
-            controller: _groqModelController,
+            modelsList: chatProvider.ollamaModelsList,
+            selectedModel: chatProvider.ollamaModel,
+            onSelected: chatProvider.setModel,
+            placeholder: 'llama3.2:latest',
+            isLoading: chatProvider.isLoadingOllamaModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.ollama),
+            refreshButtonColor: Colors.tealAccent,
           ),
+
+        if (chatProvider.currentProvider == AiProvider.openAiCompatible)
+          ProviderModelSelector(
+            modelsList: chatProvider.openAiCompatibleModelsList,
+            selectedModel: chatProvider.openAiCompatibleModel,
+            onSelected: chatProvider.setModel,
+            placeholder: 'vendor/model-name',
+            isLoading: chatProvider.isLoadingOpenAiCompatibleModels,
+            onRefresh: () =>
+                chatProvider.refreshModels(AiProvider.openAiCompatible),
+            refreshButtonColor: Colors.orangeAccent,
+          ),
+
         const SizedBox(height: 16),
 
         // --- Selected Model Details UI ---
@@ -487,19 +479,8 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
 
   /// Returns the number of available models for the current provider.
   int _getModelCount(ChatProvider provider) {
-    switch (provider.currentProvider) {
-      case AiProvider.gemini: return provider.geminiModelsList.length;
-      case AiProvider.openRouter: return provider.openRouterModelsList.length;
-      case AiProvider.arliAi: return provider.arliAiModelsList.length;
-      case AiProvider.nanoGpt: return provider.nanoGptModelsList.length;
-      case AiProvider.nvidia: return provider.nvidiaModelsList.length;
-      case AiProvider.openAi: return provider.openAiModelsList.length;
-      case AiProvider.huggingFace: return provider.huggingFaceModelsList.length;
-      case AiProvider.groq: return provider.groqModelsList.length;
-      case AiProvider.mimo: return provider.mimoModelsList.length;
-      case AiProvider.local: return 1;
-      default: return 0;
-    }
+    if (provider.currentProvider == AiProvider.local) return 1;
+    return provider.currentModelsList.length;
   }
 
   /// Formats pricing string from per-token to per-million tokens format.

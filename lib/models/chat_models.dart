@@ -5,24 +5,13 @@ import '../services/reasoning_utils.dart';
 enum AiProvider {
   gemini,
   openRouter,
-  openAi,
   local,
-  arliAi,
   nanoGpt,
   nvidia,
-  huggingFace,
-  groq,
-  vertexAi,
-  blackboxAi,
-  minimax,
   openAiCompatible,
   deepseek,
   ollama,
-  qwen,
   xAi,
-  zAi,
-  mistral,
-  mimo,
 }
 
 /// Data structure representing a saved chat session.

@@ -9,19 +9,13 @@ import '../chat_api_service.dart';
 /// which one to emit (and which to omit).
 enum ThinkingFormat {
   /// Send no reasoning parameter. Used by providers whose reasoning models
-  /// reason automatically (e.g. DeepSeek `deepseek-reasoner`, Mistral
-  /// Magistral, Xiaomi MiMo-7B-RL).
+  /// reason automatically (e.g. DeepSeek `deepseek-reasoner`) and by local
+  /// runtimes that expose thinking as a model-level setting (Ollama).
   none,
 
   /// Emit `reasoning_effort: "<effort>"`. The OpenAI-native format used by
-  /// OpenAI o-series, xAI Grok, Groq, Nvidia, Minimax, Blackbox, etc.
+  /// xAI Grok, NVIDIA NIM, OpenRouter, and most hosted gateways.
   reasoningEffort,
-
-  /// Emit `enable_thinking: true|false`. The Qwen/DashScope format.
-  enableThinking,
-
-  /// Emit `thinking: {type: "enabled"|"disabled"}`. The Z.AI/Zhipu GLM format.
-  thinkingObject,
 }
 
 /// A UI-facing label and its corresponding API value for a reasoning effort
@@ -88,19 +82,40 @@ abstract class AiProviderStrategy {
           bodyMap['reasoning_effort'] = effort;
         }
         break;
-      case ThinkingFormat.enableThinking:
-        bodyMap['enable_thinking'] = enabled;
-        break;
-      case ThinkingFormat.thinkingObject:
-        bodyMap['thinking'] = {
-          'type': enabled ? 'enabled' : 'disabled',
-        };
-        break;
     }
   }
 
   /// Returns the streaming endpoint URL.
   String getStreamUrl({String? customUrl}) => customUrl ?? baseUrl;
+
+  /// Returns the model-list URL for this provider.
+  ///
+  /// [customBase] is the user-configured server root for providers that run
+  /// against an endpoint the user owns (Local, OpenAI Compatible, Ollama).
+  /// When it is null or blank the provider's fixed [baseUrl] is used, so
+  /// hosted providers need no override.
+  String getModelsUrl({String? customBase}) {
+    final base = customBase?.trim() ?? '';
+    if (base.isEmpty) return baseUrl;
+    return appendModelsPath(base);
+  }
+
+  /// Normalizes a user-entered server root into a `/models` listing URL.
+  ///
+  /// Accepts a bare root (`http://host:1234`), a versioned root
+  /// (`http://host:1234/v1`), or a URL that already points at the listing.
+  static String appendModelsPath(String rawBase) {
+    var url = rawBase.trim();
+    while (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    if (url.isEmpty) return '';
+    if (url.endsWith('/models')) return url;
+    if (url.endsWith('/chat/completions')) {
+      url = url.substring(0, url.length - '/chat/completions'.length);
+    }
+    return '$url/models';
+  }
 
   /// Generates the necessary headers for API requests.
   Map<String, String> getHeaders(String apiKey) {

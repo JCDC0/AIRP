@@ -62,6 +62,13 @@ class LibraryService {
       if (data.containsKey('localModelName')) {
         chatSettings['localModelName'] = data['localModelName'];
       }
+      if (data.containsKey('openAiCompatibleEndpoint')) {
+        chatSettings['openAiCompatibleEndpoint'] =
+            data['openAiCompatibleEndpoint'];
+      }
+      if (data.containsKey('ollamaEndpoint')) {
+        chatSettings['ollamaEndpoint'] = data['ollamaEndpoint'];
+      }
       if (data.containsKey('systemInstruction')) {
         chatSettings['systemInstruction'] = data['systemInstruction'];
       }
