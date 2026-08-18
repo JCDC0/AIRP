@@ -380,25 +380,30 @@ class TextDesignerPanel extends StatelessWidget {
                 : [],
           ),
         ),
-        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          child: Text(
+            'The three elements roleplay prose actually uses. Headings, lists, '
+            'quotes, links and code still render, following the bubble text '
+            'colour.',
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize - 4,
+              color: themeProvider.subtitleColor,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
         _buildMarkdownPickerList(
           context,
           scaleProvider,
           themeProvider,
           [
-            _MarkdownColorEntry('Paragraph', 'paragraph', (t) => t.markdownParagraphColor),
-            _MarkdownColorEntry('Italic', 'italic', (t) => t.markdownItalicColor),
-            _MarkdownColorEntry('Bold', 'bold', (t) => t.markdownBoldColor),
-            _MarkdownColorEntry('Bold Italic', 'boldItalic', (t) => t.markdownBoldItalicColor),
-            _MarkdownColorEntry('H1', 'h1', (t) => t.markdownH1Color),
-            _MarkdownColorEntry('H2', 'h2', (t) => t.markdownH2Color),
-            _MarkdownColorEntry('H3', 'h3', (t) => t.markdownH3Color),
-            _MarkdownColorEntry('Link', 'link', (t) => t.markdownLinkColor),
-            _MarkdownColorEntry('Inline Code', 'inlineCode', (t) => t.markdownInlineCodeColor),
-            _MarkdownColorEntry('Code Block', 'codeBlock', (t) => t.markdownCodeBlockColor),
-            _MarkdownColorEntry('Blockquote', 'blockquote', (t) => t.markdownBlockquoteColor),
-            _MarkdownColorEntry('List', 'list', (t) => t.markdownListColor),
-            _MarkdownColorEntry('Strike', 'strike', (t) => t.markdownStrikeColor),
+            // Roleplay prose is narration, "dialogue" and *actions*. Every
+            // other markdown element still renders, but follows the bubble
+            // text colour rather than carrying a picker nobody moved.
+            _MarkdownColorEntry('Narration', 'paragraph', (t) => t.markdownParagraphColor),
+            _MarkdownColorEntry('Italic (actions)', 'italic', (t) => t.markdownItalicColor),
+            _MarkdownColorEntry('Bold (emphasis)', 'bold', (t) => t.markdownBoldColor),
           ],
         ),
       ],

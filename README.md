@@ -263,7 +263,17 @@ The **Text Designer** panel in Settings centralizes text presentation controls w
 
 * **Global Interface Font**: 42 faces grouped by category (Interface, Serif, Monospace, Handwriting, Display, Japanese). Faces are fetched on first use rather than bundled, so a newly picked font needs one network fetch before it renders.
 * **Chat Customization**: Tune User/AI bubble and text colors plus opacity.
-* **Markdown Colors**: Each markdown element is now shown as an easy-to-scan row (`color circle - label`) for mobile readability, including Paragraph, Italic, Bold, Bold Italic, H1/H2/H3, Link, Inline Code, Code Block, Blockquote, List, and Strike.
+* **Markdown Colors**: Three pickers, shown as easy-to-scan rows
+  (`color circle - label`): **Narration**, **Italic (actions)** and
+  **Bold (emphasis)**. Those are the only elements roleplay prose uses —
+  narration in plain text, `"dialogue"` in quotes, `*actions*` in asterisks, and
+  bold for emphasis.
+
+  > **Changed in 0.7.30.3.** The other ten pickers were retired. Headings,
+  > lists, blockquotes, links, strikethrough and code still render exactly as
+  > before; they follow the bubble's text colour instead of each carrying a
+  > picker. Three of the retired ones (Bold Italic, Inline Code, Code Block)
+  > had never been wired to the renderer at all.
 
 ---
 

@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.30.2` (`pubspec.yaml` `0.7.30+13`). Target: `0.8.0` release.
+Current version: `0.7.30.3` (`pubspec.yaml` `0.7.30+14`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -39,7 +39,7 @@ Current version: `0.7.30.2` (`pubspec.yaml` `0.7.30+13`). Target: `0.8.0` releas
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (288 tests, all passing)
+*   **Test:** `flutter test` (294 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -243,6 +243,25 @@ user's font. `AppFonts.resolve` falls back to the system default for unknown
 keys, so a config pack from a newer build degrades instead of crashing.
 
 Faces are fetched by `google_fonts` at first use, not bundled.
+
+## Markdown colours
+
+Only three markdown elements are user-tintable: paragraph, italic and bold.
+Roleplay prose is narration plus `"dialogue"` plus `*actions*`, with bold for
+emphasis; nothing else appears in it often enough to earn a picker.
+
+Everything else still RENDERS. `markdownStructureColor` (headings, list bullets,
+strikethrough) tracks `textColor`, `markdownBlockquoteColor` tracks
+`subtitleColor`, and `markdownLinkColor` stays distinct because web search
+answers are full of links. Do not remove those getters believing the elements
+are unused: the Summarize drawer's default voice-samples prompt asks the model
+for "Markdown headings per character, with a bulleted list of samples below each
+heading", so first-party output depends on headings and lists painting.
+
+`ThemeProvider.updateMarkdownColor` ignores an unknown type rather than
+throwing, so a config pack written while the ten retired pickers existed still
+applies. Their `color_md_*` prefs keys are left on disk untouched rather than
+deleted.
 
 ## Token accounting
 

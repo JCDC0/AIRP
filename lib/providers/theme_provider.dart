@@ -15,19 +15,14 @@ class ThemeProvider extends ChangeNotifier {
   Color _aiBubbleColor = AppColors.defaultAiBubble;
   Color _aiTextColor = AppColors.defaultAiText;
   Color _appThemeColor = AppColors.defaultAppTheme;
+  /// Roleplay prose is narration, `"dialogue"` and `*actions*`, so only three
+  /// markdown elements are worth tinting separately. Headings, lists,
+  /// blockquotes, links, strikethrough and code still render; they follow the
+  /// bubble's text colour instead of carrying their own picker. See
+  /// `docs/agents/ARCHITECTURE.md`.
   Color? _markdownParagraphColor;
   Color? _markdownItalicColor;
   Color? _markdownBoldColor;
-  Color? _markdownBoldItalicColor;
-  Color? _markdownH1Color;
-  Color? _markdownH2Color;
-  Color? _markdownH3Color;
-  Color? _markdownLinkColor;
-  Color? _markdownInlineCodeColor;
-  Color? _markdownCodeBlockColor;
-  Color? _markdownBlockquoteColor;
-  Color? _markdownListColor;
-  Color? _markdownStrikeColor;
 
   String get fontStyle => _fontStyle;
   bool get isLightMode => _isLightMode;
@@ -40,18 +35,18 @@ class ThemeProvider extends ChangeNotifier {
   Color get markdownParagraphColor => _markdownParagraphColor ?? textColor;
   Color get markdownItalicColor => _markdownItalicColor ?? textColor;
   Color get markdownBoldColor => _markdownBoldColor ?? textColor;
-  Color get markdownBoldItalicColor =>
-      _markdownBoldItalicColor ?? _markdownBoldColor ?? textColor;
-  Color get markdownH1Color => _markdownH1Color ?? textColor;
-  Color get markdownH2Color => _markdownH2Color ?? textColor;
-  Color get markdownH3Color => _markdownH3Color ?? textColor;
-  Color get markdownLinkColor => _markdownLinkColor ?? Colors.blueAccent;
-  Color get markdownInlineCodeColor => _markdownInlineCodeColor ?? textColor;
-  Color get markdownCodeBlockColor => _markdownCodeBlockColor ?? textColor;
-  Color get markdownBlockquoteColor =>
-      _markdownBlockquoteColor ?? subtitleColor;
-  Color get markdownListColor => _markdownListColor ?? textColor;
-  Color get markdownStrikeColor => _markdownStrikeColor ?? textColor;
+
+  /// Colour for headings, list bullets and strikethrough. Not user-tintable;
+  /// it tracks the bubble's text colour so structured output (the Summarize
+  /// drawer emits headings and bullets) stays legible under any theme.
+  Color get markdownStructureColor => textColor;
+
+  /// Colour for blockquotes, which read as an aside rather than prose.
+  Color get markdownBlockquoteColor => subtitleColor;
+
+  /// Colour for links. Web search answers are full of them, so they keep a
+  /// distinct hue rather than blending into the paragraph.
+  Color get markdownLinkColor => Colors.blueAccent;
 
   // ── Semantic colors (adapt to light / dark mode) ──────────────────────
 
@@ -171,6 +166,9 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   /// Updates a markdown styling color and persists the change.
+  ///
+  /// Unknown types are ignored rather than throwing, so a config pack written
+  /// by a build that still had the retired pickers applies cleanly.
   Future<void> updateMarkdownColor(String type, Color? color) async {
     switch (type) {
       case 'paragraph':
@@ -182,36 +180,8 @@ class ThemeProvider extends ChangeNotifier {
       case 'bold':
         _markdownBoldColor = color;
         break;
-      case 'boldItalic':
-        _markdownBoldItalicColor = color;
-        break;
-      case 'h1':
-        _markdownH1Color = color;
-        break;
-      case 'h2':
-        _markdownH2Color = color;
-        break;
-      case 'h3':
-        _markdownH3Color = color;
-        break;
-      case 'link':
-        _markdownLinkColor = color;
-        break;
-      case 'inlineCode':
-        _markdownInlineCodeColor = color;
-        break;
-      case 'codeBlock':
-        _markdownCodeBlockColor = color;
-        break;
-      case 'blockquote':
-        _markdownBlockquoteColor = color;
-        break;
-      case 'list':
-        _markdownListColor = color;
-        break;
-      case 'strike':
-        _markdownStrikeColor = color;
-        break;
+      default:
+        return;
     }
     notifyListeners();
     _saveColors();
@@ -227,16 +197,6 @@ class ThemeProvider extends ChangeNotifier {
     _markdownParagraphColor = null;
     _markdownItalicColor = null;
     _markdownBoldColor = null;
-    _markdownBoldItalicColor = null;
-    _markdownH1Color = null;
-    _markdownH2Color = null;
-    _markdownH3Color = null;
-    _markdownLinkColor = null;
-    _markdownInlineCodeColor = null;
-    _markdownCodeBlockColor = null;
-    _markdownBlockquoteColor = null;
-    _markdownListColor = null;
-    _markdownStrikeColor = null;
     _isLightMode = false;
     _fontStyle = 'Default';
 
@@ -266,32 +226,6 @@ class ThemeProvider extends ChangeNotifier {
     );
     await _saveMarkdownColor(prefs, 'color_md_italic', _markdownItalicColor);
     await _saveMarkdownColor(prefs, 'color_md_bold', _markdownBoldColor);
-    await _saveMarkdownColor(
-      prefs,
-      'color_md_bold_italic',
-      _markdownBoldItalicColor,
-    );
-    await _saveMarkdownColor(prefs, 'color_md_h1', _markdownH1Color);
-    await _saveMarkdownColor(prefs, 'color_md_h2', _markdownH2Color);
-    await _saveMarkdownColor(prefs, 'color_md_h3', _markdownH3Color);
-    await _saveMarkdownColor(prefs, 'color_md_link', _markdownLinkColor);
-    await _saveMarkdownColor(
-      prefs,
-      'color_md_inline_code',
-      _markdownInlineCodeColor,
-    );
-    await _saveMarkdownColor(
-      prefs,
-      'color_md_code_block',
-      _markdownCodeBlockColor,
-    );
-    await _saveMarkdownColor(
-      prefs,
-      'color_md_blockquote',
-      _markdownBlockquoteColor,
-    );
-    await _saveMarkdownColor(prefs, 'color_md_list', _markdownListColor);
-    await _saveMarkdownColor(prefs, 'color_md_strike', _markdownStrikeColor);
   }
 
   Future<void> _saveMarkdownColor(
@@ -343,25 +277,6 @@ class ThemeProvider extends ChangeNotifier {
     _markdownParagraphColor = _loadMarkdownColor(prefs, 'color_md_paragraph');
     _markdownItalicColor = _loadMarkdownColor(prefs, 'color_md_italic');
     _markdownBoldColor = _loadMarkdownColor(prefs, 'color_md_bold');
-    _markdownBoldItalicColor = _loadMarkdownColor(
-      prefs,
-      'color_md_bold_italic',
-    );
-    _markdownH1Color = _loadMarkdownColor(prefs, 'color_md_h1');
-    _markdownH2Color = _loadMarkdownColor(prefs, 'color_md_h2');
-    _markdownH3Color = _loadMarkdownColor(prefs, 'color_md_h3');
-    _markdownLinkColor = _loadMarkdownColor(prefs, 'color_md_link');
-    _markdownInlineCodeColor = _loadMarkdownColor(
-      prefs,
-      'color_md_inline_code',
-    );
-    _markdownCodeBlockColor = _loadMarkdownColor(prefs, 'color_md_code_block');
-    _markdownBlockquoteColor = _loadMarkdownColor(
-      prefs,
-      'color_md_blockquote',
-    );
-    _markdownListColor = _loadMarkdownColor(prefs, 'color_md_list');
-    _markdownStrikeColor = _loadMarkdownColor(prefs, 'color_md_strike');
 
     notifyListeners();
   }
@@ -392,16 +307,6 @@ class ThemeProvider extends ChangeNotifier {
         'markdownParagraph': _markdownParagraphColor?.toARGB32(),
         'markdownItalic': _markdownItalicColor?.toARGB32(),
         'markdownBold': _markdownBoldColor?.toARGB32(),
-        'markdownBoldItalic': _markdownBoldItalicColor?.toARGB32(),
-        'markdownH1': _markdownH1Color?.toARGB32(),
-        'markdownH2': _markdownH2Color?.toARGB32(),
-        'markdownH3': _markdownH3Color?.toARGB32(),
-        'markdownLink': _markdownLinkColor?.toARGB32(),
-        'markdownInlineCode': _markdownInlineCodeColor?.toARGB32(),
-        'markdownCodeBlock': _markdownCodeBlockColor?.toARGB32(),
-        'markdownBlockquote': _markdownBlockquoteColor?.toARGB32(),
-        'markdownList': _markdownListColor?.toARGB32(),
-        'markdownStrike': _markdownStrikeColor?.toARGB32(),
       },
     };
   }
@@ -430,22 +335,6 @@ class ThemeProvider extends ChangeNotifier {
     _markdownParagraphColor = _colorFromExportedMap(colors['markdownParagraph']);
     _markdownItalicColor = _colorFromExportedMap(colors['markdownItalic']);
     _markdownBoldColor = _colorFromExportedMap(colors['markdownBold']);
-    _markdownBoldItalicColor = _colorFromExportedMap(
-      colors['markdownBoldItalic'],
-    );
-    _markdownH1Color = _colorFromExportedMap(colors['markdownH1']);
-    _markdownH2Color = _colorFromExportedMap(colors['markdownH2']);
-    _markdownH3Color = _colorFromExportedMap(colors['markdownH3']);
-    _markdownLinkColor = _colorFromExportedMap(colors['markdownLink']);
-    _markdownInlineCodeColor = _colorFromExportedMap(
-      colors['markdownInlineCode'],
-    );
-    _markdownCodeBlockColor = _colorFromExportedMap(colors['markdownCodeBlock']);
-    _markdownBlockquoteColor = _colorFromExportedMap(
-      colors['markdownBlockquote'],
-    );
-    _markdownListColor = _colorFromExportedMap(colors['markdownList']);
-    _markdownStrikeColor = _colorFromExportedMap(colors['markdownStrike']);
 
     notifyListeners();
 

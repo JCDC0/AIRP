@@ -100,7 +100,7 @@ class MessageBubbleMarkdown extends StatelessWidget {
         ),
         code: codeStyle,
         h1: TextStyle(
-          color: themeProvider.markdownH1Color,
+          color: themeProvider.markdownStructureColor,
           fontSize: scaleProvider.chatFontSize + 8,
           fontWeight: FontWeight.bold,
           shadows: useBloom
@@ -108,7 +108,7 @@ class MessageBubbleMarkdown extends StatelessWidget {
               : [],
         ),
         h2: TextStyle(
-          color: themeProvider.markdownH2Color,
+          color: themeProvider.markdownStructureColor,
           fontSize: scaleProvider.chatFontSize + 6,
           fontWeight: FontWeight.bold,
           shadows: useBloom
@@ -116,7 +116,7 @@ class MessageBubbleMarkdown extends StatelessWidget {
               : [],
         ),
         h3: TextStyle(
-          color: themeProvider.markdownH3Color,
+          color: themeProvider.markdownStructureColor,
           fontSize: scaleProvider.chatFontSize + 4,
           fontWeight: FontWeight.bold,
           shadows: useBloom
@@ -131,8 +131,8 @@ class MessageBubbleMarkdown extends StatelessWidget {
           color: themeProvider.markdownBoldColor,
           fontWeight: FontWeight.bold,
         ),
-        del: TextStyle(color: themeProvider.markdownStrikeColor),
-        listBullet: TextStyle(color: themeProvider.markdownListColor),
+        del: TextStyle(color: themeProvider.markdownStructureColor),
+        listBullet: TextStyle(color: themeProvider.markdownStructureColor),
         blockquote: TextStyle(
           color: themeProvider.markdownBlockquoteColor,
           fontStyle: FontStyle.italic,
