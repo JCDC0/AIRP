@@ -50,27 +50,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Size.fromHeight(scaledToolbarHeight + scaledBottomHeight);
   }
 
-  /// Maps each AiProvider enum value to its user-facing display name.
-  static String _providerDisplayName(AiProvider provider) {
-    switch (provider) {
-      case AiProvider.gemini:
-        return 'Gemini';
-      case AiProvider.openRouter:
-        return 'OpenRouter';
-      case AiProvider.nanoGpt:
-        return 'NanoGPT';
-      case AiProvider.nvidia:
-        return 'NVIDIA';
-      case AiProvider.local:
-        return 'Local';
-      case AiProvider.openAiCompatible:
-        return 'OpenAI Compatible';
-      case AiProvider.deepseek:
-        return 'Deepseek';
-      case AiProvider.ollama:
-        return 'Ollama';
-    }
-  }
+  static String _providerDisplayName(AiProvider provider) =>
+      provider.displayName;
 
   @override
   Widget build(BuildContext context) {

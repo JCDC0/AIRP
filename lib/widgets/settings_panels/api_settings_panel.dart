@@ -26,6 +26,9 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
   late FocusNode _apiKeyFocusNode;
   late FocusNode _endpointFocusNode;
 
+  /// The provider the controllers were last filled for.
+  AiProvider? _syncedProvider;
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +44,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
     );
     _apiKeyFocusNode = FocusNode();
     _endpointFocusNode = FocusNode();
+    _syncedProvider = chatProvider.currentProvider;
   }
 
   @override
@@ -79,12 +83,27 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
   /// mid-edit yanks the caret to the end of the box. The handlers no longer
   /// trim either, because feeding back a trimmed value made typing a leading
   /// or trailing space trigger precisely that resync.
+  ///
+  /// A provider switch overrides that guard. The key box is one field standing
+  /// in for eight separate credentials, so holding the previous provider's key
+  /// on screen states that the new one is configured when its slot is empty:
+  /// the send then goes out as `Authorization: Bearer ` and comes back a 401.
+  /// Focus is dropped with it, since the field no longer holds what the user
+  /// was editing.
   void _syncControllers(ChatProvider chatProvider) {
+    final switchedProvider = _syncedProvider != chatProvider.currentProvider;
+    if (switchedProvider) {
+      _syncedProvider = chatProvider.currentProvider;
+      if (_apiKeyFocusNode.hasFocus) _apiKeyFocusNode.unfocus();
+      if (_endpointFocusNode.hasFocus) _endpointFocusNode.unfocus();
+    }
+
     final currentKey = _getApiKey(chatProvider);
-    if (!_apiKeyFocusNode.hasFocus && _apiKeyController.text != currentKey) {
+    if ((switchedProvider || !_apiKeyFocusNode.hasFocus) &&
+        _apiKeyController.text != currentKey) {
       _apiKeyController.text = currentKey;
     }
-    if (_endpointFocusNode.hasFocus) return;
+    if (!switchedProvider && _endpointFocusNode.hasFocus) return;
     if (_localIpController.text != chatProvider.localIp) {
       _localIpController.text = chatProvider.localIp;
     }
@@ -113,9 +132,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
         chatProvider.currentProvider == AiProvider.openAiCompatible ||
         chatProvider.currentProvider == AiProvider.ollama;
 
-    final bool requiresApiKey =
-        chatProvider.currentProvider != AiProvider.local &&
-        chatProvider.currentProvider != AiProvider.ollama;
+    final bool requiresApiKey = chatProvider.currentProvider.needsApiKey;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

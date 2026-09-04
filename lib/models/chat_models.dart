@@ -13,6 +13,39 @@ enum AiProvider {
   ollama,
 }
 
+extension AiProviderInfo on AiProvider {
+  /// The user-facing name for this provider.
+  String get displayName {
+    switch (this) {
+      case AiProvider.gemini:
+        return 'Gemini';
+      case AiProvider.openRouter:
+        return 'OpenRouter';
+      case AiProvider.nanoGpt:
+        return 'NanoGPT';
+      case AiProvider.nvidia:
+        return 'NVIDIA';
+      case AiProvider.local:
+        return 'Local';
+      case AiProvider.openAiCompatible:
+        return 'OpenAI Compatible';
+      case AiProvider.deepseek:
+        return 'Deepseek';
+      case AiProvider.ollama:
+        return 'Ollama';
+    }
+  }
+
+  /// Whether a request to this provider carries a bearer credential.
+  ///
+  /// Local and Ollama talk to a server the user runs, so they authenticate
+  /// with nothing. Every other provider does, and sending an empty token is
+  /// worse than not sending the request: gateways answer `Bearer ` with a bare
+  /// 401 that reads as a rejected key rather than an absent one.
+  bool get needsApiKey =>
+      this != AiProvider.local && this != AiProvider.ollama;
+}
+
 /// Data structure representing a saved chat session.
 class ChatSessionData {
   /// Unique identifier for the session.

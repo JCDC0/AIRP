@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.30.4` (`pubspec.yaml` `0.7.30+15`). Target: `0.8.0` release.
+Current version: `0.7.30.5` (`pubspec.yaml` `0.7.30+16`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -39,7 +39,7 @@ Current version: `0.7.30.4` (`pubspec.yaml` `0.7.30+15`). Target: `0.8.0` releas
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (305 tests, all passing)
+*   **Test:** `flutter test` (308 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -86,6 +86,13 @@ currently clean and must stay that way.
 *   **Unit tests cannot detect an unwired service.** The lorebook engine carried
     ~1,400 lines of passing tests for a path with no production caller for nine
     versions. A send-path integration test is the recommended guard.
+*   **One field standing in for many values must repaint when the value it
+    stands for changes.** The API key box serves all eight providers. A focus
+    guard added to stop a caret jump also froze it across a provider switch, so
+    it displayed the previous provider's key while the new provider's slot was
+    empty, and the send went out as `Authorization: Bearer ` with nothing after
+    it. A provider switch overrides the guard and drops focus. Guarded by
+    `test/api_key_panel_provider_switch_test.dart`.
 *   **Text fields are a recurring defect site.** Never trim inside `onChanged`
     and never assign `controller.text` while the field has focus. Both feed a
     changed string back through the provider into the panel's resync, and
@@ -121,7 +128,8 @@ check ALL of these or state will silently fail to persist:
 6.  `_customEndpointFor()`, if the provider talks to a user-owned endpoint
 7.  `ApiKeyService._getSecureKeyForAiProvider()` and `_getPrefsKeyForAiProvider()`
 8.  `StrategyResolver._strategies` map
-9.  `ChatAppBar._providerDisplayName()` and `_buildModelSelector()`
+9.  `AiProviderInfo.displayName` / `needsApiKey` in `lib/models/chat_models.dart`,
+    and `ChatAppBar._buildModelSelector()`
 10. `ApiSettingsPanel._getApiKey()` (and the endpoint switches, if applicable)
 11. Constants in `lib/utils/constants.dart` (`prefList*`, `prefKey*`, `secureKey*`,
     `prefModel*`, base URL)
@@ -156,6 +164,19 @@ both serve that. A blank Target Model ID means Auto and is resolved by
 `ChatProvider.effectiveLocalModel` to the first discovered model, falling back
 to `local-model`. Never send the blank string itself: some servers answer a
 missing `model` field with a 400.
+
+`ChatProvider.missingCredentialError` runs before every send and reports a
+missing key, or a missing endpoint for the providers that need one, into the
+reply bubble. Nothing should let an empty credential reach the wire:
+`ChatApiService.streamOpenAiCompatible` sets `Authorization: Bearer $cleanKey`
+unconditionally, and a gateway answers a bare `Bearer ` with a flat 401 that
+reads as a rejected key rather than an absent one. `AiProvider.needsApiKey` is
+the single answer to which providers carry a credential; `AiProvider.displayName`
+is the single source for the user-facing name. Both live in
+`lib/models/chat_models.dart`.
+
+Do not treat a successful model fetch as proof a key works. OpenRouter's
+`/api/v1/models` is public and answers in full without any credential.
 
 A model fetch that fails records `ModelRegistryService.lastError(provider)` and
 the API panel renders it. Do not go back to swallowing the error in a

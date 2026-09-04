@@ -456,8 +456,7 @@ class ChatProvider extends ChangeNotifier {
       if (provider != _currentProvider) return;
       if (_modelRegistry.isLoading(provider)) return;
 
-      final needsKey = provider != AiProvider.local &&
-          provider != AiProvider.ollama;
+      final needsKey = provider.needsApiKey;
       if (needsKey && _getProviderKey(provider).trim().isEmpty) return;
       if (!needsKey && (_customEndpointFor(provider) ?? '').isEmpty) return;
 
@@ -614,6 +613,29 @@ class ChatProvider extends ChangeNotifier {
   String _getProviderKey(AiProvider provider) {
     if (provider == AiProvider.local) return "local-key";
     return _apiKeys.getProviderKey(provider);
+  }
+
+  /// The reason the active provider cannot be called, or null when it can.
+  ///
+  /// Without this the request still goes out, carrying `Authorization: Bearer `
+  /// with nothing after it. OpenRouter answers that with a flat
+  /// `401 Missing Authentication header`, which reads as a rejected key and
+  /// sends the user to re-paste one that was never the problem.
+  String? missingCredentialError() {
+    final provider = _currentProvider;
+    if (provider.needsApiKey && _getProviderKey(provider).trim().isEmpty) {
+      return 'No API key set for ${provider.displayName}.\n\n'
+          'Open Settings then API and paste your key. The key box is per '
+          'provider, so a key entered under a different provider does not '
+          'carry over.';
+    }
+    if (!provider.needsApiKey &&
+        (_customEndpointFor(provider) ?? '').isEmpty) {
+      return 'No Server Endpoint URL set for ${provider.displayName}.\n\n'
+          'Open Settings then API and enter the address your server listens '
+          'on.';
+    }
+    return null;
   }
 
   void _setProviderKey(AiProvider provider, String key) {
@@ -1290,6 +1312,18 @@ class ChatProvider extends ChangeNotifier {
     _pendingRegenerationVersions = [];
 
     notifyListeners();
+
+    final String? credentialError = missingCredentialError();
+    if (credentialError != null) {
+      _messages.last = _messages.last.copyWith(
+        text: credentialError,
+        modelName: "System Alert",
+        clearContentNotifier: true,
+      );
+      notifyListeners();
+      _scheduleAutoSave();
+      return;
+    }
 
     // ── BYOK Web Search Tool-Call Loop ───────────────────────────────────────
     // When web search is ON with a BYOK backend (not the AI provider's native
