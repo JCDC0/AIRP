@@ -388,6 +388,36 @@ class ChatApiService {
   /// Streams responses from OpenAI-compatible endpoints (OpenRouter, Groq, etc.).
   /// Supports multimodal inputs by converting images to base64 and appending
   /// text file contents directly to the prompt.
+  /// Describes the credential a request carried, for an authentication
+  /// failure. Never includes the key itself, only its shape.
+  ///
+  /// A 401 body says what the server could not find, never what was sent, and
+  /// the two failures look identical from the outside: a key the server
+  /// rejected, and no key at all. OpenRouter answers a bare `Bearer ` with
+  /// `Missing Authentication header`, which reads as the former while being
+  /// the latter.
+  static String describeCredential(String apiKey) {
+    if (apiKey.isEmpty) {
+      return "\n\n_AIRP sent no API key: the key box for this provider is "
+          "empty. Settings then API, with this provider selected._";
+    }
+    final trimmed = apiKey.trim();
+    if (trimmed.isEmpty) {
+      return "\n\n_AIRP sent a key that is entirely whitespace. Settings then "
+          "API, with this provider selected._";
+    }
+    final notes = <String>['${trimmed.length} characters long'];
+    if (trimmed.length != apiKey.length) {
+      notes.add('stored with surrounding whitespace');
+    }
+    if (trimmed.contains(RegExp(r'\s'))) {
+      notes.add('containing a space, which truncates the token');
+    }
+    return "\n\n_AIRP sent a key ${notes.join(', ')}. The provider still "
+        "rejected it, so the key is wrong, revoked, or belongs to a different "
+        "provider._";
+  }
+
   static Stream<String> streamOpenAiCompatible({
     required String apiKey,
     required String baseUrl,
@@ -577,7 +607,11 @@ class ChatApiService {
 
       if (streamedResponse.statusCode != 200) {
         final errorBody = await streamedResponse.stream.bytesToString();
-        yield "\n\n**Error ${streamedResponse.statusCode}:** $errorBody";
+        final hint = streamedResponse.statusCode == 401 ||
+                streamedResponse.statusCode == 403
+            ? describeCredential(apiKey)
+            : '';
+        yield "\n\n**Error ${streamedResponse.statusCode}:** $errorBody$hint";
         return;
       }
 
@@ -897,9 +931,13 @@ class ChatApiService {
         final body = await response.stream.bytesToString();
 
         if (response.statusCode != 200) {
+          final hint =
+              response.statusCode == 401 || response.statusCode == 403
+              ? describeCredential(apiKey)
+              : '';
           return ToolDetectionResult(
             type: 'error',
-            text: 'Error ${response.statusCode}: $body',
+            text: 'Error ${response.statusCode}: $body$hint',
           );
         }
 
@@ -1049,8 +1087,13 @@ class ChatApiService {
       if (streamedResponse.statusCode != 200) {
         final errorBody = await streamedResponse.stream.bytesToString();
         if (ownsClient) activeClient.close();
+        final hint =
+            streamedResponse.statusCode == 401 ||
+                streamedResponse.statusCode == 403
+            ? describeCredential(apiKey)
+            : '';
         return ToolAwareStream(
-          error: 'Error ${streamedResponse.statusCode}: $errorBody',
+          error: 'Error ${streamedResponse.statusCode}: $errorBody$hint',
         );
       }
 

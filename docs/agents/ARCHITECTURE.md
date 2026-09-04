@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.30.6` (`pubspec.yaml` `0.7.30+17`). Target: `0.8.0` release.
+Current version: `0.7.30.7` (`pubspec.yaml` `0.7.30+18`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -39,7 +39,7 @@ Current version: `0.7.30.6` (`pubspec.yaml` `0.7.30+17`). Target: `0.8.0` releas
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (313 tests, all passing)
+*   **Test:** `flutter test` (318 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -191,6 +191,15 @@ is the single source for the user-facing name. Both live in
 
 Do not treat a successful model fetch as proof a key works. OpenRouter's
 `/api/v1/models` is public and answers in full without any credential.
+
+A 401 or 403 on an OpenAI-compatible path gets `ChatApiService.describeCredential`
+appended, which reports the shape of the credential AIRP used and never its
+value. A gateway's 401 says what it could not find, not what arrived, so a
+rejected key and an absent one read identically without it. OpenRouter returns
+`Missing Authentication header` whenever the token cannot be parsed out of the
+header at all: a bare `Bearer`, an empty token, no scheme, or any separator
+other than a single ASCII space. A real but invalid key returns `User not
+found.` instead.
 
 A model fetch that fails records `ModelRegistryService.lastError(provider)` and
 the API panel renders it. Do not go back to swallowing the error in a
