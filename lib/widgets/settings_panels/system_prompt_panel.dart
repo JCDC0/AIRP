@@ -24,6 +24,7 @@ class SystemPromptPanel extends StatefulWidget {
 class _SystemPromptPanelState extends State<SystemPromptPanel> {
   late TextEditingController _titleController;
   late TextEditingController _promptController;
+  late FocusNode _promptFocusNode;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     _titleController = TextEditingController();
     _promptController = TextEditingController(text: chatProvider.systemInstruction);
+    _promptFocusNode = FocusNode();
 
     // Try to pre-fill the title by matching against saved prompts.
     _matchTitleFromLibrary(chatProvider);
@@ -40,6 +42,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   void dispose() {
     _titleController.dispose();
     _promptController.dispose();
+    _promptFocusNode.dispose();
     super.dispose();
   }
 
@@ -57,7 +60,18 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     }
   }
 
+  /// Pulls the prompt back in when it changed outside this panel (a config
+  /// pack import, a character card load).
+  ///
+  /// It deliberately skips while the field has focus. Assigning
+  /// `controller.text` collapses the selection to the end of the new value, so
+  /// a sync landing mid-edit dragged the caret to the end of the box. Combined
+  /// with the `onChanged` handler trimming the value, typing a space at either
+  /// end of the prompt fed back a shorter string, which then triggered exactly
+  /// that resync: the space vanished at the end, and jumped the caret to the
+  /// end at the front. Neither the trim nor the unguarded sync belongs here.
   void _syncControllers(ChatProvider chatProvider) {
+    if (_promptFocusNode.hasFocus) return;
     if (_promptController.text != chatProvider.systemInstruction) {
       _promptController.text = chatProvider.systemInstruction;
       _matchTitleFromLibrary(chatProvider);
@@ -183,10 +197,11 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
         // ── 2. Prompt Textarea — clearly bordered ──────────────────────────
         TextField(
           controller: _promptController,
+          focusNode: _promptFocusNode,
           maxLines: 12,
           minLines: 5,
           onChanged: (val) {
-            chatProvider.setSystemInstruction(val.trim());
+            chatProvider.setSystemInstruction(val);
             Provider.of<SettingsProvider>(context, listen: false).markDirty();
           },
           decoration: InputDecoration(

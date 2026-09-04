@@ -405,6 +405,21 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           'Select Ollama Model',
         );
       case AiProvider.local:
+        // Once the server has been listed, Local gets the same picker as every
+        // other provider. The static plate below is the fallback for a server
+        // that has not been reached yet.
+        if (chatProvider.localModelsList.isNotEmpty) {
+          return ModelSelector(
+            modelsList: chatProvider.localModelsList,
+            selectedModel: chatProvider.localModelName,
+            onSelected: (val) {
+              chatProvider.setLocalModelName(val);
+              chatProvider.saveSettingsDebounced();
+            },
+            placeholder: 'Select Local Model',
+            isCompact: true,
+          );
+        }
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -432,7 +447,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 child: Text(
                   chatProvider.localModelName.isNotEmpty
                       ? chatProvider.localModelName
-                      : "Local Model",
+                      : "Local Model (Auto)",
                   style: TextStyle(
                     color: themeProvider.textColor,
                     fontSize: scaleProvider.systemFontSize + 1,

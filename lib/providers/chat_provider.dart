@@ -77,6 +77,8 @@ class ChatProvider extends ChangeNotifier {
       _modelRegistry.getModels(AiProvider.deepseek);
   List<ModelInfo> get ollamaModelsList =>
       _modelRegistry.getModels(AiProvider.ollama);
+  List<ModelInfo> get localModelsList =>
+      _modelRegistry.getModels(AiProvider.local);
 
   bool get isLoadingGeminiModels => _modelRegistry.isLoading(AiProvider.gemini);
   bool get isLoadingOpenRouterModels =>
@@ -89,6 +91,7 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingDeepseekModels =>
       _modelRegistry.isLoading(AiProvider.deepseek);
   bool get isLoadingOllamaModels => _modelRegistry.isLoading(AiProvider.ollama);
+  bool get isLoadingLocalModels => _modelRegistry.isLoading(AiProvider.local);
 
   bool get isRefreshingModels => _modelRegistry.isAnyLoading;
 
@@ -119,7 +122,7 @@ class ChatProvider extends ChangeNotifier {
   String get ollamaKey => _apiKeys.getProviderKey(AiProvider.ollama);
 
   String _localIp = ChatDefaults.localIp;
-  String _localModelName = 'local-model';
+  String _localModelName = '';
   String _openAiCompatibleEndpoint = '';
   String _ollamaEndpoint = ApiConstants.ollamaDefaultEndpoint;
   final Set<AiProvider> _starredProviders = {};
@@ -128,6 +131,20 @@ class ChatProvider extends ChangeNotifier {
 
   String get localIp => _localIp;
   String get localModelName => _localModelName;
+
+  /// The model id actually sent to the Local provider.
+  ///
+  /// A blank Target Model ID means Auto: the first model the server listed,
+  /// or the generic placeholder when discovery has not run. llama.cpp and
+  /// LM Studio ignore the field entirely, but an empty string is a 400 on some
+  /// OpenAI-compatible servers, so it is never sent as-is.
+  String get effectiveLocalModel {
+    final name = _localModelName.trim();
+    if (name.isNotEmpty) return name;
+    final discovered = _modelRegistry.getModels(AiProvider.local);
+    if (discovered.isNotEmpty) return discovered.first.id;
+    return 'local-model';
+  }
   String get openAiCompatibleEndpoint => _openAiCompatibleEndpoint;
   String get ollamaEndpoint => _ollamaEndpoint;
   Set<AiProvider> get starredProviders => _starredProviders;
@@ -153,23 +170,20 @@ class ChatProvider extends ChangeNotifier {
 
   /// Returns the maximum context length for the currently selected model.
   int getMaxContext() {
-    if (_currentProvider == AiProvider.local) return 32768;
-
-    final currentList = _modelRegistry.getModels(_currentProvider);
-    final currentId = _selectedModel;
-
-    try {
-      final model = currentList.firstWhere((m) => m.id == currentId);
-      return int.tryParse(model.contextLength.replaceAll(',', '')) ?? 1048576;
-    } catch (_) {
-      return 1048576; // Default fallback
+    final model = getCurrentModelInfo();
+    if (model == null) {
+      return _currentProvider == AiProvider.local ? 32768 : 1048576;
     }
+    return int.tryParse(model.contextLength.replaceAll(',', '')) ??
+        (_currentProvider == AiProvider.local ? 32768 : 1048576);
   }
 
   /// Returns the ModelInfo object for the currently selected model.
   ModelInfo? getCurrentModelInfo() {
     final currentList = _modelRegistry.getModels(_currentProvider);
-    final currentId = _selectedModel;
+    final currentId = _currentProvider == AiProvider.local
+        ? effectiveLocalModel
+        : _selectedModel;
 
     try {
       return currentList.firstWhere((m) => m.id == currentId);
@@ -256,6 +270,7 @@ class ChatProvider extends ChangeNotifier {
   @override
   void dispose() {
     _modelAutoFetchTimer?.cancel();
+    _settingsSaveTimer?.cancel();
     _sessionService.dispose();
     _streamingCoordinator.dispose();
     _safeDisposeMessageNotifiers(_messages);
@@ -453,11 +468,28 @@ class ChatProvider extends ChangeNotifier {
   void setLocalIp(String ip) {
     _localIp = ip;
     notifyListeners();
+    _scheduleModelAutoFetch(AiProvider.local);
   }
 
   void setLocalModelName(String name) {
     _localModelName = name;
     notifyListeners();
+  }
+
+  /// Debounce for the settings write that follows a keystroke-rate edit.
+  Timer? _settingsSaveTimer;
+
+  /// Coalesces [saveSettings] across a burst of edits.
+  ///
+  /// [saveSettings] issues around twenty awaited SharedPreferences writes, a
+  /// lorebook JSON encode and a session autosave. Calling it straight from a
+  /// TextField's `onChanged` charged every single letter that round trip,
+  /// which is what made typing a model id feel like it hung.
+  void saveSettingsDebounced() {
+    _settingsSaveTimer?.cancel();
+    _settingsSaveTimer = Timer(const Duration(milliseconds: 600), () {
+      saveSettings(showConfirmation: false);
+    });
   }
 
   void setTitle(String title) {
@@ -546,7 +578,7 @@ class ChatProvider extends ChangeNotifier {
       case AiProvider.ollama:
         return _ollamaModel;
       case AiProvider.local:
-        return "Local Network AI";
+        return _localModelName;
     }
   }
 
@@ -574,6 +606,7 @@ class ChatProvider extends ChangeNotifier {
         _ollamaModel = model;
         break;
       case AiProvider.local:
+        _localModelName = model;
         break;
     }
   }
@@ -775,7 +808,7 @@ class ChatProvider extends ChangeNotifier {
     final String? customUrl = _customEndpointFor(_currentProvider);
     final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
     final String modelName = _currentProvider == AiProvider.local
-        ? _localModelName
+        ? effectiveLocalModel
         : _selectedModel;
 
     final List<Map<String, dynamic>> openAiExtras = [];
@@ -1369,7 +1402,7 @@ class ChatProvider extends ChangeNotifier {
             apiKey: activeKey,
             baseUrl: strategy.getStreamUrl(customUrl: customUrl),
             model: _currentProvider == AiProvider.local
-                ? _localModelName
+                ? effectiveLocalModel
                 : _selectedModel,
             history: limitedHistory,
             systemInstruction: finalSystemInstruction,
@@ -1412,7 +1445,7 @@ class ChatProvider extends ChangeNotifier {
       _streamingCoordinator.registerStream(
         sessionId: streamSessionId,
         modelName: _currentProvider == AiProvider.local
-            ? _localModelName
+            ? effectiveLocalModel
             : _selectedModel,
         contentNotifier: contentNotifier,
         stream: responseStream,
@@ -1845,7 +1878,7 @@ class ChatProvider extends ChangeNotifier {
     final String? customUrl = _customEndpointFor(_currentProvider);
     final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
     final String modelName = _currentProvider == AiProvider.local
-        ? _localModelName
+        ? effectiveLocalModel
         : _selectedModel;
     const String sysInstr = 'You are a helpful assistant.';
 
@@ -1983,7 +2016,10 @@ class ChatProvider extends ChangeNotifier {
     final sessionProvider = _providerFromName(session.provider);
     _currentProvider = sessionProvider;
     if (sessionProvider == AiProvider.local) {
-      _selectedModel = "Local Network AI";
+      // Sessions saved before 0.7.30.4 stored the literal "Local Network AI"
+      // as their model name, so the session is not a usable source here. The
+      // user's configured Target Model ID stays authoritative.
+      _selectedModel = effectiveLocalModel;
     } else {
       _setProviderModel(sessionProvider, session.modelName);
       _selectedModel = session.modelName;

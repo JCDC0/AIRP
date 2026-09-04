@@ -23,12 +23,14 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
   late TextEditingController _localIpController;
   late TextEditingController _openAiCompatibleEndpointController;
   late TextEditingController _ollamaEndpointController;
+  late FocusNode _apiKeyFocusNode;
+  late FocusNode _endpointFocusNode;
 
   @override
   void initState() {
     super.initState();
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    
+
     _apiKeyController = TextEditingController(text: _getApiKey(chatProvider));
     _localIpController = TextEditingController(text: chatProvider.localIp);
     _openAiCompatibleEndpointController = TextEditingController(
@@ -37,6 +39,8 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
     _ollamaEndpointController = TextEditingController(
       text: chatProvider.ollamaEndpoint,
     );
+    _apiKeyFocusNode = FocusNode();
+    _endpointFocusNode = FocusNode();
   }
 
   @override
@@ -45,6 +49,8 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
     _localIpController.dispose();
     _openAiCompatibleEndpointController.dispose();
     _ollamaEndpointController.dispose();
+    _apiKeyFocusNode.dispose();
+    _endpointFocusNode.dispose();
     super.dispose();
   }
 
@@ -62,15 +68,23 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
   }
 
   void _updateApiKey(ChatProvider chatProvider, String val) {
-    chatProvider.setApiKey(val.trim());
-    chatProvider.saveSettings(showConfirmation: false);
+    chatProvider.setApiKey(val);
+    chatProvider.saveSettingsDebounced();
   }
 
+  /// Pulls values back in when they changed outside this panel.
+  ///
+  /// Skipped for whichever field has focus: assigning `controller.text`
+  /// collapses the selection to the end of the value, so a sync arriving
+  /// mid-edit yanks the caret to the end of the box. The handlers no longer
+  /// trim either, because feeding back a trimmed value made typing a leading
+  /// or trailing space trigger precisely that resync.
   void _syncControllers(ChatProvider chatProvider) {
     final currentKey = _getApiKey(chatProvider);
-    if (_apiKeyController.text != currentKey) {
+    if (!_apiKeyFocusNode.hasFocus && _apiKeyController.text != currentKey) {
       _apiKeyController.text = currentKey;
     }
+    if (_endpointFocusNode.hasFocus) return;
     if (_localIpController.text != chatProvider.localIp) {
       _localIpController.text = chatProvider.localIp;
     }
@@ -121,6 +135,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
           const SizedBox(height: 5),
           TextField(
             controller: _apiKeyController,
+            focusNode: _apiKeyFocusNode,
             obscureText: true,
             onChanged: (val) => _updateApiKey(chatProvider, val),
             decoration: InputDecoration(
@@ -167,7 +182,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
                       final text = data?.text ?? '';
                       if (text.trim().isEmpty) return;
                       _apiKeyController.text = text.trim();
-                      _updateApiKey(chatProvider, text);
+                      _updateApiKey(chatProvider, text.trim());
                     },
                   ),
                 ],
@@ -197,6 +212,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
           const SizedBox(height: 5),
           TextField(
             controller: _getEndpointController(chatProvider.currentProvider),
+            focusNode: _endpointFocusNode,
             onChanged: (val) => _updateEndpoint(chatProvider, val),
             decoration: InputDecoration(
               hintText: _getEndpointHint(chatProvider.currentProvider),
@@ -316,21 +332,23 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
     }
   }
 
+  /// Stores the endpoint exactly as typed. Every consumer reads it through
+  /// `ChatProvider._customEndpointFor`, which already trims, so trimming here
+  /// only served to fight the caret.
   void _updateEndpoint(ChatProvider chatProvider, String val) {
     final provider = chatProvider.currentProvider;
-    final cleaned = val.trim();
     switch (provider) {
       case AiProvider.openAiCompatible:
-        chatProvider.setOpenAiCompatibleEndpoint(cleaned);
+        chatProvider.setOpenAiCompatibleEndpoint(val);
         break;
       case AiProvider.ollama:
-        chatProvider.setOllamaEndpoint(cleaned);
+        chatProvider.setOllamaEndpoint(val);
         break;
       case AiProvider.local:
       default:
-        chatProvider.setLocalIp(cleaned);
+        chatProvider.setLocalIp(val);
     }
-    chatProvider.saveSettings(showConfirmation: false);
+    chatProvider.saveSettingsDebounced();
   }
 
   String _getEndpointHint(AiProvider provider) {

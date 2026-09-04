@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.30.3` (`pubspec.yaml` `0.7.30+14`). Target: `0.8.0` release.
+Current version: `0.7.30.4` (`pubspec.yaml` `0.7.30+15`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -39,7 +39,7 @@ Current version: `0.7.30.3` (`pubspec.yaml` `0.7.30+14`). Target: `0.8.0` releas
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (294 tests, all passing)
+*   **Test:** `flutter test` (305 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -86,6 +86,15 @@ currently clean and must stay that way.
 *   **Unit tests cannot detect an unwired service.** The lorebook engine carried
     ~1,400 lines of passing tests for a path with no production caller for nine
     versions. A send-path integration test is the recommended guard.
+*   **Text fields are a recurring defect site.** Never trim inside `onChanged`
+    and never assign `controller.text` while the field has focus. Both feed a
+    changed string back through the provider into the panel's resync, and
+    assigning that property collapses the selection to the end of the value, so
+    the caret jumps mid-edit. Trim on read instead. Never construct a
+    `TextEditingController` in `build()`. Persist through
+    `ChatProvider.saveSettingsDebounced`, not `saveSettings`, which issues
+    around twenty awaited writes plus an autosave. Guarded by
+    `test/system_prompt_panel_caret_test.dart`.
 
 ## Providers
 
@@ -140,6 +149,13 @@ quantization.
 `NvidiaStrategy` filters catalogue entries that have no `/chat/completions`
 route (embedding, reranking, `nvclip`, retriever-parse). Selecting one produced
 a 404 that looked like an authentication failure.
+
+`local` resolves to `OpenAiCompatibleStrategy`, so it lists models over
+`/v1/models` like any other OpenAI-compatible server; llama.cpp and LM Studio
+both serve that. A blank Target Model ID means Auto and is resolved by
+`ChatProvider.effectiveLocalModel` to the first discovered model, falling back
+to `local-model`. Never send the blank string itself: some servers answer a
+missing `model` field with a 400.
 
 A model fetch that fails records `ModelRegistryService.lastError(provider)` and
 the API panel renders it. Do not go back to swallowing the error in a

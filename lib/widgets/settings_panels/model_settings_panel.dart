@@ -24,6 +24,7 @@ class ModelSettingsPanel extends StatefulWidget {
 class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
   late TextEditingController _titleController;
   late TextEditingController _openRouterModelController;
+  late TextEditingController _localModelController;
   late FocusNode _titleFocusNode;
 
   /// Explicit controller for the model description box. Without one it would
@@ -39,6 +40,12 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
     _openRouterModelController = TextEditingController(
       text: chatProvider.openRouterModel,
     );
+    // Built once. It used to be constructed inline in build(), so every
+    // keystroke threw away the field's state and rebuilt it with an invalid
+    // selection offset.
+    _localModelController = TextEditingController(
+      text: chatProvider.localModelName,
+    );
     _titleFocusNode = FocusNode();
   }
 
@@ -46,6 +53,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
   void dispose() {
     _titleController.dispose();
     _openRouterModelController.dispose();
+    _localModelController.dispose();
     _titleFocusNode.dispose();
     _descriptionScrollController.dispose();
     super.dispose();
@@ -58,6 +66,9 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
     }
     if (_openRouterModelController.text != chatProvider.openRouterModel) {
       _openRouterModelController.text = chatProvider.openRouterModel;
+    }
+    if (_localModelController.text != chatProvider.localModelName) {
+      _localModelController.text = chatProvider.localModelName;
     }
   }
 
@@ -109,7 +120,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
             focusNode: _titleFocusNode,
             onChanged: (val) {
               chatProvider.setTitle(val);
-              chatProvider.saveSettings(showConfirmation: false);
+              chatProvider.saveSettingsDebounced();
             },
             style: TextStyle(
               color: themeProvider.textColor,
@@ -175,22 +186,32 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
           ),
 
         if (chatProvider.currentProvider == AiProvider.local) ...[
-          const SizedBox(height: 5),
-          TextField(
-            onChanged: (val) {
+          ProviderModelSelector(
+            modelsList: chatProvider.localModelsList,
+            selectedModel: chatProvider.localModelName,
+            onSelected: (val) {
               chatProvider.setLocalModelName(val);
-              chatProvider.saveSettings(showConfirmation: false);
+              chatProvider.saveSettingsDebounced();
             },
-            controller: TextEditingController(text: chatProvider.localModelName),
-            decoration: InputDecoration(
-              hintText: "local-model",
-              hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
-              labelText: "Target Model ID (Optional)",
-              labelStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
-              border: const OutlineInputBorder(),
-              isDense: true,
+            placeholder: 'Target Model ID (blank = Auto)',
+            isLoading: chatProvider.isLoadingLocalModels,
+            onRefresh: () => chatProvider.refreshModels(AiProvider.local),
+            refreshButtonColor: Colors.greenAccent,
+            controller: _localModelController,
+            allowClear: true,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            chatProvider.localModelsList.isEmpty
+                ? 'Set the Server Endpoint URL under API, then Load Models to '
+                      'pick from the list instead of typing an id.'
+                : 'Auto: ${chatProvider.effectiveLocalModel}. '
+                      'llama.cpp and LM Studio ignore this field; clear it to '
+                      'let the server choose.',
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize - 4,
+              color: Colors.grey,
             ),
-            style: TextStyle(fontSize: scaleProvider.systemFontSize),
           ),
         ],
 
@@ -467,10 +488,7 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
   }
 
   /// Returns the number of available models for the current provider.
-  int _getModelCount(ChatProvider provider) {
-    if (provider.currentProvider == AiProvider.local) return 1;
-    return provider.currentModelsList.length;
-  }
+  int _getModelCount(ChatProvider provider) => provider.currentModelsList.length;
 
   /// Formats pricing string from per-token to per-million tokens format.
   String _formatPricing(String p) {

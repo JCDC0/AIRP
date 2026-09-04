@@ -34,6 +34,13 @@ class ProviderModelSelector extends StatefulWidget {
   /// Optional controller for manual model entry.
   final TextEditingController? controller;
 
+  /// Whether to offer a button that clears the selection back to Auto.
+  ///
+  /// Only meaningful where a blank id is a valid instruction to the provider,
+  /// which today is Local: llama.cpp and LM Studio serve whatever they were
+  /// launched with regardless of the `model` field.
+  final bool allowClear;
+
   const ProviderModelSelector({
     super.key,
     required this.modelsList,
@@ -44,6 +51,7 @@ class ProviderModelSelector extends StatefulWidget {
     this.onRefresh,
     this.refreshButtonColor = Colors.blueAccent,
     this.controller,
+    this.allowClear = false,
   });
 
   @override
@@ -95,33 +103,62 @@ class _ProviderModelSelectorState extends State<ProviderModelSelector> {
   Widget build(BuildContext context) {
     final scaleProvider = Provider.of<ScaleProvider>(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final bool hasModels = widget.modelsList.isNotEmpty;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (widget.modelsList.isNotEmpty)
-          ModelSelector(
-            modelsList: widget.modelsList,
-            selectedModel: widget.selectedModel,
-            onSelected: widget.onSelected,
-            placeholder: widget.placeholder,
-          )
-        else
-          TextField(
-            controller: _internalController,
-            focusNode: _focusNode,
-            decoration: InputDecoration(
-              hintText: widget.placeholder,
-              hintStyle: TextStyle(fontSize: scaleProvider.systemFontSize),
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
-            style: TextStyle(fontSize: scaleProvider.systemFontSize),
-            onChanged: (val) {
-              // Update parent state but don't force a cursor reset
-              widget.onSelected(val);
+        Expanded(
+          child: hasModels
+              ? ModelSelector(
+                  modelsList: widget.modelsList,
+                  selectedModel: widget.selectedModel,
+                  onSelected: widget.onSelected,
+                  placeholder: widget.placeholder,
+                )
+              : TextField(
+                  controller: _internalController,
+                  focusNode: _focusNode,
+                  decoration: InputDecoration(
+                    hintText: widget.placeholder,
+                    hintStyle: TextStyle(
+                      fontSize: scaleProvider.systemFontSize,
+                    ),
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  style: TextStyle(fontSize: scaleProvider.systemFontSize),
+                  onChanged: (val) {
+                    // Update parent state but don't force a cursor reset
+                    widget.onSelected(val);
+                  },
+                ),
+        ),
+        if (widget.allowClear && hasModels && widget.selectedModel.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.backspace_outlined, size: 18),
+            tooltip: 'Clear (let the server choose)',
+            onPressed: () {
+              _internalController.clear();
+              widget.onSelected('');
             },
           ),
-
+        if (widget.onRefresh != null)
+          IconButton(
+            icon: widget.isLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    Icons.cloud_sync,
+                    size: 18,
+                    color: widget.refreshButtonColor,
+                  ),
+            tooltip: hasModels ? 'Refresh model list' : 'Load model list',
+            onPressed: widget.isLoading ? null : widget.onRefresh,
+          ),
       ],
     );
   }

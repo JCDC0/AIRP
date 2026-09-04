@@ -20,7 +20,11 @@ class ApiKeyService {
     }
   }
 
-  String getProviderKey(AiProvider provider) => _providerKeys[provider] ?? '';
+  /// Trims on read rather than on write. Trimming as the user types feeds a
+  /// shorter string back to the text field, which resyncs the controller and
+  /// drags the caret to the end of the box mid-edit.
+  String getProviderKey(AiProvider provider) =>
+      (_providerKeys[provider] ?? '').trim();
   String getSearchKey(SearchProvider provider) => _searchKeys[provider] ?? '';
 
   /// Loads all API keys from storage, handling migration from SharedPreferences to SecureStorage.
