@@ -145,6 +145,16 @@ class ChatProvider extends ChangeNotifier {
     if (discovered.isNotEmpty) return discovered.first.id;
     return 'local-model';
   }
+
+  /// The model id for the active provider, resolved rather than raw.
+  ///
+  /// [_selectedModel] holds the Target Model ID verbatim for Local, which is
+  /// blank whenever the user means Auto. Read this instead wherever a model
+  /// name is sent, displayed or persisted, or a Local reply is labelled with
+  /// nothing and saves a session that records nothing.
+  String get activeModelId => _currentProvider == AiProvider.local
+      ? effectiveLocalModel
+      : _selectedModel;
   String get openAiCompatibleEndpoint => _openAiCompatibleEndpoint;
   String get ollamaEndpoint => _ollamaEndpoint;
   Set<AiProvider> get starredProviders => _starredProviders;
@@ -181,9 +191,7 @@ class ChatProvider extends ChangeNotifier {
   /// Returns the ModelInfo object for the currently selected model.
   ModelInfo? getCurrentModelInfo() {
     final currentList = _modelRegistry.getModels(_currentProvider);
-    final currentId = _currentProvider == AiProvider.local
-        ? effectiveLocalModel
-        : _selectedModel;
+    final currentId = activeModelId;
 
     try {
       return currentList.firstWhere((m) => m.id == currentId);
@@ -283,6 +291,10 @@ class ChatProvider extends ChangeNotifier {
   /// the process can go away before the timer fires, taking the last turn with
   /// it. Also persists an in-flight streamed response as far as it has got.
   Future<void> flushPendingSave() async {
+    if (_settingsSaveTimer?.isActive ?? false) {
+      _settingsSaveTimer!.cancel();
+      await saveSettings(showConfirmation: false);
+    }
     if (_messages.isNotEmpty || _currentTitle.isNotEmpty) {
       await autoSaveCurrentSession();
     }
@@ -829,9 +841,7 @@ class ChatProvider extends ChangeNotifier {
     final strategy = StrategyResolver.resolve(_currentProvider);
     final String? customUrl = _customEndpointFor(_currentProvider);
     final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
-    final String modelName = _currentProvider == AiProvider.local
-        ? effectiveLocalModel
-        : _selectedModel;
+    final String modelName = activeModelId;
 
     final List<Map<String, dynamic>> openAiExtras = [];
     final List<Map<String, dynamic>> geminiExtras = [];
@@ -1299,7 +1309,7 @@ class ChatProvider extends ChangeNotifier {
       ChatMessage(
         text: "",
         isUser: false,
-        modelName: _selectedModel,
+        modelName: activeModelId,
         contentNotifier: contentNotifier,
         regenerationVersions: _pendingRegenerationVersions,
         currentVersionIndex: _pendingRegenerationVersions.isNotEmpty
@@ -1435,9 +1445,7 @@ class ChatProvider extends ChangeNotifier {
           strategy.streamResponse(
             apiKey: activeKey,
             baseUrl: strategy.getStreamUrl(customUrl: customUrl),
-            model: _currentProvider == AiProvider.local
-                ? effectiveLocalModel
-                : _selectedModel,
+            model: activeModelId,
             history: limitedHistory,
             systemInstruction: finalSystemInstruction,
             userMessage: finalUserMessage,
@@ -1478,9 +1486,7 @@ class ChatProvider extends ChangeNotifier {
 
       _streamingCoordinator.registerStream(
         sessionId: streamSessionId,
-        modelName: _currentProvider == AiProvider.local
-            ? effectiveLocalModel
-            : _selectedModel,
+        modelName: activeModelId,
         contentNotifier: contentNotifier,
         stream: responseStream,
         onUpdate: (sessionId, text, usage) {
@@ -1750,7 +1756,7 @@ class ChatProvider extends ChangeNotifier {
       id: newSessionId,
       title: "Branched Conversation",
       messages: branchedMessages,
-      modelName: _selectedModel,
+      modelName: activeModelId,
       tokenCount: 0,
       systemInstruction: _systemInstruction,
       backgroundImage: null,
@@ -1815,7 +1821,7 @@ class ChatProvider extends ChangeNotifier {
         return "Voice-samples call failed (check API key / model).";
       }
 
-      final modelNameForNote = _selectedModel;
+      final modelNameForNote = activeModelId;
 
       // 3. Emit summary + voices as two AI messages into the current chat.
       final summaryMessage = ChatMessage(
@@ -1853,7 +1859,7 @@ class ChatProvider extends ChangeNotifier {
             ? "Summarized Conversation"
             : "Summary of $_currentTitle",
         messages: branchedMessages,
-        modelName: _selectedModel,
+        modelName: activeModelId,
         tokenCount: 0,
         systemInstruction: _systemInstruction,
         backgroundImage: null,
@@ -1911,9 +1917,7 @@ class ChatProvider extends ChangeNotifier {
     final strategy = StrategyResolver.resolve(_currentProvider);
     final String? customUrl = _customEndpointFor(_currentProvider);
     final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
-    final String modelName = _currentProvider == AiProvider.local
-        ? effectiveLocalModel
-        : _selectedModel;
+    final String modelName = activeModelId;
     const String sysInstr = 'You are a helpful assistant.';
 
     ToolDetectionResult det;
@@ -1985,7 +1989,7 @@ class ChatProvider extends ChangeNotifier {
 
     final messagesSnapshot = List<ChatMessage>.from(_messages);
     final tokenCountSnapshot = _tokenCount;
-    final modelNameSnapshot = _selectedModel;
+    final modelNameSnapshot = activeModelId;
     final providerNameSnapshot = _currentProvider.name;
     final finalSystemInstruction = _buildSystemInstruction();
 

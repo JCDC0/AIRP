@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.30.5` (`pubspec.yaml` `0.7.30+16`). Target: `0.8.0` release.
+Current version: `0.7.30.6` (`pubspec.yaml` `0.7.30+17`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -39,7 +39,7 @@ Current version: `0.7.30.5` (`pubspec.yaml` `0.7.30+16`). Target: `0.8.0` releas
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (308 tests, all passing)
+*   **Test:** `flutter test` (313 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -86,6 +86,12 @@ currently clean and must stay that way.
 *   **Unit tests cannot detect an unwired service.** The lorebook engine carried
     ~1,400 lines of passing tests for a path with no production caller for nine
     versions. A send-path integration test is the recommended guard.
+*   **A resync guard keyed on focus drops external writes.** A panel that
+    skips its sync while a field has focus also skips a config pack import or a
+    character card load arriving mid-edit, stranding a draft that the next
+    keystroke writes back over what just loaded. Compare against the value the
+    panel last saw instead: the user's own echo matches it, an external write
+    does not. Guarded by `test/regression_0_7_30_5_test.dart`.
 *   **One field standing in for many values must repaint when the value it
     stands for changes.** The API key box serves all eight providers. A focus
     guard added to stop a caret jump also froze it across a provider switch, so
@@ -100,7 +106,10 @@ currently clean and must stay that way.
     the caret jumps mid-edit. Trim on read instead. Never construct a
     `TextEditingController` in `build()`. Persist through
     `ChatProvider.saveSettingsDebounced`, not `saveSettings`, which issues
-    around twenty awaited writes plus an autosave. Guarded by
+    around twenty awaited writes plus an autosave. Anything debounced must also
+    be drained by `ChatProvider.flushPendingSave`, which the app lifecycle
+    observer in `main.dart` calls on pause, or the last edit dies with the
+    process. Guarded by
     `test/system_prompt_panel_caret_test.dart`.
 
 ## Providers
@@ -164,6 +173,11 @@ both serve that. A blank Target Model ID means Auto and is resolved by
 `ChatProvider.effectiveLocalModel` to the first discovered model, falling back
 to `local-model`. Never send the blank string itself: some servers answer a
 missing `model` field with a 400.
+
+Read `ChatProvider.activeModelId`, not `_selectedModel`, wherever a model name
+is sent, displayed or persisted. `_selectedModel` holds Local's Target Model ID
+verbatim, so it is the empty string whenever the user means Auto, and a reply
+labelled with nothing saves a session that records nothing.
 
 `ChatProvider.missingCredentialError` runs before every send and reports a
 missing key, or a missing endpoint for the providers that need one, into the

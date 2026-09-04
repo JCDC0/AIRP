@@ -26,6 +26,9 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   late TextEditingController _promptController;
   late FocusNode _promptFocusNode;
 
+  /// The instruction as this panel last saw it, whether it wrote it or read it.
+  late String _observedInstruction;
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +36,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
     _titleController = TextEditingController();
     _promptController = TextEditingController(text: chatProvider.systemInstruction);
     _promptFocusNode = FocusNode();
+    _observedInstruction = chatProvider.systemInstruction;
 
     // Try to pre-fill the title by matching against saved prompts.
     _matchTitleFromLibrary(chatProvider);
@@ -63,17 +67,31 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
   /// Pulls the prompt back in when it changed outside this panel (a config
   /// pack import, a character card load).
   ///
-  /// It deliberately skips while the field has focus. Assigning
+  /// The guard is on the echo of the user's own typing, not on focus. Assigning
   /// `controller.text` collapses the selection to the end of the new value, so
   /// a sync landing mid-edit dragged the caret to the end of the box. Combined
   /// with the `onChanged` handler trimming the value, typing a space at either
   /// end of the prompt fed back a shorter string, which then triggered exactly
   /// that resync: the space vanished at the end, and jumped the caret to the
   /// end at the front. Neither the trim nor the unguarded sync belongs here.
+  ///
+  /// Keying off focus alone was wrong in the other direction: an import
+  /// arriving while the textarea held focus was dropped, leaving a stale draft
+  /// on screen that the next keystroke wrote straight back over the prompt that
+  /// had just been loaded. Comparing against the value this panel last saw
+  /// separates the two: the user's own echo matches it, an external write does
+  /// not, and only the latter takes the field.
   void _syncControllers(ChatProvider chatProvider) {
-    if (_promptFocusNode.hasFocus) return;
-    if (_promptController.text != chatProvider.systemInstruction) {
-      _promptController.text = chatProvider.systemInstruction;
+    final incoming = chatProvider.systemInstruction;
+    final changedElsewhere = incoming != _observedInstruction;
+    _observedInstruction = incoming;
+
+    if (!changedElsewhere && _promptFocusNode.hasFocus) return;
+    if (_promptController.text != incoming) {
+      if (changedElsewhere && _promptFocusNode.hasFocus) {
+        _promptFocusNode.unfocus();
+      }
+      _promptController.text = incoming;
       _matchTitleFromLibrary(chatProvider);
     }
   }
@@ -95,6 +113,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
 
   void _loadPrompt(ChatProvider chatProvider, SystemPromptData p) {
     chatProvider.setSystemInstruction(p.content);
+    _observedInstruction = p.content;
     _titleController.text = p.title;
     _promptController.text = p.content;
     Provider.of<SettingsProvider>(context, listen: false).markDirty();
@@ -201,6 +220,7 @@ class _SystemPromptPanelState extends State<SystemPromptPanel> {
           maxLines: 12,
           minLines: 5,
           onChanged: (val) {
+            _observedInstruction = val;
             chatProvider.setSystemInstruction(val);
             Provider.of<SettingsProvider>(context, listen: false).markDirty();
           },
