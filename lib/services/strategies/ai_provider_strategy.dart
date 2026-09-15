@@ -152,8 +152,9 @@ abstract class AiProviderStrategy {
 
   /// Generates the necessary headers for API requests.
   Map<String, String> getHeaders(String apiKey) {
-    if (apiKey.isEmpty) return {};
-    return {"Authorization": "Bearer $apiKey"};
+    final clean = apiKey.trim();
+    if (clean.isEmpty) return {};
+    return {"Authorization": "Bearer $clean"};
   }
 
   /// Parses the raw JSON response from the models endpoint.

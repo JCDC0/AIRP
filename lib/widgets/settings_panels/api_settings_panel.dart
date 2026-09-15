@@ -132,12 +132,13 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
         chatProvider.currentProvider == AiProvider.openAiCompatible ||
         chatProvider.currentProvider == AiProvider.ollama;
 
+    final bool acceptsApiKey = chatProvider.currentProvider.acceptsApiKey;
     final bool requiresApiKey = chatProvider.currentProvider.needsApiKey;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (requiresApiKey) ...[
+        if (acceptsApiKey) ...[
           Text(
             "API Key (BYOK)",
             style: TextStyle(
@@ -207,7 +208,7 @@ class _ApiSettingsPanelState extends State<ApiSettingsPanel> {
             ),
             style: TextStyle(fontSize: scaleProvider.systemFontSize - 2),
           ),
-          if (_getApiKey(chatProvider).trim().isNotEmpty) ...[
+          if (requiresApiKey && _getApiKey(chatProvider).trim().isNotEmpty) ...[
             const SizedBox(height: 8),
             _buildModelLoadRow(chatProvider, scaleProvider),
           ],

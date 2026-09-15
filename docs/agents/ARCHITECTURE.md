@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.30.7` (`pubspec.yaml` `0.7.30+18`). Target: `0.8.0` release.
+Current version: `0.7.30.8` (`pubspec.yaml` `0.7.30+19`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -39,7 +39,7 @@ Current version: `0.7.30.7` (`pubspec.yaml` `0.7.30+18`). Target: `0.8.0` releas
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (318 tests, all passing)
+*   **Test:** `flutter test` (339 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -266,7 +266,7 @@ Per provider, verified against vendor docs in `0.7.30.1`:
     `reasoningEffortOptions` are overridden to match.
 *   **Ollama** maps `reasoning_effort` onto its native `think` parameter and
     auto-enables thinking when the field is absent, so it is sent always. It
-    accepts `none|low|medium|high` and rejects `xhigh`.
+    accepts `none|low|medium|high|max` and rejects `xhigh`.
 *   **OpenAI Compatible / Local** point at endpoints AIRP cannot introspect;
     they use the conservative omit-when-disabled form.
 

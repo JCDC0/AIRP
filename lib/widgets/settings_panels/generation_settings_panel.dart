@@ -17,26 +17,12 @@ import 'settings_slider.dart';
 class GenerationSettingsPanel extends StatefulWidget {
   const GenerationSettingsPanel({super.key});
 
-  @override
-  State<GenerationSettingsPanel> createState() =>
-      _GenerationSettingsPanelState();
-}
-
-class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
-  AiProviderStrategy _strategyFor(AiProvider provider) {
-    return StrategyResolver.resolve(provider);
-  }
-
-  /// Returns the stored reasoning effort if the current provider supports it;
-  /// otherwise falls back to the closest supported value.
-  String _effectiveReasoningEffort(String stored, AiProvider provider) {
-    final strategy = _strategyFor(provider);
+  @visibleForTesting
+  static String effectiveReasoningEffort(String stored, AiProvider provider) {
+    final strategy = StrategyResolver.resolve(provider);
     final supported =
         strategy.reasoningEffortOptions.map((o) => o.apiValue).toSet();
     if (supported.contains(stored)) return stored;
-    // Step down to the nearest level the provider actually accepts rather
-    // than silently reading as Disabled: DeepSeek has no `medium`, NVIDIA
-    // rejects `xhigh`, and Ollama accepts neither `xhigh` nor `max`.
     const fallbacks = <String, List<String>>{
       'xhigh': ['max', 'high'],
       'max': ['xhigh', 'high'],
@@ -49,6 +35,19 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
     }
     return 'none';
   }
+
+  @override
+  State<GenerationSettingsPanel> createState() =>
+      _GenerationSettingsPanelState();
+}
+
+class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
+  AiProviderStrategy _strategyFor(AiProvider provider) {
+    return StrategyResolver.resolve(provider);
+  }
+
+  String _effectiveReasoningEffort(String stored, AiProvider provider) =>
+      GenerationSettingsPanel.effectiveReasoningEffort(stored, provider);
 
   List<DropdownMenuItem<String>> _buildReasoningEffortItems(
     AiProvider provider,

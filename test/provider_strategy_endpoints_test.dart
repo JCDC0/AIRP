@@ -5,11 +5,20 @@ import 'package:airp/services/strategies/nvidia_strategy.dart';
 import 'package:airp/services/strategies/ollama_strategy.dart';
 import 'package:airp/services/strategies/strategy_resolver.dart';
 import 'package:airp/utils/constants.dart';
+import 'package:airp/widgets/settings_panels/generation_settings_panel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('OllamaStrategy endpoint handling', () {
     final strategy = OllamaStrategy();
+
+    test('sends bearer token only when api key is set', () {
+      expect(strategy.getHeaders(''), isEmpty);
+      expect(strategy.getHeaders('   '), isEmpty);
+      expect(strategy.getHeaders('ollama-secret'), {
+        'Authorization': 'Bearer ollama-secret',
+      });
+    });
 
     test('accepts a bare server root', () {
       expect(
@@ -182,6 +191,25 @@ void main() {
         AiProvider.ollama,
       ).reasoningEffortOptions.map((o) => o.apiValue);
       expect(values, isNot(contains('xhigh')));
+    });
+
+    test('Ollama offers max reasoning effort and maps xhigh to max', () {
+      final values = StrategyResolver.resolve(
+        AiProvider.ollama,
+      ).reasoningEffortOptions.map((o) => o.apiValue);
+      expect(values, contains('max'));
+      expect(bodyFor(AiProvider.ollama, 'max'), {'reasoning_effort': 'max'});
+      expect(bodyFor(AiProvider.ollama, 'xhigh'), {'reasoning_effort': 'max'});
+    });
+
+    test('GenerationSettingsPanel falls back from xhigh to max for Ollama', () {
+      expect(
+        GenerationSettingsPanel.effectiveReasoningEffort(
+          'xhigh',
+          AiProvider.ollama,
+        ),
+        'max',
+      );
     });
 
     test('NanoGPT always sends reasoning_effort and offers xhigh', () {

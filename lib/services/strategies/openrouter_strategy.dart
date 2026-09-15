@@ -32,8 +32,9 @@ class OpenRouterStrategy extends AiProviderStrategy {
 
   @override
   Map<String, String> getHeaders(String apiKey) {
+    final clean = apiKey.trim();
     return {
-      "Authorization": "Bearer $apiKey",
+      if (clean.isNotEmpty) "Authorization": "Bearer $clean",
       "HTTP-Referer": "https://airp-chat.com",
       "X-Title": "AIRP Chat",
     };

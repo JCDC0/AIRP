@@ -36,6 +36,8 @@ extension AiProviderInfo on AiProvider {
     }
   }
 
+  bool get acceptsApiKey => this != AiProvider.local;
+
   /// Whether a request to this provider carries a bearer credential.
   ///
   /// Local and Ollama talk to a server the user runs, so they authenticate

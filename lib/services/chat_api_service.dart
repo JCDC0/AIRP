@@ -439,6 +439,7 @@ class ChatApiService {
     List<Map<String, dynamic>>? depthMessages,
     Map<String, Uint8List>? attachmentBytes,
     List<Map<String, dynamic>>? extraMessages,
+    http.Client? client,
   }) async* {
     final cleanKey = apiKey.trim();
     List<Map<String, dynamic>> messagesPayload = [];
@@ -595,15 +596,16 @@ class ChatApiService {
 
     final request = http.Request('POST', Uri.parse(baseUrl));
     request.headers.addAll({
-      "Authorization": "Bearer $cleanKey",
+      if (cleanKey.isNotEmpty) "Authorization": "Bearer $cleanKey",
       "Content-Type": "application/json",
       ...?extraHeaders,
     });
     request.body = jsonEncode(bodyMap);
 
-    final client = http.Client();
+    final http.Client activeClient = client ?? http.Client();
+    final bool ownsClient = client == null;
     try {
-      final streamedResponse = await client.send(request);
+      final streamedResponse = await activeClient.send(request);
 
       if (streamedResponse.statusCode != 200) {
         final errorBody = await streamedResponse.stream.bytesToString();
@@ -670,7 +672,7 @@ class ChatApiService {
     } catch (e) {
       yield "\n\n**Connection Error:** $e";
     } finally {
-      client.close();
+      if (ownsClient) activeClient.close();
     }
   }
 
@@ -917,7 +919,7 @@ class ChatApiService {
 
     final request = http.Request('POST', Uri.parse(baseUrl));
     request.headers.addAll({
-      'Authorization': 'Bearer $cleanKey',
+      if (cleanKey.isNotEmpty) 'Authorization': 'Bearer $cleanKey',
       'Content-Type': 'application/json',
       ...?extraHeaders,
     });
@@ -1073,7 +1075,7 @@ class ChatApiService {
 
     final request = http.Request('POST', Uri.parse(baseUrl));
     request.headers.addAll({
-      'Authorization': 'Bearer $cleanKey',
+      if (cleanKey.isNotEmpty) 'Authorization': 'Bearer $cleanKey',
       'Content-Type': 'application/json',
       ...?extraHeaders,
     });

@@ -61,4 +61,20 @@ void main() {
     expect(restored.provider, session.provider);
     expect(restored.isBookmarked, session.isBookmarked);
   });
+
+  test('AiProvider acceptsApiKey and needsApiKey rules', () {
+    expect(AiProvider.ollama.acceptsApiKey, isTrue);
+    expect(AiProvider.local.acceptsApiKey, isFalse);
+    expect(AiProvider.ollama.needsApiKey, isFalse);
+    expect(AiProvider.local.needsApiKey, isFalse);
+
+    for (final p in AiProvider.values) {
+      if (p != AiProvider.local) {
+        expect(p.acceptsApiKey, isTrue);
+      }
+      if (p != AiProvider.local && p != AiProvider.ollama) {
+        expect(p.needsApiKey, isTrue);
+      }
+    }
+  });
 }
