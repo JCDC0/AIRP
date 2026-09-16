@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.7.30.8` (`pubspec.yaml` `0.7.30+19`). Target: `0.8.0` release.
+Current version: `0.8.0` (`pubspec.yaml` `0.8.0+20`). Target: `0.8.0` release.
 
 ## Project overview
 
@@ -31,6 +31,7 @@ Current version: `0.7.30.8` (`pubspec.yaml` `0.7.30+19`). Target: `0.8.0` releas
     *   `ApiKeyService`: secure storage for API credentials with legacy migration.
     *   `ConfigPackService`: named settings bundles, SillyTavern preset import.
     *   `LorebookService`: current-input lore recognition. See "Lore recognition" below.
+    *   `UpdateService`: GitHub Releases version check, APK download, native installer trigger.
 *   **Persistence:** `shared_preferences` for settings AND sessions. Sessions are a
     single JSON string under the `airp_sessions` key, not separate files.
     `flutter_secure_storage` for API keys.

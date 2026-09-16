@@ -6,6 +6,7 @@ import 'providers/settings_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/scale_provider.dart';
 import 'providers/local_library_provider.dart';
+import 'providers/update_provider.dart';
 import 'screens/chat_screen.dart';
 
 /// The entry point for the AIRP application.
@@ -25,6 +26,7 @@ void main() {
         ),
         ChangeNotifierProvider(create: (_) => ScaleProvider()),
         ChangeNotifierProvider(create: (_) => LocalLibraryProvider()),
+        ChangeNotifierProvider(create: (_) => UpdateProvider()),
       ],
       child: const AIRP(),
     ),
@@ -47,6 +49,9 @@ class _AIRPState extends State<AIRP> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UpdateProvider>().checkForUpdate();
+    });
   }
 
   @override

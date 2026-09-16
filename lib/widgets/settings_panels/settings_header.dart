@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/vfx_provider.dart';
 import '../../providers/scale_provider.dart';
+import '../../providers/update_provider.dart';
 import '../../utils/version.dart';
 
 /// Header widget for the settings panel that displays the application title
@@ -38,12 +39,15 @@ class SettingsHeader extends StatelessWidget {
                 : [],
           ),
         ),
-        Text(
-          "v$appVersion",
-          style: TextStyle(
-            fontSize: scaleProvider.systemFontSize + 4,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
+        GestureDetector(
+          onTap: () => context.read<UpdateProvider>().checkForUpdate(force: true),
+          child: Text(
+            "v$appVersion",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize + 4,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
           ),
         ),
         const Divider(),

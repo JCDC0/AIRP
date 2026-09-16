@@ -5,6 +5,7 @@ import '../providers/vfx_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/scale_provider.dart';
+import '../models/chat_models.dart';
 import 'settings_panels/settings_header.dart';
 import 'settings_panels/api_settings_panel.dart';
 import 'settings_panels/model_settings_panel.dart';
@@ -16,6 +17,7 @@ import 'settings_panels/web_search_settings_panel.dart';
 import 'settings_panels/visual_settings_panel.dart';
 import 'settings_panels/scale_settings_panel.dart';
 import 'settings_panels/settings_library_panel.dart';
+import 'settings_panels/update_settings_panel.dart';
 
 /// A drawer widget that contains all application settings.
 ///
@@ -55,10 +57,31 @@ class SettingsDrawer extends StatelessWidget {
                 children: [
                   const SettingsHeader(),
 
+                  const UpdateSettingsPanel(),
+
+              ExpansionTile(
+                key: Key('core_components_$resetVersion'),
+                initiallyExpanded: true,
+                title: Text(
+                  "Core Components",
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: scaleProvider.systemFontSize,
+                  ),
+                ),
+                subtitle: Text(
+                  chatProvider.currentProvider.displayName,
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                ),
+                collapsedIconColor: themeProvider.textColor,
+                iconColor: themeProvider.textColor,
+                children: [
                   const ApiSettingsPanel(),
                   const Divider(),
                   const ModelSettingsPanel(),
-                  const SizedBox(height: 16),
+                ],
+              ),
 
               ExpansionTile(
                 key: Key('system_prompt_$resetVersion'),
