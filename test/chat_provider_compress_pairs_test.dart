@@ -62,7 +62,45 @@ void main() {
     expect(pairs.every((m) => m.contentNotifier == null), isTrue);
   });
 
-  test('collectTrailingPairs returns empty for an empty conversation', () {
-    expect(ChatProvider.collectTrailingPairs(const [], 3), isEmpty);
+  test('collectTrailingMessages returns empty when n is 0 or negative', () {
+    expect(ChatProvider.collectTrailingMessages(conversation(3), 0), isEmpty);
+    expect(ChatProvider.collectTrailingMessages(conversation(3), -1), isEmpty);
+  });
+
+  test('collectTrailingMessages returns empty for an empty conversation', () {
+    expect(ChatProvider.collectTrailingMessages(const [], 5), isEmpty);
+  });
+
+  test('collectTrailingMessages returns trailing n individual chat blocks', () {
+    final blocks = ChatProvider.collectTrailingMessages(conversation(3), 3);
+
+    expect(labels(blocks), ['AI2', 'User3', 'AI3']);
+  });
+
+  test('collectTrailingMessages returns whole conversation when n exceeds it', () {
+    final blocks = ChatProvider.collectTrailingMessages(conversation(2), 10);
+
+    expect(labels(blocks), ['User1', 'AI1', 'User2', 'AI2']);
+  });
+
+  test('collectTrailingMessages preserves consecutive AI messages and user turns', () {
+    final messages = [
+      ChatMessage(text: 'User1', isUser: true),
+      ChatMessage(text: 'AI1_part1', isUser: false),
+      ChatMessage(text: 'AI1_part2', isUser: false),
+      ChatMessage(text: 'User2', isUser: true),
+      ChatMessage(text: 'AI2', isUser: false),
+    ];
+
+    final blocks = ChatProvider.collectTrailingMessages(messages, 4);
+
+    expect(labels(blocks), ['AI1_part1', 'AI1_part2', 'User2', 'AI2']);
+  });
+
+  test('collectTrailingMessages drops streaming notifiers', () {
+    final messages = conversation(1);
+    final blocks = ChatProvider.collectTrailingMessages(messages, 2);
+
+    expect(blocks.every((m) => m.contentNotifier == null), isTrue);
   });
 }

@@ -93,12 +93,18 @@ class SummarizeDefaults {
   static const String defaultVoiceSamplesPrompt =
       'You are an out-of-character character analyst. From the following roleplay conversation transcript, identify each distinct character (including the user persona) and produce 3-5 characteristic short voice samples per character — sentence-length snippets that demonstrate how that character speaks (vocabulary, tone, quirks). Format as Markdown headings per character, with a bulleted list of samples below each heading. Do NOT invent new content; only extract speech patterns already present in the transcript. Output ONLY the voice samples, no preamble.\n\nCONVERSATION TRANSCRIPT:\n';
 
-  static const int minPairs = 1;
-  static const int maxPairs = 20;
-  static const int defaultPairs = 5;
+  static const int minBlocks = 0;
+  static const int maxBlocks = 40;
+  static const int defaultBlocks = 6;
+
+  /// Backward compatibility aliases for the 0.7.x pairs API.
+  static const int minPairs = 0;
+  static const int maxPairs = 40;
+  static const int defaultPairs = 6;
 
   static const String prefCompressPrompt = 'airp_summarize_compress_prompt';
   static const String prefVoiceSamplesPrompt = 'airp_summarize_voice_prompt';
+  static const String prefBlockCount = 'airp_summarize_block_count';
   static const String prefPairCount = 'airp_summarize_pair_count';
 }
 

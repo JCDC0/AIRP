@@ -1771,22 +1771,26 @@ class ChatProvider extends ChangeNotifier {
   /// Compresses the current conversation into a narrative summary + voice
   /// samples (two one-shot LLM calls), appends both as AI messages into the
   /// current chat, then creates a fresh branched conversation seeded with
-  /// [summary]+[voices]+[last N assistant/user pairs]. The original
-  /// conversation is left intact (only appended-to).  After branching, the
+  /// [summary]+[voices]+[last N chat blocks]. If [blockCount] is 0, only the
+  /// summary and voice samples are seeded into the new branch. The original
+  /// conversation is left intact (only appended-to). After branching, the
   /// active session is switched to the new one.
   ///
   /// Returns `null` on success or an error string.
   Future<String?> compressAndBranch({
-    required int pairCount,
+    int? blockCount,
+    int? pairCount,
     required String compressPrompt,
     required String voiceSamplesPrompt,
   }) async {
     if (_messages.isEmpty) {
       return "Nothing to summarize — the conversation is empty.";
     }
-    final int n = pairCount.clamp(
-      SummarizeDefaults.minPairs,
-      SummarizeDefaults.maxPairs,
+    final int count =
+        blockCount ?? pairCount ?? SummarizeDefaults.defaultBlocks;
+    final int n = count.clamp(
+      SummarizeDefaults.minBlocks,
+      SummarizeDefaults.maxBlocks,
     );
 
     // 1. Build a plain-text transcript of the whole conversation.
@@ -1839,18 +1843,18 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
       await autoSaveCurrentSession();
 
-      // 4. Collect last N assistant/user pairs from the ORIGINAL messages
+      // 4. Collect last N individual chat blocks from the ORIGINAL messages
       //    (i.e. before the two emitted notes).
-      final pairs = collectTrailingPairs(
+      final blocks = collectTrailingMessages(
         _messages.sublist(0, _messages.length - 2),
         n,
       );
 
-      // 5. New branch: [summary]+[voices]+[last N pairs]
+      // 5. New branch: [summary]+[voices]+[last N blocks]
       final branchedMessages = <ChatMessage>[
         summaryMessage.copyWith(clearContentNotifier: true),
         voicesMessage.copyWith(clearContentNotifier: true),
-        ...pairs,
+        ...blocks,
       ];
       final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
       final newSession = ChatSessionData(
@@ -1875,6 +1879,24 @@ class ChatProvider extends ChangeNotifier {
       _nonStreamingLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Returns the trailing [n] chat blocks (messages) from [messages] in original
+  /// conversation order, with any streaming notifiers cleared.
+  ///
+  /// If [n] is 0 or less, returns an empty list.
+  /// If [n] exceeds the message count, returns all messages.
+  @visibleForTesting
+  static List<ChatMessage> collectTrailingMessages(
+    List<ChatMessage> messages,
+    int n,
+  ) {
+    if (n <= 0 || messages.isEmpty) return const <ChatMessage>[];
+    final start = n >= messages.length ? 0 : messages.length - n;
+    return [
+      for (int i = start; i < messages.length; i++)
+        messages[i].copyWith(clearContentNotifier: true),
+    ];
   }
 
   /// Returns the trailing [n] assistant turns from [messages], each preceded by

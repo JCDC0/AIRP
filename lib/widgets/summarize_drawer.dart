@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,16 +7,19 @@ import '../providers/theme_provider.dart';
 import '../providers/vfx_provider.dart';
 import '../providers/scale_provider.dart';
 import '../utils/constants.dart';
+import 'settings_panels/settings_slider.dart';
 
 /// A drawer that produces a narrative summary + voice samples of the current
 /// conversation and branches a fresh, compressed conversation.
 ///
 /// Both prompts (`Compress prompt`, `Voice samples prompt`) are editable;
 /// edits persist via SharedPreferences so they survive across sessions.
-/// A 1–20 slider chooses how many assistant/user pairs to carry into the
-/// new branch. Pressing **Compress** issues two one-shot LLM calls, appends
-/// the results as AI messages to the current chat, then switches to the new
-/// branched session seeded with [summary]+[voices]+[last N pairs].
+/// A 0–40 slider with typeable textbox chooses how many individual chat blocks
+/// to carry into the new branch. Carrying 0 blocks creates a new conversation
+/// holding only the summary and voice samples. Pressing **Compress** issues
+/// two one-shot LLM calls, appends the results as AI messages to the current
+/// chat, then switches to the new branched session seeded with
+/// [summary]+[voices]+[last N blocks].
 class SummarizeDrawer extends StatefulWidget {
   /// Callback triggered when the drawer should be closed.
   final VoidCallback? onClose;
@@ -29,8 +33,7 @@ class SummarizeDrawer extends StatefulWidget {
 class _SummarizeDrawerState extends State<SummarizeDrawer> {
   late TextEditingController _compressController;
   late TextEditingController _voicesController;
-  int _pairCount = SummarizeDefaults.defaultPairs;
-  bool _loadingPrefs = true;
+  int _blockCount = SummarizeDefaults.defaultBlocks;
   bool _compressing = false;
   String? _status;
 
@@ -48,6 +51,7 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
 
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _compressController.text =
           prefs.getString(SummarizeDefaults.prefCompressPrompt) ??
@@ -55,10 +59,10 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
       _voicesController.text =
           prefs.getString(SummarizeDefaults.prefVoiceSamplesPrompt) ??
           SummarizeDefaults.defaultVoiceSamplesPrompt;
-      _pairCount =
+      _blockCount =
+          prefs.getInt(SummarizeDefaults.prefBlockCount) ??
           prefs.getInt(SummarizeDefaults.prefPairCount) ??
-          SummarizeDefaults.defaultPairs;
-      _loadingPrefs = false;
+          SummarizeDefaults.defaultBlocks;
     });
   }
 
@@ -72,8 +76,9 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
     await prefs.setString(SummarizeDefaults.prefVoiceSamplesPrompt, v);
   }
 
-  Future<void> _savePairCount(int v) async {
+  Future<void> _saveBlockCount(int v) async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(SummarizeDefaults.prefBlockCount, v);
     await prefs.setInt(SummarizeDefaults.prefPairCount, v);
   }
 
@@ -96,7 +101,7 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
     });
     try {
       final err = await chat.compressAndBranch(
-        pairCount: _pairCount,
+        blockCount: _blockCount,
         compressPrompt: _compressController.text,
         voiceSamplesPrompt: _voicesController.text,
       );
@@ -120,6 +125,13 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
     final theme = Provider.of<ThemeProvider>(context);
     final vfx = Provider.of<VfxProvider>(context);
     final scale = Provider.of<ScaleProvider>(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final targetWidth =
+        scale.drawerWidth + (scale.systemFontSize - 12) * 10;
+    final drawerWidth = math.min(
+      math.max(300.0, targetWidth),
+      screenWidth * 0.95,
+    );
 
     return Material(
       elevation: vfx.enableBloom ? 20 : 16,
@@ -128,7 +140,7 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
           : null,
       color: theme.scaffoldBackgroundColor,
       child: SizedBox(
-        width: scale.drawerWidth,
+        width: drawerWidth,
         height: double.infinity,
         child: Stack(
           children: [
@@ -162,11 +174,9 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
                   ),
                 ),
                 Expanded(
-                  child: _loadingPrefs
-                      ? const Center(child: CircularProgressIndicator())
-                      : ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                          children: [
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                    children: [
                             _sectionLabel(theme, scale, "Compress prompt"),
                             const SizedBox(height: 4),
                             _promptField(
@@ -187,22 +197,21 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
                               minLines: 6,
                             ),
                             const SizedBox(height: 18),
-                            _sectionLabel(
-                              theme,
-                              scale,
-                              "Pairs to carry into branch: $_pairCount",
-                            ),
-                            Slider(
-                              value: _pairCount.toDouble(),
-                              min: SummarizeDefaults.minPairs.toDouble(),
-                              max: SummarizeDefaults.maxPairs.toDouble(),
-                              divisions:
-                                  SummarizeDefaults.maxPairs -
-                                  SummarizeDefaults.minPairs,
-                              label: "$_pairCount",
+                            SettingsSlider(
+                              title: "Chat blocks to carry",
+                              value: _blockCount.toDouble(),
+                              min: SummarizeDefaults.minBlocks.toDouble(),
+                              max: SummarizeDefaults.maxBlocks.toDouble(),
+                              divisions: SummarizeDefaults.maxBlocks -
+                                  SummarizeDefaults.minBlocks,
+                              activeColor: theme.textColor,
+                              isInt: true,
+                              fontSize: scale.systemFontSize,
+                              titleColor: theme.subtitleColor,
+                              titleFontWeight: FontWeight.bold,
                               onChanged: (v) {
-                                setState(() => _pairCount = v.round());
-                                _savePairCount(v.round());
+                                setState(() => _blockCount = v.round());
+                                _saveBlockCount(v.round());
                               },
                             ),
                             const SizedBox(height: 8),
