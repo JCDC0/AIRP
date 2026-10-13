@@ -16,6 +16,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _enableUsage = false;
   bool _disableSafety = true;
   String _reasoningEffort = "none";
+  String _serviceTier = ChatDefaults.serviceTier;
 
   // Web Search (BYOK)
   SearchProvider _searchProvider = SearchProvider.provider;
@@ -31,6 +32,8 @@ class SettingsProvider extends ChangeNotifier {
   bool _enableGenerationSettings = true;
   bool _enableMaxOutputTokens = true;
   bool _enableLorebook = true;
+  bool _enableServiceTier = false;
+  bool _enableStreaming = true;
 
   // Dirty tracking — indicates unsaved changes exist in the settings drawer.
   // Panels call markDirty() to flag changes; the save button calls clearDirty().
@@ -66,6 +69,15 @@ class SettingsProvider extends ChangeNotifier {
   bool get disableSafety => _disableSafety;
   String get reasoningEffort => _reasoningEffort;
 
+  /// The stored tier. Kept while [enableServiceTier] is off so turning the
+  /// setting back on restores the last choice.
+  String get serviceTier => _serviceTier;
+
+  /// The tier requests actually use. With the setting off every request goes
+  /// out at the default tier, so the panel shows Default whatever is stored.
+  String get effectiveServiceTier =>
+      _enableServiceTier ? _serviceTier : ChatDefaults.serviceTier;
+
   SearchProvider get searchProvider => _searchProvider;
   String get searxngUrl => _searxngUrl;
   int get searchResultCount => _searchResultCount;
@@ -84,6 +96,10 @@ class SettingsProvider extends ChangeNotifier {
   bool get enableGenerationSettings => _enableGenerationSettings;
   bool get enableMaxOutputTokens => _enableMaxOutputTokens;
   bool get enableLorebook => _enableLorebook;
+  bool get enableServiceTier => _enableServiceTier;
+
+  /// When false, replies are requested whole and appear when complete.
+  bool get enableStreaming => _enableStreaming;
 
   SettingsProvider() {
     _loadSettings();
@@ -108,6 +124,10 @@ class SettingsProvider extends ChangeNotifier {
     _enableReasoning = prefs.getBool('airp_enable_reasoning') ?? false;
     _enableUsage = prefs.getBool('airp_enable_usage') ?? false;
     _reasoningEffort = prefs.getString('airp_reasoning_effort') ?? 'none';
+    _enableServiceTier = prefs.getBool('airp_enable_service_tier') ?? false;
+    _enableStreaming = prefs.getBool('airp_enable_streaming') ?? true;
+    _serviceTier =
+        prefs.getString('airp_service_tier') ?? ChatDefaults.serviceTier;
     _enableGenerationSettings =
         prefs.getBool('airp_enable_generation_settings') ?? true;
     _enableMaxOutputTokens =
@@ -155,6 +175,9 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setBool('airp_enable_reasoning', _enableReasoning);
     await prefs.setBool('airp_enable_usage', _enableUsage);
     await prefs.setString('airp_reasoning_effort', _reasoningEffort);
+    await prefs.setBool('airp_enable_service_tier', _enableServiceTier);
+    await prefs.setBool('airp_enable_streaming', _enableStreaming);
+    await prefs.setString('airp_service_tier', _serviceTier);
     await prefs.setBool(
       'airp_enable_generation_settings',
       _enableGenerationSettings,
@@ -251,6 +274,21 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setEnableServiceTier(bool val) {
+    _enableServiceTier = val;
+    notifyListeners();
+  }
+
+  void setEnableStreaming(bool val) {
+    _enableStreaming = val;
+    notifyListeners();
+  }
+
+  void setServiceTier(String val) {
+    _serviceTier = val;
+    notifyListeners();
+  }
+
   void setEnableGrounding(bool val) {
     _enableGrounding = val;
     notifyListeners();
@@ -288,6 +326,7 @@ class SettingsProvider extends ChangeNotifier {
         'maxOutputTokens': _maxOutputTokens,
         'historyLimit': _historyLimit,
         'reasoningEffort': _reasoningEffort,
+        'serviceTier': _serviceTier,
       },
       'toggles': {
         'enableSystemPrompt': _enableSystemPrompt,
@@ -299,6 +338,8 @@ class SettingsProvider extends ChangeNotifier {
         'enableUsage': _enableUsage,
         'disableSafety': _disableSafety,
         'enableCharacterCard': _enableCharacterCard,
+        'enableServiceTier': _enableServiceTier,
+        'enableStreaming': _enableStreaming,
       },
       'sillyTavernState': {
         'enableLorebook': _enableLorebook,
@@ -321,6 +362,7 @@ class SettingsProvider extends ChangeNotifier {
         (gen['maxOutputTokens'] as num?)?.toInt() ?? _maxOutputTokens;
     _historyLimit = (gen['historyLimit'] as num?)?.toInt() ?? _historyLimit;
     _reasoningEffort = gen['reasoningEffort'] as String? ?? _reasoningEffort;
+    _serviceTier = gen['serviceTier'] as String? ?? _serviceTier;
 
     final tog = data['toggles'] as Map<String, dynamic>? ?? {};
     _enableSystemPrompt =
@@ -336,6 +378,9 @@ class SettingsProvider extends ChangeNotifier {
     _disableSafety = tog['disableSafety'] as bool? ?? _disableSafety;
     _enableCharacterCard =
         tog['enableCharacterCard'] as bool? ?? _enableCharacterCard;
+    _enableServiceTier =
+        tog['enableServiceTier'] as bool? ?? _enableServiceTier;
+    _enableStreaming = tog['enableStreaming'] as bool? ?? _enableStreaming;
 
     if (data.containsKey('enableCharacterCard')) {
       _enableCharacterCard = data['enableCharacterCard'] as bool;

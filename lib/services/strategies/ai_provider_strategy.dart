@@ -49,6 +49,32 @@ const List<ReasoningEffortOption> kDefaultReasoningEfforts = [
   ReasoningEffortOption('High / Deep Think', 'high'),
 ];
 
+/// A UI-facing label and API value for a provider service tier.
+///
+/// A tier marked [notRecommended] costs more than the provider's standard
+/// rate. The settings panel shows [warning] in a confirmation dialog before it
+/// stores such a tier.
+class ServiceTierOption {
+  final String label;
+  final String apiValue;
+
+  /// One line shown under the tier dropdown while this tier is selected.
+  final String description;
+
+  final bool notRecommended;
+
+  /// The confirmation dialog body for a [notRecommended] tier.
+  final String warning;
+
+  const ServiceTierOption(
+    this.label,
+    this.apiValue,
+    this.description, {
+    this.notRecommended = false,
+    this.warning = '',
+  });
+}
+
 /// Base strategy for AI provider-specific logic (URL generation, headers, parsing, and streaming).
 abstract class AiProviderStrategy {
   AiProvider get provider;
@@ -77,6 +103,27 @@ abstract class AiProviderStrategy {
       options.add(const ReasoningEffortOption('Max', 'xhigh'));
     }
     return options;
+  }
+
+  /// The service tiers this provider accepts as a top-level `service_tier`
+  /// request field. Empty means the provider has no tier control, and the
+  /// settings panel hides the Service Tier setting.
+  List<ServiceTierOption> get serviceTierOptions => const [];
+
+  bool get supportsServiceTier => serviceTierOptions.isNotEmpty;
+
+  /// Returns the `service_tier` value to send, or null to send no field.
+  ///
+  /// Returns null when the provider has no tiers, when [enabled] is false,
+  /// when [stored] is [ChatDefaults.serviceTier], or when [stored] is not a
+  /// tier this provider lists. An absent field already means the default
+  /// tier, so `default` itself never goes on the wire.
+  String? resolveServiceTier({required bool enabled, required String stored}) {
+    if (!enabled || stored == ChatDefaults.serviceTier) return null;
+    for (final option in serviceTierOptions) {
+      if (option.apiValue == stored) return stored;
+    }
+    return null;
   }
 
   /// Applies this provider's reasoning request field to [bodyMap].
@@ -165,6 +212,9 @@ abstract class AiProviderStrategy {
 
   /// Streams a response from this provider.
   ///
+  /// With [stream] false the request asks for one complete reply, and the
+  /// returned stream emits it in a single pass in the same format.
+  ///
   /// The default implementation forwards every argument to
   /// [ChatApiService.streamOpenAiCompatible], which is correct for any
   /// OpenAI-compatible endpoint. Providers with a non-OpenAI protocol (e.g.
@@ -189,6 +239,8 @@ abstract class AiProviderStrategy {
     Map<String, Uint8List>? attachmentBytes,
     List<Map<String, dynamic>>? extraMessages,
     bool disableSafety = true,
+    String? serviceTier,
+    bool stream = true,
   }) {
     return ChatApiService.streamOpenAiCompatible(
       apiKey: apiKey,
@@ -210,6 +262,8 @@ abstract class AiProviderStrategy {
       depthMessages: depthMessages,
       attachmentBytes: attachmentBytes,
       extraMessages: extraMessages,
+      serviceTier: serviceTier,
+      stream: stream,
     );
   }
 }

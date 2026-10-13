@@ -19,6 +19,46 @@ class OpenRouterStrategy extends AiProviderStrategy {
   @override
   bool get supportsMaxReasoningEffort => true;
 
+  /// Tier names and fallback rules from OpenRouter's service tiers guide.
+  @override
+  List<ServiceTierOption> get serviceTierOptions => const [
+    ServiceTierOption(
+      'Default',
+      'default',
+      'Standard capacity and price. No service_tier field is sent.',
+    ),
+    ServiceTierOption(
+      'Flex',
+      'flex',
+      'Cheaper, slower, lower availability. Returns a capacity error '
+          'instead of falling back to standard.',
+    ),
+    ServiceTierOption(
+      'Priority',
+      'priority',
+      'Faster and more reliable at a higher price. Falls back to standard.',
+      notRecommended: true,
+      warning:
+          'Priority bills above the standard rate on every request it serves. '
+          'When no priority endpoint is free, OpenRouter falls back to a '
+          'standard endpoint and bills the standard rate. Only some '
+          'providers (OpenAI, Anthropic, Google, SpaceXAI) offer it.',
+    ),
+    ServiceTierOption(
+      'Ultrafast',
+      'ultrafast',
+      'Lowest latency at several times the standard price. Select OpenAI '
+          'models only.',
+      notRecommended: true,
+      warning:
+          'Ultrafast bills several times the standard rate and exists only on '
+          'select OpenAI models. Other models fall back to priority, then '
+          'standard. Before each attempt OpenRouter checks that your balance '
+          'covers the maximum output at the ultrafast price, so turn on Max '
+          'Output Tokens to keep the request eligible.',
+    ),
+  ];
+
   @override
   void applyReasoningEffort(Map<String, dynamic> bodyMap, String effort) {
     // OpenRouter accepts both the OpenAI-compatible `reasoning_effort` key and

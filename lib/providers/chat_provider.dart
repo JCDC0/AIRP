@@ -155,6 +155,15 @@ class ChatProvider extends ChangeNotifier {
   String get activeModelId => _currentProvider == AiProvider.local
       ? effectiveLocalModel
       : _selectedModel;
+
+  /// The `service_tier` to send for the active provider, or null to send no
+  /// field. Every send path reads this so a tier choice cannot reach one
+  /// request type and miss another.
+  String? get activeServiceTier =>
+      StrategyResolver.resolve(_currentProvider).resolveServiceTier(
+        enabled: _settings?.enableServiceTier ?? false,
+        stored: _settings?.serviceTier ?? ChatDefaults.serviceTier,
+      );
   String get openAiCompatibleEndpoint => _openAiCompatibleEndpoint;
   String get ollamaEndpoint => _ollamaEndpoint;
   Set<AiProvider> get starredProviders => _starredProviders;
@@ -881,6 +890,33 @@ class ChatProvider extends ChangeNotifier {
               ? _settings!.reasoningEffort
               : null,
         );
+      } else if (!_settings!.enableStreaming) {
+        // Stream Replies is off: one complete detection round. A text answer
+        // falls through to the direct-answer branch below.
+        det = await ChatApiService.requestOpenAiCompatibleWithToolDetection(
+          apiKey: activeKey,
+          baseUrl: streamUrl,
+          model: modelName,
+          history: history,
+          systemInstruction: sysWithHint,
+          userMessage: sentUserText,
+          tools: [WebSearchService.buildWebSearchToolSpec()],
+          extraMessages: openAiExtras.isNotEmpty ? openAiExtras : null,
+          temperature: _settings!.enableGenerationSettings
+              ? _settings!.temperature
+              : null,
+          topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
+          maxTokens: _settings!.enableMaxOutputTokens
+              ? _settings!.maxOutputTokens
+              : null,
+          reasoningEffort: _settings!.enableReasoning
+              ? _settings!.reasoningEffort
+              : null,
+          applyReasoningEffort: strategy.applyReasoningEffort,
+          extraHeaders: strategy.getHeaders(activeKey),
+          maxRoundsLeft: 1,
+          serviceTier: activeServiceTier,
+        );
       } else {
         // Streamed detection: if the model answers instead of searching, the
         // answer is already flowing and is handed straight to the coordinator,
@@ -910,6 +946,7 @@ class ChatProvider extends ChangeNotifier {
               extraHeaders: strategy.getHeaders(activeKey),
               includeUsage: _settings!.enableUsage,
               maxRoundsLeft: 1,
+              serviceTier: activeServiceTier,
             );
 
         if (aware.isError) {
@@ -1470,6 +1507,8 @@ class ChatProvider extends ChangeNotifier {
             attachmentBytes: attachmentBytes,
             extraMessages: toolExtraMessages,
             disableSafety: _settings!.disableSafety,
+            serviceTier: activeServiceTier,
+            stream: _settings!.enableStreaming,
           );
 
       final queries = loopResult?.searchedQueries ?? const [];
@@ -1984,6 +2023,7 @@ class ChatProvider extends ChangeNotifier {
         applyReasoningEffort: strategy.applyReasoningEffort,
         extraHeaders: strategy.getHeaders(activeKey),
         maxRoundsLeft: 1,
+        serviceTier: activeServiceTier,
       );
     }
     if (det.isError) return null;

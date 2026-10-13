@@ -6,6 +6,8 @@ import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/scale_provider.dart';
 import '../../models/chat_models.dart';
+import '../../services/strategies/ai_provider_strategy.dart';
+import '../../services/strategies/strategy_resolver.dart';
 import '../../utils/constants.dart';
 import '../../utils/model_details.dart';
 import 'provider_model_selector.dart';
@@ -370,8 +372,53 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
           },
         ),
 
+        if (StrategyResolver.resolve(
+          chatProvider.currentProvider,
+        ).supportsServiceTier)
+          _buildServiceTierSection(
+            chatProvider,
+            settingsProvider,
+            themeProvider,
+            vfxProvider,
+            scaleProvider,
+          ),
+
         // --- Advanced Model Parameters ---
         const Divider(),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            "Stream Replies",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize,
+              shadows: vfxProvider.enableBloom
+                  ? [
+                      Shadow(
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
+                        blurRadius: 20,
+                      ),
+                    ]
+                  : [],
+            ),
+          ),
+          subtitle: Text(
+            settingsProvider.enableStreaming
+                ? "Text appears as it is generated"
+                : "Off: the reply appears when complete",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
+          value: settingsProvider.enableStreaming,
+          activeThumbColor: Colors.lightBlueAccent,
+          onChanged: (val) {
+            settingsProvider.setEnableStreaming(val);
+            chatProvider.saveSettings(showConfirmation: false);
+          },
+        ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(
@@ -485,6 +532,226 @@ class _ModelSettingsPanelState extends State<ModelSettingsPanel> {
           ),
       ],
     );
+  }
+
+  /// The Service Tier switch and dropdown, shown only for providers whose
+  /// strategy lists tiers.
+  ///
+  /// With the switch off the dropdown is greyed out and shows Default, which
+  /// is what every request uses, while the stored choice is kept for when the
+  /// switch comes back on.
+  Widget _buildServiceTierSection(
+    ChatProvider chatProvider,
+    SettingsProvider settingsProvider,
+    ThemeProvider themeProvider,
+    VfxProvider vfxProvider,
+    ScaleProvider scaleProvider,
+  ) {
+    final options = StrategyResolver.resolve(
+      chatProvider.currentProvider,
+    ).serviceTierOptions;
+    final enabled = settingsProvider.enableServiceTier;
+    final shown = settingsProvider.effectiveServiceTier;
+    final selected = options.firstWhere(
+      (o) => o.apiValue == shown,
+      orElse: () => options.firstWhere(
+        (o) => o.apiValue == ChatDefaults.serviceTier,
+        orElse: () => options.first,
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            "Service Tier",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize,
+              shadows: vfxProvider.enableBloom
+                  ? [
+                      Shadow(
+                        color: themeProvider.bloomGlowColor.withValues(
+                          alpha: 0.9,
+                        ),
+                        blurRadius: 20,
+                      ),
+                    ]
+                  : [],
+            ),
+          ),
+          subtitle: Text(
+            enabled
+                ? "Sends service_tier with every request"
+                : "Off: every request uses Default",
+            style: TextStyle(
+              fontSize: scaleProvider.systemFontSize * 0.8,
+              color: Colors.grey,
+            ),
+          ),
+          value: enabled,
+          activeThumbColor: Colors.amberAccent,
+          onChanged: (val) => _onServiceTierToggled(
+            val,
+            options,
+            settingsProvider,
+            chatProvider,
+          ),
+        ),
+        Opacity(
+          opacity: enabled ? 1.0 : 0.5,
+          child: AbsorbPointer(
+            absorbing: !enabled,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: themeProvider.containerFillColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: vfxProvider.enableBloom
+                          ? themeProvider.bloomGlowColor.withValues(alpha: 0.5)
+                          : themeProvider.borderColor,
+                    ),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      key: const Key('service_tier_dropdown'),
+                      isExpanded: true,
+                      value: selected.apiValue,
+                      dropdownColor: themeProvider.dropdownColor,
+                      icon: Icon(Icons.speed, color: themeProvider.textColor),
+                      items: options
+                          .map(
+                            (option) => DropdownMenuItem(
+                              value: option.apiValue,
+                              child: Text.rich(
+                                TextSpan(
+                                  text: option.label,
+                                  children: [
+                                    if (option.notRecommended)
+                                      TextSpan(
+                                        text: "  Not Recommended",
+                                        style: TextStyle(
+                                          color: Colors.orangeAccent,
+                                          fontSize:
+                                              scaleProvider.systemFontSize *
+                                              0.75,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                style: TextStyle(
+                                  fontSize: scaleProvider.systemFontSize,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          _onServiceTierSelected(
+                            val,
+                            options,
+                            settingsProvider,
+                            chatProvider,
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  selected.description,
+                  style: TextStyle(
+                    fontSize: scaleProvider.systemFontSize * 0.8,
+                    color: selected.notRecommended
+                        ? Colors.orangeAccent
+                        : Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Future<void> _onServiceTierSelected(
+    String value,
+    List<ServiceTierOption> options,
+    SettingsProvider settingsProvider,
+    ChatProvider chatProvider,
+  ) async {
+    if (value == settingsProvider.serviceTier) return;
+    final option = options.firstWhere((o) => o.apiValue == value);
+    if (option.notRecommended && !await _confirmNotRecommendedTier(option)) {
+      return;
+    }
+    settingsProvider.setServiceTier(value);
+    chatProvider.saveSettings(showConfirmation: false);
+  }
+
+  /// Turning the switch on re-arms the stored tier, so a stored Priority or
+  /// Ultrafast asks again instead of silently resuming a higher rate.
+  Future<void> _onServiceTierToggled(
+    bool on,
+    List<ServiceTierOption> options,
+    SettingsProvider settingsProvider,
+    ChatProvider chatProvider,
+  ) async {
+    if (on) {
+      final stored = options
+          .where((o) => o.apiValue == settingsProvider.serviceTier)
+          .toList();
+      if (stored.isNotEmpty &&
+          stored.first.notRecommended &&
+          !await _confirmNotRecommendedTier(stored.first)) {
+        return;
+      }
+    }
+    settingsProvider.setEnableServiceTier(on);
+    chatProvider.saveSettings(showConfirmation: false);
+  }
+
+  Future<bool> _confirmNotRecommendedTier(ServiceTierOption option) async {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: themeProvider.dropdownColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          "${option.label}: Not Recommended",
+          style: TextStyle(color: themeProvider.textColor),
+        ),
+        content: Text(
+          option.warning.isNotEmpty ? option.warning : option.description,
+          style: TextStyle(color: themeProvider.subtitleColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.orangeAccent,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text("Use ${option.label}"),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   /// Returns the number of available models for the current provider.

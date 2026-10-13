@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.8.1` (`pubspec.yaml` `0.8.1+21`). Target: `0.8.1` release.
+Current version: `0.8.2` (`pubspec.yaml` `0.8.2+22`). Target: `0.8.2` release.
 
 ## Project overview
 
@@ -40,7 +40,7 @@ Current version: `0.8.1` (`pubspec.yaml` `0.8.1+21`). Target: `0.8.1` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (339 tests, all passing)
+*   **Test:** `flutter test` (394 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -112,6 +112,11 @@ currently clean and must stay that way.
     observer in `main.dart` calls on pause, or the last edit dies with the
     process. Guarded by
     `test/system_prompt_panel_caret_test.dart`.
+*   **`pumpAndSettle` hangs on a settings drawer scrolled to the model
+    list.** A provider switch starts a model fetch that never completes under
+    the test clock, so the selector's spinner animates forever and
+    `pumpAndSettle` runs to its ten-minute fake timeout. Pump a fixed number of
+    frames instead, as `test/service_tier_test.dart` does.
 
 ## Providers
 
@@ -287,10 +292,62 @@ When BYOK web search is on, OpenAI-compatible providers go through
 a STREAMED request and the response is classified from its first deltas. Tool
 call fragments mean search; content or reasoning means the model answered and the
 live socket is handed to `StreamingCoordinatorService` unchanged. Do not put a
-non-streaming round back in front of this — that is what made reasoning stop
+non-streaming round back in front of this â€” that is what made reasoning stop
 streaming whenever web search was enabled. Gemini still uses non-streamed
 detection (`performGeminiFunctionDetection`), which splits `thought: true` parts
 out via `splitGeminiThoughtParts`.
+
+## Service tiers
+
+A provider opts in by overriding `AiProviderStrategy.serviceTierOptions`. An
+empty list (the default) hides the setting. Only OpenRouter lists tiers:
+`default`, `flex`, `priority`, `ultrafast`, verified against OpenRouter's
+service tiers guide in `0.8.2`. The value is a top-level `service_tier`
+field on Chat Completions.
+
+*   `AiProviderStrategy.resolveServiceTier` is the single decision. It returns
+    null, meaning no field, when the setting is off, the stored tier is
+    `default`, or the stored value is not one the provider lists. `default` is
+    never sent because an absent field already means it.
+*   `ChatProvider.activeServiceTier` feeds that result to all three
+    OpenAI-compatible builders: the plain stream, the streamed web search
+    detection, and the one-shot summarize request. A new send path must pass
+    it too, or one request type ignores the user's tier.
+*   `SettingsProvider.serviceTier` keeps the stored choice while the switch
+    is off. `effectiveServiceTier` is what the panel shows, so the greyed-out
+    dropdown reads Default whenever the switch is off.
+*   `ServiceTierOption.notRecommended` (Priority, Ultrafast) gates selection
+    behind a confirmation dialog. Turning the switch on with such a tier
+    stored asks again, so a higher rate never resumes silently. A config pack
+    import applies a stored tier without asking, because applying the pack is
+    already confirmed.
+*   Flex does not fall back: OpenRouter returns a capacity error when no flex
+    endpoint is free. Ultrafast needs `max_tokens` to pass OpenRouter's
+    balance check, which is why its warning points at Max Output Tokens.
+
+## Stream Replies
+
+`SettingsProvider.enableStreaming` (default on, `airp_enable_streaming`,
+`toggles.enableStreaming`) applies to every provider. Off, the request asks for
+one complete reply and the rest of the pipeline is unchanged: the response is
+still returned as a `Stream<String>`, so `StreamingCoordinatorService`, think
+tags, usage markers and error text behave the same.
+
+*   OpenAI-compatible: `"stream": false`, and `stream_options` is dropped,
+    because servers reject it on a non-streamed request. The full JSON body
+    goes through the same parser as one event
+    (`ChatApiService.asSingleSseLine`); the parser reads `message` where a
+    chunk has `delta`.
+*   Gemini: `generateContent` (`buildGeminiGenerateUrl`) in place of
+    `streamGenerateContent?alt=sse`. Its body has the same shape as one SSE
+    event.
+*   Web search detection uses `requestOpenAiCompatibleWithToolDetection`
+    instead of the streamed variant, and a text answer goes through the
+    existing direct-answer branch.
+*   A non-streamed 200 with nothing to show yields
+    `emptyNonStreamedNotice` rather than a blank bubble.
+*   Stop cannot abort a non-streamed request mid-flight. Cancelling discards
+    the reply when it arrives; the provider still bills it.
 
 ## Fonts
 

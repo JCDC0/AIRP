@@ -75,6 +75,10 @@ class ChatDefaults {
   static const int sessionTitleMaxLength = 25;
   static const String localIp = 'http://192.168.1.15:1234/v1';
   static const Duration autoSaveDebounce = Duration(milliseconds: 600);
+
+  /// The service tier value that means "send no `service_tier` field and let
+  /// the provider use its standard capacity".
+  static const String serviceTier = 'default';
 }
 
 /// Default prompts and parameters for the conversation-summarize feature.

@@ -34,6 +34,32 @@ class ChatApiService {
     );
   }
 
+  /// The non-streamed counterpart of [buildGeminiStreamUrl], used when the
+  /// user turns Stream Replies off. Its body is one JSON object with the same
+  /// shape as a single SSE event.
+  static Uri buildGeminiGenerateUrl(String modelName, String apiKey) {
+    final modelId = modelName.replaceAll('models/', '');
+    return Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/'
+      '$modelId:generateContent?key=${apiKey.trim()}',
+    );
+  }
+
+  /// Wraps a non-streamed JSON response body as one SSE `data:` line so the
+  /// streamed parsers read both modes. Raw line breaks in JSON only occur as
+  /// whitespace between tokens (breaks inside strings are escaped), so
+  /// collapsing them does not change the decoded value.
+  static String asSingleSseLine(String body) =>
+      'data: ${body.replaceAll(RegExp(r'[\r\n]+'), ' ').trim()}';
+
+  /// Shown when a non-streamed reply returned 200 with nothing to display.
+  /// Without it the bubble stays blank and the cause is invisible.
+  static String emptyNonStreamedNotice(String body) {
+    final excerpt = body.length > 300 ? '${body.substring(0, 300)}...' : body;
+    return "\n\n**Empty reply:** the server answered with no text. "
+        "Response: $excerpt";
+  }
+
   /// Builds `generationConfig.thinkingConfig` for [modelName], or null when
   /// the user has reasoning switched off entirely.
   ///
@@ -137,6 +163,8 @@ class ChatApiService {
     List<Map<String, dynamic>>? extraMessages,
     bool disableSafety = true,
     String? reasoningEffort,
+    bool stream = true,
+    http.Client? client,
   }) async* {
     String accumulatedText = userMessage;
     final List<Map<String, dynamic>> inlineParts = [];
@@ -253,7 +281,9 @@ class ChatApiService {
       }
     }
 
-    final url = buildGeminiStreamUrl(modelName, apiKey);
+    final url = stream
+        ? buildGeminiStreamUrl(modelName, apiKey)
+        : buildGeminiGenerateUrl(modelName, apiKey);
 
     final Map<String, dynamic> bodyMap = {
       'contents': contents,
@@ -290,9 +320,9 @@ class ChatApiService {
     request.headers['Content-Type'] = 'application/json';
     request.body = jsonEncode(bodyMap);
 
-    final client = http.Client();
+    final http.Client activeClient = client ?? http.Client();
     try {
-      final streamedResponse = await client.send(request);
+      final streamedResponse = await activeClient.send(request);
 
       if (streamedResponse.statusCode != 200) {
         final errorBody = await streamedResponse.stream.bytesToString();
@@ -306,10 +336,15 @@ class ChatApiService {
       String? blockReason;
       String? finishReason;
 
-      await for (final line
-          in streamedResponse.stream
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())) {
+      final Stream<String> lines = stream
+          ? streamedResponse.stream
+                .transform(utf8.decoder)
+                .transform(const LineSplitter())
+          : Stream.value(
+              asSingleSseLine(await streamedResponse.stream.bytesToString()),
+            );
+
+      await for (final line in lines) {
         if (!line.startsWith('data: ')) continue;
         final dataStr = line.substring(6).trim();
         if (dataStr == '[DONE]') break;
@@ -381,7 +416,7 @@ class ChatApiService {
     } catch (e) {
       yield "\n\n**Connection Error:** $e";
     } finally {
-      client.close();
+      if (client == null) activeClient.close();
     }
   }
 
@@ -439,6 +474,8 @@ class ChatApiService {
     List<Map<String, dynamic>>? depthMessages,
     Map<String, Uint8List>? attachmentBytes,
     List<Map<String, dynamic>>? extraMessages,
+    String? serviceTier,
+    bool stream = true,
     http.Client? client,
   }) async* {
     final cleanKey = apiKey.trim();
@@ -557,14 +594,19 @@ class ChatApiService {
     final Map<String, dynamic> bodyMap = {
       "model": model.trim(),
       "messages": messagesPayload,
-      "stream": true,
+      "stream": stream,
     };
 
     if (temperature != null) bodyMap["temperature"] = temperature;
     if (topP != null) bodyMap["top_p"] = topP;
     if (topK != null) bodyMap["top_k"] = topK;
     if (maxTokens != null) bodyMap["max_tokens"] = maxTokens;
-    if (includeUsage) bodyMap["stream_options"] = {"include_usage": true};
+    if (includeUsage && stream) {
+      bodyMap["stream_options"] = {"include_usage": true};
+    }
+    if (serviceTier != null && serviceTier.isNotEmpty) {
+      bodyMap["service_tier"] = serviceTier;
+    }
 
     // OpenRouter exposes the model's internal reasoning trace when requested.
     if (baseUrl.contains("openrouter.ai")) {
@@ -619,11 +661,20 @@ class ChatApiService {
 
       bool hasEmittedThinkStart = false;
       bool hasEmittedThinkEnd = false;
+      bool hasEmittedAny = false;
 
-      await for (final line
-          in streamedResponse.stream
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())) {
+      String? nonStreamedBody;
+      final Stream<String> lines;
+      if (stream) {
+        lines = streamedResponse.stream
+            .transform(utf8.decoder)
+            .transform(const LineSplitter());
+      } else {
+        nonStreamedBody = await streamedResponse.stream.bytesToString();
+        lines = Stream.value(asSingleSseLine(nonStreamedBody));
+      }
+
+      await for (final line in lines) {
         if (line.startsWith("data: ")) {
           final dataStr = line.substring(6).trim();
           if (dataStr == "[DONE]") break;
@@ -637,10 +688,13 @@ class ChatApiService {
 
             final choices = json['choices'] as List;
             if (choices.isNotEmpty) {
-              final delta = choices[0]['delta'];
-              final reasoningChunk =
-                  delta['reasoning_content'] ?? delta['reasoning'];
-              final contentChunk = delta['content'];
+              // A non-streamed reply carries `message` where a chunk carries
+              // `delta`; both have the same reasoning and content keys.
+              final delta = choices[0]['delta'] ?? choices[0]['message'];
+              final reasoningChunk = delta == null
+                  ? null
+                  : delta['reasoning_content'] ?? delta['reasoning'];
+              final contentChunk = delta?['content'];
 
               if (reasoningChunk != null &&
                   reasoningChunk.toString().isNotEmpty) {
@@ -648,6 +702,7 @@ class ChatApiService {
                   yield "<think>\n";
                   hasEmittedThinkStart = true;
                 }
+                hasEmittedAny = true;
                 yield reasoningChunk.toString();
               }
 
@@ -656,10 +711,12 @@ class ChatApiService {
                   yield "\n</think>\n";
                   hasEmittedThinkEnd = true;
                 }
+                hasEmittedAny = true;
                 yield contentChunk.toString();
               }
 
               if (delta == null && choices[0]['text'] != null) {
+                hasEmittedAny = true;
                 yield choices[0]['text'].toString();
               }
             }
@@ -669,6 +726,9 @@ class ChatApiService {
         }
       }
       if (hasEmittedThinkStart && !hasEmittedThinkEnd) yield "\n</think>\n";
+      if (nonStreamedBody != null && !hasEmittedAny) {
+        yield emptyNonStreamedNotice(nonStreamedBody);
+      }
     } catch (e) {
       yield "\n\n**Connection Error:** $e";
     } finally {
@@ -856,6 +916,7 @@ class ChatApiService {
     void Function(Map<String, dynamic> body, String effort)? applyReasoningEffort,
     Map<String, String>? extraHeaders,
     int maxRoundsLeft = 1,
+    String? serviceTier,
     http.Client? client,
   }) async {
     final cleanKey = apiKey.trim();
@@ -895,6 +956,9 @@ class ChatApiService {
     if (temperature != null) bodyMap['temperature'] = temperature;
     if (topP != null) bodyMap['top_p'] = topP;
     if (maxTokens != null) bodyMap['max_tokens'] = maxTokens;
+    if (serviceTier != null && serviceTier.isNotEmpty) {
+      bodyMap['service_tier'] = serviceTier;
+    }
 
     // OpenRouter omits the reasoning trace unless it is asked for. Without
     // this the detection response carries no `reasoning` field and the answer
@@ -1019,6 +1083,7 @@ class ChatApiService {
     Map<String, String>? extraHeaders,
     bool includeUsage = false,
     int maxRoundsLeft = 1,
+    String? serviceTier,
     http.Client? client,
   }) async {
     final cleanKey = apiKey.trim();
@@ -1055,6 +1120,9 @@ class ChatApiService {
     if (topK != null) bodyMap['top_k'] = topK;
     if (maxTokens != null) bodyMap['max_tokens'] = maxTokens;
     if (includeUsage) bodyMap['stream_options'] = {'include_usage': true};
+    if (serviceTier != null && serviceTier.isNotEmpty) {
+      bodyMap['service_tier'] = serviceTier;
+    }
     if (baseUrl.contains('openrouter.ai')) {
       bodyMap['include_reasoning'] = true;
     }

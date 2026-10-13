@@ -62,6 +62,8 @@ class GeminiStrategy extends AiProviderStrategy {
     Map<String, Uint8List>? attachmentBytes,
     List<Map<String, dynamic>>? extraMessages,
     bool disableSafety = true,
+    String? serviceTier,
+    bool stream = true,
   }) {
     return ChatApiService.streamGeminiResponse(
       apiKey: apiKey,
@@ -80,6 +82,7 @@ class GeminiStrategy extends AiProviderStrategy {
       extraMessages: extraMessages,
       disableSafety: disableSafety,
       reasoningEffort: reasoningEffort,
+      stream: stream,
     );
   }
 }
