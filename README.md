@@ -6,6 +6,12 @@
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white)
 
+<p align="center">
+  <img src="docs/screenshots/airp-text.jpg" width="250" alt="A roleplay reply from Gemma 4 31B through the Gemini provider, with styled sound effects and the message toolbar">
+  <img src="docs/screenshots/airp-text2.jpg" width="250" alt="A roleplay reply through OpenRouter showing the context counter and version navigation">
+  <img src="docs/screenshots/airp-background-test.jpg" width="250" alt="An empty chat over a beach background with floating dust motes">
+</p>
+
 ## Key Features
 
 * **Multi-Provider Support**: Seamlessly switch between Google Gemini, OpenRouter, NanoGPT, NVIDIA, DeepSeek, Ollama, any OpenAI Compatible endpoint, or a Local server.
@@ -49,6 +55,10 @@ AIRP is designed to be your companion across all your devices. Whether you are o
 * **Scale Settings**: Located in the Settings Drawer, the **Scale Settings** panel allows for granular control:
   * **Presets**: Quickly switch between **Phone**, **Tablet**, and **Desktop** layouts.
   * **Granular Controls**: Manually adjust Font Sizes, Icon Sizes, Drawer Widths, and the Chat Input Area height to perfectly fit your screen and preferences.
+
+<p align="center">
+  <img src="docs/screenshots/airp-ui-settings.jpg" width="250" alt="Layout and Scaling settings with Phone, Tablet and Desktop presets and font, drawer, icon and input sliders">
+</p>
 
 ## Getting Started
 
@@ -170,6 +180,10 @@ Interact with the message stream using gestures.
 ### Model Selection (Right Drawer)
 
 Slide from the **right** edge or tap the **Settings** icon.
+
+<p align="center">
+  <img src="docs/screenshots/airp-settings.jpg" width="250" alt="Main Settings drawer with the masked BYOK API key, Refresh Models, conversation title and the selected model details">
+</p>
 
 1. Enter your API key or endpoint in the **API** panel.
 2. Locate the **Model Selection** section.
@@ -365,6 +379,10 @@ into AIRP and exported again keeps its full SillyTavern V2 data.
 
 Fine-tune how the AI behaves using the **Settings Drawer**. Each section can be toggled ON or OFF to simplify the interface or disable specific behaviors. All sliders support manual numeric input for precision.
 
+<p align="center">
+  <img src="docs/screenshots/airp-parameter-settings.jpg" width="250" alt="Generation Parameters with message history limit, reasoning mode and effort, and temperature">
+</p>
+
 * **Message History**:
   * **Toggle**: Enable or disable sending past messages to the AI.
   * **Context Memory Limit**: Adjusts the truncation window (e.g., last 20 messages). Lower this if you encounter "Context Window Exceeded" errors.
@@ -412,6 +430,10 @@ Fine-tune how the AI behaves using the **Settings Drawer**. Each section can be 
 ### Visuals & Atmosphere
 
 Located in the Settings Drawer under **Visuals & Atmosphere**. You have full control over the app's "Vibe":
+
+<p align="center">
+  <img src="docs/screenshots/airp-backgrounds.jpg" width="250" alt="Environmental effects toggles (dust motes, rain, fireflies, CRT screen) and the chat background gallery">
+</p>
 
 * **Global Theme**: Change the primary accent color of the entire application (borders, icons, glow effects).
 * **Light / Dark Mode**: Toggle between light and dark themes. The entire UI adapts via 20+ semantic color getters.
