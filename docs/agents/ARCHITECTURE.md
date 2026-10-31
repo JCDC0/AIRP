@@ -40,18 +40,30 @@ Current version: `0.8.3` (`pubspec.yaml` `0.8.3+23`). Target: `0.8.3` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (438 tests; 433 pass. The 5 failures are an SDK
-    fault in Flutter `3.47.4`, not a code defect: `FragmentProgram.fromAsset`
-    rejects the framework's own `shaders/ink_sparkle.frag` with "Runtime stages
-    buffer failed verification", so every widget test that taps a Material
-    ink-splash widget fails. The SDK git checkout is clean and the shader is
-    present, so it is a source-versus-compiled mismatch inside that build. The
-    lockfile records `flutter: ">=3.35.0"`, the line the suite last passed on.)
+*   **Test:** `flutter test` (438 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
 Always run `flutter analyze` and `flutter test` before committing. Both are
 currently clean and must stay that way.
+
+**Build with the Flutter 3.35 line.** `pubspec.lock` records
+`flutter: ">=3.35.6"` and `dart: ">=3.9.0 <4.0.0"`; the SDK here is pinned to
+tag `3.35.7` (Dart 3.9.2), so `flutter --version` reports channel
+`[user-branch]` and `flutter upgrade` will not work. Switch versions with
+`git checkout <tag>` inside the SDK checkout. A much newer Flutter breaks three
+things that are not code defects, all seen on `3.47.4`:
+
+*   `FragmentProgram.fromAsset` rejects the framework's own
+    `shaders/ink_sparkle.frag` with "Runtime stages buffer failed
+    verification", so every widget test that taps a Material ink-splash widget
+    fails. Five did, four of them in files unrelated to whatever you changed.
+*   The Flutter Gradle plugin enforces a Gradle floor of `8.14.0` against this
+    project's `8.11.1` wrapper, so the APK builds only with
+    `--android-skip-build-dependency-validation`.
+*   `flutter config --jdk-dir` does not survive an SDK reinstall. Flutter then
+    searches Android Studio's bundled JBR first, which is Java 25, and Gradle
+    `8.11.1` cannot run on it. Re-point it at JDK 17.
 
 ## Development conventions
 
