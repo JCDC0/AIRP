@@ -8,6 +8,7 @@ import '../services/reasoning_utils.dart';
 
 import 'message_bubble/message_bubble_actions.dart';
 import 'message_bubble/message_bubble_attachments.dart';
+import 'message_bubble/message_bubble_chronicle.dart';
 import 'message_bubble/message_bubble_markdown.dart';
 import 'message_bubble/message_bubble_metadata.dart';
 import 'message_bubble/message_bubble_painters.dart';
@@ -74,6 +75,15 @@ class MessageBubble extends StatelessWidget {
     this.isCurrentSearchMessage = false,
   });
 
+  /// Strips the `**[Chronicle]**` heading the compaction writes into the block,
+  /// so the disclosure's own header is not shadowed by a duplicate.
+  static String _chronicleBody(String text) {
+    final trimmed = text.trim();
+    final match = RegExp(r'^\*\*\[[^\]]+\]\*\*\s*').firstMatch(trimmed);
+    if (match != null) return trimmed.substring(match.end);
+    return trimmed;
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -88,6 +98,11 @@ class MessageBubble extends StatelessWidget {
     var borderColor = msg.isUser
         ? themeProvider.userBubbleColor.withAlpha(128)
         : themeProvider.dividerColor;
+    if (msg.isChronicle) {
+      // The chronicle is pinned and undeletable, so it has to look unlike an
+      // ordinary reply or the user keeps trying to delete and regenerate it.
+      borderColor = themeProvider.markdownLinkColor.withValues(alpha: 0.7);
+    }
     final useBloom = vfxProvider.enableBloom;
 
     Color searchGlowColor = Colors.transparent;
@@ -224,7 +239,17 @@ class MessageBubble extends StatelessWidget {
             imagePaths: msg.imagePaths,
             themeProvider: themeProvider,
           ),
-        if (hasVisibleText)
+        if (hasVisibleText && msg.isChronicle)
+          MessageBubbleChronicle(
+            body: _chronicleBody(visibleText),
+            themeProvider: themeProvider,
+            scaleProvider: scaleProvider,
+            textColor: textColor,
+            useBloom: useBloom,
+            searchQuery: searchQuery,
+            isCurrentSearchMessage: isCurrentSearchMessage,
+          )
+        else if (hasVisibleText)
           MessageBubbleMarkdown(
             text: visibleText,
             themeProvider: themeProvider,

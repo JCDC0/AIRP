@@ -367,14 +367,22 @@ class ChatMessagesListState extends State<ChatMessagesList> {
                               ),
                             );
                           },
-                          onEdit: chatProvider.isLoading
+                          // The chronicle is edited through its own flow and
+                          // removed only by detaching it, so it offers no
+                          // destructive control. Hiding them is cosmetic:
+                          // ChatProvider refuses these for a chronicle too.
+                          onEdit:
+                              (chatProvider.isLoading || message.isChronicle)
                               ? null
                               : () => _showEditDialog(context, index),
                           onRegenerate:
-                              (!isLastMessage || chatProvider.isLoading)
+                              (!isLastMessage ||
+                                  chatProvider.isLoading ||
+                                  message.isChronicle)
                               ? null
                               : () => _confirmRegenerate(context, index),
-                          onDelete: chatProvider.isLoading
+                          onDelete:
+                              (chatProvider.isLoading || message.isChronicle)
                               ? null
                               : () => _confirmDeleteMessage(context, index),
                           onNextVersion:

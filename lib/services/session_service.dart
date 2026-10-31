@@ -51,6 +51,9 @@ class SessionService {
   ) {
     final kept = session.messages.where((m) {
       if (m.isUser) return true;
+      // An emptied chronicle is indistinguishable from a stranded placeholder,
+      // and dropping it loses a narration accumulated over many conversations.
+      if (m.isChronicle) return true;
       return m.text.trim().isNotEmpty ||
           m.imagePaths.isNotEmpty ||
           m.usage != null ||
@@ -248,7 +251,12 @@ class SessionService {
     if (session.messages.isEmpty) return;
 
     final messages = List<ChatMessage>.from(session.messages);
-    if (messages.isNotEmpty && !messages.last.isUser) {
+    // A chronicle as the last message means there is no streaming placeholder,
+    // so this completion has nowhere to land; writing it would replace the
+    // long-term narration with the reply text.
+    if (messages.isNotEmpty &&
+        !messages.last.isUser &&
+        !messages.last.isChronicle) {
       final String textToSave = finalText;
       final lastMessage = messages.last;
       final updatedVersions = List<String>.from(

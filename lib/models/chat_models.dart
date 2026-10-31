@@ -156,6 +156,16 @@ class ChatMessage {
   /// If message has 3 versions, this would be 0, 1, or 2.
   final int currentVersionIndex;
 
+  /// Marks this message as the conversation's chronicle: a long-term narrative
+  /// that accumulates across compactions rather than a turn of dialogue.
+  ///
+  /// A chronicle block is pinned into the outbound history regardless of the
+  /// active window, is refused by every delete and overwrite path, and is
+  /// carried forward by each compaction into the next conversation. It is NOT
+  /// a [Lorebook]: that is keyword recognition over the current input and is a
+  /// separate feature.
+  final bool isChronicle;
+
   ChatMessage({
     required this.text,
     required this.isUser,
@@ -168,6 +178,7 @@ class ChatMessage {
     this.contentNotifier,
     this.regenerationVersions = const [],
     this.currentVersionIndex = 0,
+    this.isChronicle = false,
   }) : timestamp = timestamp ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
@@ -181,6 +192,7 @@ class ChatMessage {
     'reasoningRecovered': reasoningRecovered,
     'regenerationVersions': regenerationVersions,
     'currentVersionIndex': currentVersionIndex,
+    'isChronicle': isChronicle,
   };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -188,14 +200,17 @@ class ChatMessage {
     isUser: json['isUser'] ?? false,
     imagePaths: List<String>.from(json['imagePaths'] ?? []),
     modelName: json['modelName'],
-    timestamp: json['timestamp'] != null
-        ? DateTime.parse(json['timestamp'])
+    // tryParse, not parse: a single malformed timestamp used to throw out of
+    // the whole session decode, which wipes every conversation.
+    timestamp: json['timestamp'] is String
+        ? (DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now())
         : DateTime.now(),
     usage: json['usage'],
     thoughtSignature: json['thoughtSignature'],
     reasoningRecovered: json['reasoningRecovered'] as bool? ?? false,
     regenerationVersions: List<String>.from(json['regenerationVersions'] ?? []),
     currentVersionIndex: json['currentVersionIndex'] ?? 0,
+    isChronicle: json['isChronicle'] as bool? ?? false,
   );
 
   ChatMessage copyWith({
@@ -211,6 +226,8 @@ class ChatMessage {
     bool clearContentNotifier = false,
     List<String>? regenerationVersions,
     int? currentVersionIndex,
+    bool? isChronicle,
+    bool clearUsage = false,
   }) {
     return ChatMessage(
       text: text ?? this.text,
@@ -218,7 +235,7 @@ class ChatMessage {
       imagePaths: imagePaths ?? this.imagePaths,
       modelName: modelName ?? this.modelName,
       timestamp: timestamp ?? this.timestamp,
-      usage: usage ?? this.usage,
+      usage: clearUsage ? null : (usage ?? this.usage),
       thoughtSignature: thoughtSignature ?? this.thoughtSignature,
       reasoningRecovered: reasoningRecovered ?? this.reasoningRecovered,
       contentNotifier: clearContentNotifier
@@ -226,6 +243,7 @@ class ChatMessage {
           : (contentNotifier ?? this.contentNotifier),
       regenerationVersions: regenerationVersions ?? this.regenerationVersions,
       currentVersionIndex: currentVersionIndex ?? this.currentVersionIndex,
+      isChronicle: isChronicle ?? this.isChronicle,
     );
   }
 

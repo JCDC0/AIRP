@@ -101,6 +101,16 @@ class SummarizeDefaults {
   static const int maxBlocks = 40;
   static const int defaultBlocks = 6;
 
+  /// The heading rendered above a chronicle block in the chat.
+  static const String chronicleHeading = 'Chronicle';
+
+  /// The heading for a plain rule-driven compact block.
+  static const String compactHeading = 'Compacted Context';
+
+  /// Compaction modes offered by the Summarize drawer's mode selector.
+  static const String modeSimple = 'simple';
+  static const String modeChronicle = 'chronicle';
+
   /// Backward compatibility aliases for the 0.7.x pairs API.
   static const int minPairs = 0;
   static const int maxPairs = 40;
@@ -110,6 +120,34 @@ class SummarizeDefaults {
   static const String prefVoiceSamplesPrompt = 'airp_summarize_voice_prompt';
   static const String prefBlockCount = 'airp_summarize_block_count';
   static const String prefPairCount = 'airp_summarize_pair_count';
+  static const String prefCompactMode = 'airp_summarize_compact_mode';
+
+  /// The rule list for the original compact system, JSON-encoded.
+  ///
+  /// Absent on first run after the upgrade, which is the signal to migrate
+  /// [prefCompressPrompt] and [prefVoiceSamplesPrompt] into rules 1 and 2 so a
+  /// user's edited prompts are not silently replaced by the defaults.
+  static const String prefCompactRules = 'airp_summarize_compact_rules';
+
+  /// Whether the compact run shows its shared document in an editable box.
+  static const String prefShowLiveDocument = 'airp_summarize_live_document';
+
+  static const String ruleNameSummary = 'Story So Far';
+  static const String ruleNameVoices = 'Cast and Voices';
+
+  /// Merges the summaries of several conversations into one chronicle.
+  static const String defaultMergePrompt =
+      'You are an out-of-character chronicler. Below are summaries of several '
+      'roleplay conversations from the same ongoing story, in order. Merge them '
+      'into ONE continuous chronicle that reads as a single standing reference '
+      'document, not a list of separate summaries. Reconcile contradictions in '
+      'favour of the later source, fold duplicate characters and threads '
+      'together, and keep the chronology straight. Use these Markdown headings: '
+      '"Story So Far", "Cast", "Relationships", "World and Setting", "Open '
+      'Threads". Record only what the sources establish; invent nothing. Output '
+      'ONLY the merged chronicle, no preamble.';
+
+  static const String prefMergePrompt = 'airp_summarize_merge_prompt';
 }
 
 /// Default durations and values for UI animations.

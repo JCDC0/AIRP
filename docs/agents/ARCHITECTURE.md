@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.8.2` (`pubspec.yaml` `0.8.2+22`). Target: `0.8.2` release.
+Current version: `0.8.3` (`pubspec.yaml` `0.8.3+23`). Target: `0.8.3` release.
 
 ## Project overview
 
@@ -40,7 +40,13 @@ Current version: `0.8.2` (`pubspec.yaml` `0.8.2+22`). Target: `0.8.2` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (394 tests, all passing)
+*   **Test:** `flutter test` (438 tests; 433 pass. The 5 failures are an SDK
+    fault in Flutter `3.47.4`, not a code defect: `FragmentProgram.fromAsset`
+    rejects the framework's own `shaders/ink_sparkle.frag` with "Runtime stages
+    buffer failed verification", so every widget test that taps a Material
+    ink-splash widget fails. The SDK git checkout is clean and the shader is
+    present, so it is a source-versus-compiled mismatch inside that build. The
+    lockfile records `flutter: ">=3.35.0"`, the line the suite last passed on.)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -348,6 +354,71 @@ tags, usage markers and error text behave the same.
     `emptyNonStreamedNotice` rather than a blank bubble.
 *   Stop cannot abort a non-streamed request mid-flight. Cancelling discards
     the reply when it arrives; the provider still bills it.
+
+## Compaction and the chronicle
+
+The Summarize drawer no longer runs two hardcoded prompts producing two chat
+messages. `ChatProvider.compactWithRules` runs an ordered list of
+`CompactRule`s against ONE shared `CompactDocument`, and carries the result as
+a single block. `compressAndBranch` and `compactToChronicle` were deleted;
+there is one entry point.
+
+*   Each rule is one request carrying the `edit_document` tool
+    (`CompactionService.buildToolSpec` / `buildGeminiFunctionDeclarations`,
+    split per provider exactly as the web search tool is) plus the document as
+    it stands, so a later rule can revise an earlier rule's section instead of
+    appending another disconnected answer.
+*   A rule that answers in prose rather than calling the tool is filed under
+    its own name, not dropped. Do not make a tool call mandatory: three of the
+    eight providers point at endpoints AIRP cannot introspect.
+*   `CompactDocument` matches headings case-insensitively and round-trips
+    through markdown, which is what lets a chronicle run parse the existing
+    block back in and edit it further.
+*   Rules persist under `airp_summarize_compact_rules`. When that key is
+    absent, the drawer migrates `prefCompressPrompt` and
+    `prefVoiceSamplesPrompt` into rules 1 and 2. Those two prompts have been
+    user-editable since 0.7.x, so do not reset them on upgrade.
+*   Rule ids key the drawer's per-rule `TextEditingController`s. `decodeRules`
+    replaces an empty or duplicated id, because two rules sharing one id share
+    one controller and edits land in the wrong prompt.
+*   `compactDocumentNotifier` carries the live document to the drawer's
+    editable box; `overrideCompactDocument` is what the user typed, and it wins
+    over what the rules produced. The box compares against the last value it
+    saw rather than guarding on focus, because a focus guard would drop the
+    next rule's write.
+
+**The chronicle** is a `ChatMessage` with `isChronicle: true`, pinned at index
+0, that accumulates across conversations. It is NOT a `Lorebook`: that is
+keyword recognition over the current input (see "Lore recognition").
+
+*   `ChatProvider.pinChronicle` forces the block into the outbound window from
+    both `_limitedHistory` and `_estimatePromptTokens`. A tail window drops it
+    once the conversation passes `historyLimit`, and drops it immediately when
+    Message History is off, which zeroes the limit. Both call the one helper;
+    if they ever diverge, `TokenUtils.calibrate` folds the error into the
+    per-provider ratio and the meter goes wrong in every conversation.
+*   It is undeletable: `deleteMessage` refuses it, the regenerate removals go
+    through `_removeRangeKeepingChronicle`, the three `_messages.last`
+    overwrite sites check it, and `dropEmptyAssistantPlaceholders` keeps it.
+    Detaching it from the conversation drawer is the opt-out.
+*   Do not deliver it through `session.systemInstruction`:
+    `autoSaveCurrentSession` writes the assembled instruction there and
+    `loadSession` reads it back into the raw field, so anything parked there
+    grows on every save/load cycle.
+*   Do not collapse it by wrapping the body in `<think>` tags. Every outbound
+    builder strips think blocks, so it would render and reach the model as
+    nothing.
+*   The chronicle list in the conversation drawer is DERIVED from the saved
+    sessions (`availableChronicles`), not kept in a store of its own. A
+    chronicle persists inside the conversation that produced it and each
+    compaction copies it forward, so the generations are the history. This is
+    why chronicles travel in `.airp` exports for free: they ride inside the
+    already-whitelisted `sessions` key.
+*   `mergeSessionsIntoChronicle` merges several conversations, preferring each
+    one's existing compact blocks and falling back to summarising its full
+    transcript. `sessionHasCompactBlock` recognises both `isChronicle` and the
+    older `**[Summary]**` style headings, so conversations compacted by any
+    earlier version still merge.
 
 ## Fonts
 

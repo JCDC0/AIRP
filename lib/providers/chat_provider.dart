@@ -7,6 +7,7 @@ import '../models/chat_models.dart';
 import '../models/character_card.dart';
 import '../models/lorebook_models.dart';
 import '../services/chat_api_service.dart';
+import '../services/compaction_service.dart';
 import '../services/lorebook_service.dart';
 import '../services/prompt_pipeline_service.dart';
 import '../services/reasoning_utils.dart';
@@ -291,6 +292,7 @@ class ChatProvider extends ChangeNotifier {
     _sessionService.dispose();
     _streamingCoordinator.dispose();
     _safeDisposeMessageNotifiers(_messages);
+    compactDocumentNotifier.dispose();
     super.dispose();
   }
 
@@ -1009,7 +1011,9 @@ class ChatProvider extends ChangeNotifier {
       );
       final indicator = progress.toString();
       contentNotifier.value = indicator;
-      if (_messages.isNotEmpty && !_messages.last.isUser) {
+      if (_messages.isNotEmpty &&
+          !_messages.last.isUser &&
+          !_messages.last.isChronicle) {
         _messages.last = _messages.last.copyWith(text: indicator);
         notifyListeners();
       }
@@ -1622,7 +1626,28 @@ class ChatProvider extends ChangeNotifier {
         : 0;
     int startIndex = contextMessages.length - effectiveHistoryLimit;
     if (startIndex < 0) startIndex = 0;
-    return contextMessages.sublist(startIndex);
+    return pinChronicle(contextMessages, startIndex);
+  }
+
+  /// Returns the trailing window of [messages] from [startIndex], with any
+  /// chronicle block that fell before the window prepended.
+  ///
+  /// The window is a tail, so a chronicle pinned at the head drops out of the
+  /// request once the conversation passes `historyLimit`, and drops out
+  /// immediately when Message History is off, which zeroes the limit and
+  /// otherwise sends nothing at all. The block keeps rendering either way, so
+  /// without this the user believes the long-term narration is in context when
+  /// it has silently stopped being sent.
+  @visibleForTesting
+  static List<ChatMessage> pinChronicle(
+    List<ChatMessage> messages,
+    int startIndex,
+  ) {
+    if (startIndex <= 0) return messages.sublist(0);
+    final dropped = messages
+        .sublist(0, startIndex)
+        .where((m) => m.isChronicle);
+    return [...dropped, ...messages.sublist(startIndex)];
   }
 
   void _finalizeBackgroundSession(
@@ -1677,18 +1702,42 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Removes `[start, end)` from [_messages] while keeping any chronicle block
+  /// inside that span, and disposes only the notifiers actually going away.
+  ///
+  /// Every removal in the regenerate path is a raw list operation that never
+  /// passes through [deleteMessage], and each disposes the whole span before
+  /// removing it, so filtering the removal alone would leave the chronicle
+  /// alive holding a disposed notifier.
+  void _removeRangeKeepingChronicle(int start, int end) {
+    final kept = <ChatMessage>[];
+    final doomed = <ChatMessage>[];
+    for (int i = start; i < end; i++) {
+      (_messages[i].isChronicle ? kept : doomed).add(_messages[i]);
+    }
+    _safeDisposeMessageNotifiers(doomed);
+    _messages.replaceRange(start, end, kept);
+  }
+
   /// Regenerate a response at the given index.
   /// Keeps the previous response as a version in the message's regenerationVersions list.
   Future<void> regenerateResponse(int index) async {
     if (index < 0 || index >= _messages.length) return;
     final msg = _messages[index];
+    if (msg.isChronicle) return;
 
     String textToResend = "";
     List<String> imagesToResend = [];
     int userMsgIndex = -1;
 
     if (!msg.isUser) {
+      // Step over a chronicle block: it is not the turn that prompted this
+      // reply, and treating it as one drops into the else branch below, which
+      // deletes the reply and generates nothing in its place.
       userMsgIndex = index - 1;
+      while (userMsgIndex >= 0 && _messages[userMsgIndex].isChronicle) {
+        userMsgIndex--;
+      }
       if (userMsgIndex >= 0 && _messages[userMsgIndex].isUser) {
         final userMsg = _messages[userMsgIndex];
         textToResend = userMsg.text;
@@ -1705,10 +1754,7 @@ class ChatProvider extends ChangeNotifier {
 
         // Remove BOTH user message and AI message to prevent duplication
         // removeRange removes indices [userMsgIndex, index+1)
-        _safeDisposeMessageNotifiers(
-          _messages.getRange(userMsgIndex, index + 1),
-        );
-        _messages.removeRange(userMsgIndex, index + 1);
+        _removeRangeKeepingChronicle(userMsgIndex, index + 1);
 
         notifyListeners();
       } else {
@@ -1721,8 +1767,7 @@ class ChatProvider extends ChangeNotifier {
       final userMsg = _messages[index];
       textToResend = userMsg.text;
       imagesToResend = userMsg.imagePaths;
-      _safeDisposeMessageNotifiers(_messages.getRange(index, _messages.length));
-      _messages.removeRange(index, _messages.length);
+      _removeRangeKeepingChronicle(index, _messages.length);
       notifyListeners();
     }
 
@@ -1807,117 +1852,57 @@ class ChatProvider extends ChangeNotifier {
     return newSessionId;
   }
 
-  /// Compresses the current conversation into a narrative summary + voice
-  /// samples (two one-shot LLM calls), appends both as AI messages into the
-  /// current chat, then creates a fresh branched conversation seeded with
-  /// [summary]+[voices]+[last N chat blocks]. If [blockCount] is 0, only the
-  /// summary and voice samples are seeded into the new branch. The original
-  /// conversation is left intact (only appended-to). After branching, the
-  /// active session is switched to the new one.
+  /// Builds the plain-text transcript handed to the compaction prompts.
   ///
-  /// Returns `null` on success or an error string.
-  Future<String?> compressAndBranch({
-    int? blockCount,
-    int? pairCount,
-    required String compressPrompt,
-    required String voiceSamplesPrompt,
-  }) async {
-    if (_messages.isEmpty) {
-      return "Nothing to summarize — the conversation is empty.";
-    }
-    final int count =
-        blockCount ?? pairCount ?? SummarizeDefaults.defaultBlocks;
-    final int n = count.clamp(
-      SummarizeDefaults.minBlocks,
-      SummarizeDefaults.maxBlocks,
-    );
-
-    // 1. Build a plain-text transcript of the whole conversation.
+  /// A chronicle block is excluded: it is a standing document about the
+  /// conversation, not a turn in it, and the chronicle-update prompt already
+  /// receives it separately. Leaving it in hands the model the same text twice,
+  /// once as the document to revise and once inside the material it is meant
+  /// to be revised against.
+  String _buildTranscript() {
     final buf = StringBuffer();
     for (final m in _messages) {
+      if (m.isChronicle) continue;
       final role = m.isUser ? 'User' : 'Assistant';
       final body = ChatMessage.sanitizeForContext(m.text).trim();
       if (body.isEmpty) continue;
       buf.writeln('$role: $body');
       buf.writeln();
     }
-    final transcript = buf.toString().trimRight();
-    if (transcript.isEmpty) {
-      return "Nothing to summarize — no message text found.";
+    return buf.toString().trimRight();
+  }
+
+  /// The current conversation's chronicle block, or null if it has none.
+  ChatMessage? get currentChronicle {
+    for (final m in _messages) {
+      if (m.isChronicle) return m;
     }
+    return null;
+  }
 
-    _nonStreamingLoading = true;
-    notifyListeners();
-
-    try {
-      // 2. Two one-shot LLM calls.
-      final summaryText = await _oneShotGenerate(
-        '$compressPrompt\n\n$transcript',
-      );
-      if (summaryText == null) {
-        return "Summarize call failed (check API key / model).";
-      }
-      final voicesText = await _oneShotGenerate(
-        '$voiceSamplesPrompt\n\n$transcript',
-      );
-      if (voicesText == null) {
-        return "Voice-samples call failed (check API key / model).";
-      }
-
-      final modelNameForNote = activeModelId;
-
-      // 3. Emit summary + voices as two AI messages into the current chat.
-      final summaryMessage = ChatMessage(
-        text: '**[Summary]**\n\n$summaryText',
-        isUser: false,
-        modelName: modelNameForNote,
-      );
-      final voicesMessage = ChatMessage(
-        text: '**[Voice Samples]**\n\n$voicesText',
-        isUser: false,
-        modelName: modelNameForNote,
-      );
-      _messages.add(summaryMessage);
-      _messages.add(voicesMessage);
-      notifyListeners();
-      await autoSaveCurrentSession();
-
-      // 4. Collect last N individual chat blocks from the ORIGINAL messages
-      //    (i.e. before the two emitted notes).
-      final blocks = collectTrailingMessages(
-        _messages.sublist(0, _messages.length - 2),
-        n,
-      );
-
-      // 5. New branch: [summary]+[voices]+[last N blocks]
-      final branchedMessages = <ChatMessage>[
-        summaryMessage.copyWith(clearContentNotifier: true),
-        voicesMessage.copyWith(clearContentNotifier: true),
-        ...blocks,
-      ];
-      final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
-      final newSession = ChatSessionData(
-        id: newSessionId,
-        title: _currentTitle.isEmpty
-            ? "Summarized Conversation"
-            : "Summary of $_currentTitle",
-        messages: branchedMessages,
-        modelName: activeModelId,
-        tokenCount: 0,
-        systemInstruction: _systemInstruction,
-        backgroundImage: null,
-        provider: _currentProvider.name,
-        isBookmarked: false,
-      );
-      _sessionService.prependSession(newSession);
-      loadSession(newSession);
-      return null; // success
-    } catch (e) {
-      return "Summarize failed: $e";
-    } finally {
-      _nonStreamingLoading = false;
-      notifyListeners();
-    }
+  /// Creates the compaction branch, carries the chat background and bookmark
+  /// across, and switches to it.
+  ///
+  /// `backgroundImage: null` and `isBookmarked: false` were hardcoded here, so
+  /// every compact silently dropped both.
+  void _branchInto(List<ChatMessage> messages, String title) {
+    final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    final previousId = _currentSessionId;
+    final newSession = ChatSessionData(
+      id: newSessionId,
+      title: title,
+      messages: messages,
+      modelName: activeModelId,
+      tokenCount: 0,
+      systemInstruction: _systemInstruction,
+      backgroundImage: previousId == null
+          ? null
+          : _sessionService.getSessionBackgroundImage(previousId),
+      provider: _currentProvider.name,
+      isBookmarked: false,
+    );
+    _sessionService.prependSession(newSession);
+    loadSession(newSession);
   }
 
   /// Returns the trailing [n] chat blocks (messages) from [messages] in original
@@ -1925,17 +1910,428 @@ class ChatProvider extends ChangeNotifier {
   ///
   /// If [n] is 0 or less, returns an empty list.
   /// If [n] exceeds the message count, returns all messages.
+  ///
+  /// Chronicle blocks are never carried as ordinary blocks: the compaction
+  /// seeds exactly one chronicle itself, and a second copy riding along in the
+  /// tail would hand the model two competing narrations.
+  ///
+  /// `usage` is dropped from every carried block. It describes a request made
+  /// against the OLD conversation, and `loadSession` re-derives the context
+  /// meter's anchor by scanning carried messages for one, so keeping it made a
+  /// freshly compacted session read as though it were still full.
   @visibleForTesting
   static List<ChatMessage> collectTrailingMessages(
     List<ChatMessage> messages,
     int n,
   ) {
     if (n <= 0 || messages.isEmpty) return const <ChatMessage>[];
-    final start = n >= messages.length ? 0 : messages.length - n;
+    final eligible = messages.where((m) => !m.isChronicle).toList();
+    if (eligible.isEmpty) return const <ChatMessage>[];
+    final start = n >= eligible.length ? 0 : eligible.length - n;
     return [
-      for (int i = start; i < messages.length; i++)
-        messages[i].copyWith(clearContentNotifier: true),
+      for (int i = start; i < eligible.length; i++)
+        eligible[i].copyWith(clearContentNotifier: true, clearUsage: true),
     ];
+  }
+
+  /// Every chronicle recorded in any saved conversation, newest first.
+  ///
+  /// Derived from the sessions rather than kept in a store of its own: a
+  /// chronicle already persists inside the conversation that produced it, and
+  /// each compaction copies it forward, so the generations ARE the history.
+  /// A separate store would need its own prefs key threaded through the
+  /// library whitelist, both settings maps and config packs, and would be a
+  /// second source of truth to keep in sync.
+  List<({String sessionId, String sessionTitle, ChatMessage chronicle})>
+  get availableChronicles {
+    final out =
+        <({String sessionId, String sessionTitle, ChatMessage chronicle})>[];
+    for (final s in savedSessions) {
+      for (final m in s.messages) {
+        if (m.isChronicle) {
+          out.add((
+            sessionId: s.id,
+            sessionTitle: s.title,
+            chronicle: m,
+          ));
+          break;
+        }
+      }
+    }
+    return out;
+  }
+
+  /// Pins a copy of [chronicle] at the head of the current conversation,
+  /// replacing any chronicle already there.
+  void attachChronicle(ChatMessage chronicle) {
+    _messages.removeWhere((m) => m.isChronicle);
+    _messages.insert(
+      0,
+      chronicle.copyWith(
+        clearContentNotifier: true,
+        clearUsage: true,
+        isChronicle: true,
+      ),
+    );
+    notifyListeners();
+    _scheduleAutoSave();
+    updateTokenCount();
+  }
+
+  /// Removes the current conversation's chronicle.
+  ///
+  /// The opt-out the undeletable block otherwise has none of: the bubble
+  /// refuses deletion, so this is the one way a user who does not want a
+  /// chronicle can get rid of it.
+  void detachChronicle() {
+    final removed = _messages.where((m) => m.isChronicle).toList();
+    if (removed.isEmpty) return;
+    _safeDisposeMessageNotifiers(removed);
+    _messages.removeWhere((m) => m.isChronicle);
+    notifyListeners();
+    _scheduleAutoSave();
+    updateTokenCount();
+  }
+
+  // ---------------------------------------------------------------------
+  // Rule-driven compaction progress
+  // ---------------------------------------------------------------------
+
+  String _compactProgress = '';
+  int _compactRuleIndex = 0;
+  int _compactRuleTotal = 0;
+  final ValueNotifier<String> compactDocumentNotifier = ValueNotifier<String>(
+    '',
+  );
+
+  /// Label of the rule currently running, empty when idle.
+  String get compactProgress => _compactProgress;
+
+  /// 1-based index of the running rule, and how many will run.
+  int get compactRuleIndex => _compactRuleIndex;
+  int get compactRuleTotal => _compactRuleTotal;
+
+  /// The user's edits to the live document box, applied to the result.
+  ///
+  /// Held separately from [compactDocumentNotifier] so a keystroke does not
+  /// race the next rule's write: the notifier is what rules produce, this is
+  /// what the user overrode it with.
+  String? _compactDocumentOverride;
+
+  void overrideCompactDocument(String text) {
+    _compactDocumentOverride = text;
+  }
+
+  void _setCompactProgress(String label, int index, int total) {
+    _compactProgress = label;
+    _compactRuleIndex = index;
+    _compactRuleTotal = total;
+    notifyListeners();
+  }
+
+  /// Runs [rules] in order against one shared document and branches the result
+  /// as a single combined block.
+  ///
+  /// Replaces the old two-call, two-message compact. Each rule is one request
+  /// carrying the `edit_document` tool plus the document as it stands, so a
+  /// later rule can revise an earlier rule's section rather than appending
+  /// another disconnected answer. A rule that answers with prose instead of
+  /// calling the tool is filed under its own name rather than dropped.
+  ///
+  /// Returns `null` on success or an error string.
+  Future<String?> compactWithRules({
+    int? blockCount,
+    required List<CompactRule> rules,
+    bool asChronicle = false,
+  }) async {
+    if (_messages.isEmpty) {
+      return "Nothing to compact — the conversation is empty.";
+    }
+    final active = rules.where((r) => r.enabled && r.prompt.trim().isNotEmpty);
+    if (active.isEmpty) {
+      return "No enabled rules — add a rule with a prompt.";
+    }
+    final int n = (blockCount ?? SummarizeDefaults.defaultBlocks).clamp(
+      SummarizeDefaults.minBlocks,
+      SummarizeDefaults.maxBlocks,
+    );
+
+    final transcript = _buildTranscript();
+    if (transcript.isEmpty) {
+      return "Nothing to compact — no message text found.";
+    }
+
+    // Seed from the existing chronicle so a chronicle run revises the standing
+    // document instead of starting over.
+    final existing = currentChronicle;
+    final document = (asChronicle && existing != null)
+        ? CompactDocument.parse(_chronicleBody(existing))
+        : CompactDocument();
+
+    _nonStreamingLoading = true;
+    _compactDocumentOverride = null;
+    compactDocumentNotifier.value = document.render();
+    final ruleList = active.toList();
+    _setCompactProgress('Starting', 0, ruleList.length);
+
+    try {
+      for (var i = 0; i < ruleList.length; i++) {
+        final rule = ruleList[i];
+        _setCompactProgress(rule.name, i + 1, ruleList.length);
+
+        final det = await _oneShotDetect(
+          userPrompt: CompactionService.buildRulePrompt(
+            rule: rule,
+            document: document,
+            transcript: transcript,
+          ),
+          systemInstruction: CompactionService.systemInstruction,
+          tools: [CompactionService.buildToolSpec()],
+          geminiDeclarations:
+              CompactionService.buildGeminiFunctionDeclarations(),
+        );
+
+        if (det == null || det.isError) {
+          return 'Rule "${rule.name}" failed (check API key / model).';
+        }
+
+        var applied = false;
+        if (det.isToolCall && det.toolName == CompactionService.toolName) {
+          applied = document.applyToolArguments(det.toolArguments) != null;
+        }
+        if (!applied) {
+          // The model answered in prose, or sent an unusable tool payload. It
+          // still did the work, so keep it under the rule's own heading.
+          final text = ChatMessage.sanitizeForContext(det.text).trim();
+          if (text.isNotEmpty) {
+            document.applyEdit(
+              heading: CompactionService.fallbackHeadingFor(rule),
+              content: text,
+            );
+          }
+        }
+
+        compactDocumentNotifier.value = document.render();
+      }
+
+      // The box the user may have been editing wins over what the rules wrote.
+      final body = (_compactDocumentOverride ?? document.render()).trim();
+      if (body.isEmpty) {
+        return "Compaction produced nothing to carry.";
+      }
+
+      final heading = asChronicle
+          ? SummarizeDefaults.chronicleHeading
+          : SummarizeDefaults.compactHeading;
+      final block = ChatMessage(
+        text: '**[$heading]**\n\n$body',
+        isUser: false,
+        modelName: activeModelId,
+        isChronicle: asChronicle,
+      );
+
+      if (asChronicle) {
+        final at = _messages.indexWhere((m) => m.isChronicle);
+        if (at >= 0) {
+          _messages[at] = block;
+        } else {
+          _messages.insert(0, block);
+        }
+      } else {
+        _messages.add(block);
+      }
+      notifyListeners();
+      await autoSaveCurrentSession();
+
+      final blocks = collectTrailingMessages(
+        asChronicle ? _messages : _messages.sublist(0, _messages.length - 1),
+        n,
+      );
+
+      _branchInto(
+        [block.copyWith(clearContentNotifier: true), ...blocks],
+        asChronicle
+            ? _chronicleBranchTitle()
+            : (_currentTitle.isEmpty
+                  ? "Compacted Conversation"
+                  : "Compact of $_currentTitle"),
+      );
+      return null;
+    } catch (e) {
+      return "Compaction failed: $e";
+    } finally {
+      _nonStreamingLoading = false;
+      _setCompactProgress('', 0, 0);
+    }
+  }
+
+  /// Whether [session] already carries a compact or chronicle block that a
+  /// merge can reuse instead of re-summarising the whole conversation.
+  ///
+  /// Recognises both the `isChronicle` flag and the older decorated headings,
+  /// so conversations compacted by any previous version still qualify.
+  static bool sessionHasCompactBlock(ChatSessionData session) {
+    for (final m in session.messages) {
+      if (m.isUser) continue;
+      if (m.isChronicle) return true;
+      if (CompactionService.looksLikeCompactBlock(m.text)) return true;
+    }
+    return false;
+  }
+
+  /// The compact blocks of [session], joined, or null when it has none.
+  static String? extractCompactBlocks(ChatSessionData session) {
+    final parts = <String>[];
+    for (final m in session.messages) {
+      if (m.isUser) continue;
+      if (!m.isChronicle &&
+          !CompactionService.looksLikeCompactBlock(m.text)) {
+        continue;
+      }
+      final body = CompactionService.stripBlockHeading(
+        ChatMessage.sanitizeForContext(m.text),
+      );
+      if (body.isNotEmpty) parts.add(body);
+    }
+    if (parts.isEmpty) return null;
+    return parts.join('\n\n');
+  }
+
+  /// Flattens a saved session into a transcript, for the fallback path.
+  static String transcriptOfSession(ChatSessionData session) {
+    final buf = StringBuffer();
+    for (final m in session.messages) {
+      if (m.isChronicle) continue;
+      final body = ChatMessage.sanitizeForContext(m.text).trim();
+      if (body.isEmpty) continue;
+      buf.writeln('${m.isUser ? 'User' : 'Assistant'}: $body');
+      buf.writeln();
+    }
+    return buf.toString().trimRight();
+  }
+
+  /// Merges several saved conversations into one new chronicle conversation.
+  ///
+  /// Prefers each conversation's existing compact blocks, which is what those
+  /// blocks are for and costs nothing. A selected conversation that has none is
+  /// summarised from its full transcript first, so a mix of already-compacted
+  /// and raw conversations can be merged in one pass.
+  ///
+  /// Returns `null` on success or an error string.
+  Future<String?> mergeSessionsIntoChronicle({
+    required List<String> sessionIds,
+    required String mergePrompt,
+    required String fallbackSummaryPrompt,
+  }) async {
+    if (sessionIds.length < 2) {
+      return "Select at least two conversations to merge.";
+    }
+
+    // Oldest first, so the merge reads in story order and the prompt's
+    // "prefer the later source" rule resolves contradictions the right way.
+    final selected = <ChatSessionData>[];
+    for (final s in savedSessions) {
+      if (sessionIds.contains(s.id)) selected.add(s);
+    }
+    if (selected.length < 2) {
+      return "Could not find the selected conversations.";
+    }
+    final ordered = selected.reversed.toList();
+
+    _nonStreamingLoading = true;
+    _setCompactProgress('Collecting', 0, ordered.length + 1);
+
+    try {
+      final extracts = <({String title, String body})>[];
+      var summarised = 0;
+
+      for (var i = 0; i < ordered.length; i++) {
+        final session = ordered[i];
+        final title = session.title.isEmpty ? 'Untitled' : session.title;
+        _setCompactProgress(title, i + 1, ordered.length + 1);
+
+        var body = extractCompactBlocks(session);
+        if (body == null) {
+          final transcript = transcriptOfSession(session);
+          if (transcript.isEmpty) continue;
+          final generated = await _oneShotGenerate(
+            '$fallbackSummaryPrompt\n\n$transcript',
+          );
+          if (generated == null || generated.trim().isEmpty) {
+            return 'Could not summarise "$title" (check API key / model).';
+          }
+          body = generated.trim();
+          summarised++;
+        }
+        extracts.add((title: title, body: body));
+      }
+
+      if (extracts.length < 2) {
+        return "Not enough content in the selected conversations to merge.";
+      }
+
+      _setCompactProgress('Merging', ordered.length + 1, ordered.length + 1);
+      final merged = await _oneShotGenerate(
+        CompactionService.buildMergePrompt(
+          instruction: mergePrompt,
+          extracts: extracts,
+        ),
+      );
+      if (merged == null || merged.trim().isEmpty) {
+        return "Merge call failed (check API key / model).";
+      }
+
+      final block = ChatMessage(
+        text:
+            '**[${SummarizeDefaults.chronicleHeading}]**\n\n${merged.trim()}',
+        isUser: false,
+        modelName: activeModelId,
+        isChronicle: true,
+      );
+
+      // A merge is a new line of story, not a continuation of whichever
+      // conversation happened to be open, so nothing is carried.
+      _branchInto([block], 'Merged Chronicle');
+      _mergeNotice = summarised == 0
+          ? 'Merged ${extracts.length} conversations.'
+          : 'Merged ${extracts.length} conversations '
+                '($summarised summarised first).';
+      return null;
+    } catch (e) {
+      return "Merge failed: $e";
+    } finally {
+      _nonStreamingLoading = false;
+      _setCompactProgress('', 0, 0);
+    }
+  }
+
+  String _mergeNotice = '';
+
+  /// Human-readable outcome of the last merge, for the drawer to show.
+  String get mergeNotice => _mergeNotice;
+
+  /// Strips the rendered heading off a chronicle block, so the model is handed
+  /// the document rather than the chat decoration around it.
+  static String _chronicleBody(ChatMessage chronicle) {
+    const heading = '**[${SummarizeDefaults.chronicleHeading}]**';
+    final text = ChatMessage.sanitizeForContext(chronicle.text).trim();
+    if (text.startsWith(heading)) {
+      return text.substring(heading.length).trim();
+    }
+    return text;
+  }
+
+  /// Numbers each generation so a chain of chronicle compactions reads in
+  /// order in the conversation list instead of producing identical titles.
+  String _chronicleBranchTitle() {
+    final base = _currentTitle.trim();
+    final match = RegExp(r'^(.*) · Ch(\d+)$').firstMatch(base);
+    if (match != null) {
+      final next = (int.tryParse(match.group(2)!) ?? 1) + 1;
+      return '${match.group(1)} · Ch$next';
+    }
+    if (base.isEmpty) return 'Chronicle · Ch2';
+    return '$base · Ch2';
   }
 
   /// Returns the trailing [n] assistant turns from [messages], each preceded by
@@ -1973,24 +2369,43 @@ class ChatProvider extends ChangeNotifier {
   /// Returns the plain text answer or `null` on error.  Does NOT touch chat
   /// session state.
   Future<String?> _oneShotGenerate(String userPrompt) async {
+    final det = await _oneShotDetect(userPrompt: userPrompt);
+    if (det == null || det.isError) return null;
+    return ChatMessage.sanitizeForContext(det.text).trim();
+  }
+
+  /// One-shot request that may carry a tool, returning the raw detection so a
+  /// caller can read back a tool call instead of prose.
+  ///
+  /// [tools] and [geminiDeclarations] are the same tool in the two shapes the
+  /// providers need, exactly as the web search path already splits them.
+  Future<ToolDetectionResult?> _oneShotDetect({
+    required String userPrompt,
+    String systemInstruction = 'You are a helpful assistant.',
+    List<Map<String, dynamic>> tools = const [],
+    List<Map<String, dynamic>> geminiDeclarations = const [],
+  }) async {
     final bool isGemini = _currentProvider == AiProvider.gemini;
     final String activeKey = _getProviderKey(_currentProvider);
     final strategy = StrategyResolver.resolve(_currentProvider);
     final String? customUrl = _customEndpointFor(_currentProvider);
     final String streamUrl = strategy.getStreamUrl(customUrl: customUrl);
     final String modelName = activeModelId;
-    const String sysInstr = 'You are a helpful assistant.';
+    final String sysInstr = systemInstruction;
 
     ToolDetectionResult det;
     if (isGemini) {
       final gemKey = geminiKey.isNotEmpty ? geminiKey : _defaultApiKey;
       det = await ChatApiService.performGeminiFunctionDetection(
         apiKey: gemKey,
-        model: _selectedModel,
+        // activeModelId, matching the OpenAI branch below. Equivalent here
+        // (they differ only for Local, which is not Gemini), but the two
+        // branches reading different fields is the trap a new call site copies.
+        model: activeModelId,
         history: const [],
         userMessage: userPrompt,
         systemInstruction: sysInstr,
-        functionDeclarations: const [],
+        functionDeclarations: geminiDeclarations,
         extraMessages: null,
         disableSafety: _settings?.disableSafety ?? true,
         maxRoundsLeft: 1,
@@ -2006,7 +2421,7 @@ class ChatProvider extends ChangeNotifier {
         history: const [],
         systemInstruction: sysInstr,
         userMessage: userPrompt,
-        tools: const [],
+        tools: tools,
         extraMessages: null,
         temperature: _settings?.enableGenerationSettings == true
             ? _settings!.temperature
@@ -2026,8 +2441,7 @@ class ChatProvider extends ChangeNotifier {
         serviceTier: activeServiceTier,
       );
     }
-    if (det.isError) return null;
-    return ChatMessage.sanitizeForContext(det.text).trim();
+    return det;
   }
 
   Future<void> autoSaveCurrentSession({
@@ -2041,7 +2455,13 @@ class ChatProvider extends ChangeNotifier {
 
     String title = _currentTitle;
     if (title.isEmpty && _messages.isNotEmpty) {
-      title = _messages.first.text;
+      // Skip a pinned chronicle: it is the first message but it is narration,
+      // not the opening line of the conversation.
+      final titleSource = _messages.firstWhere(
+        (m) => !m.isChronicle,
+        orElse: () => _messages.first,
+      );
+      title = titleSource.text;
       if (title.length > ChatDefaults.sessionTitleMaxLength) {
         title = "${title.substring(0, ChatDefaults.sessionTitleMaxLength)}...";
       }
@@ -2133,7 +2553,13 @@ class ChatProvider extends ChangeNotifier {
       final notifier = _streamingCoordinator.getActiveNotifier(session.id);
       final currentText =
           _streamingCoordinator.getActiveStreamText(session.id) ?? '';
-      if (notifier != null && _messages.isNotEmpty && !_messages.last.isUser) {
+      // A chronicle as the last message means there is no streaming
+      // placeholder to reconnect, so writing into it would overwrite the
+      // narration with the in-flight reply.
+      if (notifier != null &&
+          _messages.isNotEmpty &&
+          !_messages.last.isUser &&
+          !_messages.last.isChronicle) {
         _messages[_messages.length - 1] = _messages.last.copyWith(
           text: currentText,
           contentNotifier: notifier,
@@ -2156,7 +2582,13 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  /// Deletes the message at [index], unless it is the chronicle.
+  ///
+  /// This is the only enforcement point: the bubble hides its delete control
+  /// for a chronicle, but that is cosmetic and does not cover other callers.
   void deleteMessage(int index) {
+    if (index < 0 || index >= _messages.length) return;
+    if (_messages[index].isChronicle) return;
     _safeDisposeMessageNotifiers([_messages[index]]);
     _messages.removeAt(index);
     notifyListeners();
@@ -2267,7 +2699,10 @@ class ChatProvider extends ChangeNotifier {
         : 0;
     int startIndex = considered.length - effectiveHistoryLimit;
     if (startIndex < 0) startIndex = 0;
-    final window = considered.sublist(startIndex);
+    // Same pin as _limitedHistory, through the same helper: if the estimate
+    // omits a chronicle the request carries, TokenUtils.calibrate folds the
+    // error into the per-provider ratio and the meter goes wrong everywhere.
+    final window = pinChronicle(considered, startIndex);
 
     int imageCount = 0;
     for (final msg in window) {

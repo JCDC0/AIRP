@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:airp/providers/chat_provider.dart';
+import 'package:airp/services/compaction_service.dart';
 import 'package:airp/providers/scale_provider.dart';
 import 'package:airp/providers/theme_provider.dart';
 import 'package:airp/providers/vfx_provider.dart';
@@ -21,11 +22,7 @@ Widget _buildTestApp(ChatProvider chatProvider) {
       ChangeNotifierProvider<VfxProvider>(create: (_) => VfxProvider()),
       ChangeNotifierProvider<ScaleProvider>(create: (_) => ScaleProvider()),
     ],
-    child: const MaterialApp(
-      home: Scaffold(
-        body: SummarizeDrawer(),
-      ),
-    ),
+    child: const MaterialApp(home: Scaffold(body: SummarizeDrawer())),
   );
 }
 
@@ -109,5 +106,79 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getInt(SummarizeDefaults.prefBlockCount), 0);
+  });
+
+  testWidgets('compaction mode selector persists the chosen mode', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final chatProvider = ChatProvider();
+    await tester.pumpWidget(_buildTestApp(chatProvider));
+    await tester.pumpAndSettle();
+
+    // The selector sits in the fixed footer, so it is reachable without
+    // scrolling the rule list. That is the whole point of putting it there.
+    final dropdown = find.byKey(const Key('compact_mode_dropdown'));
+    expect(dropdown, findsOneWidget);
+
+    await tester.tap(dropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Compact to Chronicle').last);
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.getString(SummarizeDefaults.prefCompactMode),
+      SummarizeDefaults.modeChronicle,
+    );
+  });
+
+  testWidgets('legacy prompts migrate into two rules, and rules can be added', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    // A user who had edited the old two prompts must not silently lose them.
+    SharedPreferences.setMockInitialValues({
+      SummarizeDefaults.prefCompressPrompt: 'MY OWN SUMMARY PROMPT',
+      SummarizeDefaults.prefVoiceSamplesPrompt: 'MY OWN VOICES PROMPT',
+    });
+
+    final chatProvider = ChatProvider();
+    await tester.pumpWidget(_buildTestApp(chatProvider));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MY OWN SUMMARY PROMPT'), findsOneWidget);
+    expect(find.text('MY OWN VOICES PROMPT'), findsOneWidget);
+    expect(find.text(SummarizeDefaults.ruleNameSummary), findsOneWidget);
+    expect(find.text(SummarizeDefaults.ruleNameVoices), findsOneWidget);
+
+    final addButton = find.byKey(const Key('add_rule_button'));
+    await tester.scrollUntilVisible(
+      addButton,
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(addButton);
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    final stored = CompactionService.decodeRules(
+      prefs.getString(SummarizeDefaults.prefCompactRules),
+    );
+    expect(stored, isNotNull);
+    expect(stored!.length, 3);
+    expect(stored[0].prompt, 'MY OWN SUMMARY PROMPT');
   });
 }
