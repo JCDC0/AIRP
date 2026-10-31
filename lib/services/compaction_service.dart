@@ -294,20 +294,29 @@ class CompactionService {
     },
   ];
 
-  /// The per-rule prompt: the rule's own instruction, the document so far, and
+  /// The per-rule prompt: the transcript, the document so far, then the rule's
+  /// own instruction.
+  ///
+  /// That order is deliberate and load bearing. The transcript is identical for
+  /// every rule in a run and dwarfs everything else, so putting it first makes
+  /// it a prefix the provider's automatic caching can reuse across all of a
+  /// run's calls. Leading with the instruction, as this did, moves the first
+  /// difference to within a few characters of the start, so nothing after it
+  /// can ever be a cache hit and every rule is billed for another full copy of
   /// the transcript.
   ///
-  /// The document is included so a rule can revise earlier rules' work, which
-  /// is the whole point of editing one document instead of concatenating
-  /// separate answers.
+  /// The document follows the transcript rather than preceding it because it
+  /// changes with every rule. It is included at all so a rule can revise
+  /// earlier rules' work, which is the point of editing one document instead of
+  /// concatenating separate answers.
   static String buildRulePrompt({
     required CompactRule rule,
     required CompactDocument document,
     required String transcript,
   }) {
     final buf = StringBuffer();
-    buf.writeln('YOUR INSTRUCTION (rule "${rule.name}"):');
-    buf.writeln(rule.prompt.trim());
+    buf.writeln('CONVERSATION TRANSCRIPT:');
+    buf.writeln(transcript);
     buf.writeln();
     if (!document.isEmpty) {
       buf.writeln('DOCUMENT SO FAR:');
@@ -317,10 +326,18 @@ class CompactionService {
       buf.writeln('DOCUMENT SO FAR: (empty, you are the first rule)');
       buf.writeln();
     }
-    buf.writeln('CONVERSATION TRANSCRIPT:');
-    buf.writeln(transcript);
+    buf.writeln('YOUR INSTRUCTION (rule "${rule.name}"):');
+    buf.writeln(rule.prompt.trim());
     return buf.toString().trimRight();
   }
+
+  /// The part of a rule prompt that is the same for every rule in one run.
+  ///
+  /// Exposed so a test can assert the property that makes caching possible
+  /// rather than asserting the exact wording of the prompt.
+  static String cacheablePrefix(String transcript) =>
+      '''CONVERSATION TRANSCRIPT:
+$transcript''';
 
   /// A model that answered with prose instead of calling the tool still did
   /// the work, so its text is filed under the rule's own name rather than

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'scrolling_text.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -226,9 +227,8 @@ class _ConversationDrawerState extends State<ConversationDrawer>
                     for (final c in chronicles)
                       DropdownMenuItem(
                         value: c.sessionId,
-                        child: Text(
+                        child: ScrollingText(
                           c.sessionTitle.isEmpty ? "Untitled" : c.sessionTitle,
-                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: themeProvider.textColor,
                             fontSize: scaleProvider.systemFontSize - 2,
@@ -718,10 +718,8 @@ class _ConversationDrawerState extends State<ConversationDrawer>
         title: Row(
           children: [
             Expanded(
-              child: Text(
+              child: ScrollingText(
                 session.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: isActive
                       ? themeProvider.textColor

@@ -221,4 +221,37 @@ Alice.''');
       expect(next.isEmpty, isTrue);
     });
   });
+
+  group('orderForMerge reads sources in story order', () {
+    ChatSessionData session(String id, String title) => ChatSessionData(
+      id: id,
+      title: title,
+      messages: [],
+      modelName: 'm',
+      tokenCount: 0,
+      systemInstruction: '',
+    );
+
+    test('sorts by creation time, not by what was opened last', () {
+      // savedSessions is ordered by last autosave, so merely opening the
+      // middle generation to see what it is used to make the merge treat it as
+      // the newest source and prefer it when reconciling contradictions.
+      final ordered = ChatProvider.orderForMerge([
+        session('1700000002000', 'Gen 2'),
+        session('1700000003000', 'Gen 3'),
+        session('1700000001000', 'Gen 1'),
+      ]);
+
+      expect(ordered.map((s) => s.title), ['Gen 1', 'Gen 2', 'Gen 3']);
+    });
+
+    test('an id that is not a timestamp sorts first', () {
+      final ordered = ChatProvider.orderForMerge([
+        session('1700000001000', 'Numbered'),
+        session('legacy', 'Legacy'),
+      ]);
+
+      expect(ordered.first.title, 'Legacy');
+    });
+  });
 }

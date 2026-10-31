@@ -2222,6 +2222,25 @@ class ChatProvider extends ChangeNotifier {
     return buf.toString().trimRight();
   }
 
+  /// Merge sources in the order the story happened, oldest first, so the merge
+  /// prompt's "prefer the later source" rule resolves contradictions correctly.
+  ///
+  /// Creation order, NOT the saved-session list order. `saveCurrentSessionData`
+  /// removes a conversation and re-inserts it at the head on every autosave, so
+  /// that list is ordered by what was last opened: merely opening a
+  /// conversation to see which generation it is would make the merge treat it
+  /// as the newest source. Session ids are epoch milliseconds assigned at
+  /// creation, which for a chain of compaction branches is story order. An id
+  /// that is not a number sorts first, since there is nothing better to go on.
+  @visibleForTesting
+  static List<ChatSessionData> orderForMerge(List<ChatSessionData> selected) {
+    final ordered = [...selected];
+    ordered.sort(
+      (a, b) => (int.tryParse(a.id) ?? 0).compareTo(int.tryParse(b.id) ?? 0),
+    );
+    return ordered;
+  }
+
   /// Merges several saved conversations into one new chronicle conversation.
   ///
   /// Prefers each conversation's existing compact blocks, which is what those
@@ -2239,8 +2258,6 @@ class ChatProvider extends ChangeNotifier {
       return "Select at least two conversations to merge.";
     }
 
-    // Oldest first, so the merge reads in story order and the prompt's
-    // "prefer the later source" rule resolves contradictions the right way.
     final selected = <ChatSessionData>[];
     for (final s in savedSessions) {
       if (sessionIds.contains(s.id)) selected.add(s);
@@ -2248,7 +2265,7 @@ class ChatProvider extends ChangeNotifier {
     if (selected.length < 2) {
       return "Could not find the selected conversations.";
     }
-    final ordered = selected.reversed.toList();
+    final ordered = orderForMerge(selected);
 
     _nonStreamingLoading = true;
     _setCompactProgress('Collecting', 0, ordered.length + 1);

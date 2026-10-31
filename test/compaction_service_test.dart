@@ -320,4 +320,43 @@ void main() {
       );
     });
   });
+
+  group('rule prompts share a cacheable prefix', () {
+    test('two rules in one run open with the same transcript block', () {
+      const transcript = 'User: hi. Assistant: hello.';
+
+      final first = CompactionService.buildRulePrompt(
+        rule: CompactRule(id: 'a', name: 'Key Events', prompt: 'chronology'),
+        document: CompactDocument(),
+        transcript: transcript,
+      );
+      final doc = CompactDocument()
+        ..applyEdit(heading: 'Key Events', content: 'Day 1.');
+      final second = CompactionService.buildRulePrompt(
+        rule: CompactRule(id: 'b', name: 'Cast', prompt: 'characters'),
+        document: doc,
+        transcript: transcript,
+      );
+
+      // Automatic provider caching matches from the start of the message, so
+      // the transcript has to lead or every rule is billed for another copy.
+      final prefix = CompactionService.cacheablePrefix(transcript);
+      expect(first.startsWith(prefix), isTrue);
+      expect(second.startsWith(prefix), isTrue);
+    });
+
+    test('the rule instruction comes after the transcript', () {
+      const transcript = 'User: hi.';
+      final prompt = CompactionService.buildRulePrompt(
+        rule: CompactRule(id: 'a', name: 'Key Events', prompt: 'chronology'),
+        document: CompactDocument(),
+        transcript: transcript,
+      );
+
+      expect(
+        prompt.indexOf('YOUR INSTRUCTION'),
+        greaterThan(prompt.indexOf(transcript)),
+      );
+    });
+  });
 }

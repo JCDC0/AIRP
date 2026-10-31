@@ -40,7 +40,7 @@ Current version: `0.8.3` (`pubspec.yaml` `0.8.3+23`). Target: `0.8.3` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (443 tests, all passing)
+*   **Test:** `flutter test` (447 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -141,7 +141,11 @@ things that are not code defects, all seen on `3.47.4`:
     list.** A provider switch starts a model fetch that never completes under
     the test clock, so the selector's spinner animates forever and
     `pumpAndSettle` runs to its ten-minute fake timeout. Pump a fixed number of
-    frames instead, as `test/service_tier_test.dart` does.
+    frames instead, as `test/service_tier_test.dart` does. `ScrollingText`
+    (`lib/widgets/scrolling_text.dart`) is the same hazard by design: a title
+    too long for its box scrolls forever. It renders a plain `Text` whenever
+    the string fits or the constraints are unbounded, so only an actually
+    overflowing title animates.
 
 ## Providers
 
@@ -387,6 +391,15 @@ there is one entry point.
     split per provider exactly as the web search tool is) plus the document as
     it stands, so a later rule can revise an earlier rule's section instead of
     appending another disconnected answer.
+*   **`buildRulePrompt` puts the transcript FIRST, then the document, then the
+    rule's instruction.** That order is the only reason a run can hit a
+    provider's automatic prompt cache. The transcript is identical for every
+    rule and dwarfs everything else; automatic caching matches from the start
+    of the message, so leading with the per-rule instruction moves the first
+    difference to within a few characters of the start and every rule is billed
+    for another full copy of the transcript. AIRP sends no `cache_control`
+    markers, so prefix order is the whole mechanism. Guarded by
+    `test/compaction_service_test.dart`.
 *   A rule that answers in prose rather than calling the tool is filed under
     its own name, not dropped. Do not make a tool call mandatory: three of the
     eight providers point at endpoints AIRP cannot introspect.
@@ -442,7 +455,14 @@ keyword recognition over the current input (see "Lore recognition").
     one's existing compact blocks and falling back to summarising its full
     transcript. `sessionHasCompactBlock` recognises both `isChronicle` and the
     older `**[Summary]**` style headings, so conversations compacted by any
-    earlier version still merge.
+    earlier version still merge. Sources are ordered by
+    `ChatProvider.orderForMerge`, which sorts on the session id, not on the
+    saved-session list: `SessionService.saveCurrentSessionData` moves a
+    conversation to the head of that list on every autosave, so ordering by it
+    meant that opening a conversation to see which generation it was made the
+    merge treat it as the newest source, and the merge prompt prefers the later
+    source when reconciling contradictions. Session ids are epoch milliseconds
+    assigned at creation. Guarded by `test/chronicle_compaction_test.dart`.
 
 ## Fonts
 
