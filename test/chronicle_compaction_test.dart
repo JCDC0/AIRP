@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:airp/models/chat_models.dart';
 import 'package:airp/providers/chat_provider.dart';
 import 'package:airp/services/session_service.dart';
+import 'package:airp/services/compaction_service.dart';
 
 /// Guards the chronicle: a long-term narrative block pinned into a
 /// conversation, carried across compactions, and refused by every delete and
@@ -166,6 +167,58 @@ void main() {
       );
 
       expect(cleaned.messages.length, 1);
+    });
+  });
+
+  group('documentForNextRule folds a live edit back in', () {
+    CompactDocument docWith(String heading, String body) => CompactDocument(
+      sections: [DocumentSection(heading: heading, body: body)],
+    );
+
+    test('passes the document through when nothing is pending', () {
+      final doc = docWith('Cast', 'Alice.');
+
+      expect(ChatProvider.documentForNextRule(doc, null), same(doc));
+    });
+
+    test('a pending edit becomes the base the next rule revises', () {
+      // The bug this guards: the edit used to sit pending until the run
+      // finished, then replace everything the later rules had written.
+      final next = ChatProvider.documentForNextRule(
+        docWith('Cast', 'Alice.'),
+        '''
+## Cast
+
+Alice, and Bob.
+
+## Threads
+
+The locked door.''',
+      );
+
+      expect(next.sections.map((s) => s.heading), ['Cast', 'Threads']);
+      expect(next.sections.first.body, 'Alice, and Bob.');
+    });
+
+    test('a later rule still revises a section the user edited', () {
+      final next = ChatProvider.documentForNextRule(CompactDocument(), '''
+## Cast
+
+Alice.''');
+
+      next.applyEdit(heading: 'cast', content: 'Alice and Bob.');
+
+      expect(next.sections.length, 1);
+      expect(next.sections.single.body, 'Alice and Bob.');
+    });
+
+    test('an emptied box clears the document rather than being ignored', () {
+      final next = ChatProvider.documentForNextRule(
+        docWith('Cast', 'Alice.'),
+        '',
+      );
+
+      expect(next.isEmpty, isTrue);
     });
   });
 }

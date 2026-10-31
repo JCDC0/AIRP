@@ -652,8 +652,7 @@ class ChatProvider extends ChangeNotifier {
           'provider, so a key entered under a different provider does not '
           'carry over.';
     }
-    if (!provider.needsApiKey &&
-        (_customEndpointFor(provider) ?? '').isEmpty) {
+    if (!provider.needsApiKey && (_customEndpointFor(provider) ?? '').isEmpty) {
       return 'No Server Endpoint URL set for ${provider.displayName}.\n\n'
           'Open Settings then API and enter the address your server listens '
           'on.';
@@ -936,8 +935,12 @@ class ChatProvider extends ChangeNotifier {
               temperature: _settings!.enableGenerationSettings
                   ? _settings!.temperature
                   : null,
-              topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
-              topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
+              topP: _settings!.enableGenerationSettings
+                  ? _settings!.topP
+                  : null,
+              topK: _settings!.enableGenerationSettings
+                  ? _settings!.topK
+                  : null,
               maxTokens: _settings!.enableMaxOutputTokens
                   ? _settings!.maxOutputTokens
                   : null,
@@ -1644,9 +1647,7 @@ class ChatProvider extends ChangeNotifier {
     int startIndex,
   ) {
     if (startIndex <= 0) return messages.sublist(0);
-    final dropped = messages
-        .sublist(0, startIndex)
-        .where((m) => m.isChronicle);
+    final dropped = messages.sublist(0, startIndex).where((m) => m.isChronicle);
     return [...dropped, ...messages.sublist(startIndex)];
   }
 
@@ -1949,11 +1950,7 @@ class ChatProvider extends ChangeNotifier {
     for (final s in savedSessions) {
       for (final m in s.messages) {
         if (m.isChronicle) {
-          out.add((
-            sessionId: s.id,
-            sessionTitle: s.title,
-            chronicle: m,
-          ));
+          out.add((sessionId: s.id, sessionTitle: s.title, chronicle: m));
           break;
         }
       }
@@ -2022,6 +2019,18 @@ class ChatProvider extends ChangeNotifier {
     _compactDocumentOverride = text;
   }
 
+  /// The document the next rule should revise, given whatever the user has
+  /// typed into the live box since the last rule ran.
+  ///
+  /// A pending edit becomes the new base instead of waiting to replace the
+  /// finished document, which would silently discard every rule that ran after
+  /// the user stopped typing.
+  @visibleForTesting
+  static CompactDocument documentForNextRule(
+    CompactDocument current,
+    String? pendingEdit,
+  ) => pendingEdit == null ? current : CompactDocument.parse(pendingEdit);
+
   void _setCompactProgress(String label, int index, int total) {
     _compactProgress = label;
     _compactRuleIndex = index;
@@ -2064,7 +2073,7 @@ class ChatProvider extends ChangeNotifier {
     // Seed from the existing chronicle so a chronicle run revises the standing
     // document instead of starting over.
     final existing = currentChronicle;
-    final document = (asChronicle && existing != null)
+    var document = (asChronicle && existing != null)
         ? CompactDocument.parse(_chronicleBody(existing))
         : CompactDocument();
 
@@ -2078,6 +2087,9 @@ class ChatProvider extends ChangeNotifier {
       for (var i = 0; i < ruleList.length; i++) {
         final rule = ruleList[i];
         _setCompactProgress(rule.name, i + 1, ruleList.length);
+
+        document = documentForNextRule(document, _compactDocumentOverride);
+        _compactDocumentOverride = null;
 
         final det = await _oneShotDetect(
           userPrompt: CompactionService.buildRulePrompt(
@@ -2114,7 +2126,8 @@ class ChatProvider extends ChangeNotifier {
         compactDocumentNotifier.value = document.render();
       }
 
-      // The box the user may have been editing wins over what the rules wrote.
+      // Only an edit made during the last rule is still pending here;
+      // earlier ones were folded in as each later rule started.
       final body = (_compactDocumentOverride ?? document.render()).trim();
       if (body.isEmpty) {
         return "Compaction produced nothing to carry.";
@@ -2184,8 +2197,7 @@ class ChatProvider extends ChangeNotifier {
     final parts = <String>[];
     for (final m in session.messages) {
       if (m.isUser) continue;
-      if (!m.isChronicle &&
-          !CompactionService.looksLikeCompactBlock(m.text)) {
+      if (!m.isChronicle && !CompactionService.looksLikeCompactBlock(m.text)) {
         continue;
       }
       final body = CompactionService.stripBlockHeading(
@@ -2282,8 +2294,7 @@ class ChatProvider extends ChangeNotifier {
       }
 
       final block = ChatMessage(
-        text:
-            '**[${SummarizeDefaults.chronicleHeading}]**\n\n${merged.trim()}',
+        text: '**[${SummarizeDefaults.chronicleHeading}]**\n\n${merged.trim()}',
         isUser: false,
         modelName: activeModelId,
         isChronicle: true,

@@ -40,7 +40,7 @@ Current version: `0.8.3` (`pubspec.yaml` `0.8.3+23`). Target: `0.8.3` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (438 tests, all passing)
+*   **Test:** `flutter test` (442 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -394,10 +394,15 @@ there is one entry point.
     replaces an empty or duplicated id, because two rules sharing one id share
     one controller and edits land in the wrong prompt.
 *   `compactDocumentNotifier` carries the live document to the drawer's
-    editable box; `overrideCompactDocument` is what the user typed, and it wins
-    over what the rules produced. The box compares against the last value it
-    saw rather than guarding on focus, because a focus guard would drop the
-    next rule's write.
+    editable box; `overrideCompactDocument` is what the user typed. Every rule
+    drains that edit through `ChatProvider.documentForNextRule` before it runs,
+    so the edit becomes the base that rule revises and only an edit made during
+    the last rule is still pending at the end. Left to sit, it was stale by the
+    time it was read: the box is repainted with each later rule's output
+    without firing `onChanged`, so the user's older text silently replaced
+    every rule that ran after they stopped typing. The box compares against the
+    last value it saw rather than guarding on focus, because a focus guard
+    would drop the next rule's write.
 
 **The chronicle** is a `ChatMessage` with `isChronicle: true`, pinned at index
 0, that accumulates across conversations. It is NOT a `Lorebook`: that is
