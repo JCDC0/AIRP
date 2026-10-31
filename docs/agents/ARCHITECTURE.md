@@ -40,7 +40,7 @@ Current version: `0.8.3` (`pubspec.yaml` `0.8.3+23`). Target: `0.8.3` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (442 tests, all passing)
+*   **Test:** `flutter test` (443 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -129,7 +129,14 @@ things that are not code defects, all seen on `3.47.4`:
     be drained by `ChatProvider.flushPendingSave`, which the app lifecycle
     observer in `main.dart` calls on pause, or the last edit dies with the
     process. Guarded by
-    `test/system_prompt_panel_caret_test.dart`.
+    `test/system_prompt_panel_caret_test.dart`. A handler that writes one
+    field of a list item must rebuild from the STORED item, never from the one
+    its card captured at build time. `onChanged` runs without a `setState`, so
+    that capture is whatever the item looked like at the last build: in the
+    Summarize drawer, typing a rule's prompt restored its name and typing its
+    name restored its prompt, and only when nothing else had forced a rebuild
+    in between, which is why it survived a review and reached a device.
+    Guarded by `test/summarize_drawer_test.dart`.
 *   **`pumpAndSettle` hangs on a settings drawer scrolled to the model
     list.** A provider switch starts a model fetch that never completes under
     the test clock, so the selector's spinner animates forever and

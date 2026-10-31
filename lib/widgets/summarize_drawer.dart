@@ -169,11 +169,19 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
     _persistRules();
   }
 
+  /// Writes one field of a rule, leaving the rest of it alone.
+  ///
+  /// Rebuilds from the stored rule, never from [rule]: this runs on every
+  /// keystroke without a setState, so the card's captured [rule] still holds
+  /// whatever the rule looked like at the last build. Copying from it restored
+  /// the name while the prompt was being typed, and the prompt while the name
+  /// was being typed, silently and only when nothing else had forced a
+  /// rebuild in between.
   void _updateRule(CompactRule rule, {String? name, String? prompt}) {
     final index = _rules.indexWhere((r) => r.id == rule.id);
     if (index < 0) return;
     final next = [..._rules];
-    next[index] = rule.copyWith(name: name, prompt: prompt);
+    next[index] = next[index].copyWith(name: name, prompt: prompt);
     _rules = next;
     _persistRules();
   }

@@ -181,4 +181,39 @@ void main() {
     expect(stored!.length, 3);
     expect(stored[0].prompt, 'MY OWN SUMMARY PROMPT');
   });
+
+  testWidgets('editing a prompt does not revert the rule name', (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final chatProvider = ChatProvider();
+    await tester.pumpWidget(_buildTestApp(chatProvider));
+    await tester.pumpAndSettle();
+
+    Finder fieldWithHint(String hint) => find.byWidgetPredicate(
+      (w) => w is TextField && w.decoration?.hintText == hint,
+    );
+
+    // Both edits land without anything forcing a rebuild in between, which is
+    // the case the card's captured rule used to go stale in: the name came
+    // back as whatever it was at the last build.
+    await tester.enterText(fieldWithHint('Rule name').first, 'Key Events');
+    await tester.enterText(
+      fieldWithHint('What this rule should contribute…').first,
+      'Write the chronology.',
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    final stored = CompactionService.decodeRules(
+      prefs.getString(SummarizeDefaults.prefCompactRules),
+    );
+
+    expect(stored, isNotNull);
+    expect(stored!.first.name, 'Key Events');
+    expect(stored.first.prompt, 'Write the chronology.');
+  });
 }
