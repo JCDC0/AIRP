@@ -314,6 +314,9 @@ void main() {
       addTearDown(tester.view.reset);
       await tester.pumpWidget(_buildTestApp());
       await tester.pumpAndSettle();
+      // Core Components opens collapsed, and Service Tier lives inside it.
+      await tester.tap(find.text('Core Components'));
+      await settle(tester);
       final element = tester.element(find.byType(SettingsDrawer));
       final chat = element.read<ChatProvider>();
       final settings = element.read<SettingsProvider>();

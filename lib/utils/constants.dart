@@ -70,6 +70,10 @@ class ChatDefaults {
   static const double temperature = 1.0;
   static const double topP = 0.95;
   static const int topK = 40;
+
+  /// Neutral repetition penalty. At this value the field is omitted from the
+  /// request, so each provider's own default applies.
+  static const double repetitionPenalty = 1.0;
   static const int maxOutputTokens = 8192;
   static const int historyLimit = 500;
   static const int sessionTitleMaxLength = 25;

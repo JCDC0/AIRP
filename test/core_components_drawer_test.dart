@@ -58,11 +58,11 @@ void main() {
       expect(find.text('Core Components'), findsOneWidget);
     });
 
-    testWidgets('Core Components is initially expanded and contains API Key section', (tester) async {
+    testWidgets('Core Components is collapsed on open', (tester) async {
       await tester.pumpWidget(_buildTestApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('API Key (BYOK)'), findsOneWidget);
+      expect(find.text('API Key (BYOK)'), findsNothing);
     });
 
     testWidgets('Core Components shows provider display name as subtitle', (tester) async {
@@ -72,8 +72,12 @@ void main() {
       expect(find.text('Gemini'), findsWidgets);
     });
 
-    testWidgets('collapsing Core Components hides API Key section', (tester) async {
+    testWidgets('expanding Core Components shows the API Key section',
+        (tester) async {
       await tester.pumpWidget(_buildTestApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Core Components'));
       await tester.pumpAndSettle();
 
       expect(find.text('API Key (BYOK)'), findsOneWidget);

@@ -61,7 +61,7 @@ class SettingsDrawer extends StatelessWidget {
 
               ExpansionTile(
                 key: Key('core_components_$resetVersion'),
-                initiallyExpanded: true,
+                initiallyExpanded: false,
                 title: Text(
                   "Core Components",
                   style: TextStyle(
@@ -126,6 +126,20 @@ class SettingsDrawer extends StatelessWidget {
                     fontSize: scaleProvider.systemFontSize,
                   ),
                 ),
+                subtitle: Text(
+                  settingsProvider.enableGenerationSettings
+                      ? 'Temperature · Top P · Top K · Repetition'
+                      : 'Off: provider defaults',
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                ),
+                trailing: Switch(
+                  value: settingsProvider.enableGenerationSettings,
+                  activeThumbColor: themeProvider.textColor,
+                  onChanged: (val) {
+                    settingsProvider.setEnableGenerationSettings(val);
+                    settingsProvider.saveSettings(showConfirmation: false);
+                  },
+                ),
                 collapsedIconColor: themeProvider.textColor,
                 iconColor: themeProvider.textColor,
                 children: [const GenerationSettingsPanel()],
@@ -141,6 +155,27 @@ class SettingsDrawer extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: scaleProvider.systemFontSize,
                   ),
+                ),
+                subtitle: Text(
+                  chatProvider.webSearchUnsupportedReason() ??
+                      (settingsProvider.enableGrounding
+                          ? 'On: the model may search'
+                          : 'Off: no search tool offered'),
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                ),
+                // Same flag as the web search button above the chat input, so
+                // the two stay in step.
+                trailing: Switch(
+                  value: settingsProvider.enableGrounding,
+                  activeThumbColor: themeProvider.textColor,
+                  onChanged: chatProvider.webSearchUnsupportedReason() == null
+                      ? (val) {
+                          settingsProvider.setEnableGrounding(val);
+                          settingsProvider.saveSettings(
+                            showConfirmation: false,
+                          );
+                        }
+                      : null,
                 ),
                 collapsedIconColor: themeProvider.textColor,
                 iconColor: themeProvider.textColor,

@@ -53,6 +53,7 @@ class GeminiStrategy extends AiProviderStrategy {
     double? temperature,
     double? topP,
     int? topK,
+    double? repetitionPenalty,
     int? maxTokens,
     bool enableGrounding = false,
     String? reasoningEffort,
@@ -76,6 +77,7 @@ class GeminiStrategy extends AiProviderStrategy {
       temperature: temperature,
       topP: topP,
       topK: topK,
+      // Gemini has no repetition_penalty field; the value is dropped here.
       maxTokens: maxTokens,
       includeUsage: includeUsage,
       depthMessages: depthMessages,

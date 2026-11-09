@@ -165,6 +165,8 @@ class ConfigPackService {
     if (tp != null) gen['topP'] = tp;
     final tk = _num(map, 'top_k');
     if (tk != null) gen['topK'] = tk.toInt();
+    final rp = _num(map, 'rep_pen') ?? _num(map, 'repetition_penalty');
+    if (rp != null) gen['repetitionPenalty'] = rp;
     final mt = _num(map, 'max_tokens') ?? _num(map, 'max_response_tokens');
     if (mt != null) gen['maxOutputTokens'] = mt.toInt();
 

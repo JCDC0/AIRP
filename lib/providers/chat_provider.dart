@@ -165,6 +165,15 @@ class ChatProvider extends ChangeNotifier {
         enabled: _settings?.enableServiceTier ?? false,
         stored: _settings?.serviceTier ?? ChatDefaults.serviceTier,
       );
+  /// The `repetition_penalty` to send, or null to send no field. Null at the
+  /// neutral 1.0 as well, so a provider that has no such parameter keeps its
+  /// own default instead of being handed a no-op field it may reject.
+  double? get activeRepetitionPenalty {
+    if (_settings?.enableGenerationSettings != true) return null;
+    final value = _settings!.repetitionPenalty;
+    return value == ChatDefaults.repetitionPenalty ? null : value;
+  }
+
   String get openAiCompatibleEndpoint => _openAiCompatibleEndpoint;
   String get ollamaEndpoint => _ollamaEndpoint;
   Set<AiProvider> get starredProviders => _starredProviders;
@@ -907,6 +916,7 @@ class ChatProvider extends ChangeNotifier {
               ? _settings!.temperature
               : null,
           topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
+          repetitionPenalty: activeRepetitionPenalty,
           maxTokens: _settings!.enableMaxOutputTokens
               ? _settings!.maxOutputTokens
               : null,
@@ -941,6 +951,7 @@ class ChatProvider extends ChangeNotifier {
               topK: _settings!.enableGenerationSettings
                   ? _settings!.topK
                   : null,
+              repetitionPenalty: activeRepetitionPenalty,
               maxTokens: _settings!.enableMaxOutputTokens
                   ? _settings!.maxOutputTokens
                   : null,
@@ -1499,6 +1510,7 @@ class ChatProvider extends ChangeNotifier {
                 : null,
             topP: _settings!.enableGenerationSettings ? _settings!.topP : null,
             topK: _settings!.enableGenerationSettings ? _settings!.topK : null,
+            repetitionPenalty: activeRepetitionPenalty,
             maxTokens: _settings!.enableMaxOutputTokens
                 ? _settings!.maxOutputTokens
                 : null,
@@ -2457,6 +2469,7 @@ class ChatProvider extends ChangeNotifier {
         topP: _settings?.enableGenerationSettings == true
             ? _settings!.topP
             : null,
+        repetitionPenalty: activeRepetitionPenalty,
         maxTokens: _settings?.enableMaxOutputTokens == true
             ? _settings!.maxOutputTokens
             : null,

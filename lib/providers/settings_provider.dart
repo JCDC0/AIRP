@@ -10,6 +10,7 @@ class SettingsProvider extends ChangeNotifier {
   double _temperature = ChatDefaults.temperature;
   double _topP = ChatDefaults.topP;
   int _topK = ChatDefaults.topK;
+  double _repetitionPenalty = ChatDefaults.repetitionPenalty;
   int _maxOutputTokens = ChatDefaults.maxOutputTokens;
   int _historyLimit = ChatDefaults.historyLimit;
   bool _enableGrounding = false;
@@ -62,6 +63,10 @@ class SettingsProvider extends ChangeNotifier {
   double get temperature => _temperature;
   double get topP => _topP;
   int get topK => _topK;
+
+  /// 1.0 is neutral. [ChatProvider.activeRepetitionPenalty] omits the field at
+  /// that value so the provider's own default stands.
+  double get repetitionPenalty => _repetitionPenalty;
   int get maxOutputTokens => _maxOutputTokens;
   int get historyLimit => _historyLimit;
   bool get enableGrounding => _enableGrounding;
@@ -112,6 +117,8 @@ class SettingsProvider extends ChangeNotifier {
         prefs.getDouble('airp_temperature') ?? ChatDefaults.temperature;
     _topP = prefs.getDouble('airp_top_p') ?? ChatDefaults.topP;
     _topK = prefs.getInt('airp_top_k') ?? ChatDefaults.topK;
+    _repetitionPenalty = prefs.getDouble('airp_repetition_penalty') ??
+        ChatDefaults.repetitionPenalty;
     _maxOutputTokens =
         prefs.getInt('airp_max_output_tokens') ?? ChatDefaults.maxOutputTokens;
     _historyLimit =
@@ -165,6 +172,7 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setDouble('airp_temperature', _temperature);
     await prefs.setDouble('airp_top_p', _topP);
     await prefs.setInt('airp_top_k', _topK);
+    await prefs.setDouble('airp_repetition_penalty', _repetitionPenalty);
     await prefs.setInt('airp_max_output_tokens', _maxOutputTokens);
     await prefs.setInt('airp_history_limit', _historyLimit);
 
@@ -211,6 +219,11 @@ class SettingsProvider extends ChangeNotifier {
 
   void setTopK(int val) {
     _topK = val;
+    notifyListeners();
+  }
+
+  void setRepetitionPenalty(double val) {
+    _repetitionPenalty = val;
     notifyListeners();
   }
 
@@ -323,6 +336,7 @@ class SettingsProvider extends ChangeNotifier {
         'temperature': _temperature,
         'topP': _topP,
         'topK': _topK,
+        'repetitionPenalty': _repetitionPenalty,
         'maxOutputTokens': _maxOutputTokens,
         'historyLimit': _historyLimit,
         'reasoningEffort': _reasoningEffort,
@@ -358,6 +372,8 @@ class SettingsProvider extends ChangeNotifier {
     _temperature = (gen['temperature'] as num?)?.toDouble() ?? _temperature;
     _topP = (gen['topP'] as num?)?.toDouble() ?? _topP;
     _topK = (gen['topK'] as num?)?.toInt() ?? _topK;
+    _repetitionPenalty =
+        (gen['repetitionPenalty'] as num?)?.toDouble() ?? _repetitionPenalty;
     _maxOutputTokens =
         (gen['maxOutputTokens'] as num?)?.toInt() ?? _maxOutputTokens;
     _historyLimit = (gen['historyLimit'] as num?)?.toInt() ?? _historyLimit;

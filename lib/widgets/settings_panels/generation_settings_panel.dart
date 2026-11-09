@@ -347,6 +347,32 @@ class _GenerationSettingsPanelState extends State<GenerationSettingsPanel> {
                     settingsProvider.markDirty();
                   },
                 ),
+
+                SettingsSlider(
+                  title: "Repetition Penalty",
+                  value: settingsProvider.repetitionPenalty,
+                  min: 1.0,
+                  max: 2.0,
+                  divisions: 20,
+                  activeColor: Colors.tealAccent,
+                  fontSize: scaleProvider.systemFontSize,
+                  onChanged: (val) {
+                    settingsProvider.setRepetitionPenalty(val);
+                    settingsProvider.markDirty();
+                  },
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "1.00 sends nothing and keeps the provider default. "
+                    "Gemini has no such parameter and ignores it.",
+                    style: TextStyle(
+                      fontSize: scaleProvider.systemFontSize * 0.8,
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

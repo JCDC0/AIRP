@@ -219,6 +219,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // Core Components opens collapsed, and Stream Replies lives inside it.
+    await tester.tap(find.text('Core Components'));
+    await tester.pump(const Duration(milliseconds: 300));
     final settings =
         tester.element(find.byType(SettingsDrawer)).read<SettingsProvider>();
     final streamSwitch = find.widgetWithText(SwitchListTile, 'Stream Replies');

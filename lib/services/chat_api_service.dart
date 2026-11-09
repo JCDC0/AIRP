@@ -464,6 +464,7 @@ class ChatApiService {
     double? temperature,
     double? topP,
     int? topK,
+    double? repetitionPenalty,
     int? maxTokens,
     bool enableGrounding = false,
     String? reasoningEffort,
@@ -600,6 +601,9 @@ class ChatApiService {
     if (temperature != null) bodyMap["temperature"] = temperature;
     if (topP != null) bodyMap["top_p"] = topP;
     if (topK != null) bodyMap["top_k"] = topK;
+    if (repetitionPenalty != null) {
+      bodyMap["repetition_penalty"] = repetitionPenalty;
+    }
     if (maxTokens != null) bodyMap["max_tokens"] = maxTokens;
     if (includeUsage && stream) {
       bodyMap["stream_options"] = {"include_usage": true};
@@ -910,6 +914,7 @@ class ChatApiService {
     List<Map<String, dynamic>>? extraMessages,
     double? temperature,
     double? topP,
+    double? repetitionPenalty,
     int? maxTokens,
     String? reasoningEffort,
     ThinkingFormat thinkingFormat = ThinkingFormat.reasoningEffort,
@@ -955,6 +960,9 @@ class ChatApiService {
 
     if (temperature != null) bodyMap['temperature'] = temperature;
     if (topP != null) bodyMap['top_p'] = topP;
+    if (repetitionPenalty != null) {
+      bodyMap['repetition_penalty'] = repetitionPenalty;
+    }
     if (maxTokens != null) bodyMap['max_tokens'] = maxTokens;
     if (serviceTier != null && serviceTier.isNotEmpty) {
       bodyMap['service_tier'] = serviceTier;
@@ -1075,6 +1083,7 @@ class ChatApiService {
     double? temperature,
     double? topP,
     int? topK,
+    double? repetitionPenalty,
     int? maxTokens,
     String? reasoningEffort,
     ThinkingFormat thinkingFormat = ThinkingFormat.reasoningEffort,
@@ -1118,6 +1127,9 @@ class ChatApiService {
     if (temperature != null) bodyMap['temperature'] = temperature;
     if (topP != null) bodyMap['top_p'] = topP;
     if (topK != null) bodyMap['top_k'] = topK;
+    if (repetitionPenalty != null) {
+      bodyMap['repetition_penalty'] = repetitionPenalty;
+    }
     if (maxTokens != null) bodyMap['max_tokens'] = maxTokens;
     if (includeUsage) bodyMap['stream_options'] = {'include_usage': true};
     if (serviceTier != null && serviceTier.isNotEmpty) {

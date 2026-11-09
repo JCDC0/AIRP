@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.8.3` (`pubspec.yaml` `0.8.3+23`). Target: `0.8.3` release.
+Current version: `0.8.3.5` (`pubspec.yaml` `0.8.3+24`). Target: `0.8.3` release.
 
 ## Project overview
 
@@ -40,7 +40,7 @@ Current version: `0.8.3` (`pubspec.yaml` `0.8.3+23`). Target: `0.8.3` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (447 tests, all passing)
+*   **Test:** `flutter test` (451 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -325,6 +325,41 @@ non-streaming round back in front of this â€” that is what made reasoning s
 streaming whenever web search was enabled. Gemini still uses non-streamed
 detection (`performGeminiFunctionDetection`), which splits `thought: true` parts
 out via `splitGeminiThoughtParts`.
+
+## Generation parameters
+
+The Generation Parameters and Web Search drawer sections carry a trailing
+`Switch` on their `ExpansionTile`, as Main System Prompt and Character Card do.
+Neither introduces state of its own:
+
+*   Generation Parameters binds `SettingsProvider.enableGenerationSettings`, the
+    same flag the panel's inner switch uses, so the two mirror each other. Off,
+    temperature, Top P, Top K and the repetition penalty are all omitted from
+    the request and the selected provider's own defaults apply. Max Output
+    Tokens has its own flag and is NOT gated by it.
+*   Web Search binds `enableGrounding`, the same flag as the web search button
+    above the chat input, so the drawer and that button are one control. It is
+    disabled, with `ChatProvider.webSearchUnsupportedReason` as the subtitle,
+    wherever the provider cannot search. Both switches persist through
+    `SettingsProvider.saveSettings` immediately rather than waiting on the save
+    button, because the chat-input button does the same and a deferred write
+    would let the two disagree.
+
+Core Components opens collapsed. Three widget tests reach controls inside it
+(`service_tier_test.dart`, `stream_replies_test.dart`,
+`core_components_drawer_test.dart`) and tap the section open first.
+
+**Repetition penalty.** `SettingsProvider.repetitionPenalty`
+(`airp_repetition_penalty`, `generation.repetitionPenalty`, SillyTavern
+`rep_pen`) is sent as a top-level `repetition_penalty`.
+`ChatProvider.activeRepetitionPenalty` is the single decision and feeds all four
+OpenAI-compatible builders: the plain stream, both web search detection paths,
+and the summarize request. It returns null, meaning no field, when Generation
+Parameters is off AND at the neutral `1.0`, so a server that does not know the
+parameter is never handed a no-op field it might reject. Gemini has no such
+field and drops the value; adding one must not map it onto Gemini's
+`frequencyPenalty`, which is additive on a different scale. Guarded by
+`test/repetition_penalty_test.dart`.
 
 ## Service tiers
 
