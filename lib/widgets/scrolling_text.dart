@@ -38,7 +38,20 @@ class _ScrollingTextState extends State<ScrollingText>
   );
 
   @override
+  void initState() {
+    super.initState();
+    PaintingBinding.instance.systemFonts.addListener(_fontsChanged);
+  }
+
+  /// A Google font arrives after first use, and LayoutBuilder does not rerun
+  /// on its own when it does, so the title would keep its fallback width.
+  void _fontsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    PaintingBinding.instance.systemFonts.removeListener(_fontsChanged);
     _controller.dispose();
     super.dispose();
   }
@@ -59,7 +72,12 @@ class _ScrollingTextState extends State<ScrollingText>
 
   @override
   Widget build(BuildContext context) {
-    final style = widget.style ?? DefaultTextStyle.of(context).style;
+    // Measure exactly what Text will draw. The app font reaches Text through
+    // the theme's DefaultTextStyle, and the system text size through
+    // MediaQuery; measuring the bare style left both out, so with a wider
+    // font or larger text the slide stopped short of the title's end.
+    final style = DefaultTextStyle.of(context).style.merge(widget.style);
+    final textScaler = MediaQuery.textScalerOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         if (!constraints.maxWidth.isFinite) {
@@ -70,8 +88,12 @@ class _ScrollingTextState extends State<ScrollingText>
           text: TextSpan(text: widget.text, style: style),
           maxLines: 1,
           textDirection: Directionality.of(context),
+          textScaler: textScaler,
         )..layout();
-        final overflow = painter.width - constraints.maxWidth;
+        final textWidth = painter.width;
+        final textHeight = painter.height;
+        painter.dispose();
+        final overflow = textWidth - constraints.maxWidth;
 
         // Starting a controller during build would mark the tree dirty while
         // it is being built.
@@ -94,7 +116,7 @@ class _ScrollingTextState extends State<ScrollingText>
         return ClipRect(
           child: SizedBox(
             width: double.infinity,
-            height: painter.height,
+            height: textHeight,
             child: AnimatedBuilder(
               animation: _travel,
               builder: (context, child) => Stack(
@@ -103,8 +125,8 @@ class _ScrollingTextState extends State<ScrollingText>
                   Positioned(
                     left: -overflow * _travel.value,
                     top: 0,
-                    width: painter.width,
-                    height: painter.height,
+                    width: textWidth,
+                    height: textHeight,
                     child: child!,
                   ),
                 ],

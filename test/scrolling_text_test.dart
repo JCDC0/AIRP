@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:airp/widgets/scrolling_text.dart';
@@ -40,6 +41,47 @@ void main() {
         matching: find.byType(ClipRect),
       ),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('the slide reaches the end under the theme font and text scale', (
+    tester,
+  ) async {
+    const long =
+        'A conversation title far too long to fit inside its box, twice over';
+
+    // The app font arrives through DefaultTextStyle and the system text size
+    // through MediaQuery. Measuring the bare style left both out, so the box
+    // was narrower than what Text drew and the end of the title was cut off.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 120,
+                child: DefaultTextStyle(
+                  style: const TextStyle(letterSpacing: 3),
+                  child: ScrollingText(
+                    long,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final paragraph = tester.renderObject<RenderParagraph>(find.text(long));
+    expect(
+      paragraph.size.width,
+      greaterThanOrEqualTo(
+        paragraph.getMaxIntrinsicWidth(double.infinity) - 0.5,
+      ),
     );
   });
 

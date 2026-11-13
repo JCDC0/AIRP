@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.8.3.6` (`pubspec.yaml` `0.8.3+25`). Target: `0.8.3` release.
+Current version: `0.8.3.7` (`pubspec.yaml` `0.8.3+26`). Target: `0.8.3` release.
 
 ## Project overview
 
@@ -40,7 +40,7 @@ Current version: `0.8.3.6` (`pubspec.yaml` `0.8.3+25`). Target: `0.8.3` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (456 tests, all passing)
+*   **Test:** `flutter test` (457 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -151,7 +151,12 @@ things that are not code defects, all seen on `3.47.4`:
     `maxWidth` and the `Text` inside it was built already truncated. Sliding
     that box moved the same visible words back and forth while the rest of the
     title was never in the tree at all. A `Positioned` inside a `Stack` is laid
-    out at the width it is given. Guarded by `test/scrolling_text_test.dart`.
+    out at the width it is given. That width must be measured with exactly
+    what `Text` draws: the style merged into `DefaultTextStyle` (the app font
+    arrives through the theme) and `MediaQuery.textScalerOf`. Measuring the
+    bare style made the box less than half the real width at 2x text, so the
+    slide still stopped short of the end. A Google font loads after first use,
+    so the widget also re-measures on `PaintingBinding.systemFonts`. Guarded by `test/scrolling_text_test.dart`.
 
 ## Providers
 
