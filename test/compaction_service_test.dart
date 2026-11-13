@@ -359,4 +359,54 @@ void main() {
       );
     });
   });
+
+  group('a non-empty document asks for a rewrite, not an append', () {
+    test('the revise notice appears once the document has content', () {
+      final doc = CompactDocument()
+        ..applyEdit(heading: 'Key Events', content: 'Day 1. Arrived.');
+
+      final prompt = CompactionService.buildRulePrompt(
+        rule: CompactRule(id: 'a', name: 'Key Events', prompt: 'chronology'),
+        document: doc,
+        transcript: 'User: hi.',
+      );
+
+      // A chronicle run seeds the document from the standing chronicle and
+      // then shows only the new messages, so without this the model appends
+      // to a section that already looks finished and nothing is ever
+      // condensed.
+      expect(prompt.contains(CompactionService.reviseNotice), isTrue);
+    });
+
+    test('it is absent for the first rule of a fresh document', () {
+      final prompt = CompactionService.buildRulePrompt(
+        rule: CompactRule(id: 'a', name: 'Key Events', prompt: 'chronology'),
+        document: CompactDocument(),
+        transcript: 'User: hi.',
+      );
+
+      expect(prompt.contains(CompactionService.reviseNotice), isFalse);
+      expect(prompt.contains('empty, you are the first rule'), isTrue);
+    });
+
+    test('the notice sits between the document and the transcript', () {
+      final doc = CompactDocument()
+        ..applyEdit(heading: 'Key Events', content: 'Day 1.');
+
+      final prompt = CompactionService.buildRulePrompt(
+        rule: CompactRule(id: 'a', name: 'Key Events', prompt: 'chronology'),
+        document: doc,
+        transcript: 'User: hi.',
+      );
+
+      expect(
+        prompt.indexOf(CompactionService.reviseNotice),
+        greaterThan(prompt.indexOf('DOCUMENT SO FAR')),
+      );
+      expect(
+        prompt.indexOf(CompactionService.reviseNotice),
+        lessThan(prompt.indexOf('YOUR INSTRUCTION')),
+      );
+    });
+  });
 }

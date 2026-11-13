@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.8.3.5` (`pubspec.yaml` `0.8.3+24`). Target: `0.8.3` release.
+Current version: `0.8.3.6` (`pubspec.yaml` `0.8.3+25`). Target: `0.8.3` release.
 
 ## Project overview
 
@@ -40,7 +40,7 @@ Current version: `0.8.3.5` (`pubspec.yaml` `0.8.3+24`). Target: `0.8.3` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (451 tests, all passing)
+*   **Test:** `flutter test` (456 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -145,7 +145,13 @@ things that are not code defects, all seen on `3.47.4`:
     (`lib/widgets/scrolling_text.dart`) is the same hazard by design: a title
     too long for its box scrolls forever. It renders a plain `Text` whenever
     the string fits or the constraints are unbounded, so only an actually
-    overflowing title animates.
+    overflowing title animates. The overflowing case must be LAID OUT at the
+    string's full width, not merely painted at an offset: `ClipRect` passes
+    the incoming constraints through, so a `SizedBox` was clamped back to
+    `maxWidth` and the `Text` inside it was built already truncated. Sliding
+    that box moved the same visible words back and forth while the rest of the
+    title was never in the tree at all. A `Positioned` inside a `Stack` is laid
+    out at the width it is given. Guarded by `test/scrolling_text_test.dart`.
 
 ## Providers
 
@@ -435,6 +441,16 @@ there is one entry point.
     for another full copy of the transcript. AIRP sends no `cache_control`
     markers, so prefix order is the whole mechanism. Guarded by
     `test/compaction_service_test.dart`.
+*   **A non-empty document gets `CompactionService.reviseNotice`**, between
+    the document and the transcript. A chronicle run seeds the document from
+    the standing chronicle and then hands the model a transcript of only the
+    NEW messages, because `_buildTranscript` excludes the chronicle itself.
+    Without that notice the obvious move is to append the new events to a
+    section that already reads as finished, so the chronicle grew on every run
+    and nothing already in it was revisited or condensed, which is the whole
+    point of seeding. The system instruction and the tool description both say
+    replace is the norm and append is only for a section another rule owns.
+    Guarded by `test/compaction_service_test.dart`.
 *   A rule that answers in prose rather than calling the tool is filed under
     its own name, not dropped. Do not make a tool call mandatory: three of the
     eight providers point at endpoints AIRP cannot introspect.
@@ -481,11 +497,17 @@ keyword recognition over the current input (see "Lore recognition").
     builder strips think blocks, so it would render and reach the model as
     nothing.
 *   The chronicle list in the conversation drawer is DERIVED from the saved
-    sessions (`availableChronicles`), not kept in a store of its own. A
-    chronicle persists inside the conversation that produced it and each
-    compaction copies it forward, so the generations are the history. This is
-    why chronicles travel in `.airp` exports for free: they ride inside the
+    sessions (`availableChronicles`), not kept in a store of its own, so each
+    saved conversation holding one IS a generation. This is why chronicles
+    travel in `.airp` exports for free: they ride inside the
     already-whitelisted `sessions` key.
+*   **A chronicle run leaves the source conversation untouched.** The new
+    block goes only into the branch. `compactWithRules` used to overwrite the
+    chronicle in the source in place and save it, which destroyed the
+    generation the new one was built from: with the list derived from saved
+    conversations, that previous generation existed nowhere else and there was
+    no way back to it. The plain compact mode still appends its block to the
+    source, because there is no earlier block there to lose.
 *   `mergeSessionsIntoChronicle` merges several conversations, preferring each
     one's existing compact blocks and falling back to summarising its full
     transcript. `sessionHasCompactBlock` recognises both `isChronicle` and the
@@ -525,6 +547,17 @@ answers are full of links. Do not remove those getters believing the elements
 are unused: the Summarize drawer's default voice-samples prompt asks the model
 for "Markdown headings per character, with a bulleted list of samples below each
 heading", so first-party output depends on headings and lists painting.
+
+**Bloom shadows come from one helper per widget, never copied per style.**
+`MessageBubbleMarkdown` builds a local `glow(color, blurRadius)` and every
+entry in its `MarkdownStyleSheet` goes through it; `SettingsDrawer._sectionTitle`
+does the same for its nine section headings. Both were hand-written per
+element before, and both drifted: `em`, `strong`, `del`, `listBullet` and
+`blockquote` never glowed while `p`, `a` and the headings did, and only two of
+nine settings headings carried the shadow. Roleplay prose is mostly `*actions*`
+and `**emphasis**`, so the markdown gap showed up in precisely the text the
+effect exists for. Each markdown element blooms in its own colour, so a
+user-tinted bold glows to match instead of haloing in the paragraph colour.
 
 `ThemeProvider.updateMarkdownColor` ignores an unknown type rather than
 throwing, so a config pack written while the ten retired pickers existed still

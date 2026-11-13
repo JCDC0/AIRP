@@ -30,6 +30,39 @@ class SettingsDrawer extends StatelessWidget {
 
   const SettingsDrawer({super.key, this.resetVersion = 0});
 
+  /// One style for every section title in this drawer.
+  ///
+  /// These nine titles were hand-styled and only two carried the bloom
+  /// shadow, so switching Bloom on lit a couple of headings and left the rest
+  /// flat. [emphasised] keeps the louder one-off glow that marks Layout &
+  /// Scaling as unseen.
+  Text _sectionTitle(
+    String label, {
+    required ThemeProvider theme,
+    required VfxProvider vfx,
+    required ScaleProvider scale,
+    Color? color,
+    bool emphasised = false,
+  }) {
+    final lit = emphasised || vfx.enableBloom;
+    return Text(
+      label,
+      style: TextStyle(
+        color: color ?? theme.textColor,
+        fontWeight: FontWeight.bold,
+        fontSize: scale.systemFontSize,
+        shadows: lit
+            ? [
+                Shadow(
+                  color: theme.bloomGlowColor,
+                  blurRadius: emphasised ? 15 : 10,
+                ),
+              ]
+            : const <Shadow>[],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -46,7 +79,8 @@ class SettingsDrawer extends StatelessWidget {
       color: themeProvider.scaffoldBackgroundColor,
       child: SizedBox(
         width:
-            scaleProvider.drawerWidth + (scaleProvider.systemFontSize - 12) * 10,
+            scaleProvider.drawerWidth +
+            (scaleProvider.systemFontSize - 12) * 10,
         height: double.infinity,
         child: Stack(
           children: [
@@ -59,261 +93,223 @@ class SettingsDrawer extends StatelessWidget {
 
                   const UpdateSettingsPanel(),
 
-              ExpansionTile(
-                key: Key('core_components_$resetVersion'),
-                initiallyExpanded: false,
-                title: Text(
-                  "Core Components",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
+                  ExpansionTile(
+                    key: Key('core_components_$resetVersion'),
+                    initiallyExpanded: false,
+                    title: _sectionTitle(
+                      "Core Components",
+                      theme: themeProvider,
+                      vfx: vfxProvider,
+                      scale: scaleProvider,
+                    ),
+                    subtitle: Text(
+                      chatProvider.currentProvider.displayName,
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [
+                      const ApiSettingsPanel(),
+                      const Divider(),
+                      const ModelSettingsPanel(),
+                    ],
                   ),
-                ),
-                subtitle: Text(
-                  chatProvider.currentProvider.displayName,
-                  style: const TextStyle(color: Colors.grey, fontSize: 11),
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [
-                  const ApiSettingsPanel(),
-                  const Divider(),
-                  const ModelSettingsPanel(),
-                ],
-              ),
 
-              ExpansionTile(
-                key: Key('system_prompt_$resetVersion'),
-                initiallyExpanded: false,
-                title: Text(
-                  "Main System Prompt",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
-                    shadows: vfxProvider.enableBloom
-                        ? [
-                            Shadow(
-                              color: themeProvider.bloomGlowColor,
-                              blurRadius: 10,
-                            ),
-                          ]
-                        : [],
+                  ExpansionTile(
+                    key: Key('system_prompt_$resetVersion'),
+                    initiallyExpanded: false,
+                    title: _sectionTitle(
+                      "Main System Prompt",
+                      theme: themeProvider,
+                      vfx: vfxProvider,
+                      scale: scaleProvider,
+                    ),
+                    trailing: Switch(
+                      value: settingsProvider.enableSystemPrompt,
+                      activeThumbColor: themeProvider.textColor,
+                      onChanged: (val) {
+                        settingsProvider.setEnableSystemPrompt(val);
+                        chatProvider.saveSettings();
+                      },
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const SystemPromptPanel()],
                   ),
-                ),
-                trailing: Switch(
-                  value: settingsProvider.enableSystemPrompt,
-                  activeThumbColor: themeProvider.textColor,
-                  onChanged: (val) {
-                    settingsProvider.setEnableSystemPrompt(val);
-                    chatProvider.saveSettings();
-                  },
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [const SystemPromptPanel()],
-              ),
 
-              ExpansionTile(
-                key: Key('generation_settings_$resetVersion'),
-                initiallyExpanded: false,
-                title: Text(
-                  "Generation Parameters",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
+                  ExpansionTile(
+                    key: Key('generation_settings_$resetVersion'),
+                    initiallyExpanded: false,
+                    title: _sectionTitle(
+                      "Generation Parameters",
+                      theme: themeProvider,
+                      vfx: vfxProvider,
+                      scale: scaleProvider,
+                    ),
+                    subtitle: Text(
+                      settingsProvider.enableGenerationSettings
+                          ? 'Temperature · Top P · Top K · Repetition'
+                          : 'Off: provider defaults',
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                    trailing: Switch(
+                      value: settingsProvider.enableGenerationSettings,
+                      activeThumbColor: themeProvider.textColor,
+                      onChanged: (val) {
+                        settingsProvider.setEnableGenerationSettings(val);
+                        settingsProvider.saveSettings(showConfirmation: false);
+                      },
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const GenerationSettingsPanel()],
                   ),
-                ),
-                subtitle: Text(
-                  settingsProvider.enableGenerationSettings
-                      ? 'Temperature · Top P · Top K · Repetition'
-                      : 'Off: provider defaults',
-                  style: const TextStyle(color: Colors.grey, fontSize: 11),
-                ),
-                trailing: Switch(
-                  value: settingsProvider.enableGenerationSettings,
-                  activeThumbColor: themeProvider.textColor,
-                  onChanged: (val) {
-                    settingsProvider.setEnableGenerationSettings(val);
-                    settingsProvider.saveSettings(showConfirmation: false);
-                  },
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [const GenerationSettingsPanel()],
-              ),
 
-              ExpansionTile(
-                key: Key('web_search_settings_$resetVersion'),
-                initiallyExpanded: false,
-                title: Text(
-                  "Web Search",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
+                  ExpansionTile(
+                    key: Key('web_search_settings_$resetVersion'),
+                    initiallyExpanded: false,
+                    title: _sectionTitle(
+                      "Web Search",
+                      theme: themeProvider,
+                      vfx: vfxProvider,
+                      scale: scaleProvider,
+                    ),
+                    subtitle: Text(
+                      chatProvider.webSearchUnsupportedReason() ??
+                          (settingsProvider.enableGrounding
+                              ? 'On: the model may search'
+                              : 'Off: no search tool offered'),
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                    // Same flag as the web search button above the chat input, so
+                    // the two stay in step.
+                    trailing: Switch(
+                      value: settingsProvider.enableGrounding,
+                      activeThumbColor: themeProvider.textColor,
+                      onChanged:
+                          chatProvider.webSearchUnsupportedReason() == null
+                          ? (val) {
+                              settingsProvider.setEnableGrounding(val);
+                              settingsProvider.saveSettings(
+                                showConfirmation: false,
+                              );
+                            }
+                          : null,
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const WebSearchSettingsPanel()],
                   ),
-                ),
-                subtitle: Text(
-                  chatProvider.webSearchUnsupportedReason() ??
-                      (settingsProvider.enableGrounding
-                          ? 'On: the model may search'
-                          : 'Off: no search tool offered'),
-                  style: const TextStyle(color: Colors.grey, fontSize: 11),
-                ),
-                // Same flag as the web search button above the chat input, so
-                // the two stay in step.
-                trailing: Switch(
-                  value: settingsProvider.enableGrounding,
-                  activeThumbColor: themeProvider.textColor,
-                  onChanged: chatProvider.webSearchUnsupportedReason() == null
-                      ? (val) {
-                          settingsProvider.setEnableGrounding(val);
-                          settingsProvider.saveSettings(
-                            showConfirmation: false,
-                          );
-                        }
-                      : null,
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [const WebSearchSettingsPanel()],
-              ),
 
-              ExpansionTile(
-                key: Key('character_card_$resetVersion'),
-                initiallyExpanded: chatProvider.characterCard.name.isNotEmpty,
-                title: Text(
-                  "Character Card",
-                  style: TextStyle(
-                    color: Colors.orangeAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
+                  ExpansionTile(
+                    key: Key('character_card_$resetVersion'),
+                    initiallyExpanded:
+                        chatProvider.characterCard.name.isNotEmpty,
+                    title: _sectionTitle(
+                      "Character Card",
+                      theme: themeProvider,
+                      vfx: vfxProvider,
+                      scale: scaleProvider,
+                      color: Colors.orangeAccent,
+                    ),
+                    subtitle: Text(
+                      chatProvider.characterCard.name.isNotEmpty
+                          ? "Active: ${chatProvider.characterCard.name}"
+                          : "Import V1/V2 PNG or JSON cards",
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    trailing: Switch(
+                      value: settingsProvider.enableCharacterCard,
+                      activeThumbColor: Colors.orangeAccent,
+                      onChanged: (val) {
+                        settingsProvider.setEnableCharacterCard(val);
+                        chatProvider.saveSettings();
+                      },
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const CharacterCardPanel()],
                   ),
-                ),
-                subtitle: Text(
-                  chatProvider.characterCard.name.isNotEmpty
-                      ? "Active: ${chatProvider.characterCard.name}"
-                      : "Import V1/V2 PNG or JSON cards",
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                trailing: Switch(
-                  value: settingsProvider.enableCharacterCard,
-                  activeThumbColor: Colors.orangeAccent,
-                  onChanged: (val) {
-                    settingsProvider.setEnableCharacterCard(val);
-                    chatProvider.saveSettings();
-                  },
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [const CharacterCardPanel()],
-              ),
 
-              ExpansionTile(
-                key: Key('text_designer_$resetVersion'),
-                initiallyExpanded: false,
-                title: Text(
-                  "Text Designer",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
-                    shadows: vfxProvider.enableBloom
-                        ? [
-                            Shadow(
-                              color: themeProvider.bloomGlowColor,
-                              blurRadius: 10,
-                            ),
-                          ]
-                        : [],
+                  ExpansionTile(
+                    key: Key('text_designer_$resetVersion'),
+                    initiallyExpanded: false,
+                    title: _sectionTitle(
+                      "Text Designer",
+                      theme: themeProvider,
+                      vfx: vfxProvider,
+                      scale: scaleProvider,
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const TextDesignerPanel()],
                   ),
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [const TextDesignerPanel()],
-              ),
 
-              ExpansionTile(
-                key: Key('scale_settings_$resetVersion'),
-                initiallyExpanded: false,
-                onExpansionChanged: (expanded) {
-                  if (expanded) {
-                    scaleProvider.markSettingsAsSeen();
-                  }
-                },
-                title: Text(
-                  "Layout & Scaling",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
-                    shadows: scaleProvider.shouldGlow
-                        ? [
-                            Shadow(
-                              color: themeProvider.bloomGlowColor,
-                              blurRadius: 15,
-                            ),
-                          ]
+                  ExpansionTile(
+                    key: Key('scale_settings_$resetVersion'),
+                    initiallyExpanded: false,
+                    onExpansionChanged: (expanded) {
+                      if (expanded) {
+                        scaleProvider.markSettingsAsSeen();
+                      }
+                    },
+                    title: _sectionTitle(
+                      "Layout & Scaling",
+                      theme: themeProvider,
+                      vfx: vfxProvider,
+                      scale: scaleProvider,
+                      emphasised: scaleProvider.shouldGlow,
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    leading: scaleProvider.shouldGlow
+                        ? Icon(
+                            Icons.new_releases,
+                            color: themeProvider.textColor,
+                            shadows: [
+                              Shadow(
+                                color: themeProvider.bloomGlowColor,
+                                blurRadius: 10,
+                              ),
+                            ],
+                          )
                         : null,
+                    children: [const ScaleSettingsPanel()],
                   ),
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                leading: scaleProvider.shouldGlow
-                    ? Icon(
-                        Icons.new_releases,
-                        color: themeProvider.textColor,
-                        shadows: [
-                          Shadow(
-                            color: themeProvider.bloomGlowColor,
-                            blurRadius: 10,
-                          ),
-                        ],
-                      )
-                    : null,
-                children: [const ScaleSettingsPanel()],
-              ),
 
-              ExpansionTile(
-                key: Key('visual_settings_$resetVersion'),
-                initiallyExpanded: false,
-                title: Text(
-                  "Visuals & Atmosphere",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
+                  ExpansionTile(
+                    key: Key('visual_settings_$resetVersion'),
+                    initiallyExpanded: false,
+                    title: _sectionTitle(
+                      "Visuals & Atmosphere",
+                      theme: themeProvider,
+                      vfx: vfxProvider,
+                      scale: scaleProvider,
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const VisualSettingsPanel()],
                   ),
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [const VisualSettingsPanel()],
-              ),
 
-              ExpansionTile(
-                key: Key('library_settings_$resetVersion'),
-                initiallyExpanded: false,
-                title: Text(
-                  "Settings Library",
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleProvider.systemFontSize,
+                  ExpansionTile(
+                    key: Key('library_settings_$resetVersion'),
+                    initiallyExpanded: false,
+                    title: _sectionTitle(
+                      "Settings Library",
+                      theme: themeProvider,
+                      vfx: vfxProvider,
+                      scale: scaleProvider,
+                    ),
+                    subtitle: const Text(
+                      'Config Packs · Snapshots',
+                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                    collapsedIconColor: themeProvider.textColor,
+                    iconColor: themeProvider.textColor,
+                    children: [const SettingsLibraryPanel()],
                   ),
-                ),
-                subtitle: const Text(
-                  'Config Packs · Snapshots',
-                  style: TextStyle(color: Colors.grey, fontSize: 11),
-                ),
-                collapsedIconColor: themeProvider.textColor,
-                iconColor: themeProvider.textColor,
-                children: [const SettingsLibraryPanel()],
-              ),
 
-              const SizedBox(height: 80),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
@@ -348,10 +344,7 @@ class SettingsDrawer extends StatelessWidget {
                     );
                   },
                   elevation: 10,
-                  child: Icon(
-                    Icons.save,
-                    size: 24 * scaleProvider.iconScale,
-                  ),
+                  child: Icon(Icons.save, size: 24 * scaleProvider.iconScale),
                 ),
               ),
             ),

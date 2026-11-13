@@ -165,6 +165,7 @@ class ChatProvider extends ChangeNotifier {
         enabled: _settings?.enableServiceTier ?? false,
         stored: _settings?.serviceTier ?? ChatDefaults.serviceTier,
       );
+
   /// The `repetition_penalty` to send, or null to send no field. Null at the
   /// neutral 1.0 as well, so a provider that has no such parameter keeps its
   /// own default instead of being handed a no-op field it may reject.
@@ -2155,23 +2156,24 @@ class ChatProvider extends ChangeNotifier {
         isChronicle: asChronicle,
       );
 
+      // A chronicle run leaves the source conversation exactly as it was.
+      // It used to overwrite the chronicle there in place, which destroyed the
+      // generation the new one was built from: the drawer's chronicle list is
+      // derived from the saved conversations, so that previous generation
+      // existed nowhere else and there was no way back to it. The branch is
+      // where the new chronicle lives.
+      final List<ChatMessage> blocks;
       if (asChronicle) {
-        final at = _messages.indexWhere((m) => m.isChronicle);
-        if (at >= 0) {
-          _messages[at] = block;
-        } else {
-          _messages.insert(0, block);
-        }
+        blocks = collectTrailingMessages(_messages, n);
       } else {
         _messages.add(block);
+        notifyListeners();
+        await autoSaveCurrentSession();
+        blocks = collectTrailingMessages(
+          _messages.sublist(0, _messages.length - 1),
+          n,
+        );
       }
-      notifyListeners();
-      await autoSaveCurrentSession();
-
-      final blocks = collectTrailingMessages(
-        asChronicle ? _messages : _messages.sublist(0, _messages.length - 1),
-        n,
-      );
 
       _branchInto(
         [block.copyWith(clearContentNotifier: true), ...blocks],

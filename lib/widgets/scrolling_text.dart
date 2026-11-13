@@ -83,15 +83,32 @@ class _ScrollingTextState extends State<ScrollingText>
           return Text(widget.text, maxLines: 1, softWrap: false, style: style);
         }
 
+        // The text has to be LAID OUT at its full width, not merely painted
+        // at an offset. A SizedBox cannot do it: ClipRect passes the incoming
+        // constraints straight through, so the box was clamped back to
+        // maxWidth and the Text inside it was built already truncated. Sliding
+        // that box just moved the same clipped words back and forth and the
+        // rest of the title was never anywhere in the tree. A Positioned
+        // inside a Stack is laid out at the width it is given, whatever the
+        // parent allows.
         return ClipRect(
-          child: AnimatedBuilder(
-            animation: _travel,
-            builder: (context, child) => Transform.translate(
-              offset: Offset(-overflow * _travel.value, 0),
-              child: child,
-            ),
-            child: SizedBox(
-              width: painter.width,
+          child: SizedBox(
+            width: double.infinity,
+            height: painter.height,
+            child: AnimatedBuilder(
+              animation: _travel,
+              builder: (context, child) => Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    left: -overflow * _travel.value,
+                    top: 0,
+                    width: painter.width,
+                    height: painter.height,
+                    child: child!,
+                  ),
+                ],
+              ),
               child: Text(
                 widget.text,
                 maxLines: 1,

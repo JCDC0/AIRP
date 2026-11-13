@@ -31,12 +31,18 @@ class MessageBubbleMarkdown extends StatelessWidget {
   Widget build(BuildContext context) {
     if (text.trim().isEmpty) return const SizedBox.shrink();
 
+    // One source for the bloom shadow. Copying the ternary per element is why
+    // italic and bold never glowed while paragraphs, links and headings did,
+    // and roleplay prose is mostly *actions* and **emphasis**, so the gap
+    // showed in exactly the text the effect is for.
+    List<Shadow> glow(Color color, double blurRadius) => useBloom
+        ? [Shadow(color: color, blurRadius: blurRadius)]
+        : const <Shadow>[];
+
     final codeStyle = TextStyle(
       color: textColor,
       backgroundColor: themeProvider.containerFillColor,
-      shadows: useBloom
-          ? [Shadow(color: textColor.withValues(alpha: 0.9), blurRadius: 4)]
-          : [],
+      shadows: glow(textColor.withValues(alpha: 0.9), 4),
       fontFamily: 'monospace',
       fontSize: scaleProvider.chatFontSize - 2,
     );
@@ -62,80 +68,70 @@ class MessageBubbleMarkdown extends StatelessWidget {
           : const [],
       builders: {
         'code': CodeElementBuilder(context, codeStyle, themeProvider),
-        if (hasSearchQuery) 'search-hit': _SearchHitBuilder(
-          themeProvider: themeProvider,
-          scaleProvider: scaleProvider,
-          isCurrentMatch: isCurrentSearchMessage,
-        ),
+        if (hasSearchQuery)
+          'search-hit': _SearchHitBuilder(
+            themeProvider: themeProvider,
+            scaleProvider: scaleProvider,
+            isCurrentMatch: isCurrentSearchMessage,
+          ),
       },
       styleSheet: MarkdownStyleSheet(
         codeblockPadding: EdgeInsets.zero,
-        codeblockDecoration: const BoxDecoration(
-          color: Colors.transparent,
-        ),
+        codeblockDecoration: const BoxDecoration(color: Colors.transparent),
         p: TextStyle(
           color: themeProvider.markdownParagraphColor,
           fontSize: scaleProvider.chatFontSize,
-          shadows: useBloom
-              ? [
-                  Shadow(
-                    color: textColor.withValues(alpha: 0.9),
-                    blurRadius: 15,
-                  ),
-                ]
-              : [],
+          shadows: glow(textColor.withValues(alpha: 0.9), 15),
         ),
         a: TextStyle(
           color: themeProvider.markdownLinkColor,
           fontSize: scaleProvider.chatFontSize,
           decoration: TextDecoration.underline,
-          shadows: useBloom
-              ? [
-                  const Shadow(
-                    color: Colors.blueAccent,
-                    blurRadius: 8,
-                  ),
-                ]
-              : [],
+          shadows: glow(Colors.blueAccent, 8),
         ),
         code: codeStyle,
         h1: TextStyle(
           color: themeProvider.markdownStructureColor,
           fontSize: scaleProvider.chatFontSize + 8,
           fontWeight: FontWeight.bold,
-          shadows: useBloom
-              ? [Shadow(color: textColor, blurRadius: 10)]
-              : [],
+          shadows: glow(textColor, 10),
         ),
         h2: TextStyle(
           color: themeProvider.markdownStructureColor,
           fontSize: scaleProvider.chatFontSize + 6,
           fontWeight: FontWeight.bold,
-          shadows: useBloom
-              ? [Shadow(color: textColor, blurRadius: 10)]
-              : [],
+          shadows: glow(textColor, 10),
         ),
         h3: TextStyle(
           color: themeProvider.markdownStructureColor,
           fontSize: scaleProvider.chatFontSize + 4,
           fontWeight: FontWeight.bold,
-          shadows: useBloom
-              ? [Shadow(color: textColor, blurRadius: 10)]
-              : [],
+          shadows: glow(textColor, 10),
         ),
+        // Each blooms in its own colour, so a user-tinted bold glows to
+        // match rather than halo-ing in the paragraph colour.
         em: TextStyle(
           color: themeProvider.markdownItalicColor,
           fontStyle: FontStyle.italic,
+          shadows: glow(themeProvider.markdownItalicColor, 12),
         ),
         strong: TextStyle(
           color: themeProvider.markdownBoldColor,
           fontWeight: FontWeight.bold,
+          shadows: glow(themeProvider.markdownBoldColor, 12),
         ),
-        del: TextStyle(color: themeProvider.markdownStructureColor),
-        listBullet: TextStyle(color: themeProvider.markdownStructureColor),
+        del: TextStyle(
+          color: themeProvider.markdownStructureColor,
+          shadows: glow(themeProvider.markdownStructureColor, 10),
+        ),
+        listBullet: TextStyle(
+          color: themeProvider.markdownStructureColor,
+          shadows: glow(themeProvider.markdownStructureColor, 10),
+        ),
         blockquote: TextStyle(
           color: themeProvider.markdownBlockquoteColor,
           fontStyle: FontStyle.italic,
+          shadows: glow(themeProvider.markdownBlockquoteColor, 10),
         ),
         blockquoteDecoration: BoxDecoration(
           border: Border(
@@ -155,10 +151,7 @@ class MessageBubbleMarkdown extends StatelessWidget {
 /// Custom inline syntax for highlighting search terms in markdown.
 class _SearchHitSyntax extends md.InlineSyntax {
   _SearchHitSyntax(String query, {required bool isCurrentMatch})
-      : super(
-          RegExp.escape(query),
-          caseSensitive: false,
-        );
+    : super(RegExp.escape(query), caseSensitive: false);
 
   @override
   bool onMatch(md.InlineParser parser, Match match) {

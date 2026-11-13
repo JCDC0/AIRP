@@ -212,7 +212,8 @@ class CompactionService {
   static const String _toolDescription =
       'Edit the shared compaction document. Call this exactly once with the '
       'section you are responsible for. Use mode "replace" to write or rewrite '
-      'a section, "append" to add to what an earlier rule already wrote, and '
+      'a section, which is almost always the right choice; "append" only to '
+      'add to a section an earlier rule owns, never to extend your own; and '
       '"remove" to delete a section that the conversation has made obsolete. '
       'Write the section body as plain markdown prose, with no heading inside '
       'the content field.';
@@ -220,10 +221,29 @@ class CompactionService {
   static const String systemInstruction =
       'You maintain a single shared reference document that summarises a '
       'roleplay conversation. You are given the document as it stands and one '
-      'instruction describing the section you are responsible for. Make your '
-      'contribution by calling the edit_document tool exactly once. Record only '
-      'what the transcript establishes; invent nothing. Do not restate sections '
-      'another rule already owns.';
+      'instruction describing the section you are responsible for. Call the '
+      'edit_document tool exactly once. When the document already contains '
+      'your section, REWRITE it in full with mode replace so the result is one '
+      'section covering both what it already recorded and whatever the '
+      'transcript adds, merging and condensing rather than tacking new '
+      'material onto the end. Record only what the transcript and the existing '
+      'document establish; invent nothing. Do not restate sections another '
+      'rule already owns.';
+
+  /// Shown to the model whenever the document is not empty.
+  ///
+  /// A chronicle run seeds the document from the standing chronicle and then
+  /// hands the model a transcript of only the NEW messages, because
+  /// `_buildTranscript` excludes the chronicle itself. Without this, the
+  /// obvious move is to append the new events to a section that already looks
+  /// finished, so the chronicle grew every run and nothing already in it was
+  /// ever revisited or condensed.
+  static const String reviseNotice =
+      'THE DOCUMENT ABOVE ALREADY COVERS EARLIER CONVERSATIONS. Your section '
+      'must end as ONE section covering both what it already records and what '
+      'the transcript below adds. Rewrite it in full with mode replace, '
+      'condensing older entries as needed to respect any length limit your '
+      'instruction sets. Do not append a second pass onto the end of it.';
 
   /// OpenAI-compatible tool spec.
   static Map<String, dynamic> buildToolSpec() => {
@@ -321,6 +341,8 @@ class CompactionService {
     if (!document.isEmpty) {
       buf.writeln('DOCUMENT SO FAR:');
       buf.writeln(document.render());
+      buf.writeln();
+      buf.writeln(reviseNotice);
       buf.writeln();
     } else {
       buf.writeln('DOCUMENT SO FAR: (empty, you are the first rule)');
