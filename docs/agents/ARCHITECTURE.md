@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.8.3.9` (`pubspec.yaml` `0.8.3+28`). Target: `0.8.3` release.
+Current version: `0.8.3.10` (`pubspec.yaml` `0.8.3+29`). Target: `0.8.3` release.
 
 ## Project overview
 
@@ -507,18 +507,12 @@ there is one entry point.
     pairs as edits). A seeded run that only added lines is called out in the
     popup, because that is exactly the failure this section keeps describing.
     Merges have no earlier version and show none.
-*   **The chronicle is pointed at.** Whenever the START of the open
-    conversation's chronicle is out of view, `ChatMessagesList` shows an
-    up-arrow Chronicle chip; tapping it (`pointAtChronicle`) scrolls to the
-    top and flashes `MessageBubble.isPointedAt`, a thick border and wide glow
-    in the chronicle's accent, for 2.4 s. The start, not any part, because a
-    long chronicle opened at its end still has its tail on screen. A run that
-    lands on a new chronicle sets `ChatProvider.takePointAtChronicle`, so the
-    chat screen opens that conversation at its chronicle rather than at the
-    bottom. Visibility is checked after layout, never from inside a scroll
-    listener: the screen's jump to the bottom fires the listener before the
-    list has laid out at the new offset, so an immediate check read the old
-    position and the chip stayed hidden until the user scrolled by hand.
+*   **View Chronicle** is inside the Summarize / Context drawer for
+    conversations with a pinned chronicle. It closes the drawer and calls
+    `ChatMessagesList.pointAtChronicle` to scroll to the top and flash the
+    chronicle's border for 2.4 s. A compaction or merge that creates a
+    chronicle uses `ChatProvider.takePointAtChronicle` to open the new
+    conversation at that block.
 *   A rule's name sits on its own wrapping line in its card. It shared a row
     with four controls and showed "Key" for "Key Events", and the name is
     now the heading of the section the rule owns.

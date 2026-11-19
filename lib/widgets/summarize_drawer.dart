@@ -32,7 +32,10 @@ class SummarizeDrawer extends StatefulWidget {
   /// Callback triggered when the drawer should be closed.
   final VoidCallback? onClose;
 
-  const SummarizeDrawer({super.key, this.onClose});
+  /// Opens the pinned chronicle in the conversation.
+  final VoidCallback? onViewChronicle;
+
+  const SummarizeDrawer({super.key, this.onClose, this.onViewChronicle});
 
   @override
   State<SummarizeDrawer> createState() => _SummarizeDrawerState();
@@ -309,6 +312,15 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
                               : [],
                         ),
                       ),
+                      if (widget.onViewChronicle != null &&
+                          chat.messages.any((message) => message.isChronicle))
+                        TextButton.icon(
+                          onPressed: chat.isCompacting
+                              ? null
+                              : widget.onViewChronicle,
+                          icon: const Icon(Icons.arrow_upward, size: 18),
+                          label: const Text('View Chronicle'),
+                        ),
                       const SizedBox(height: 12),
                     ],
                   ),

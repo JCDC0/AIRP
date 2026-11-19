@@ -50,7 +50,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   ChatSearchProvider? _searchProvider;
   final TextEditingController _searchFieldController = TextEditingController();
   final FocusNode _searchFieldFocus = FocusNode();
-  final GlobalKey<State> _messagesListKey = GlobalKey<State>();
+  final _messagesListKey = GlobalKey<ChatMessagesListState>();
 
   @override
   void initState() {
@@ -161,6 +161,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
+  void _viewChronicle() {
+    _closeDrawers();
+    _messagesListKey.currentState?.pointAtChronicle();
+  }
+
   void _closeDrawers() {
     if (_drawerController.isCompleted ||
         _drawerController.isAnimating ||
@@ -261,7 +266,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void _scrollToCurrentMatch() {
     final idx = _searchProvider?.currentMatchMessageIndex;
     if (idx == null) return;
-    final state = _messagesListKey.currentState as ChatMessagesListState?;
+    final state = _messagesListKey.currentState;
     state?.scrollToMessage(idx);
   }
 
@@ -333,8 +338,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_scrollController.hasClients) return;
         if (pointAtChronicle) {
-          (_messagesListKey.currentState as ChatMessagesListState?)
-              ?.pointAtChronicle();
+          _messagesListKey.currentState?.pointAtChronicle();
         } else {
           _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
         }
@@ -658,7 +662,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       position: _summarySlideAnimation,
                       child: Align(
                         alignment: Alignment.centerLeft,
-                        child: SummarizeDrawer(onClose: _closeDrawers),
+                        child: AnimatedBuilder(
+                          animation: _summaryDrawerController,
+                          builder: (context, child) => Visibility(
+                            visible: !_summaryDrawerController.isDismissed,
+                            maintainState: true,
+                            child: child!,
+                          ),
+                          child: SummarizeDrawer(
+                            onClose: _closeDrawers,
+                            onViewChronicle: _viewChronicle,
+                          ),
+                        ),
                       ),
                     ),
 

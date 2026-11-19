@@ -4,12 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:airp/models/chat_models.dart';
 import 'package:airp/providers/chat_provider.dart';
-import 'package:airp/services/compaction_service.dart';
 import 'package:airp/providers/scale_provider.dart';
+import 'package:airp/providers/settings_provider.dart';
 import 'package:airp/providers/theme_provider.dart';
+import 'package:airp/providers/update_provider.dart';
 import 'package:airp/providers/vfx_provider.dart';
+import 'package:airp/screens/chat_screen.dart';
+import 'package:airp/services/compaction_service.dart';
 import 'package:airp/utils/constants.dart';
+import 'package:airp/widgets/chat_messages_list.dart';
+import 'package:airp/widgets/message_bubble.dart';
 import 'package:airp/widgets/settings_panels/settings_slider.dart';
 import 'package:airp/widgets/summarize_drawer.dart';
 
@@ -39,6 +45,85 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('the Chronicle shortcut is only available inside compaction', (
+    tester,
+  ) async {
+    late final ChatProvider chat;
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => SettingsProvider()),
+          ChangeNotifierProxyProvider<SettingsProvider, ChatProvider>(
+            create: (_) => chat = ChatProvider(),
+            update: (_, settings, provider) =>
+                provider!..updateSettings(settings),
+          ),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (_) => VfxProvider()),
+          ChangeNotifierProvider(create: (_) => ScaleProvider()),
+          ChangeNotifierProvider(create: (_) => UpdateProvider()),
+        ],
+        child: const MaterialApp(home: ChatScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final openCompaction = find.byTooltip('Summarize / Context');
+    final viewChronicle = find.text('View Chronicle');
+    await tester.tap(openCompaction);
+    await tester.pumpAndSettle();
+    expect(viewChronicle, findsNothing);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SummarizeDrawer),
+        matching: find.byTooltip('Close'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    chat.loadSession(
+      ChatSessionData(
+        id: '1760000000000',
+        title: 'Test chat',
+        messages: [
+          ChatMessage(
+            text: 'The story so far.',
+            isUser: false,
+            isChronicle: true,
+          ),
+          for (var i = 0; i < 30; i++)
+            ChatMessage(text: 'Message $i', isUser: true),
+        ],
+        modelName: '',
+        tokenCount: 0,
+        systemInstruction: '',
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scroll = tester
+        .widget<ChatMessagesList>(find.byType(ChatMessagesList))
+        .scrollController;
+    scroll.jumpTo(600);
+    await tester.pumpAndSettle();
+    expect(viewChronicle, findsNothing);
+    expect(find.byKey(const Key('chronicle_pointer')), findsNothing);
+
+    await tester.tap(openCompaction);
+    await tester.pumpAndSettle();
+    expect(viewChronicle.hitTestable(), findsOneWidget);
+    await tester.tap(viewChronicle);
+    await tester.pumpAndSettle();
+
+    expect(viewChronicle, findsNothing);
+    expect(scroll.offset, scroll.position.minScrollExtent);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is MessageBubble && widget.isPointedAt,
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('SummarizeDrawer renders with SettingsSlider and adjusted width', (

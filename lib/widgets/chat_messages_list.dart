@@ -51,62 +51,10 @@ class ChatMessagesListState extends State<ChatMessagesList> {
   bool _chronicleFlash = false;
   Timer? _flashTimer;
 
-  /// Whether the start of the chronicle is out of view, which is when the
-  /// pointer chip shows. The start, not any part: a long chronicle opened at
-  /// its end still has its tail on screen, and that is exactly when a way
-  /// back to its top is needed. Tracked from scrolling rather than computed in build because it
-  /// depends on layout.
-  bool _chronicleOffscreen = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.scrollController.addListener(_trackChronicle);
-  }
-
   @override
   void dispose() {
-    widget.scrollController.removeListener(_trackChronicle);
     _flashTimer?.cancel();
     super.dispose();
-  }
-
-  bool _chronicleCheckScheduled = false;
-
-  /// Checks after the next layout, never immediately: a jump fires the scroll
-  /// listener before the list has laid out at the new offset, so an immediate
-  /// check read the chronicle's old position. Opening a conversation jumps to
-  /// the bottom, and the chip stayed hidden until the user scrolled by hand.
-  void _trackChronicle() {
-    if (_chronicleCheckScheduled) return;
-    _chronicleCheckScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _chronicleCheckScheduled = false;
-      _checkChronicle();
-    });
-    WidgetsBinding.instance.ensureVisualUpdate();
-  }
-
-  void _checkChronicle() {
-    if (!mounted) return;
-    final messages = Provider.of<ChatProvider>(context, listen: false).messages;
-    final index = messages.indexWhere((m) => m.isChronicle);
-    var offscreen = false;
-    if (index >= 0) {
-      // Lazily built: a chronicle scrolled far enough away has no context.
-      final box =
-          _messageKeys[index]?.currentContext?.findRenderObject() as RenderBox?;
-      final list = context.findRenderObject() as RenderBox?;
-      if (box == null || !box.attached || list == null) {
-        offscreen = true;
-      } else {
-        final top = box.localToGlobal(Offset.zero).dy;
-        offscreen = top < list.localToGlobal(Offset.zero).dy - 8;
-      }
-    }
-    if (offscreen != _chronicleOffscreen) {
-      setState(() => _chronicleOffscreen = offscreen);
-    }
   }
 
   /// Scrolls to the top of the conversation, where the chronicle is pinned,
@@ -364,9 +312,6 @@ class ChatMessagesListState extends State<ChatMessagesList> {
         searchProvider.currentMatchMessageIndex;
     final Set<int> matchMessageIndices = searchProvider.matchMessageIndices;
     final String searchQuery = searchProvider.query;
-    // The chronicle can appear or vanish without a scroll (attach, detach,
-    // switching conversations), so recheck once this frame is laid out.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkChronicle());
 
     return InteractiveViewer(
       transformationController: widget.transformationController,
@@ -497,37 +442,6 @@ class ChatMessagesListState extends State<ChatMessagesList> {
                 ],
               ),
             ),
-
-            if (_chronicleOffscreen && messages.any((m) => m.isChronicle))
-              SafeArea(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: ActionChip(
-                      key: const Key('chronicle_pointer'),
-                      avatar: Icon(
-                        Icons.arrow_upward,
-                        size: 16,
-                        color: themeProvider.markdownLinkColor,
-                      ),
-                      label: Text(
-                        'Chronicle',
-                        style: TextStyle(color: themeProvider.textColor),
-                      ),
-                      backgroundColor: themeProvider.containerFillColor,
-                      side: BorderSide(
-                        color: themeProvider.markdownLinkColor.withValues(
-                          alpha: 0.7,
-                        ),
-                      ),
-                      shadowColor: themeProvider.bloomGlowColor,
-                      elevation: vfxProvider.enableBloom ? 6 : 2,
-                      onPressed: pointAtChronicle,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
