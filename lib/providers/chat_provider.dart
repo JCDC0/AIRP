@@ -1702,6 +1702,11 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void cancelGeneration() async {
+    // During a compaction the chat input's Stop is the way out of it.
+    if (isCompacting) {
+      cancelCompaction();
+      return;
+    }
     final sessionId = _currentSessionId;
     if (sessionId == null) return;
 
@@ -2051,6 +2056,64 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Answers a compaction's requests in place of the network, so a test can
+  /// drive a whole run, or hold a rule open and stop it.
+  @visibleForTesting
+  Future<ToolDetectionResult?> Function(String userPrompt)?
+  oneShotDetectOverride;
+
+  /// Non-null while a compaction or merge runs; completing it stops the run.
+  Completer<void>? _compactCancel;
+
+  /// Shown in place of the result when the user stops a run.
+  static const String compactStoppedNotice =
+      'Compaction stopped. Nothing was changed.';
+
+  /// Whether a compaction or merge is running. The chat screen freezes every
+  /// control but Stop while this is true, because switching conversation,
+  /// provider or model mid-run would compact one conversation into another or
+  /// send half the rules to a different model.
+  bool get isCompacting => _compactCancel != null;
+
+  /// Stops the running compaction or merge. The request already in flight
+  /// cannot be recalled, so the provider still bills it, but its answer is
+  /// discarded and nothing is branched or saved.
+  void cancelCompaction() {
+    final cancel = _compactCancel;
+    if (cancel == null || cancel.isCompleted) return;
+    cancel.complete();
+    _setCompactProgress('Stopping', _compactRuleIndex, _compactRuleTotal);
+  }
+
+  /// Awaits [request] unless the run is stopped first, in which case it
+  /// returns null at once rather than waiting on a reply that will be thrown
+  /// away.
+  Future<T?> _unlessStopped<T>(Future<T?> request) {
+    final cancel = _compactCancel;
+    if (cancel == null) return request;
+    return Future.any<T?>([request, cancel.future.then((_) => null)]);
+  }
+
+  bool get _compactStopped => _compactCancel?.isCompleted ?? false;
+
+  /// Set when a run lands on a new chronicle, so the chat screen opens that
+  /// conversation pointing at it instead of at the bottom.
+  bool _pointAtChronicle = false;
+
+  /// Returns, and clears, whether the conversation just opened should be
+  /// shown from its chronicle.
+  bool takePointAtChronicle() {
+    final value = _pointAtChronicle;
+    _pointAtChronicle = false;
+    return value;
+  }
+
+  /// The chronicle a run started from and the one it produced, rendered the
+  /// same way so the drawer can show a diff of what the run changed. Empty
+  /// before is a run that started from nothing.
+  String lastCompactBefore = '';
+  String lastCompactAfter = '';
+
   /// Runs [rules] in order against one shared document and branches the result
   /// as a single combined block.
   ///
@@ -2082,6 +2145,7 @@ class ChatProvider extends ChangeNotifier {
     if (transcript.isEmpty) {
       return "Nothing to compact — no message text found.";
     }
+    if (isCompacting) return "A compaction is already running.";
 
     // Seed from the existing chronicle so a chronicle run revises the standing
     // document instead of starting over.
@@ -2089,7 +2153,9 @@ class ChatProvider extends ChangeNotifier {
     var document = (asChronicle && existing != null)
         ? CompactDocument.parse(_chronicleBody(existing))
         : CompactDocument();
+    final before = document.render();
 
+    _compactCancel = Completer<void>();
     _nonStreamingLoading = true;
     _compactDocumentOverride = null;
     compactDocumentNotifier.value = document.render();
@@ -2104,25 +2170,33 @@ class ChatProvider extends ChangeNotifier {
         document = documentForNextRule(document, _compactDocumentOverride);
         _compactDocumentOverride = null;
 
-        final det = await _oneShotDetect(
-          userPrompt: CompactionService.buildRulePrompt(
-            rule: rule,
-            document: document,
-            transcript: transcript,
+        final det = await _unlessStopped(
+          _oneShotDetect(
+            userPrompt: CompactionService.buildRulePrompt(
+              rule: rule,
+              document: document,
+              transcript: transcript,
+            ),
+            systemInstruction: CompactionService.systemInstruction,
+            tools: [CompactionService.buildToolSpec()],
+            geminiDeclarations:
+                CompactionService.buildGeminiFunctionDeclarations(),
           ),
-          systemInstruction: CompactionService.systemInstruction,
-          tools: [CompactionService.buildToolSpec()],
-          geminiDeclarations:
-              CompactionService.buildGeminiFunctionDeclarations(),
         );
 
+        if (_compactStopped) return compactStoppedNotice;
         if (det == null || det.isError) {
           return 'Rule "${rule.name}" failed (check API key / model).';
         }
 
         var applied = false;
         if (det.isToolCall && det.toolName == CompactionService.toolName) {
-          applied = document.applyToolArguments(det.toolArguments) != null;
+          applied =
+              document.applyToolArguments(
+                det.toolArguments,
+                ownHeading: CompactionService.fallbackHeadingFor(rule),
+              ) !=
+              null;
         }
         if (!applied) {
           // The model answered in prose, or sent an unusable tool payload. It
@@ -2145,6 +2219,9 @@ class ChatProvider extends ChangeNotifier {
       if (body.isEmpty) {
         return "Compaction produced nothing to carry.";
       }
+      if (_compactStopped) return compactStoppedNotice;
+      lastCompactBefore = before;
+      lastCompactAfter = body;
 
       final heading = asChronicle
           ? SummarizeDefaults.chronicleHeading
@@ -2175,6 +2252,7 @@ class ChatProvider extends ChangeNotifier {
         );
       }
 
+      _pointAtChronicle = asChronicle;
       _branchInto(
         [block.copyWith(clearContentNotifier: true), ...blocks],
         asChronicle
@@ -2187,6 +2265,7 @@ class ChatProvider extends ChangeNotifier {
     } catch (e) {
       return "Compaction failed: $e";
     } finally {
+      _compactCancel = null;
       _nonStreamingLoading = false;
       _setCompactProgress('', 0, 0);
     }
@@ -2280,7 +2359,9 @@ class ChatProvider extends ChangeNotifier {
       return "Could not find the selected conversations.";
     }
     final ordered = orderForMerge(selected);
+    if (isCompacting) return "A compaction is already running.";
 
+    _compactCancel = Completer<void>();
     _nonStreamingLoading = true;
     _setCompactProgress('Collecting', 0, ordered.length + 1);
 
@@ -2297,9 +2378,10 @@ class ChatProvider extends ChangeNotifier {
         if (body == null) {
           final transcript = transcriptOfSession(session);
           if (transcript.isEmpty) continue;
-          final generated = await _oneShotGenerate(
-            '$fallbackSummaryPrompt\n\n$transcript',
+          final generated = await _unlessStopped(
+            _oneShotGenerate('$fallbackSummaryPrompt\n\n$transcript'),
           );
+          if (_compactStopped) return compactStoppedNotice;
           if (generated == null || generated.trim().isEmpty) {
             return 'Could not summarise "$title" (check API key / model).';
           }
@@ -2314,12 +2396,15 @@ class ChatProvider extends ChangeNotifier {
       }
 
       _setCompactProgress('Merging', ordered.length + 1, ordered.length + 1);
-      final merged = await _oneShotGenerate(
-        CompactionService.buildMergePrompt(
-          instruction: mergePrompt,
-          extracts: extracts,
+      final merged = await _unlessStopped(
+        _oneShotGenerate(
+          CompactionService.buildMergePrompt(
+            instruction: mergePrompt,
+            extracts: extracts,
+          ),
         ),
       );
+      if (_compactStopped) return compactStoppedNotice;
       if (merged == null || merged.trim().isEmpty) {
         return "Merge call failed (check API key / model).";
       }
@@ -2333,6 +2418,7 @@ class ChatProvider extends ChangeNotifier {
 
       // A merge is a new line of story, not a continuation of whichever
       // conversation happened to be open, so nothing is carried.
+      _pointAtChronicle = true;
       _branchInto([block], 'Merged Chronicle');
       _mergeNotice = summarised == 0
           ? 'Merged ${extracts.length} conversations.'
@@ -2342,6 +2428,7 @@ class ChatProvider extends ChangeNotifier {
     } catch (e) {
       return "Merge failed: $e";
     } finally {
+      _compactCancel = null;
       _nonStreamingLoading = false;
       _setCompactProgress('', 0, 0);
     }
@@ -2427,6 +2514,8 @@ class ChatProvider extends ChangeNotifier {
     List<Map<String, dynamic>> tools = const [],
     List<Map<String, dynamic>> geminiDeclarations = const [],
   }) async {
+    final override = oneShotDetectOverride;
+    if (override != null) return override(userPrompt);
     final bool isGemini = _currentProvider == AiProvider.gemini;
     final String activeKey = _getProviderKey(_currentProvider);
     final strategy = StrategyResolver.resolve(_currentProvider);

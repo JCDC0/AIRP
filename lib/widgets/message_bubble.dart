@@ -46,11 +46,16 @@ class MessageBubble extends StatelessWidget {
   /// Whether to show an inline typing indicator inside this bubble.
   final bool showTypingIndicator;
 
-/// Whether this bubble is the current find-bar match (strong highlight).
+  /// Whether this bubble is the current find-bar match (strong highlight).
   final bool isSearchCurrent;
 
   /// Whether this bubble contains a find-bar match (subtle highlight).
   final bool isSearchMatch;
+
+  /// Whether the Chronicle pointer just brought this bubble into view. Louder
+  /// than a search match: a thick border and a wide glow in the chronicle's
+  /// own accent, so the eye lands on it after the jump.
+  final bool isPointedAt;
 
   /// The active search query, used for inline word highlighting.
   final String? searchQuery;
@@ -71,6 +76,7 @@ class MessageBubble extends StatelessWidget {
     this.showTypingIndicator = false,
     this.isSearchCurrent = false,
     this.isSearchMatch = false,
+    this.isPointedAt = false,
     this.searchQuery,
     this.isCurrentSearchMessage = false,
   });
@@ -115,6 +121,11 @@ class MessageBubble extends StatelessWidget {
       borderColor = themeProvider.bloomGlowColor.withValues(alpha: 0.45);
       searchGlowColor = themeProvider.bloomGlowColor.withValues(alpha: 0.20);
       searchGlowBlur = 10;
+    }
+    if (isPointedAt) {
+      borderColor = themeProvider.markdownLinkColor;
+      searchGlowColor = themeProvider.markdownLinkColor.withValues(alpha: 0.9);
+      searchGlowBlur = 28;
     }
 
     Widget bubble;
@@ -274,8 +285,8 @@ class MessageBubble extends StatelessWidget {
                     : (msg.isUser ? bubbleColor : themeProvider.textColor)
                           .withValues(alpha: 0.15),
                 radius: 12.0,
-                strokeWidth: 2.0,
-                glowStrokeWidth: 10.0,
+                strokeWidth: isPointedAt ? 4.0 : 2.0,
+                glowStrokeWidth: isPointedAt ? 26.0 : 10.0,
               ),
               child: Container(
                 padding: const EdgeInsets.all(12),
@@ -295,13 +306,18 @@ class MessageBubble extends StatelessWidget {
             decoration: BoxDecoration(
               color: bubbleColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderColor),
+              border: Border.all(
+                color: borderColor,
+                width: isPointedAt ? 3.0 : 1.0,
+              ),
               boxShadow: searchGlowBlur > 0
                   ? [
                       BoxShadow(
                         color: searchGlowColor,
                         blurRadius: searchGlowBlur,
-                        spreadRadius: searchGlowBlur > 15 ? 2.0 : 0.0,
+                        spreadRadius: isPointedAt
+                            ? 4.0
+                            : (searchGlowBlur > 15 ? 2.0 : 0.0),
                       ),
                     ]
                   : const [],

@@ -8,6 +8,7 @@ import '../providers/vfx_provider.dart';
 import '../providers/scale_provider.dart';
 import '../services/compaction_service.dart';
 import '../utils/constants.dart';
+import 'compact_diff_dialog.dart';
 import 'settings_panels/settings_slider.dart';
 
 /// Drawer that compacts the current conversation and branches a fresh one.
@@ -243,6 +244,12 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
               : "Compacted. Switched to new conversation.",
         );
         widget.onClose?.call();
+        await showCompactDiff(
+          context,
+          title: _isChronicleMode ? "Chronicle changes" : "Compaction result",
+          before: chat.lastCompactBefore,
+          after: chat.lastCompactAfter,
+        );
       } else {
         setState(() => _status = err);
       }
@@ -552,24 +559,7 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
                   fontSize: scale.systemFontSize - 1,
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _nameControllerFor(rule),
-                  style: TextStyle(
-                    color: theme.textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: scale.systemFontSize - 1,
-                  ),
-                  cursorColor: theme.textColor,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: "Rule name",
-                  ),
-                  onChanged: (v) => _updateRule(rule, name: v),
-                ),
-              ),
+              const Spacer(),
               IconButton(
                 icon: const Icon(Icons.arrow_upward, size: 16),
                 color: theme.dimTextColor,
@@ -597,6 +587,26 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
                 onPressed: _compressing ? null : () => _removeRule(rule),
               ),
             ],
+          ),
+          // A line of its own: it shared the row with four controls and
+          // showed "Key" for "Key Events". The name is the heading of the
+          // section this rule owns, so it has to be readable in full.
+          TextField(
+            key: ValueKey('rule_name_${rule.id}'),
+            controller: _nameControllerFor(rule),
+            maxLines: null,
+            style: TextStyle(
+              color: theme.textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: scale.systemFontSize - 1,
+            ),
+            cursorColor: theme.textColor,
+            decoration: const InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              hintText: "Rule name (the section heading it writes)",
+            ),
+            onChanged: (v) => _updateRule(rule, name: v),
           ),
           const SizedBox(height: 4),
           TextField(
@@ -626,13 +636,28 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
     );
   }
 
-  /// The drawer's fixed bottom bar: compaction mode on the left, run button on
-  /// the right.
+  /// The drawer's fixed bottom bar: the compaction mode on one full-width row,
+  /// the run button on the next.
+  ///
+  /// The mode was a dropdown sharing a row with the button, which left it
+  /// about half a phone-width drawer: "Simple Compact to New Conversation"
+  /// showed as "Simple Compact" closed and "Simple Compact to" open. Two short
+  /// segments across the whole width fit at any drawer size, and the button
+  /// gets a row of its own so its label can say what it will do. Every label
+  /// scales down rather than truncating, so a large system font size shrinks
+  /// it instead of cutting it off.
   ///
   /// A Column sibling after the Expanded, deliberately not a Positioned in the
   /// Stack (it would float over the list) and not inside the ListView (it would
   /// scroll out of reach, which is the thing this replaces).
   Widget _footer(ThemeProvider theme, VfxProvider vfx, ScaleProvider scale) {
+    final chat = Provider.of<ChatProvider>(context, listen: false);
+    final fs = scale.systemFontSize - 1;
+    Widget fitted(String text) => FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(text, maxLines: 1, style: TextStyle(fontSize: fs)),
+    );
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
@@ -641,70 +666,70 @@ class _SummarizeDrawerState extends State<SummarizeDrawer> {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: theme.scaffoldBackgroundColor,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: vfx.enableBloom
-                        ? theme.bloomGlowColor.withValues(alpha: 0.5)
-                        : theme.borderColor,
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    key: const Key('compact_mode_dropdown'),
-                    isExpanded: true,
-                    value: _mode,
-                    dropdownColor: theme.dropdownColor,
-                    style: TextStyle(
-                      color: theme.textColor,
-                      fontSize: scale.systemFontSize - 1,
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: SummarizeDefaults.modeSimple,
-                        child: Text("Simple Compact to New Conversation"),
-                      ),
-                      DropdownMenuItem(
-                        value: SummarizeDefaults.modeChronicle,
-                        child: Text("Compact to Chronicle"),
-                      ),
-                    ],
-                    onChanged: _compressing
-                        ? null
-                        : (v) {
-                            if (v == null || v == _mode) return;
-                            setState(() {
-                              _mode = v;
-                              _status = null;
-                            });
-                            _saveMode(v);
-                          },
-                  ),
+            SegmentedButton<String>(
+              key: const Key('compact_mode_selector'),
+              expandedInsets: EdgeInsets.zero,
+              showSelectedIcon: false,
+              style: SegmentedButton.styleFrom(
+                foregroundColor: theme.textColor,
+                selectedForegroundColor: theme.scaffoldBackgroundColor,
+                selectedBackgroundColor: theme.textColor,
+                side: BorderSide(
+                  color: vfx.enableBloom
+                      ? theme.bloomGlowColor.withValues(alpha: 0.5)
+                      : theme.borderColor,
                 ),
               ),
+              segments: [
+                ButtonSegment(
+                  value: SummarizeDefaults.modeSimple,
+                  icon: const Icon(Icons.compress, size: 18),
+                  label: fitted('Simple'),
+                ),
+                ButtonSegment(
+                  value: SummarizeDefaults.modeChronicle,
+                  icon: const Icon(Icons.auto_stories, size: 18),
+                  label: fitted('Chronicle'),
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: _compressing
+                  ? null
+                  : (picked) {
+                      final v = picked.first;
+                      if (v == _mode) return;
+                      setState(() {
+                        _mode = v;
+                        _status = null;
+                      });
+                      _saveMode(v);
+                    },
             ),
-            const SizedBox(width: 10),
+            const SizedBox(height: 8),
+            // While running this is the drawer's Stop, alongside the one in
+            // the chat input.
             FilledButton.icon(
-              onPressed: _compressing ? null : _runCompact,
-              icon: _compressing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Icon(
-                      _isChronicleMode ? Icons.auto_stories : Icons.compress,
-                    ),
-              label: Text(_isChronicleMode ? "Chronicle" : "Compact"),
+              key: const Key('compact_run_button'),
+              style: _compressing
+                  ? FilledButton.styleFrom(backgroundColor: Colors.redAccent)
+                  : null,
+              onPressed: _compressing ? chat.cancelCompaction : _runCompact,
+              icon: Icon(
+                _compressing
+                    ? Icons.stop
+                    : (_isChronicleMode ? Icons.auto_stories : Icons.compress),
+              ),
+              label: fitted(
+                _compressing
+                    ? "Stop"
+                    : (_isChronicleMode
+                          ? "Compact to Chronicle"
+                          : "Simple Compact"),
+              ),
             ),
           ],
         ),

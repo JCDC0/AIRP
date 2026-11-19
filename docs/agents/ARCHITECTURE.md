@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.8.3.7` (`pubspec.yaml` `0.8.3+26`). Target: `0.8.3` release.
+Current version: `0.8.3.8` (`pubspec.yaml` `0.8.3+27`). Target: `0.8.3` release.
 
 ## Project overview
 
@@ -40,7 +40,7 @@ Current version: `0.8.3.7` (`pubspec.yaml` `0.8.3+26`). Target: `0.8.3` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (457 tests, all passing)
+*   **Test:** `flutter test` (474 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -462,6 +462,56 @@ there is one entry point.
 *   `CompactDocument` matches headings case-insensitively and round-trips
     through markdown, which is what lets a chronicle run parse the existing
     block back in and edit it further.
+*   **A section is only a `#` or `##` heading.** `parse` used to split on any
+    level, so a Cast and Voices section with a `### Name` per character came
+    back as one section per character. The rule's replace then overwrote only
+    the stub, the old character blocks rode along beside the new ones, and the
+    chronicle grew as if appended to. `applyEdit` also demotes `#`/`##` lines
+    inside content to `###` and drops a leading line repeating the section's
+    own heading, so a model's formatting cannot break the round trip.
+*   **A heading that matches no section goes to the rule's own section.**
+    `applyToolArguments(ownHeading:)` takes the rule's name
+    (`fallbackHeadingFor`). A model writing "Relationships & Dynamics"
+    against an existing "Relationships and Dynamics" added a second section
+    holding only the new material, which is appending under another name. An
+    exact match still edits that section, so a rule can revise another rule's
+    work. Rule names are therefore the section headings. Guarded by
+    `test/compaction_service_test.dart` and `test/compaction_run_test.dart`.
+*   **A run freezes the screen and can be stopped.** `ChatProvider.isCompacting`
+    (a compaction or a merge) dims and disables the app bar, message list,
+    action bar and conversation and settings drawers, and turns off the edge
+    swipes, because switching conversation, provider or model mid-run would
+    compact one conversation into another or send half the rules to another
+    model. The chat input's Stop routes to `cancelCompaction`, as does the
+    drawer's run button, which becomes Stop. The request in flight is raced
+    against the cancel (`_unlessStopped`) and its answer discarded; the
+    provider still bills it. Nothing is branched or saved after a stop.
+*   **Every successful compaction opens a diff.** `lastCompactBefore` is the
+    seed document rendered by `CompactDocument.render`, `lastCompactAfter` the
+    result, and `CompactDiffDialog` shows them through `TextDiff`
+    (`lib/utils/text_diff.dart`, a line LCS with a word diff inside lines it
+    pairs as edits). A seeded run that only added lines is called out in the
+    popup, because that is exactly the failure this section keeps describing.
+    Merges have no earlier version and show none.
+*   **The chronicle is pointed at.** Whenever the START of the open
+    conversation's chronicle is out of view, `ChatMessagesList` shows an
+    up-arrow Chronicle chip; tapping it (`pointAtChronicle`) scrolls to the
+    top and flashes `MessageBubble.isPointedAt`, a thick border and wide glow
+    in the chronicle's accent, for 2.4 s. The start, not any part, because a
+    long chronicle opened at its end still has its tail on screen. A run that
+    lands on a new chronicle sets `ChatProvider.takePointAtChronicle`, so the
+    chat screen opens that conversation at its chronicle rather than at the
+    bottom. Visibility is checked after layout, never from inside a scroll
+    listener: the screen's jump to the bottom fires the listener before the
+    list has laid out at the new offset, so an immediate check read the old
+    position and the chip stayed hidden until the user scrolled by hand.
+*   A rule's name sits on its own wrapping line in its card. It shared a row
+    with four controls and showed "Key" for "Key Events", and the name is
+    now the heading of the section the rule owns.
+*   The mode selector is a full-width `SegmentedButton` (Simple / Chronicle)
+    above a full-width run button, with every label in a scale-down
+    `FittedBox`. It was a dropdown sharing a row with the button, which on a
+    phone cut "Simple Compact to New Conversation" to "Simple Compact".
 *   Rules persist under `airp_summarize_compact_rules`. When that key is
     absent, the drawer migrates `prefCompressPrompt` and
     `prefVoiceSamplesPrompt` into rules 1 and 2. Those two prompts have been

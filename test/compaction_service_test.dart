@@ -409,4 +409,73 @@ void main() {
       );
     });
   });
+
+  // A chronicle run parses the standing chronicle back into sections and each
+  // rule replaces its own. Two things made that read as an append instead.
+  group('a seeded chronicle is revised in place, not appended to', () {
+    test('sub-headings inside a section survive a render and parse', () {
+      final doc = CompactDocument()
+        ..applyEdit(
+          heading: 'Cast and Voices',
+          content: '### Schiwi\n- "Hold it."\n\n### Wu\n- "Pay first."',
+        );
+      final reparsed = CompactDocument.parse(doc.render());
+      expect(reparsed.sections.map((s) => s.heading), ['Cast and Voices']);
+    });
+
+    test('a ## per character in the content cannot split the section', () {
+      final doc = CompactDocument()
+        ..applyEdit(
+          heading: 'Cast and Voices',
+          content: '## Schiwi\n- "Hold it."\n\n## Wu\n- "Pay first."',
+        );
+      final reparsed = CompactDocument.parse(doc.render());
+      expect(reparsed.sections, hasLength(1));
+
+      // The next run's replace then leaves nothing of the old cast behind.
+      reparsed.applyToolArguments(
+        jsonEncode({
+          'heading': 'Cast and Voices',
+          'content': '### Schiwi\n- "New line."',
+          'mode': 'replace',
+        }),
+        ownHeading: 'Cast and Voices',
+      );
+      expect(reparsed.render(), isNot(contains('Pay first')));
+    });
+
+    test('a content line repeating its own heading is dropped', () {
+      final doc = CompactDocument()
+        ..applyEdit(heading: 'Key Events', content: '## Key Events\nDay 1.');
+      expect(doc.sections.single.body, 'Day 1.');
+    });
+
+    test('a drifted heading is filed under the rule\'s own section', () {
+      final doc = CompactDocument.parse(
+        '## Relationships and Dynamics\nOld pairing notes.',
+      );
+      final touched = doc.applyToolArguments(
+        jsonEncode({
+          'heading': 'Relationships & Dynamics',
+          'content': 'Merged notes.',
+          'mode': 'replace',
+        }),
+        ownHeading: 'Relationships and Dynamics',
+      );
+      expect(touched, 'Relationships and Dynamics');
+      expect(doc.sections, hasLength(1));
+      expect(doc.sections.single.body, 'Merged notes.');
+    });
+
+    test('an exact match to another rule\'s section still edits it', () {
+      final doc = CompactDocument.parse(
+        '## Key Events\nA.\n\n## Characters\nB.',
+      );
+      doc.applyToolArguments(
+        jsonEncode({'heading': 'Key Events', 'content': 'A, revised.'}),
+        ownHeading: 'Characters',
+      );
+      expect(doc.sections.map((s) => s.body), ['A, revised.', 'B.']);
+    });
+  });
 }

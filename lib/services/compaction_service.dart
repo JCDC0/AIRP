@@ -115,16 +115,49 @@ class CompactDocument {
       return;
     }
 
+    final clean = _cleanContent(key, content);
     if (index < 0) {
-      sections.add(DocumentSection(heading: key, body: content.trim()));
+      sections.add(DocumentSection(heading: key, body: clean));
       return;
     }
 
     final existing = sections[index];
     final body = mode == DocumentEditMode.append
-        ? '${existing.body.trimRight()}\n\n${content.trim()}'.trim()
-        : content.trim();
+        ? '${existing.body.trimRight()}\n\n$clean'.trim()
+        : clean;
     sections[index] = DocumentSection(heading: existing.heading, body: body);
+  }
+
+  /// Whether [heading] names a section already in the document.
+  bool hasSection(String heading) {
+    final key = heading.trim().toLowerCase();
+    return sections.any((s) => s.heading.trim().toLowerCase() == key);
+  }
+
+  /// Keeps a section body from breaking the document's structure.
+  ///
+  /// [CompactDocument.parse] splits on `#` and `##` lines, so a body carrying
+  /// its own `## Name` per character came back on the next run as separate
+  /// top-level sections. The rule's replace then overwrote only the stub, and
+  /// the old character blocks survived beside the new ones, so the chronicle
+  /// read as appended to. Those lines are demoted to `###`, and a leading line
+  /// that only repeats the section's own heading is dropped.
+  static String _cleanContent(String heading, String content) {
+    final lines = content.trim().split('\n');
+    final own = RegExp(r'^#{1,6}\s+(.*)$').firstMatch(lines.first.trim());
+    if (own != null &&
+        own.group(1)!.trim().toLowerCase() == heading.trim().toLowerCase()) {
+      lines.removeAt(0);
+    }
+    return lines
+        .map(
+          (l) => l.replaceFirstMapped(
+            RegExp(r'^(\s*)#{1,2}(\s+)'),
+            (m) => '${m[1]}###${m[2]}',
+          ),
+        )
+        .join('\n')
+        .trim();
   }
 
   /// Applies a raw tool-call argument blob.
@@ -132,7 +165,15 @@ class CompactDocument {
   /// Returns the heading touched, or null when the payload was unusable. The
   /// model controls this JSON, so every field is treated as untrusted and a
   /// malformed blob is skipped rather than thrown.
-  String? applyToolArguments(String rawJson) {
+  ///
+  /// [ownHeading] is the section the calling rule owns. A heading that
+  /// matches no existing section is filed there instead of opening a new one:
+  /// a model writing "Relationships & Dynamics" against an existing
+  /// "Relationships and Dynamics" otherwise added a second section holding
+  /// only the new material while the old one rode along untouched, which is
+  /// appending under another name. An exact match still edits that section,
+  /// so a rule can revise another rule's work.
+  String? applyToolArguments(String rawJson, {String? ownHeading}) {
     Map<String, dynamic> args;
     try {
       final decoded = jsonDecode(rawJson);
@@ -144,12 +185,16 @@ class CompactDocument {
     final heading = args['heading'];
     final content = args['content'];
     if (heading is! String || heading.trim().isEmpty) return null;
+    final own = ownHeading?.trim() ?? '';
+    final target = (own.isNotEmpty && !hasSection(heading))
+        ? own
+        : heading.trim();
     applyEdit(
-      heading: heading,
+      heading: target,
       content: content is String ? content : '',
       mode: _modeFromName(args['mode'] as String?),
     );
-    return heading.trim();
+    return target;
   }
 
   /// Renders to markdown. Headings are `##` so they paint through the
@@ -190,7 +235,9 @@ class CompactDocument {
     }
 
     for (final line in lines) {
-      final match = RegExp(r'^#{1,6}\s+(.*)$').firstMatch(line.trimLeft());
+      // Only the levels render() writes start a section; a ### belongs to the
+      // section it sits in.
+      final match = RegExp(r'^#{1,2}\s+(.*)$').firstMatch(line.trimLeft());
       if (match != null) {
         flush();
         heading = match.group(1)!.trim();

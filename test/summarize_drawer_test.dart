@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -124,19 +125,48 @@ void main() {
 
     // The selector sits in the fixed footer, so it is reachable without
     // scrolling the rule list. That is the whole point of putting it there.
-    final dropdown = find.byKey(const Key('compact_mode_dropdown'));
-    expect(dropdown, findsOneWidget);
+    final selector = find.byKey(const Key('compact_mode_selector'));
+    expect(selector, findsOneWidget);
 
-    await tester.tap(dropdown);
+    await tester.tap(
+      find.descendant(of: selector, matching: find.text('Chronicle')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Compact to Chronicle').last);
-    await tester.pumpAndSettle();
+    expect(find.text('Compact to Chronicle'), findsOneWidget);
 
     final prefs = await SharedPreferences.getInstance();
     expect(
       prefs.getString(SummarizeDefaults.prefCompactMode),
       SummarizeDefaults.modeChronicle,
     );
+  });
+
+  // On a phone the mode dropdown shared a row with the run button and showed
+  // "Simple Compact" closed and "Simple Compact to" open.
+  testWidgets('mode and run labels fit a phone-width drawer untruncated', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(_buildTestApp(ChatProvider()));
+    await tester.pumpAndSettle();
+
+    for (final label in ['Simple', 'Chronicle', 'Simple Compact']) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
+      expect(paragraph.didExceedMaxLines, isFalse, reason: label);
+      expect(
+        paragraph.size.width,
+        greaterThanOrEqualTo(
+          paragraph.getMaxIntrinsicWidth(double.infinity) - 0.5,
+        ),
+        reason: label,
+      );
+    }
   });
 
   testWidgets('legacy prompts migrate into two rules, and rules can be added', (
@@ -201,7 +231,10 @@ void main() {
     // Both edits land without anything forcing a rebuild in between, which is
     // the case the card's captured rule used to go stale in: the name came
     // back as whatever it was at the last build.
-    await tester.enterText(fieldWithHint('Rule name').first, 'Key Events');
+    await tester.enterText(
+      fieldWithHint('Rule name (the section heading it writes)').first,
+      'Key Events',
+    );
     await tester.enterText(
       fieldWithHint('What this rule should contribute…').first,
       'Write the chronology.',

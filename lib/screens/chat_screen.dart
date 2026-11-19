@@ -329,8 +329,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     if (chatProvider.currentSessionId != _previousSessionId) {
       _previousSessionId = chatProvider.currentSessionId;
+      final pointAtChronicle = chatProvider.takePointAtChronicle();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
+        if (!_scrollController.hasClients) return;
+        if (pointAtChronicle) {
+          (_messagesListKey.currentState as ChatMessagesListState?)
+              ?.pointAtChronicle();
+        } else {
           _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
         }
       });
@@ -344,6 +349,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     // On desktop, zoom is controlled by _isZoomMode toggle.
     // On mobile, zoom is always enabled (default behavior).
     final bool zoomEnabled = isDesktop ? _isZoomMode : true;
+
+    // While a compaction runs, everything that could change the conversation,
+    // provider or model under it is frozen. Stop in the chat input stays live.
+    final bool compacting = chatProvider.isCompacting;
 
     // Determine zoom button visibility
     final bool showZoomButton = isDesktop ? true : _isZoomed;
@@ -411,20 +420,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       resizeToAvoidBottomInset: true,
                       drawer: null,
                       endDrawer: null,
-                      appBar: ChatAppBar(
-                        onOpenDrawer: _toggleDrawer,
-                        onOpenEndDrawer: _toggleEndDrawer,
-                        onOpenSearch: _openSearch,
-                        onOpenSummary: _toggleSummaryDrawer,
-                        systemFontSize: scaleProvider.systemFontSize,
+                      appBar: _FrozenAppBar(
+                        frozen: compacting,
+                        child: ChatAppBar(
+                          onOpenDrawer: _toggleDrawer,
+                          onOpenEndDrawer: _toggleEndDrawer,
+                          onOpenSearch: _openSearch,
+                          onOpenSummary: _toggleSummaryDrawer,
+                          systemFontSize: scaleProvider.systemFontSize,
+                        ),
                       ),
                       body: Stack(
                         children: [
-                          ChatMessagesList(
-                            key: _messagesListKey,
-                            scrollController: _scrollController,
-                            transformationController: _transformationController,
-                            isZoomEnabled: zoomEnabled,
+                          IgnorePointer(
+                            ignoring: compacting,
+                            child: ChatMessagesList(
+                              key: _messagesListKey,
+                              scrollController: _scrollController,
+                              transformationController:
+                                  _transformationController,
+                              isZoomEnabled: zoomEnabled,
+                            ),
                           ),
 
                           Positioned(
@@ -435,6 +451,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                               scrollController: _scrollController,
                             ),
                           ),
+
+                          if (compacting)
+                            Positioned(
+                              top: 12,
+                              left: 16,
+                              right: 16,
+                              child: _CompactingBanner(
+                                label: chatProvider.compactProgress,
+                                index: chatProvider.compactRuleIndex,
+                                total: chatProvider.compactRuleTotal,
+                                theme: themeProvider,
+                                fontSize: scaleProvider.systemFontSize,
+                              ),
+                            ),
 
                           AnimatedPositioned(
                             duration: AnimationDefaults.zoomButtonDuration,
@@ -599,7 +629,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         onHorizontalDragEnd: _handleDrawerDragEnd,
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: ConversationDrawer(onClose: _closeDrawers),
+                          child: IgnorePointer(
+                            ignoring: compacting,
+                            child: ConversationDrawer(onClose: _closeDrawers),
+                          ),
                         ),
                       ),
                     ),
@@ -611,8 +644,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         onHorizontalDragEnd: _handleEndDrawerDragEnd,
                         child: Align(
                           alignment: Alignment.centerRight,
-                          child: SettingsDrawer(
-                            resetVersion: _settingsDrawerVersion,
+                          child: IgnorePointer(
+                            ignoring: compacting,
+                            child: SettingsDrawer(
+                              resetVersion: _settingsDrawerVersion,
+                            ),
                           ),
                         ),
                       ),
@@ -633,6 +669,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       width: 20,
                       child: GestureDetector(
                         onHorizontalDragEnd: (details) {
+                          if (compacting) return;
                           if (details.primaryVelocity! > 0) _toggleDrawer();
                         },
                         behavior: HitTestBehavior.translucent,
@@ -645,6 +682,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       width: 20,
                       child: GestureDetector(
                         onHorizontalDragEnd: (details) {
+                          if (compacting) return;
                           if (details.primaryVelocity! < 0) _toggleEndDrawer();
                         },
                         behavior: HitTestBehavior.translucent,
@@ -656,6 +694,77 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// The app bar, dimmed and inert while a compaction runs. It carries the
+/// drawer, provider and model controls, any of which would change what the
+/// run is compacting or which model answers its remaining rules.
+class _FrozenAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final bool frozen;
+  final PreferredSizeWidget child;
+
+  const _FrozenAppBar({required this.frozen, required this.child});
+
+  @override
+  Size get preferredSize => child.preferredSize;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    ignoring: frozen,
+    child: Opacity(opacity: frozen ? 0.45 : 1, child: child),
+  );
+}
+
+/// Shows that a compaction is running and where to stop it, since the rest of
+/// the screen is frozen and would otherwise just look unresponsive.
+class _CompactingBanner extends StatelessWidget {
+  final String label;
+  final int index;
+  final int total;
+  final ThemeProvider theme;
+  final double fontSize;
+
+  const _CompactingBanner({
+    required this.label,
+    required this.index,
+    required this.total,
+    required this.theme,
+    required this.fontSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final step = total > 0 ? 'Step $index of $total' : 'Compacting';
+    return Material(
+      key: const Key('compacting_banner'),
+      color: theme.containerFillColor,
+      elevation: 6,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '$step${label.isEmpty ? '' : ': $label'}\n'
+                'Controls are locked. Tap Stop below to cancel.',
+                style: TextStyle(
+                  color: theme.textColor,
+                  fontSize: fontSize - 2,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

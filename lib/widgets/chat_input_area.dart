@@ -353,14 +353,20 @@ class _ChatInputAreaState extends State<ChatInputArea>
                     });
                   },
                 ),
-                ChatActionBar(
-                  isLoading: isLoading,
-                  onShowAttachmentMenu: _showAttachmentMenu,
-                  onScrollToTop: _scrollToTop,
-                  onScrollToBottom: _scrollToBottom,
-                  onShowStatusPopup: _showStatusPopup,
-                  orbitController: _orbitController,
-                  iconOrbitLines: _iconOrbitLines,
+                IgnorePointer(
+                  ignoring: chatProvider.isCompacting,
+                  child: Opacity(
+                    opacity: chatProvider.isCompacting ? 0.45 : 1,
+                    child: ChatActionBar(
+                      isLoading: isLoading,
+                      onShowAttachmentMenu: _showAttachmentMenu,
+                      onScrollToTop: _scrollToTop,
+                      onScrollToBottom: _scrollToBottom,
+                      onShowStatusPopup: _showStatusPopup,
+                      orbitController: _orbitController,
+                      iconOrbitLines: _iconOrbitLines,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ChatInputField(
