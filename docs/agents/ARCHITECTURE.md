@@ -9,7 +9,7 @@ AIRP is a highly customizable, privacy-focused AI chat client built with Flutter
 It is a unified interface for multiple AI providers (Gemini, OpenRouter, NVIDIA,
 Ollama, and others) with a focus on roleplay features and modular architecture.
 
-Current version: `0.8.3.8` (`pubspec.yaml` `0.8.3+27`). Target: `0.8.3` release.
+Current version: `0.8.3.9` (`pubspec.yaml` `0.8.3+28`). Target: `0.8.3` release.
 
 ## Project overview
 
@@ -40,7 +40,7 @@ Current version: `0.8.3.8` (`pubspec.yaml` `0.8.3+27`). Target: `0.8.3` release.
 
 *   **Install dependencies:** `flutter pub get`
 *   **Run:** `flutter run` (Android, iOS, Web, Windows, macOS, Linux)
-*   **Test:** `flutter test` (474 tests, all passing)
+*   **Test:** `flutter test` (479 tests, all passing)
 *   **Analyze:** `flutter analyze` (clean)
 *   **Release APK:** `flutter build apk --release`
 
@@ -477,6 +477,20 @@ there is one entry point.
     exact match still edits that section, so a rule can revise another rule's
     work. Rule names are therefore the section headings. Guarded by
     `test/compaction_service_test.dart` and `test/compaction_run_test.dart`.
+    A `remove` is never redirected, or removing a heading that does not exist
+    would delete the rule's own section.
+*   **Sections no rule owns are folded in, then retired.** A chronicle made
+    by a merge carries the merge's own headings ("Story So Far", "Cast"), and
+    so does one made under rules since renamed. No rule ever replaced those,
+    so every rule wrote its own section beside them and the chronicle told the
+    story twice. `CompactionService.leftoverSections` lists the seeded
+    sections that no rule in the list owns (disabled rules count, so
+    switching one off for a run keeps its section). Every rule's prompt gets
+    `leftoverNotice`, telling it to fold what belongs to it into its own
+    section; a write aimed at a leftover goes to the rule's own section
+    (`applyToolArguments(retiring:)`); and the leftovers are removed after
+    the last rule. The source conversation keeps the old chronicle, and the
+    diff popup shows what was folded and what was dropped.
 *   **A run freezes the screen and can be stopped.** `ChatProvider.isCompacting`
     (a compaction or a merge) dims and disables the app bar, message list,
     action bar and conversation and settings drawers, and turns off the edge

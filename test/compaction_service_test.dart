@@ -478,4 +478,62 @@ void main() {
       expect(doc.sections.map((s) => s.body), ['A, revised.', 'B.']);
     });
   });
+
+  // A chronicle made by a merge carries headings no rule owns ("Story So
+  // Far"), so every rule wrote its own section beside them and the story
+  // was told twice.
+  group('leftover sections are folded in, then retired', () {
+    CompactRule rule(String name, {bool enabled = true}) =>
+        CompactRule(id: name, name: name, prompt: 'p', enabled: enabled);
+
+    test('sections no rule owns are leftovers; a disabled rule still owns', () {
+      final doc = CompactDocument.parse(
+        '## Story So Far\nDay 1.\n\n## Key Events\nA.\n\n'
+        '## Characters\nWu.\n\n## Cast\n',
+      );
+      expect(
+        CompactionService.leftoverSections(doc, [
+          rule('Key Events'),
+          rule('Characters', enabled: false),
+        ]),
+        ['Story So Far'],
+        reason: 'an empty Cast has nothing to fold and is not listed',
+      );
+    });
+
+    test('every rule is told what is going and where to fold it', () {
+      final prompt = CompactionService.buildRulePrompt(
+        rule: rule('Key Events'),
+        document: CompactDocument.parse('## Story So Far\nDay 1.'),
+        transcript: 'T',
+        leftovers: ['Story So Far'],
+      );
+      expect(prompt, contains('LEFTOVER SECTIONS: "Story So Far"'));
+      expect(prompt, contains('"Key Events"'));
+      expect(prompt, startsWith(CompactionService.cacheablePrefix('T')));
+    });
+
+    test("a write aimed at a leftover lands in the rule's own section", () {
+      final doc = CompactDocument.parse('## Story So Far\nDay 1.');
+      final touched = doc.applyToolArguments(
+        jsonEncode({'heading': 'Story So Far', 'content': 'Day 1. Day 2.'}),
+        ownHeading: 'Key Events',
+        retiring: ['Story So Far'],
+      );
+      expect(touched, 'Key Events');
+      expect(
+        doc.sections.firstWhere((s) => s.heading == 'Story So Far').body,
+        'Day 1.',
+      );
+    });
+
+    test("removing a missing heading never deletes the rule's own section", () {
+      final doc = CompactDocument.parse('## Key Events\nA.');
+      doc.applyToolArguments(
+        jsonEncode({'heading': 'Old Notes', 'content': '', 'mode': 'remove'}),
+        ownHeading: 'Key Events',
+      );
+      expect(doc.hasSection('Key Events'), isTrue);
+    });
+  });
 }

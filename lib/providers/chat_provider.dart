@@ -2154,6 +2154,9 @@ class ChatProvider extends ChangeNotifier {
         ? CompactDocument.parse(_chronicleBody(existing))
         : CompactDocument();
     final before = document.render();
+    // Sections from a merge or from renamed rules that no rule will replace.
+    // Each rule folds in what belongs to it; they are deleted at the end.
+    final leftovers = CompactionService.leftoverSections(document, rules);
 
     _compactCancel = Completer<void>();
     _nonStreamingLoading = true;
@@ -2176,6 +2179,7 @@ class ChatProvider extends ChangeNotifier {
               rule: rule,
               document: document,
               transcript: transcript,
+              leftovers: leftovers,
             ),
             systemInstruction: CompactionService.systemInstruction,
             tools: [CompactionService.buildToolSpec()],
@@ -2195,6 +2199,7 @@ class ChatProvider extends ChangeNotifier {
               document.applyToolArguments(
                 det.toolArguments,
                 ownHeading: CompactionService.fallbackHeadingFor(rule),
+                retiring: leftovers,
               ) !=
               null;
         }
@@ -2215,7 +2220,18 @@ class ChatProvider extends ChangeNotifier {
 
       // Only an edit made during the last rule is still pending here;
       // earlier ones were folded in as each later rule started.
-      final body = (_compactDocumentOverride ?? document.render()).trim();
+      final pending = _compactDocumentOverride;
+      final result = pending == null
+          ? document
+          : CompactDocument.parse(pending);
+      for (final heading in leftovers) {
+        result.applyEdit(
+          heading: heading,
+          content: '',
+          mode: DocumentEditMode.remove,
+        );
+      }
+      final body = result.render().trim();
       if (body.isEmpty) {
         return "Compaction produced nothing to carry.";
       }

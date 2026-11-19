@@ -173,7 +173,17 @@ class CompactDocument {
   /// only the new material while the old one rode along untouched, which is
   /// appending under another name. An exact match still edits that section,
   /// so a rule can revise another rule's work.
-  String? applyToolArguments(String rawJson, {String? ownHeading}) {
+  ///
+  /// [retiring] are leftover sections the run deletes at the end. A write
+  /// aimed at one goes to [ownHeading] too, or it would be deleted with it.
+  ///
+  /// A remove is never redirected: removing a heading that does not exist
+  /// would otherwise delete the rule's own section.
+  String? applyToolArguments(
+    String rawJson, {
+    String? ownHeading,
+    Iterable<String> retiring = const [],
+  }) {
     Map<String, dynamic> args;
     try {
       final decoded = jsonDecode(rawJson);
@@ -185,14 +195,20 @@ class CompactDocument {
     final heading = args['heading'];
     final content = args['content'];
     if (heading is! String || heading.trim().isEmpty) return null;
+    final mode = _modeFromName(args['mode'] as String?);
     final own = ownHeading?.trim() ?? '';
-    final target = (own.isNotEmpty && !hasSection(heading))
+    final key = heading.trim().toLowerCase();
+    final retiringHit = retiring.any((r) => r.trim().toLowerCase() == key);
+    final target =
+        (mode != DocumentEditMode.remove &&
+            own.isNotEmpty &&
+            (!hasSection(heading) || retiringHit))
         ? own
         : heading.trim();
     applyEdit(
       heading: target,
       content: content is String ? content : '',
-      mode: _modeFromName(args['mode'] as String?),
+      mode: mode,
     );
     return target;
   }
@@ -292,6 +308,38 @@ class CompactionService {
       'condensing older entries as needed to respect any length limit your '
       'instruction sets. Do not append a second pass onto the end of it.';
 
+  /// Sections in a seeded document that no rule owns.
+  ///
+  /// A chronicle made by a merge, or under rules since renamed, carries its
+  /// own headings ("Story So Far", "Cast"). No rule ever replaced those, so
+  /// every rule wrote its own section beside them and the chronicle told the
+  /// story twice. Every rule in the list counts as an owner, enabled or not,
+  /// so switching a rule off for one run does not delete its section.
+  static List<String> leftoverSections(
+    CompactDocument document,
+    Iterable<CompactRule> rules,
+  ) {
+    final owned = rules.map((r) => fallbackHeadingFor(r).toLowerCase()).toSet();
+    return [
+      for (final s in document.sections)
+        if (!owned.contains(s.heading.trim().toLowerCase()) &&
+            s.body.trim().isNotEmpty)
+          s.heading.trim(),
+    ];
+  }
+
+  /// Tells a rule which sections are going away, so it carries what belongs
+  /// to it across before they are deleted at the end of the run.
+  static String leftoverNotice(
+    List<String> leftovers, {
+    required String ownHeading,
+  }) =>
+      'LEFTOVER SECTIONS: ${leftovers.map((h) => '"$h"').join(', ')} '
+      'belong to no rule. They are left over from an earlier format and are '
+      'deleted when this run ends. Fold anything in them that belongs in your '
+      'section, "$ownHeading", into it now, condensed, so nothing that matters '
+      'is lost. Do not edit or recreate the leftover sections themselves.';
+
   /// OpenAI-compatible tool spec.
   static Map<String, dynamic> buildToolSpec() => {
     'type': 'function',
@@ -380,6 +428,7 @@ class CompactionService {
     required CompactRule rule,
     required CompactDocument document,
     required String transcript,
+    List<String> leftovers = const [],
   }) {
     final buf = StringBuffer();
     buf.writeln('CONVERSATION TRANSCRIPT:');
@@ -391,6 +440,12 @@ class CompactionService {
       buf.writeln();
       buf.writeln(reviseNotice);
       buf.writeln();
+      if (leftovers.isNotEmpty) {
+        buf.writeln(
+          leftoverNotice(leftovers, ownHeading: fallbackHeadingFor(rule)),
+        );
+        buf.writeln();
+      }
     } else {
       buf.writeln('DOCUMENT SO FAR: (empty, you are the first rule)');
       buf.writeln();

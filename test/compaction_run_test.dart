@@ -118,4 +118,47 @@ void main() {
       expect(chat.takePointAtChronicle(), isFalse);
     },
   );
+
+  test("a merged chronicle's own sections are folded in and retired", () async {
+    chat.loadSession(
+      session([
+        ChatMessage(
+          text:
+              '**[Chronicle]**\n\n## Story So Far\n\nDay 1: they meet.\n\n'
+              '## Characters\n\nWu, a fixer.',
+          isUser: false,
+          isChronicle: true,
+        ),
+        ChatMessage(text: 'Day 2.', isUser: true),
+        ChatMessage(text: 'They strike a deal.', isUser: false),
+      ]),
+    );
+    final prompts = <String>[];
+    chat.oneShotDetectOverride = (prompt) async {
+      prompts.add(prompt);
+      return edit('Key Events', 'Day 1: they meet. Day 2: a deal.');
+    };
+
+    await chat.compactWithRules(
+      rules: [
+        CompactRule(id: 'k', name: 'Key Events', prompt: 'Chronology.'),
+        CompactRule(
+          id: 'c',
+          name: 'Characters',
+          prompt: 'Cast.',
+          enabled: false,
+        ),
+      ],
+      asChronicle: true,
+      blockCount: 0,
+    );
+
+    expect(prompts.single, contains('LEFTOVER SECTIONS: "Story So Far"'));
+    expect(
+      chat.lastCompactAfter,
+      '## Characters\n\nWu, a fixer.\n\n'
+      '## Key Events\n\nDay 1: they meet. Day 2: a deal.',
+      reason: 'the story is told once, and a disabled rule keeps its section',
+    );
+  });
 }
